@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
 
-public class PersonaDonante {
+public abstract class PersonaDonante {
     //private MediosDeContacto mediosDeContacto
     //public setMediosDeContacto(MedioDeContacto mediosDeContacto){}
 }

@@ -1,11 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.lugares;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 
 
 public class Direccion {
   private String calleUno;
   private String calleDos;
-  private int altura;
-  private boolean sinAltura;
+  private Integer altura;
   private int piso;
   private int cuerpo;
   private String departamento;
@@ -17,8 +16,7 @@ public class Direccion {
   public Direccion(
       String calleUno,
       String calleDos,
-      int altura,
-      boolean sinAltura,
+      Integer altura,
       int piso,
       int cuerpo,
       String departamento,
@@ -27,7 +25,26 @@ public class Direccion {
     this.calleUno = calleUno;
     this.calleDos = calleDos;
     this.altura = altura;
-    this.sinAltura = sinAltura;
+    this.piso = piso;
+    this.cuerpo = cuerpo;
+    this.departamento = departamento;
+    this.ciudad = ciudad;
+  }
+
+  /**
+   * Constructor sin altura.
+   */
+  public Direccion(
+      String calleUno,
+      String calleDos,
+      int piso,
+      int cuerpo,
+      String departamento,
+      Ciudad ciudad
+  ) {
+    this.calleUno = calleUno;
+    this.calleDos = calleDos;
+    this.altura = null;
     this.piso = piso;
     this.cuerpo = cuerpo;
     this.departamento = departamento;
@@ -40,7 +57,7 @@ public class Direccion {
    * @return String con la direccion completa, incluyendo ciudad, provincia y pais.
    */
   public String getDireccion() {
-    String valorAltura = sinAltura ? "S/N" : String.valueOf(altura);
+    String valorAltura = altura == null ? "S/N" : String.valueOf(altura);
 
     return String.format("%s %s y %s, Piso %d, Depto %s, Cuerpo %d, %s",
         calleUno,

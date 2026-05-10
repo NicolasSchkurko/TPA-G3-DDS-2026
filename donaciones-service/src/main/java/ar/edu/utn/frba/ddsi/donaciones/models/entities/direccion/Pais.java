@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.lugares;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 
 public class Pais {
   private String nombre;
