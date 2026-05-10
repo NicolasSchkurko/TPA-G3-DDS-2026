@@ -1,11 +1,17 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Humano {
   private String nombre;
   private String apellido;
   private int edad;
   private int numeroDeDocumento;
-  private Genero genero;
+  Genero genero;
 
   public Humano(
       String nombre,

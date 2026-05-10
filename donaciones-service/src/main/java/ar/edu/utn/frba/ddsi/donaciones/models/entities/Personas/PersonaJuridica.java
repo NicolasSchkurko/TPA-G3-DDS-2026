@@ -3,8 +3,13 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 public class PersonaJuridica extends PersonaDonante {
+
+  @Getter
+  @Setter
   private Direccion direccion;
   private String razonSocial;
   private String rubro;
