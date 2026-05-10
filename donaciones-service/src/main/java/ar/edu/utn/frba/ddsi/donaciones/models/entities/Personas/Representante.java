@@ -15,4 +15,5 @@ public class Representante {
     this.humano = humano;
     this.activo = activo;
   }
+
 }
