@@ -2,11 +2,15 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+
 
 public class Donacion {
+    @Getter
+    @Setter
     private PersonaDonante donante;
     private EntidadBeneficiaria entidad;
-    private String descripcion;
     private List<Bien> bienes;
     private Estados estado;
     private SubcategoriaBien subcategoria;
@@ -19,6 +23,13 @@ public class Donacion {
         this.bienes = bienes;
         this.estado = estado;
         this.subcategoria = subcategoria;
+    }
+
+    public Integer SumaCantidadBienes(){
+        Integer cantidad = 0;
+        bienes.forEach(bien -> {
+            cantidad += bien.cantidad;
+        });
     }
 
 

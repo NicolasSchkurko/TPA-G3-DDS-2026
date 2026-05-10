@@ -1,6 +1,12 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 
+import lombok.Getter;
+import lombok.Setter;
+
+
 public class NecesidadExtraordinaria extends Necesidad{
+    @Getter
+    @Setter
     private Integer cantidadRecibida;
     private Integer cantidad;
 
