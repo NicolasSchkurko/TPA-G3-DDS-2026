@@ -19,4 +19,6 @@ public abstract class MedioDeContacto {
     public void setInformacionDeContacto() {}
 
     public void enviarMensaje(Mensaje mensaje) {}
+
+
 }
