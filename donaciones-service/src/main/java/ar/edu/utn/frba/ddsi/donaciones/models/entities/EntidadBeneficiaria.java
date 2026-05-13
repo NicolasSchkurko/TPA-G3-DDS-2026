@@ -6,18 +6,16 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 
-
+@Getter
+@Setter
 public class EntidadBeneficiaria {
-    @Getter
-    @Setter
     private String razonSocial;
     private Direccion direccion;
     private Telefono nroTell;
     private List<Necesidad> necesidades;
     private MediosDeContacto correosRepresentantes;
 
-    public EntidadBeneficiaria crearEntidadBeneficiaria(String razonSoc, Direccion dir,
-                                                        Telefono nroTell, MediosDeContacto correosRepres){
+    public EntidadBeneficiaria (String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres){
         this.razonSocial = razonSoc;
         this.direccion = dir;
         this.nroTell = nroTell;

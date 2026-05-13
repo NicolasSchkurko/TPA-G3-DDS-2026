@@ -6,14 +6,18 @@ import lombok.Setter;
 @Getter
 @Setter
 public class NecesidadRecurrente extends Necesidad {
-    private Integer cantidadRecibida;
     private Integer cantidadObjetivo;
     private Periodo plazo;
 
-    public NecesidadRecurrente(SubcategoriaBien subcategoria, String descripcion, Integer cantidadRecibida, Integer cantidadObjetivo, Periodo plazo){
+    public NecesidadRecurrente(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo, Periodo plazo){
         super(subcategoria, descripcion);
-        this.cantidadRecibida = cantidadRecibida;
         this.cantidadObjetivo = cantidadObjetivo;
         this.plazo = plazo;
+    }
+
+    @Override
+    public boolean estaSatisfecha() {
+        //TODO debe verificar por los diferentes plazos
+        return this.cantidadRecibida() >= cantidadObjetivo;
     }
 }

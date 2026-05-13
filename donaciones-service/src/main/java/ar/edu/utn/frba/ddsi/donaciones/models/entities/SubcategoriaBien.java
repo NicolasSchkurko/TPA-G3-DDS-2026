@@ -3,10 +3,9 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 import lombok.Getter;
 import lombok.Setter;
 
-
+@Getter
+@Setter
 public class SubcategoriaBien {
-    @Getter
-    @Setter
     private String nombre;
     private CategoriaBien categoria;
 

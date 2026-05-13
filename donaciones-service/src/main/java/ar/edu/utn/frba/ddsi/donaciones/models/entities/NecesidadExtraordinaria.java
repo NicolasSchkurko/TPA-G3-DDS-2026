@@ -3,16 +3,20 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 
+@Getter
+@Setter
 public class NecesidadExtraordinaria extends Necesidad{
-    @Getter
-    @Setter
-    private Integer cantidadRecibida;
-    private Integer cantidad;
+    private Integer cantidadObjetivo;
 
-    public NecesidadExtraordinaria(SubcategoriaBien subcategoria, String descripcion, Integer cantidadRecibida, Integer cantidad){
+    public NecesidadExtraordinaria(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo){
         super(subcategoria, descripcion);
-        this.cantidadRecibida = cantidadRecibida;
-        this.cantidad = cantidad;
+        this.cantidadObjetivo = cantidadObjetivo;
+    }
+
+    @Override
+    public boolean estaSatisfecha() {
+        return this.cantidadRecibida() >= cantidadObjetivo;
     }
 }
