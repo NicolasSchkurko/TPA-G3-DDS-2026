@@ -46,7 +46,7 @@ public class LectorCSV<T> implements Lector<T> {
   public List<T> importar(InputStream contenido) {
     List<T> resultados = new ArrayList<>();
     try (
-        // Usamos el inputStream directamente en lugar de un FileInputStream
+        // Usamos el inputStream directamente en lugar de un
         CSVReader reader = new CSVReaderBuilder(
             new InputStreamReader(contenido, StandardCharsets.UTF_8)
         ).withCSVParser(new CSVParserBuilder().withSeparator(separator)

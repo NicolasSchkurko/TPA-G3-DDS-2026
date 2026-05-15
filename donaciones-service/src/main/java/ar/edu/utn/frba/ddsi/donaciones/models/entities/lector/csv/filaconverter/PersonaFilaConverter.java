@@ -81,13 +81,6 @@ public class PersonaFilaConverter implements FilaConverter<Persona> {
                            .findFirst();
   }
 
-  @Override
-  public String getFormatoFecha() {
-    return null; // No aplica para Persona
-  }
 
-  @Override
-  public Map<String, List<String>> getMapeoColumnasParaJson() {
-    return this.mapeoColumnas;
-  }
+
 }

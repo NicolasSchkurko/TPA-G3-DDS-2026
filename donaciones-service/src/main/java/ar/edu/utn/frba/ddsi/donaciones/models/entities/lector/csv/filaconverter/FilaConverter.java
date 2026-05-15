@@ -19,7 +19,4 @@ public interface FilaConverter<T> {
    */
   T convert(Map<String, String> row);
 
-  String getFormatoFecha();
-
-  Map<String, List<String>> getMapeoColumnasParaJson();
 }
