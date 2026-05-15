@@ -29,4 +29,9 @@ public class GestorNotificacion {
             notificacion.marcarFallida();
         }
     }
+
+    public void crearYEnviarNotificacion(TipoNotificacion tipo, Destinatario destinatario, Map datos, CanalNotificacion canalDeEnvio) {
+        Notificacion notificacion = this.crearNotificacion(tipo, destinatario, datos);
+        this.enviarNotificacion(notificacion, canalDeEnvio);
+    }
 }

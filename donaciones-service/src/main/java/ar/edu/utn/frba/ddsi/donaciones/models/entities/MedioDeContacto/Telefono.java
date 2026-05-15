@@ -1,5 +1,17 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
+
 public class Telefono extends MedioDeContacto {
-    private Integer numeroDeTelefono;
+    private String numeroDeTelefono;
+
+    @Override
+    public String getValor() {
+        return numeroDeTelefono;
+    }
+
+    @Override
+    public void enviarMensaje(String mensaje, TipoDeMensaje tipo) {
+        //enviarNotificacion(tipo, "Notificación", mensaje, numeroDeTelefono);
+    }
 }

@@ -8,6 +8,9 @@ import java.util.List;
 public abstract class MedioDeContacto {
     private List<TipoDeMensaje> tiposDeMensajeAdmitidos;
 
+    public abstract String getValor();
+    public List<TipoDeMensaje> getTiposDeMensajeAdmitidos() {}
+
     public void agregarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
         this.tiposDeMensajeAdmitidos.add(tipoDeMensaje);
     }
@@ -18,7 +21,6 @@ public abstract class MedioDeContacto {
 
     public void setInformacionDeContacto() {}
 
-    public void enviarMensaje(Mensaje mensaje) {}
-
+    public abstract void enviarMensaje(String mensaje, TipoDeMensaje tipo);
 
 }
