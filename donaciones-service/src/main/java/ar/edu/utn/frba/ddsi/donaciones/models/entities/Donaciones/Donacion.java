@@ -1,10 +1,14 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import lombok.Getter;
 import lombok.Setter;
 
