@@ -2,37 +2,47 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 
 import java.util.Map;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class SegmentadorDonaciones {
 
     public List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
-        // Agrupamos los bienes por una "clave de segmentación"
-        Map<String, List<Bien>> grupos = bienesRecibidos.stream()
-                .collect(Collectors.groupingBy(this::generarClaveSegmentacion));
+        Map<String, List<Bien>> grupos = new HashMap<>();
 
-        // Por cada grupo, creamos una Donación independiente
-        return grupos.entrySet().stream()
-                .map(entry -> crearDonacion(donante, entry.getKey(), entry.getValue()))
-                .collect(Collectors.toList());
+        for (Bien bien : bienesRecibidos) {
+            String clave = generarClaveSegmentacion(bien);
+
+            if (!grupos.containsKey(clave)) {
+                grupos.put(clave, new ArrayList<>());
+            }
+            grupos.get(clave).add(bien);
+        }
+
+        List<Donacion> donacionesSegmentadas = new ArrayList<>();
+
+        for (List<Bien> bienesDelGrupo : grupos.values()) {
+            Donacion nuevaDonacion = crearDonacion(donante, bienesDelGrupo);
+            donacionesSegmentadas.add(nuevaDonacion);
+        }
+
+        return donacionesSegmentadas;
     }
 
     private String generarClaveSegmentacion(Bien bien) {
-        // La clave identifica qué bienes PUEDEN ir juntos
         String clave = bien.getSubcategoria().getNombre();
 
-        if (bien instanceof BienPerecedero) {
-            clave += "-" + ((BienPerecedero) bien).getFechaVencimiento().toString();
+        if (bien instanceof BienPerecedero perecedero) {
+            clave = clave + "-" + perecedero.getFechaVencimiento().toString();
         }
 
-        if (bien instanceof BienConEstado) {
-            clave += "-" + (((BienConEstado) bien).isUsado() ? "USADO" : "NUEVO");
+        if (bien instanceof BienConEstado conEstado) {
+            clave = clave + "-" + (conEstado.isUsado() ? "USADO" : "NUEVO");
         }
-
         return clave;
     }
 
-    private Donacion crearDonacion(PersonaDonante donante, String clave, List<Bien> bienesDelGrupo) {
+    private Donacion crearDonacion(PersonaDonante donante, List<Bien> bienesDelGrupo) {
         SubcategoriaBien sub = bienesDelGrupo.get(0).getSubcategoria();
 
         return new Donacion(
@@ -41,7 +51,8 @@ public class SegmentadorDonaciones {
                 "Segmento de donación: " + sub.getNombre(),
                 bienesDelGrupo,
                 Estados.EN_DEPOSITO,
-                sub
+                sub,
+                null
         );
     }
 }

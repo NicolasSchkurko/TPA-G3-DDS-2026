@@ -8,8 +8,8 @@ import lombok.Setter;
 public class BienConEstado extends Bien {
     private boolean usado;
 
-    public BienConEstado(String descripcion, SubcategoriaBien subcategoria, String foto, Integer cantidad, UnidadDeMedida unidadautilizada, boolean usado) {
-        super(descripcion, subcategoria, foto, cantidad, unidadautilizada);
+    public BienConEstado(String descripcion, SubcategoriaBien subcategoria, String urlFoto, Integer cantidad, UnidadDeMedida unidadautilizada, boolean usado) {
+        super(descripcion, subcategoria, urlFoto, cantidad, unidadautilizada);
         this.usado = usado;
     }
 }

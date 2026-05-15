@@ -3,8 +3,6 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
 public class NecesidadExtraordinaria extends Necesidad{

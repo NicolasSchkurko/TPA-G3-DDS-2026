@@ -1,34 +1,39 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class AsignadorDonaciones {
+    private static AsignadorDonaciones instanciaUnica;
+
     private List<EntidadBeneficiaria> entidades;
 
-    public AsignadorDonaciones(List<EntidadBeneficiaria> entidades) {
-        this.entidades = entidades;
+    private AsignadorDonaciones() {
+        this.entidades = new ArrayList<>();
+    }
+
+    public static AsignadorDonaciones getInstance() {
+        if (instanciaUnica == null) {
+            instanciaUnica = new AsignadorDonaciones();
+        }
+        return instanciaUnica;
     }
 
     public void asignarDonacion(Donacion donacion) {
-        Optional<Necesidad> necesidadOptima = buscarNecesidadPendiente(donacion.getSubcategoria());
-
-        if (necesidadOptima.isPresent()) {
-            Necesidad necesidad = necesidadOptima.get();
-            necesidad.registrarDonacionAsignada(donacion);
-            donacion.setEstado(Estados.EN_DEPOSITO);
+        for (EntidadBeneficiaria entidad : entidades) {
+            for (Necesidad necesidad : entidad.getNecesidades()) {
+                if (necesidad.getSubcategoria().equals(donacion.getSubcategoria()) && !necesidad.estaSatisfecha()) {
+                    necesidad.registrarDonacionAsignada(donacion);
+                    donacion.setEntidad(entidad);
+                    donacion.setEstado(Estados.EN_DEPOSITO);
+                    return; //por ahora la primer necesidad que encuentre que coincida con la donacion sera satisfecha
+                }
+            }
         }
-    }
-
-    private Optional<Necesidad> buscarNecesidadPendiente(SubcategoriaBien sub) {
-        return entidades.stream()
-                .flatMap(entidad -> entidad.getNecesidades().stream())
-                .filter(necesidad -> necesidad.getSubcategoria().equals(sub))
-                .filter(necesidad -> !necesidad.estaSatisfecha())
-                .findFirst(); // Logica de prioridad, por ahora dejamos la primera en la lista
+        //si la donacion no entro al bucle seguira sin asignarse
     }
 }

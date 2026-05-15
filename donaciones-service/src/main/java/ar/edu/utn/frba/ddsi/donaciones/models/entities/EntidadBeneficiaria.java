@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 
