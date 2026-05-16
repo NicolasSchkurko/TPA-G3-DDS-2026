@@ -2,15 +2,20 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
+
+@Getter
+@Setter
 
 public abstract class MedioDeContacto {
     private List<TipoDeMensaje> tiposDeMensajeAdmitidos;
 
     public abstract String getValor();
-    public List<TipoDeMensaje> getTiposDeMensajeAdmitidos() {}
-
+    //public List<TipoDeMensaje> getTiposDeMensajeAdmitidos() {}
+    /*
     public void agregarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
         this.tiposDeMensajeAdmitidos.add(tipoDeMensaje);
     }
@@ -18,7 +23,7 @@ public abstract class MedioDeContacto {
     public void eliminarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
         this.tiposDeMensajeAdmitidos.remove(tipoDeMensaje);
     }
-
+    */
     public void setInformacionDeContacto() {}
 
     public abstract void enviarMensaje(String mensaje, TipoDeMensaje tipo);

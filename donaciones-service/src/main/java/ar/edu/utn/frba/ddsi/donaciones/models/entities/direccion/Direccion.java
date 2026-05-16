@@ -4,10 +4,11 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 import lombok.Getter;
 import lombok.Setter;
 
+@Getter
+@Setter
+
 public class Direccion {
 
-  @Getter
-  @Setter
   private String calleUno;
   private String calleDos;
   private Integer altura;

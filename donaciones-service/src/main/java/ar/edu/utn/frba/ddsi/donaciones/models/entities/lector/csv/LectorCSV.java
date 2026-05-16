@@ -1,13 +1,11 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv;
 
-
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.Lector;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.FilaConverter;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -39,18 +37,16 @@ public class LectorCSV<T> implements Lector<T> {
       throw new IllegalArgumentException("El conversor no puede ser nulo.");
     }
     this.separator = separator;
-    this.converter = (FilaConverter<T>) converter;
+    this.converter = converter;
   }
 
   @Override
   public List<T> importar(InputStream contenido) {
     List<T> resultados = new ArrayList<>();
     try (
-        // Usamos el inputStream directamente en lugar de un
         CSVReader reader = new CSVReaderBuilder(
             new InputStreamReader(contenido, StandardCharsets.UTF_8)
-        ).withCSVParser(new CSVParserBuilder().withSeparator(separator)
-                                              .build())
+        ).withCSVParser(new CSVParserBuilder().withSeparator(separator).build())
          .build()
     ) {
       String[] headers = reader.readNext();
@@ -104,7 +100,4 @@ public class LectorCSV<T> implements Lector<T> {
     }
     return fila;
   }
-
-
 }
-

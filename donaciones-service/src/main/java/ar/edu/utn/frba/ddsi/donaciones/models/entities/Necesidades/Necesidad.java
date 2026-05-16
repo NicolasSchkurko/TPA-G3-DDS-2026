@@ -15,6 +15,7 @@ public abstract class Necesidad {
     private List<Donacion> donaciones;
     private String descripcion;
 
+
     public Necesidad(SubcategoriaBien subcategoria, String descripcion){
         this.subcategoria = subcategoria;
         this.descripcion = descripcion;

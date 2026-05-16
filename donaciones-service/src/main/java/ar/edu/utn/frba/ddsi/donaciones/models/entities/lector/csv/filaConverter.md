@@ -1,1 +1,0 @@
-Map (Nombre atributo) (Lista de nombres columna que corresponden a ese atributo)

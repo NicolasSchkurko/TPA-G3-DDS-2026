@@ -6,10 +6,11 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
+@Getter
+@Setter
+
 public class PersonaJuridica extends PersonaDonante {
 
-  @Getter
-  @Setter
   private Direccion direccion;
   private String razonSocial;
   private String rubro;
