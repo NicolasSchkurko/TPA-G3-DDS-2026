@@ -9,7 +9,6 @@ import java.util.List;
  */
 public class MapeoCSV {
 
-  private Long id;
 
   private String campo;
 
