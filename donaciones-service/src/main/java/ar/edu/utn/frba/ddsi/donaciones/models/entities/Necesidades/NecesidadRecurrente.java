@@ -10,12 +10,10 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class NecesidadRecurrente extends Necesidad {
-    private Integer cantidadObjetivo;
     private Integer plazoEnDias;
 
     public NecesidadRecurrente(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo, Integer plazoEnDias){
-        super(subcategoria, descripcion);
-        this.cantidadObjetivo = cantidadObjetivo;
+        super(subcategoria, descripcion, cantidadObjetivo);
         this.plazoEnDias = plazoEnDias;
     }
 
@@ -33,5 +31,10 @@ public class NecesidadRecurrente extends Necesidad {
                 .filter(donacion -> donacion.getFechaEntrega() != null && donacion.getFechaEntrega().isAfter(fechaLimite))
                 .mapToInt(Donacion::sumaCantidadBienes)
                 .sum();
+    }
+
+    @Override
+    public String toString() {
+        return "NecesidadRecurrente{subcategoria=" + subcategoria + ", descripcion=" + descripcion + ", cantidadObjetivo=" + cantidadObjetivo + ", plazoEnDias=" + plazoEnDias + '}';
     }
 }

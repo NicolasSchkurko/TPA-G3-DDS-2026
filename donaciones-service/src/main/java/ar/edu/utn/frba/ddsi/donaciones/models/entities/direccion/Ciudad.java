@@ -25,4 +25,8 @@ public class Ciudad {
     );
   }
 
+  @Override
+  public String toString() {
+    return "Ciudad{nombre=" + nombre + ", provincia=" + provincia + '}';
+  }
 }

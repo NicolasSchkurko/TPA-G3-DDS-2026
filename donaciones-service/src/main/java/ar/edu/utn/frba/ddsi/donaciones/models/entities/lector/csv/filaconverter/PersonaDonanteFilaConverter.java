@@ -1,9 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
@@ -103,6 +100,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
 
   private PersonaJuridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
     return new PersonaJuridica(
+        null,
         null,
         razonSocial,
         null,

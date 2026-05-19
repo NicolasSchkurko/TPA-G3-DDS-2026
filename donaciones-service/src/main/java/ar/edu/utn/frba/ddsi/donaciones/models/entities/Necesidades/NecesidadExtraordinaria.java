@@ -6,16 +6,19 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class NecesidadExtraordinaria extends Necesidad{
-    private Integer cantidadObjetivo;
+public class NecesidadExtraordinaria extends Necesidad {
 
-    public NecesidadExtraordinaria(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo){
-        super(subcategoria, descripcion);
-        this.cantidadObjetivo = cantidadObjetivo;
+    public NecesidadExtraordinaria(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo) {
+        super(subcategoria, descripcion, cantidadObjetivo);
     }
 
     @Override
     public boolean estaSatisfecha() {
         return this.cantidadRecibida() >= cantidadObjetivo;
+    }
+
+    @Override
+    public String toString() {
+        return "NecesidadExtraordinaria{subcategoria=" + subcategoria + ", descripcion=" + descripcion + ", cantidadObjetivo=" + cantidadObjetivo + '}';
     }
 }

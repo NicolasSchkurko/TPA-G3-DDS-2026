@@ -34,4 +34,9 @@ public class MediosDeContacto {
     }
 
     public void enviarMensajeAMedios(Mensaje mensaje) {}
+
+    @Override
+    public String toString() {
+        return "MediosDeContacto{listaMediosDeContacto=" + listaMediosDeContacto + '}';
+    }
 }

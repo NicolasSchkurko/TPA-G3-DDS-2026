@@ -13,9 +13,11 @@ import lombok.Setter;
 public class AsignadorDonaciones {
     private static AsignadorDonaciones instanciaUnica;
 
-    private List<EntidadBeneficiaria> entidades;
+    private static List<Donacion> donaciones;
+    private static List<EntidadBeneficiaria> entidades;
 
     private AsignadorDonaciones() {
+        this.donaciones = new ArrayList<>();
         this.entidades = new ArrayList<>();
     }
 
@@ -26,17 +28,33 @@ public class AsignadorDonaciones {
         return instanciaUnica;
     }
 
-    public void asignarDonacion(Donacion donacion) {
-        for (EntidadBeneficiaria entidad : entidades) {
-            for (Necesidad necesidad : entidad.getNecesidades()) {
-                if (necesidad.getSubcategoria().equals(donacion.getSubcategoria()) && !necesidad.estaSatisfecha()) {
-                    necesidad.registrarDonacionAsignada(donacion);
-                    donacion.setEntidad(entidad);
-                    donacion.setEstado(Estados.EN_DEPOSITO);
-                    return; //por ahora la primer necesidad que encuentre que coincida con la donacion sera satisfecha
+    public static void asignarDonacion(Donacion donacion) {
+        if(!entidades.isEmpty()){
+            for (EntidadBeneficiaria entidad : entidades) {
+                for (Necesidad necesidad : entidad.getNecesidades()) {
+                    if (necesidad.getSubcategoria().equals(donacion.getSubcategoria()) && !necesidad.estaSatisfecha()) {
+                        necesidad.registrarDonacionAsignada(donacion);
+                        donacion.setEntidad(entidad);
+                        donacion.setEstado(Estados.EN_DEPOSITO);
+                        return; //por ahora la primer necesidad que encuentre que coincida con la donacion sera satisfecha
+                    }
                 }
             }
         }
         //si la donacion no entro al bucle seguira sin asignarse
+    }
+
+    public static void agregarDonacion(Donacion donacion){
+        AsignadorDonaciones.getInstance();
+        if(donaciones.contains(donacion)){
+            donaciones.add(donacion);
+        }
+    }
+
+    public void agregarEntidad(EntidadBeneficiaria entidad){
+        AsignadorDonaciones.getInstance();
+        if(!entidades.contains(entidad)){
+            entidades.add(entidad);
+        }
     }
 }

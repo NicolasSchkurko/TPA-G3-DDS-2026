@@ -17,4 +17,8 @@ public class Representante {
     this.activo = activo;
   }
 
+  @Override
+  public String toString() {
+    return "Representante{humano=" + humano + ", activo=" + activo + '}';
+  }
 }
