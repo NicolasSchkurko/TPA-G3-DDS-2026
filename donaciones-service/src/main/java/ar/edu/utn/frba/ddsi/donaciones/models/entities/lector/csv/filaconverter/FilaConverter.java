@@ -17,6 +17,6 @@ public interface FilaConverter<T> {
    * @param row Un mapa donde la clave es el nombre de la columna y el valor es el dato de la celda.
    * @return Un objeto de tipo T, o null si la fila no se puede convertir.
    */
-  T convert(Map<String, String> row);
+  T convertir(Map<String, String> row);
 
 }

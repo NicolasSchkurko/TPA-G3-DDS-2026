@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones;
 
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ArchivoCsvSinEncabezadosException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ConversorNuloException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.EncabezadoCsvDuplicadoException;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.FilaConverter;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +22,7 @@ class LectorCSVtest {
   // Conversor de prueba simple que convierte una fila a un String concatenando sus valores
   private final FilaConverter<String> mockConverter = fila -> {
     if (fila.containsKey("Nombre") && fila.get("Nombre").equals("DESCARTAR")) {
-      return null; // Simulamos que el conversor rechaza esta fila
+      throw new IllegalArgumentException("Nombre inválido: DESCARTAR");
     }
     return fila.get("Nombre") + "-" + fila.get("Edad");
   };
@@ -46,7 +49,7 @@ class LectorCSVtest {
   }
 
   @Test
-  @DisplayName("Debe ignorar las filas que el conversor decide que son inválidas (retorna null)")
+  @DisplayName("Debe ignorar las filas que el conversor descarta (lanzando excepción)")
   void importar_IgnoraFilasDescartadasPorConversor() {
     // Arrange
     LectorCSV<String> lector = new LectorCSV<>(',', mockConverter);
@@ -70,11 +73,11 @@ class LectorCSVtest {
     InputStream inputStream = crearStreamDesdeString("");
 
     // Act & Assert
-    IllegalArgumentException exception = assertThrows(
-        IllegalArgumentException.class,
+    ArchivoCsvSinEncabezadosException exception = assertThrows(
+        ArchivoCsvSinEncabezadosException.class,
         () -> lector.importar(inputStream)
     );
-    assertEquals("El archivo CSV no contiene encabezados.", exception.getMessage());
+    assertTrue(exception.getMessage().contains("El archivo CSV debe tener una primera fila con los títulos de las columnas"));
   }
 
   @Test
@@ -86,22 +89,22 @@ class LectorCSVtest {
     InputStream inputStream = crearStreamDesdeString(csvContenido);
 
     // Act & Assert
-    IllegalArgumentException exception = assertThrows(
-        IllegalArgumentException.class,
+    EncabezadoCsvDuplicadoException exception = assertThrows(
+        EncabezadoCsvDuplicadoException.class,
         () -> lector.importar(inputStream)
     );
-    assertTrue(exception.getMessage().contains("Encabezado duplicado detectado"));
+    assertTrue(exception.getMessage().contains("Se detectó un encabezado duplicado"));
   }
 
   @Test
   @DisplayName("Debe lanzar excepción si se intenta instanciar sin un conversor")
   void constructor_LanzaExcepcionSiConversorEsNull() {
     // Act & Assert
-    IllegalArgumentException exception = assertThrows(
-        IllegalArgumentException.class,
+    ConversorNuloException exception = assertThrows(
+        ConversorNuloException.class,
         () -> new LectorCSV<>(',', null)
     );
-    assertEquals("El conversor no puede ser nulo.", exception.getMessage());
+    assertTrue(exception.getMessage().contains("conversor"));
   }
 
   @Test

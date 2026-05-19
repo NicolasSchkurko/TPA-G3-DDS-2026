@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,8 +22,9 @@ public class Mail extends MedioDeContacto {
     }
 
     @Override
-    public void enviarMensaje(String mensaje, TipoDeMensaje tipo) {
-        //enviarNotificacion(tipo, "Notificación", mensaje, direccionMail);
+    public void enviarMensaje(Mensaje mensaje) {
+        super.enviarMensaje(mensaje);
+        //enviarNotificacion(tipo, "Notificación", mensaje.getTexto(), direccionMail);
     }
 
 }

@@ -15,4 +15,9 @@ public class Mensaje {
         this.cuerpo = cuerpo;
         this.tipoDeMensaje = tipoDeMensaje;
     }
+
+    public String getTexto(){
+        return "Asunto: " + asunto + "\n" +
+               "Cuerpo: " + cuerpo + "\n";
+    }
 }

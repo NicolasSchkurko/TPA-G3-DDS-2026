@@ -20,8 +20,13 @@ public abstract class MedioDeContacto {
     public MedioDeContacto() {}
 
     public abstract String getValor();
-    //public List<TipoDeMensaje> getTiposDeMensajeAdmitidos() {}
-    /*
+
+    public void enviarMensaje(Mensaje mensaje) {
+        if (!tiposDeMensajeAdmitidos.contains(mensaje.getTipoDeMensaje())) {
+            throw new IllegalArgumentException("Tipo de mensaje no permitido: " + mensaje.getTipoDeMensaje());
+        }
+    }
+
     public void agregarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
         this.tiposDeMensajeAdmitidos.add(tipoDeMensaje);
     }
@@ -29,9 +34,6 @@ public abstract class MedioDeContacto {
     public void eliminarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
         this.tiposDeMensajeAdmitidos.remove(tipoDeMensaje);
     }
-    */
-    public void setInformacionDeContacto() {}
 
-    public abstract void enviarMensaje(String mensaje, TipoDeMensaje tipo);
 
 }

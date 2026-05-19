@@ -33,5 +33,9 @@ public class MediosDeContacto {
         this.listaMediosDeContacto.removeAll(mediosDeContacto);
     }
 
-    public void enviarMensajeAMedios(Mensaje mensaje) {}
+    public void enviarMensajeAMedios(Mensaje mensaje) {
+        listaMediosDeContacto.forEach(medio -> medio.enviarMensaje(mensaje));
+    }
 }
+
+

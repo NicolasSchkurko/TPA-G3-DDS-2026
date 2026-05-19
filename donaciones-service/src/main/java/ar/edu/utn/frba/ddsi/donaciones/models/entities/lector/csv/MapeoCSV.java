@@ -6,7 +6,6 @@ import java.util.List;
 /**
  * Entidad que representa la relación entre un campo de destino (representado por un String)
  * y una lista de posibles nombres de columna en un archivo CSV.
- * Esto normaliza la estructura de la base de datos de forma genérica.
  */
 public class MapeoCSV {
 
@@ -15,9 +14,7 @@ public class MapeoCSV {
   private String campo;
 
   private List<String> nombresColumnas = new ArrayList<>();
-  // Constructor para JPA
-  protected MapeoCSV() {
-  }
+
   public MapeoCSV(String campo, List<String> nombresColumnas) {
     this.campo = campo;
     this.nombresColumnas = nombresColumnas;

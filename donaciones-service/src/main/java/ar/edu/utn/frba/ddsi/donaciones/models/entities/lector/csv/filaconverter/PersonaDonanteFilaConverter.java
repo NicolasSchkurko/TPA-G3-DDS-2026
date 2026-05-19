@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
@@ -7,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,147 +19,212 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Conversor especializado en transformar una fila de CSV genérica
+ * Conversor especializado en transformar una fila de CSV genérica en una PersonaDonante
  */
 public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante> {
 
   private static final Logger logger = Logger.getLogger(PersonaDonanteFilaConverter.class.getName());
 
-  public static final String CAMPO_TIPO_PERSONA = "TIPO_PERSONA";
-  public static final String CAMPO_TIPO_DOC = "TIPO_DOC";
-  public static final String CAMPO_DOCUMENTO = "DOCUMENTO";
-  public static final String CAMPO_NOMBRE_RAZON = "NOMBRE_RAZON_SOCIAL";
-  public static final String CAMPO_EMAIL = "EMAIL";
-  public static final String CAMPO_TELEFONO = "TELEFONO";
-
-  private final Map<String, List<String>> mapeoColumnas;
-
-  private final Map<String, PersonaCreator> creadoresDePersona;
-
-  @FunctionalInterface
-  private interface PersonaCreator {
-    PersonaDonante crear(String nombreRazonSocial, String tipoDoc, String documento);
+  // Definición de campos lógicos que se esperan en el CSV, independientemente de cómo se llamen las columnas
+  public enum CampoLogico {
+    TIPO_PERSONA, TIPO_DOC, DOCUMENTO, NOMBRE_RAZON_SOCIAL, EMAIL, TELEFONO, WHATSAPP
   }
 
-  public PersonaDonanteFilaConverter(Map<String, List<String>> mapeoColumnas) {
-    if (mapeoColumnas == null || mapeoColumnas.isEmpty()) {
-      throw new IllegalArgumentException("El mapeo de columnas es obligatorio.");
+  private final Map<CampoLogico, List<String>> mapeoColumnas;
+
+  /**
+   * Constructor que recibe una lista de mapeos entre campos lógicos y nombres de columnas en el CSV.
+   * @param mapeosCsv
+   */
+  public PersonaDonanteFilaConverter(List<MapeoCSV> mapeosCsv) {
+    if (mapeosCsv == null || mapeosCsv.isEmpty()) {
+      throw new IllegalArgumentException("Se requiere una lista de MapeoCSV para saber cómo leer el archivo.");
     }
-    this.mapeoColumnas = new HashMap<>(mapeoColumnas);
 
-    // Inicializamos y registramos los constructores
-    this.creadoresDePersona = new HashMap<>();
-    this.creadoresDePersona.put("HUMANA", this::crearPersonaHumana);
-    this.creadoresDePersona.put("JURIDICA", this::crearPersonaJuridica);
+    this.mapeoColumnas = new HashMap<>();
+    for (MapeoCSV mapeo : mapeosCsv) {
+      try {
+        CampoLogico campo = CampoLogico.valueOf(mapeo.getCampo().toUpperCase());
+        this.mapeoColumnas.put(campo, mapeo.getNombresColumnas());
+      } catch (IllegalArgumentException e) {
+        logger.warning("Campo mapeado no reconocido en el sistema y será ignorado: " + mapeo.getCampo());
+      }
+    }
   }
 
+  /**
+   * Convierte una fila de CSV (representada como un Map) en una PersonaDonante (juridica o Humana).
+   * @param fila Un mapa donde la clave es el nombre de la columna y el valor es el dato de la celda.
+   * @return
+   */
   @Override
-  public PersonaDonante convert(Map<String, String> fila) {
-    String tipoPersona = obtenerPrimerValor(fila, CAMPO_TIPO_PERSONA).orElse("").trim().toUpperCase();
+  public PersonaDonante convertir(Map<String, String> fila) {
+    String tipoPersona = obtenerPrimerValor(fila, CampoLogico.TIPO_PERSONA).orElse("").trim().toUpperCase();
+    String tipoDoc = obtenerPrimerValor(fila, CampoLogico.TIPO_DOC).orElse("");
+    String documento = obtenerPrimerValor(fila, CampoLogico.DOCUMENTO).orElse("");
+    String nombreRazonSocial = obtenerValorConcatenado(fila, CampoLogico.NOMBRE_RAZON_SOCIAL);
 
-    if (!creadoresDePersona.containsKey(tipoPersona)) {
-      logger.warning("Fila ignorada: Tipo de persona no reconocido o faltante -> " + tipoPersona);
-      return null;
-    }
-
-    String tipoDoc = obtenerPrimerValor(fila, CAMPO_TIPO_DOC).orElse("");
-    String documento = obtenerPrimerValor(fila, CAMPO_DOCUMENTO).orElse("");
-
-    String nombreRazonSocial = obtenerValorConcatenado(fila, CAMPO_NOMBRE_RAZON);
-
-    String email = obtenerPrimerValor(fila, CAMPO_EMAIL).orElse("");
-    String telefono = obtenerPrimerValor(fila, CAMPO_TELEFONO).orElse("");
-
-    // Delegamos la instanciación al Factory mapeado según el tipoPersona
-    PersonaDonante donante = creadoresDePersona.get(tipoPersona).crear(nombreRazonSocial, tipoDoc, documento);
-
-    asignarMediosDeContacto(donante, email, telefono);
+    PersonaDonante donante = instanciarDonante(tipoPersona, nombreRazonSocial, tipoDoc, documento);
+    vincularMediosDeContacto(donante, fila);
 
     return donante;
   }
 
+  // --- Métodos de Lógica de Negocio ---
+
+  /**
+   * Instancia al PersonaDonante según el tipo de persona indicado en el CSV.
+   * @param tipoPersona
+   * @param nombreRazonSocial
+   * @param tipoDoc
+   * @param documento
+   * @return
+   */
+  private PersonaDonante instanciarDonante(String tipoPersona, String nombreRazonSocial, String tipoDoc, String documento) {
+    switch (tipoPersona) {
+      case "HUMANA":
+        return crearPersonaHumana(nombreRazonSocial, tipoDoc, documento);
+      case "JURIDICA":
+        return crearPersonaJuridica(nombreRazonSocial, tipoDoc, documento);
+      default:
+        throw new IllegalArgumentException("Tipo de persona no soportado: " + tipoPersona);
+    }
+  }
+
+  /**
+   * Crea una PersonaHumana a partir de los datos extraídos del CSV.
+   * Se asume que el nombre completo se encuentra en un solo campo y se separa en nombre y apellido.
+   * @param nombreCompleto
+   * @param tipoDoc
+   * @param documento
+   * @return
+   */
   private PersonaHumana crearPersonaHumana(String nombreCompleto, String tipoDoc, String documento) {
-    String nombre = nombreCompleto;
-    String apellido = "";
+    String[] nombreYApellido = separarNombreYApellido(nombreCompleto);
+    String nombre = nombreYApellido[0];
+    String apellido = nombreYApellido[1];
 
-    // Separamos la última palabra como apellido
-    if (nombreCompleto != null && nombreCompleto.contains(" ")) {
-      int lastSpaceIndex = nombreCompleto.lastIndexOf(" ");
-      nombre = nombreCompleto.substring(0, lastSpaceIndex).trim();
-      apellido = nombreCompleto.substring(lastSpaceIndex + 1).trim();
-    }
+    int numeroDocumentoParseado = limpiarYParsearDocumento(documento);
 
-    int numeroDocumento = 0;
-    try {
-      String cleanDoc = documento.replaceAll("[^\\d]", "");
-      if (!cleanDoc.isEmpty()) {
-        numeroDocumento = Integer.parseInt(cleanDoc);
-      }
-    } catch (NumberFormatException e) {
-      logger.warning("No se pudo parsear el documento a número: " + documento);
-    }
-
-    Humano humano = new Humano(nombre, apellido, 0, numeroDocumento, null);
+    Humano humano = new Humano(nombre, apellido, 0, numeroDocumentoParseado, null);
     return new PersonaHumana(humano, null);
   }
 
+  /**
+   * Crea una PersonaJuridica a partir de los datos extraídos del CSV.
+   * Se asume que la razón social se encuentra en un solo campo.
+   * @param razonSocial
+   * @param tipoDoc
+   * @param documento
+   * @return
+   */
   private PersonaJuridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
-    return new PersonaJuridica(
-        null,
-        razonSocial,
-        null,
-        null,
-        documento,
-        new ArrayList<>()
-    );
+    return new PersonaJuridica(null, razonSocial, null, null, documento, new ArrayList<>());
   }
 
-  private void asignarMediosDeContacto(PersonaDonante donante, String email, String telefono) {
+  /**
+   * Vincula los medios de contacto (email y teléfono) a la PersonaDonante, si es que existen en la fila del CSV.
+   * Se asume que el telefono es un medio de contacto separado al de WhatsApp
+   * @param donante
+   * @param fila
+   */
+  private void vincularMediosDeContacto(PersonaDonante donante, Map<String, String> fila) {
+    String email = obtenerPrimerValor(fila, CampoLogico.EMAIL).orElse("");
+    String telefono = obtenerPrimerValor(fila, CampoLogico.TELEFONO).orElse("");
+    String whatsapp = obtenerPrimerValor(fila, CampoLogico.WHATSAPP).orElse("");
+
     if (email.isEmpty() && telefono.isEmpty()) {
-      return;
+      return; // No hay contactos para agregar
     }
 
     MediosDeContacto medios = new MediosDeContacto();
 
     if (!email.isEmpty()) {
-      Mail mail = new Mail(email);
-      medios.agregarMedioDeContacto(mail);
+      medios.agregarMedioDeContacto(new Mail(email));
     }
 
     if (!telefono.isEmpty()) {
-      Telefono tel = new Telefono(telefono);
-      medios.agregarMedioDeContacto(tel);
+      medios.agregarMedioDeContacto(new Telefono(telefono));
+    }
+
+    if (!whatsapp.isEmpty()) {
+      medios.agregarMedioDeContacto(new Whatsapp(whatsapp));
     }
 
     donante.setMediosDeContacto(medios);
   }
 
+  // --- Métodos Utilitarios Internos ---
+
   /**
-   * Concatena los valores de todas las columnas mapeadas para una clave logica.
+   * Separa un nombre completo en nombre y apellido, asumiendo que el apellido es la última palabra.
+   * Si no hay espacios, se asume que tdo es el nombre y el apellido queda vacío.
+   * @param nombreCompleto
+   * @return Un array de dos elementos: [nombre, apellido]
    */
-  private String obtenerValorConcatenado(Map<String, String> fila, String claveLogica) {
+  private String[] separarNombreYApellido(String nombreCompleto) {
+    if (nombreCompleto == null || !nombreCompleto.contains(" ")) {
+      return new String[]{nombreCompleto, ""}; // Asume que todo es nombre si no hay espacios
+    }
+
+    int indiceUltimoEspacio = nombreCompleto.lastIndexOf(" ");
+    String nombre = nombreCompleto.substring(0, indiceUltimoEspacio).trim();
+    String apellido = nombreCompleto.substring(indiceUltimoEspacio + 1).trim();
+
+    return new String[]{nombre, apellido};
+  }
+
+  /**
+   * Limpia el campo de documento eliminando cualquier carácter que no sea un dígito y luego intenta parsearlo a un entero.
+   * Si el campo está vacío o no contiene números válidos, devuelve 0 como valor por defecto
+   * (Revisar a futuro si vamos a usar DNI como PK)
+   * @param documento
+   * @return
+   */
+  private int limpiarYParsearDocumento(String documento) {
+    try {
+      String documentoSoloNumeros = documento.replaceAll("[^\\d]", "");
+      if (!documentoSoloNumeros.isEmpty()) {
+        return Integer.parseInt(documentoSoloNumeros);
+      }
+    } catch (NumberFormatException e) {
+      logger.warning("No se pudo extraer un número válido del documento: " + documento);
+    }
+    return 0; // Valor por defecto si falla el parseo
+  }
+
+  /**
+   * Obtiene el valor concatenado de todas las columnas posibles para un campo lógico dado, separando los valores por espacios.
+   * @param fila
+   * @param claveLogica
+   * @return
+   */
+  private String obtenerValorConcatenado(Map<String, String> fila, CampoLogico claveLogica) {
     List<String> posiblesColumnasCSV = mapeoColumnas.get(claveLogica);
     if (posiblesColumnasCSV == null) {
       return "";
     }
     return posiblesColumnasCSV.stream()
                               .map(fila::get)
-                              .filter(s -> s != null && !s.isBlank())
+                              .filter(valor -> valor != null && !valor.isBlank())
                               .collect(Collectors.joining(" "))
                               .trim();
   }
 
   /**
-   * Busca el primer valor no vacioo en la fila a partir de las posibles columnas mapeadas.
+   * Obtiene el primer valor no nulo y no vacío de las columnas posibles para un campo lógico dado.
+   * @param fila
+   * @param claveLogica
+   * @return
    */
-  private Optional<String> obtenerPrimerValor(Map<String, String> fila, String claveLogica) {
+  private Optional<String> obtenerPrimerValor(Map<String, String> fila, CampoLogico claveLogica) {
     List<String> posiblesColumnasCSV = mapeoColumnas.get(claveLogica);
     if (posiblesColumnasCSV == null) {
       return Optional.empty();
     }
     return posiblesColumnasCSV.stream()
                               .map(fila::get)
-                              .filter(s -> s != null && !s.isBlank())
+                              .filter(valor -> valor != null && !valor.isBlank())
                               .findFirst();
   }
 }
