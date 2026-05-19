@@ -13,6 +13,12 @@ import java.util.List;
 public abstract class MedioDeContacto {
     private List<TipoDeMensaje> tiposDeMensajeAdmitidos;
 
+    public MedioDeContacto(List<TipoDeMensaje> tiposDeMensajeAdmitidos){
+        this.tiposDeMensajeAdmitidos = tiposDeMensajeAdmitidos;
+    }
+
+    public MedioDeContacto() {}
+
     public abstract String getValor();
     //public List<TipoDeMensaje> getTiposDeMensajeAdmitidos() {}
     /*

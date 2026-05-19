@@ -15,15 +15,22 @@ public class MediosDeContacto {
     // Se inicializa la lista para evitar el NullPointerException
     private List<MedioDeContacto> listaMediosDeContacto = new ArrayList<>();
 
-    public MediosDeContacto() {
-    }
+    public MediosDeContacto() {}
 
     public void agregarMedioDeContacto(MedioDeContacto medioDeContacto) {
         this.listaMediosDeContacto.add(medioDeContacto);
     }
 
+    public void agregarMediosDeContacto(List<MedioDeContacto> mediosDeContacto) {
+        this.listaMediosDeContacto.addAll(mediosDeContacto);
+    }
+
     public void eliminarMedioDeContacto(MedioDeContacto medioDeContacto) {
         this.listaMediosDeContacto.remove(medioDeContacto);
+    }
+
+    public void eliminarMediosDeContacto(List<MedioDeContacto> mediosDeContacto) {
+        this.listaMediosDeContacto.removeAll(mediosDeContacto);
     }
 
     public void enviarMensajeAMedios(Mensaje mensaje) {}
