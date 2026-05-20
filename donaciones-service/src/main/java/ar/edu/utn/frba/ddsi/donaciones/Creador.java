@@ -43,8 +43,6 @@ public interface Creador {
         Ciudad ciudad = new Ciudad(ciudadNombre, new Provincia(provincia, new Pais(pais)));
         System.out.println("Elija el departamento de la persona");
         String departamento = scanner.nextLine().trim();
-        System.out.println("Elija el cuerpo de donde vive la persona");
-        int cuerpo = scanner.nextInt();
         System.out.println("Elija el piso de la persona");
         int piso = scanner.nextInt();
         System.out.println("Elija la altura de donde vive la persona");
@@ -54,7 +52,7 @@ public interface Creador {
         String calleUno = scanner.nextLine().trim();
         System.out.println("Elija la segunda calle de la persona");
         String calleDos = scanner.nextLine().trim();
-        return new Direccion(calleUno, calleDos, altura, piso, cuerpo, departamento, ciudad);
+        return new Direccion(calleUno, calleDos, altura, piso, departamento, ciudad);
     }
 
     static void crearPersonaHumana(){

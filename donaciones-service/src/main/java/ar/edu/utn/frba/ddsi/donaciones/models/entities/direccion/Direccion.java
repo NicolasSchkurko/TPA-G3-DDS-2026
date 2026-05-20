@@ -4,7 +4,6 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Scanner;
 
 @Getter
 @Setter
@@ -15,7 +14,6 @@ public class Direccion {
   private String calleDos;
   private Integer altura;
   private int piso;
-  private int cuerpo;
   private String departamento;
   private Ciudad ciudad;
 
@@ -27,7 +25,6 @@ public class Direccion {
       String calleDos,
       Integer altura,
       int piso,
-      int cuerpo,
       String departamento,
       Ciudad ciudad
   ) {
@@ -35,7 +32,6 @@ public class Direccion {
     this.calleDos = calleDos;
     this.altura = altura;
     this.piso = piso;
-    this.cuerpo = cuerpo;
     this.departamento = departamento;
     this.ciudad = ciudad;
   }
@@ -47,7 +43,6 @@ public class Direccion {
       String calleUno,
       String calleDos,
       int piso,
-      int cuerpo,
       String departamento,
       Ciudad ciudad
   ) {
@@ -55,7 +50,6 @@ public class Direccion {
     this.calleDos = calleDos;
     this.altura = null;
     this.piso = piso;
-    this.cuerpo = cuerpo;
     this.departamento = departamento;
     this.ciudad = ciudad;
   }
@@ -74,7 +68,6 @@ public class Direccion {
         calleDos,
         piso,
         departamento,
-        cuerpo,
         ciudad.getDireccion()
     );
   }
@@ -94,6 +87,6 @@ public class Direccion {
 
   @Override
   public String toString() {
-    return "Direccion{ciudad=" + ciudad + ", departamento=" + departamento + ", cuerpo=" + cuerpo + ", piso=" + piso + ", altura=" + altura + ", calleUno=" + calleUno + ", calleDos=" + calleDos + '}';
+    return "Direccion{ciudad=" + ciudad + ", departamento=" + departamento + ", piso=" + piso + ", altura=" + altura + ", calleUno=" + calleUno + ", calleDos=" + calleDos + '}';
   }
 }
