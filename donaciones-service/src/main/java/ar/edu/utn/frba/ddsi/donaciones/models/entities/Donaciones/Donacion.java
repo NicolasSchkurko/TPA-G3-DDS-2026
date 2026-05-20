@@ -48,4 +48,8 @@ public class Donacion {
         this.bienes.addAll(nuevosBienes);
     }
 
+    @Override
+    public String toString() {
+        return "Donacion{donante=" + donante + ", entidad=" + entidad + ", descripcion=" + descripcion + ", bienes=" + bienes + ", estado=" + estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
+    }
 }

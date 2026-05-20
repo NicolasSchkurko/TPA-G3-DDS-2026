@@ -11,14 +11,15 @@ import java.util.List;
 @Getter
 @Setter
 public abstract class Necesidad {
-    private SubcategoriaBien subcategoria;
-    private List<Donacion> donaciones;
-    private String descripcion;
+    SubcategoriaBien subcategoria;
+    List<Donacion> donaciones;
+    String descripcion;
+    Integer cantidadObjetivo;
 
-
-    public Necesidad(SubcategoriaBien subcategoria, String descripcion){
+    public Necesidad(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo){
         this.subcategoria = subcategoria;
         this.descripcion = descripcion;
+        this.cantidadObjetivo = cantidadObjetivo;
         this.donaciones = new ArrayList<>();
     }
 

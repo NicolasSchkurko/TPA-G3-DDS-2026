@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
@@ -50,6 +51,12 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
         logger.warning("Campo mapeado no reconocido en el sistema y será ignorado: " + mapeo.getCampo());
       }
     }
+    this.mapeoColumnas = new HashMap<>(mapeoColumnas);
+
+    // Inicializamos y registramos los constructores
+    this.creadoresDePersona = new HashMap<>();
+    this.creadoresDePersona.put("HUMANA", this::crearPersonaHumana);
+    this.creadoresDePersona.put("JURIDICA", this::crearPersonaJuridica);
   }
 
   /**
@@ -120,6 +127,15 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    */
   private PersonaJuridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
     return new PersonaJuridica(null, razonSocial, null, null, documento, new ArrayList<>());
+    return new PersonaJuridica(
+        null,
+        null,
+        razonSocial,
+        null,
+        null,
+        documento,
+        new ArrayList<>()
+    );
   }
 
   /**

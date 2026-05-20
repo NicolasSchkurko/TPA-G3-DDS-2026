@@ -9,6 +9,11 @@ import lombok.Getter;
 @Setter
 
 public abstract class PersonaDonante {
-
     private MediosDeContacto mediosDeContacto;
+
+    /*public PersonaDonante(MediosDeContacto mediosDeContacto){
+        this.mediosDeContacto = mediosDeContacto;
+    }*/
+
+    public abstract String darNombre();
 }

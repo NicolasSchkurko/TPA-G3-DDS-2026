@@ -13,4 +13,9 @@ public class SubcategoriaBien {
         this.nombre = nombre;
         this.categoria = categoria;
     }
+
+    @Override
+    public String toString() {
+        return "SubcategoriaBien{nombre=" + nombre + ", categoria=" + categoria + '}';
+    }
 }

@@ -33,6 +33,10 @@ public class MediosDeContacto {
         this.listaMediosDeContacto.removeAll(mediosDeContacto);
     }
 
+    @Override
+    public String toString() {
+        return "MediosDeContacto{listaMediosDeContacto=" + listaMediosDeContacto + '}';
+    }
     public void enviarMensajeAMedios(Mensaje mensaje) {
         listaMediosDeContacto.forEach(medio -> medio.enviarMensaje(mensaje));
     }

@@ -13,7 +13,7 @@ import java.util.HashMap;
 
 public class SegmentadorDonaciones {
 
-    public List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
+    public static List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
         Map<String, List<Bien>> grupos = new HashMap<>();
 
         for (Bien bien : bienesRecibidos) {
@@ -35,7 +35,7 @@ public class SegmentadorDonaciones {
         return donacionesSegmentadas;
     }
 
-    private String generarClaveSegmentacion(Bien bien) {
+    private static String generarClaveSegmentacion(Bien bien) {
         String clave = bien.getSubcategoria().getNombre();
 
         if (bien instanceof BienPerecedero perecedero) {
@@ -48,7 +48,7 @@ public class SegmentadorDonaciones {
         return clave;
     }
 
-    private Donacion crearDonacion(PersonaDonante donante, List<Bien> bienesDelGrupo) {
+    private static Donacion crearDonacion(PersonaDonante donante, List<Bien> bienesDelGrupo) {
         SubcategoriaBien sub = bienesDelGrupo.get(0).getSubcategoria();
 
         return new Donacion(

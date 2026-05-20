@@ -27,4 +27,8 @@ public class Mail extends MedioDeContacto {
         //enviarNotificacion(tipo, "Notificación", mensaje.getTexto(), direccionMail);
     }
 
+    @Override
+    public String toString() {
+        return "Mail{direccionMail=" + direccionMail + '}';
+    }
 }

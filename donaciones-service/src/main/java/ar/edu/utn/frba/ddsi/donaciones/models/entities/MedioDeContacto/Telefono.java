@@ -27,4 +27,9 @@ public class Telefono extends MedioDeContacto {
         super.enviarMensaje(mensaje);
         //enviarNotificacion(tipo, "Notificación", mensaje.getTexto(), numeroDeTelefono);
     }
+
+    @Override
+    public String toString() {
+        return "Telefono{numeroDeTelefono=" + numeroDeTelefono + '}';
+    }
 }

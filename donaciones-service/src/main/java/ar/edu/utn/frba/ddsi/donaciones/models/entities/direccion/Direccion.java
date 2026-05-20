@@ -4,6 +4,8 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Scanner;
+
 @Getter
 @Setter
 
@@ -88,5 +90,10 @@ public class Direccion {
   // No existe el condicional que define si esta o no habilitado
   public boolean estaHabilitadaEnvio() {
     return true;
+  }
+
+  @Override
+  public String toString() {
+    return "Direccion{ciudad=" + ciudad + ", departamento=" + departamento + ", cuerpo=" + cuerpo + ", piso=" + piso + ", altura=" + altura + ", calleUno=" + calleUno + ", calleDos=" + calleDos + '}';
   }
 }

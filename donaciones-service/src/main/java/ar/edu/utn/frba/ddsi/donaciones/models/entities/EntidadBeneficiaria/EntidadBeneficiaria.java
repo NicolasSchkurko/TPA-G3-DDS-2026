@@ -40,6 +40,10 @@ public class EntidadBeneficiaria {
 
     public void confirmarRecepcion(Donacion donacion){
 
+    }
 
+    @Override
+    public String toString() {
+        return "EntidadBeneficiaria{razonSocial=" + razonSocial + ", direccion=" + direccion + ", telefono=" + nroTell + ", necesidades=" + necesidades + ", correosRepresentantes=" + correosRepresentantes + '}';
     }
 }

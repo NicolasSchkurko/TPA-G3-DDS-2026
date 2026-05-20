@@ -4,6 +4,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Scanner;
+
 @Getter
 @Setter
 public class Humano {
@@ -25,5 +27,10 @@ public class Humano {
     this.edad = edad;
     this.numeroDeDocumento = numeroDeDocumento;
     this.genero = genero;
+  }
+
+  @Override
+  public String toString() {
+    return "Humano{nombre=" + nombre + ", apellido=" + apellido + ", edad=" + edad + ", numero de documento=" + numeroDeDocumento + ", genero=" + genero + '}';
   }
 }

@@ -9,12 +9,12 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Bien {
-    private String descripcion;
-    private SubcategoriaBien subcategoria;
+    String descripcion;
+    SubcategoriaBien subcategoria;
     @Getter(AccessLevel.NONE)
-    private String urlFoto;
-    private Integer cantidad;
-    private UnidadDeMedida unidadUtilizada;
+    String urlFoto;
+    Integer cantidad;
+    UnidadDeMedida unidadUtilizada;
 
     public Bien(String descripcion, SubcategoriaBien subcategoria, String urlFoto, Integer cantidad, UnidadDeMedida unidadUtilizada){
         this.descripcion = descripcion;

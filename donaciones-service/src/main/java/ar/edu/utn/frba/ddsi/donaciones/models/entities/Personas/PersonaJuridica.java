@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import lombok.Setter;
 
 public class PersonaJuridica extends PersonaDonante {
 
+  private String nombre;
   private Direccion direccion;
   private String razonSocial;
   private String rubro;
@@ -19,6 +21,7 @@ public class PersonaJuridica extends PersonaDonante {
   private List<Representante> representantes;
 
   public PersonaJuridica(
+      String nombre,
       Direccion direccion,
       String razonSocial,
       String rubro,
@@ -26,6 +29,8 @@ public class PersonaJuridica extends PersonaDonante {
       String cuit,
       List<Representante> representantes
   ) {
+    //super(mediosDeContacto);
+    this.nombre = nombre;
     this.direccion = direccion;
     this.razonSocial = razonSocial;
     this.rubro = rubro;
@@ -34,4 +39,12 @@ public class PersonaJuridica extends PersonaDonante {
     this.representantes = representantes;
   }
 
+  public String darNombre(){
+    return this.getNombre();
+  }
+
+  @Override
+  public String toString() {
+    return "PersonaJuridica{nombre=" + nombre + ", direccion=" + direccion + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
+  }
 }

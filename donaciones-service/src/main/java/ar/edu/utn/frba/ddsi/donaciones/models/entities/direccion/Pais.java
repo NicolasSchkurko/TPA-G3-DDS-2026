@@ -13,7 +13,8 @@ public class Pais {
     this.nombre = nombre;
   }
 
-  public String getNombre() {
+  @Override
+  public String toString() {
     return nombre;
   }
 }
