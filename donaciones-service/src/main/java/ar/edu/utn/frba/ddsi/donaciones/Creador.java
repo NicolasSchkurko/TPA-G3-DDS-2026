@@ -110,7 +110,9 @@ public interface Creador {
                 break;
             }
         }
-        PersonaJuridica persona = new PersonaJuridica(nombre, direccion, razonSocial, rubro, tipoJuridico, cuit, representantes);
+        // Usar el constructor correcto y luego setear el nombre (la clase PersonaJuridica no recibe 'nombre' en su constructor)
+        PersonaJuridica persona = new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes);
+        persona.setNombre(nombre);
         System.out.println(persona);
         GestorPersonas.getInstance().agregarPersona(persona);
     }
