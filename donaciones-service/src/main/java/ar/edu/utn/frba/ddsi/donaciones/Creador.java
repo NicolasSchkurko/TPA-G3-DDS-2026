@@ -57,22 +57,16 @@ public interface Creador {
 
     static void crearPersonaHumana(){
         Humano humano = Creador.crearHumano();
-        System.out.println(humano);
         Direccion direccion = Creador.crearDireccion();
-        System.out.println(direccion);
         PersonaHumana persona = new PersonaHumana(humano, direccion);
-        System.out.println(persona);
         GestorPersonas.getInstance().agregarPersona(persona);
     }
 
     static void crearPersonaJuridica(){
         String seleccion;
-        System.out.println("Elija el nombre de la organizacion");
-        String nombre = scanner.nextLine().trim();
-        Direccion direccion = Creador.crearDireccion();
-        System.out.println(direccion);
         System.out.println("Elija la razon social de la organizacion");
         String razonSocial = scanner.nextLine().trim();
+        Direccion direccion = Creador.crearDireccion();
         System.out.println("Elija el rubro de la organizacion");
         String rubro = scanner.nextLine().trim();
         System.out.println("Elija el tipo juridico de la organizacion");
@@ -93,9 +87,7 @@ public interface Creador {
                 System.out.println("Elija una opcion valida");
             }
             activo = seleccion.equalsIgnoreCase("s");
-            Representante representate = new Representante(humano, activo);
-            System.out.println(representate);
-            representantes.add(representate);
+            representantes.add(new Representante(humano, activo));
             System.out.println("¿Desea agregar otro representante? s/n");
             while(true){
                 seleccion = scanner.nextLine().trim();
@@ -109,10 +101,7 @@ public interface Creador {
             }
         }
         // Usar el constructor correcto y luego setear el nombre (la clase PersonaJuridica no recibe 'nombre' en su constructor)
-        PersonaJuridica persona = new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes);
-        persona.setNombre(nombre);
-        System.out.println(persona);
-        GestorPersonas.getInstance().agregarPersona(persona);
+        GestorPersonas.getInstance().agregarPersona(new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes));
     }
 
     static void crearEntidad(){
@@ -145,7 +134,6 @@ public interface Creador {
         EntidadBeneficiaria entidad = new EntidadBeneficiaria(razonSocial, direccion, telefono, mediosDeContacto);
         System.out.println("Ahora registremos las necesidades de la entidad");
         Creador.crearNecesidades(entidad);
-        System.out.println(entidad);
         AsignadorDonaciones.getInstance().agregarEntidad(entidad);
     }
 
@@ -162,24 +150,20 @@ public interface Creador {
                 }
                 System.out.println("Elija una opcion valida");
             }
-            System.out.println("Elija a que categoria pertenece la necesidad");
-            CategoriaBien categoria = CategoriaBien.valueOf(scanner.nextLine().trim().toUpperCase());
             System.out.println("Elija el nombre de la necesidad");
             String nombre = scanner.nextLine().trim();
+            System.out.println("Elija a que categoria pertenece la necesidad");
+            CategoriaBien categoria = CategoriaBien.valueOf(scanner.nextLine().trim().toUpperCase());
             System.out.println("Escriba una descripcion de la necesidad");
             String descripcion = scanner.nextLine().trim();
             System.out.println("Elija la cantidad objetivo de la necesidad");
             Integer cantidadObjetivo = scanner.nextInt();
             if (necesidad.equalsIgnoreCase("e")){
-                NecesidadExtraordinaria necesidades = new NecesidadExtraordinaria(new SubcategoriaBien(nombre, categoria), descripcion, cantidadObjetivo);
-                System.out.println(necesidades);
-                entidad.agregarNecesidad(necesidades);
+                entidad.agregarNecesidad(new NecesidadExtraordinaria(new SubcategoriaBien(nombre, categoria), descripcion, cantidadObjetivo));
             } else {
                 System.out.println("Elija el plazo en dias que necesita la necesidad");
                 Integer plazoEnDias = scanner.nextInt();
-                NecesidadRecurrente necesidades = new NecesidadRecurrente(new SubcategoriaBien(nombre, categoria), descripcion, cantidadObjetivo, plazoEnDias);
-                System.out.println(necesidades);
-                entidad.agregarNecesidad(necesidades);
+                entidad.agregarNecesidad(new NecesidadRecurrente(new SubcategoriaBien(nombre, categoria), descripcion, cantidadObjetivo, plazoEnDias));
              }
             System.out.println("¿Desea agregar otra necesidad? s/n");
             scanner.nextLine();
@@ -272,7 +256,6 @@ public interface Creador {
                         System.out.println("Ahora empezemos a registrar los bienes que desea donar");
                         List<Donacion> donacionesSegmentadas = SegmentadorDonaciones.segmentar(persona, Creador.crearBienes());
                         for(Donacion donacion : donacionesSegmentadas){
-                            System.out.println(donacion);
                             AsignadorDonaciones.getInstance();
                             AsignadorDonaciones.agregarDonacion(donacion);
                             AsignadorDonaciones.asignarDonacion(donacion);
@@ -323,9 +306,7 @@ public interface Creador {
                     System.out.println("Elija una opcion valida");
                 }
                 boolean usado = seleccion.equalsIgnoreCase("s");
-                BienConEstado bien = new BienConEstado(descripcion, new SubcategoriaBien(nombre, categoria), urlFoto, cantidad, unidadDeMedida, usado);
-                System.out.println(bien);
-                bienes.add(bien);
+                bienes.add(new BienConEstado(descripcion, new SubcategoriaBien(nombre, categoria), urlFoto, cantidad, unidadDeMedida, usado));
             } else {
                 System.out.println("Escriba el año de vencimiento del bien");
                 int anio = scanner.nextInt();
@@ -334,9 +315,7 @@ public interface Creador {
                 System.out.println("Escriba el dia de vencimiento del bien");
                 int dia = scanner.nextInt();
                 LocalDate fechaVencimiento = LocalDate.of(anio, mes, dia);
-                BienPerecedero bien = new BienPerecedero(descripcion, new SubcategoriaBien(nombre, categoria), urlFoto, cantidad, unidadDeMedida, fechaVencimiento);
-                System.out.println(bien);
-                bienes.add(bien);
+                bienes.add(new BienPerecedero(descripcion, new SubcategoriaBien(nombre, categoria), urlFoto, cantidad, unidadDeMedida, fechaVencimiento));
             }
             System.out.println("¿Desea agregar otro bien? s/n");
             while(true){

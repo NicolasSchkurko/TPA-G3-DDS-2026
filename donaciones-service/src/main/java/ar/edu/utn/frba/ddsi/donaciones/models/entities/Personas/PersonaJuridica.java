@@ -11,8 +11,6 @@ import lombok.Setter;
 @Setter
 
 public class PersonaJuridica extends PersonaDonante {
-
-  private String nombre;
   private Direccion direccion;
   private String razonSocial;
   private String rubro;
@@ -39,11 +37,11 @@ public class PersonaJuridica extends PersonaDonante {
 
 
   public String darNombre(){
-    return this.getNombre();
+    return this.getRazonSocial();
   }
 
   @Override
   public String toString() {
-    return "PersonaJuridica{nombre=" + nombre + ", direccion=" + direccion + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
+    return "PersonaJuridica{direccion=" + direccion + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
   }
 }

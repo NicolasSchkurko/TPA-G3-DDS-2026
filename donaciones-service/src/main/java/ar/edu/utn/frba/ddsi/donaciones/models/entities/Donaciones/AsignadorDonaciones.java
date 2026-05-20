@@ -32,7 +32,7 @@ public class AsignadorDonaciones {
         if(!entidades.isEmpty()){
             for (EntidadBeneficiaria entidad : entidades) {
                 for (Necesidad necesidad : entidad.getNecesidades()) {
-                    if (necesidad.getSubcategoria().equals(donacion.getSubcategoria()) && !necesidad.estaSatisfecha()) {
+                    if (necesidad.getSubcategoria().getNombre().equals(donacion.getSubcategoria().getNombre()) && necesidad.getSubcategoria().getCategoria().equals(donacion.getSubcategoria().getCategoria()) && !necesidad.estaSatisfecha()) {
                         necesidad.registrarDonacionAsignada(donacion);
                         donacion.setEntidad(entidad);
                         donacion.setEstado(Estados.EN_DEPOSITO);
@@ -46,7 +46,7 @@ public class AsignadorDonaciones {
 
     public static void agregarDonacion(Donacion donacion){
         AsignadorDonaciones.getInstance();
-        if(donaciones.contains(donacion)){
+        if(!donaciones.contains(donacion)){
             donaciones.add(donacion);
         }
     }
