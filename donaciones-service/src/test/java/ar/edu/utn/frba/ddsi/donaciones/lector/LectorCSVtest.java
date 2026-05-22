@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones;
+package ar.edu.utn.frba.ddsi.donaciones.lector;
 
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ArchivoCsvSinEncabezadosException;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ConversorNuloException;

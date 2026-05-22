@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones;
+package ar.edu.utn.frba.ddsi.donaciones.lector;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
@@ -14,10 +14,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PersonaDonanteFilaConverterTest {
+@SpringBootTest
+public class PersonaDonanteFilaConverterTest {
 
   private PersonaDonanteFilaConverter converter;
 

@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,7 +13,8 @@ public class Mail extends MedioDeContacto {
 
     private String direccionMail;
 
-    public Mail(String dirMail) {
+    public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
+        super(tiposDeMensajeAdmitidos);
         this.direccionMail=dirMail;
     }
 

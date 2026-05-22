@@ -57,7 +57,8 @@ public interface Creador {
 
     static void crearPersonaHumana(){
         Humano humano = Creador.crearHumano();
-        Direccion direccion = Creador.crearDireccion();
+        ireccion direccion = Creador.crearDireccion();
+        System.out.println("Escriba el mail de contacto del representante de la entidad");
         PersonaHumana persona = new PersonaHumana(humano, direccion);
         GestorPersonas.getInstance().agregarPersona(persona);
     }

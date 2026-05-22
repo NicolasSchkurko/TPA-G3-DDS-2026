@@ -17,7 +17,16 @@ public abstract class MedioDeContacto {
         this.tiposDeMensajeAdmitidos = tiposDeMensajeAdmitidos;
     }
 
-    public MedioDeContacto() {}
+    public MedioDeContacto() {
+        this.tiposDeMensajeAdmitidos = List.of(
+            TipoDeMensaje.BIENVENIDA,
+            TipoDeMensaje.ALERTA,
+            TipoDeMensaje.CRITICO,
+            TipoDeMensaje.CAMBIO_ESTADO,
+            TipoDeMensaje.MISION,
+            TipoDeMensaje.RECOMPENSAS
+        );
+    }
 
     public abstract String getValor();
 

@@ -13,7 +13,8 @@ import java.util.List;
 public class Telefono extends MedioDeContacto {
     private String numeroDeTelefono;
 
-    public Telefono(String numTelefono){
+    public Telefono(String numTelefono, List<TipoDeMensaje> tiposDeMensajeAdmitidos){
+        super(tiposDeMensajeAdmitidos);
         this.numeroDeTelefono=numTelefono;
     }
 
