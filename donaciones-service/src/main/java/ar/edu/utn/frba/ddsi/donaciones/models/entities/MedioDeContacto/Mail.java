@@ -14,7 +14,7 @@ public class Mail extends MedioDeContacto {
     private String direccionMail;
 
     public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
-        super(tiposDeMensajeAdmitidos);
+         super();
         this.direccionMail=dirMail;
     }
 

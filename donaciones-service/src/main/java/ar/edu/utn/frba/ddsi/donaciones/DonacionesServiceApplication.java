@@ -18,6 +18,7 @@ public class DonacionesServiceApplication {
             System.out.println("1. Registrar persona donante");
             System.out.println("2. Registrar entidad beneficiaria");
             System.out.println("3. Registrar donacion");
+            System.out.println("4. Agregar una nueva necesidad");
             opcion = scanner.nextInt();
             scanner.nextLine();
             switch(opcion){

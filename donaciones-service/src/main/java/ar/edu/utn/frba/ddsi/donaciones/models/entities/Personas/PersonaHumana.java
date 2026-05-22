@@ -14,8 +14,9 @@ public class PersonaHumana extends PersonaDonante{
 
     public PersonaHumana(Humano persona, Direccion direccion) {
         //super(mediosDeContacto);
-        this.persona = persona;
+        super();
         this.direccion = direccion;
+
     }
 
     public String darNombre(){
