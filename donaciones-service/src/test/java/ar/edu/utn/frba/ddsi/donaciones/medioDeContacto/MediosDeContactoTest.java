@@ -17,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 public class MediosDeContactoTest {
 
   MedioDeContacto medioWhatsapp = new Whatsapp("12345", List.of(BIENVENIDA, ALERTA));
-  MedioDeContacto medioWhatsapp2 = new Whatsapp("13244", List.of(BIENVENIDA, ALERTA));
+  MedioDeContacto medioWhatsapp2 = new Whatsapp("67890", List.of(BIENVENIDA, ALERTA));
 
   @Test
   @DisplayName("Test agregar medio de contacto")
@@ -35,8 +35,11 @@ public class MediosDeContactoTest {
     MediosDeContacto medios = new MediosDeContacto();
 
     medios.agregarMedioDeContacto(medioWhatsapp);
+
     medios.agregarMedioDeContacto(medioWhatsapp2);
 
-    medios.
+    medios.eliminarMedioDeContacto(medioWhatsapp2);
+
+    assertEquals(List.of(medioWhatsapp), medios.getListaMediosDeContacto());
   }
 }
