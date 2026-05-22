@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
@@ -37,19 +38,28 @@ public class MedioDeContactoTest {
         Mail mail = new Mail(direccion, tiposDeMensajeAdmitidos);
 
         assertEquals("donante@gmail.com", mail.getValor());
+        assertEquals(BIENVENIDA, mail.getTiposDeMensajeAdmitidos().get(0));
+        assertEquals(ALERTA, mail.getTiposDeMensajeAdmitidos().get(1));
+    }
 
-        assertEquals(BIENVENIDA, mail.getTiposDeMensajeAdmitidos().getFirst());ALERT1
-    }telefonoTelefonotelefonoTelefono
+    @Test
+    @DisplayName("Test se crea telefono correctamente")
+    void medioDeContacto_CreaTelefonoCorrectamente() {
+        Telefono telefono = new Telefono(numero, tiposDeMensajeAdmitidos);
 
-
+        assertEquals("12345", telefono.getValor());
+        assertEquals(BIENVENIDA, telefono.getTiposDeMensajeAdmitidos().get(0));
+        assertEquals(ALERTA, telefono.getTiposDeMensajeAdmitidos().get(1));
+    }
 
     @Test
     @DisplayName("Test se crea whatsapp correctamente")
     void medioDeContacto_CreaWhatsappCorrectamente() {
         Whatsapp whatsapp = new Whatsapp(numero, tiposDeMensajeAdmitidos);
 
-        assertEquals("12345", whatsapp.getValor(whatwhatsapp
-                                                assertEquals(BIENVENIDA, mail.getTiposDeMensajeAdmitidos().getFirst());A
+        assertEquals("12345", whatsapp.getValor());
+        assertEquals(BIENVENIDA, whatsapp.getTiposDeMensajeAdmitidos().get(0));
+        assertEquals(ALERTA, whatsapp.getTiposDeMensajeAdmitidos().get(1));
     }
 
 }
