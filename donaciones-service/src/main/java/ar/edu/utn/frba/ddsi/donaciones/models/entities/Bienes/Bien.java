@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class Bien {
+public abstract class Bien {
     String descripcion;
     SubcategoriaBien subcategoria;
     @Getter(AccessLevel.NONE)

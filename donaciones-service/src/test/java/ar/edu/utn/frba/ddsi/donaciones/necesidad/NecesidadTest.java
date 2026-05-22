@@ -6,15 +6,77 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 @SpringBootTest
+
 public class NecesidadTest {
-  NecesidadRecurrente necesidadRecurrente = new Necesidad(new SubcategoriaBien("Ropa", CategoriaBien.VESTIMENTA), "Necesitamos ropa de invierno para niños", 100, 10);
+  SubcategoriaBien subcategoria =
+          new SubcategoriaBien("Ropa", CategoriaBien.VESTIMENTA);
 
   @Test
-  @DisplayName("Test ")
+  @DisplayName("Test se creo una necesidad recurrente correctamente")
+  void necesidad_recurrente_correcta(){
+    Necesidad necesidadRecurrente = new NecesidadRecurrente(
+            subcategoria,
+            "Necesitamos ropa de invierno para niños",
+            100, 10);
 
+    assertEquals(subcategoria, necesidadRecurrente.getSubcategoria());
+    assertEquals(
+            "Necesitamos ropa de invierno para niños",
+            necesidadRecurrente.getDescripcion()
+    );
+    assertEquals(100, necesidadRecurrente.getCantidadObjetivo());
+
+    NecesidadRecurrente recurrente =
+            (NecesidadRecurrente) necesidadRecurrente;
+
+    assertEquals(10, recurrente.getPlazoEnDias());
+
+    assertTrue(necesidadRecurrente.getDonaciones().isEmpty());
+  }
+
+  @Test
+  @DisplayName("Test se creo una necesidad extraordinaria correctamente")
+  void necesidad_extraordinaria_correcta() {
+    Necesidad necesidadExtraordinaria = new NecesidadExtraordinaria(
+            subcategoria,
+            "Necesitamos ropa de invierno para niños",
+            100);
+    assertEquals(subcategoria, necesidadExtraordinaria.getSubcategoria());
+    assertEquals(
+            "Necesitamos ropa de invierno para niños",
+            necesidadExtraordinaria.getDescripcion()
+    );
+    assertEquals(100, necesidadExtraordinaria.getCantidadObjetivo());
+
+    assertTrue(necesidadExtraordinaria.getDonaciones().isEmpty());
+  }
+
+  @Test
+  @DisplayName("Una necesidad extraordinaria no esta satisfecha sin donaciones")
+  void necesidad_extraordinaria_no_satisfecha() {
+    Necesidad necesidadExtraordinaria = new NecesidadExtraordinaria(
+            subcategoria,
+            "Necesitamos ropa de invierno para niños",
+            100);
+    assertFalse(necesidadExtraordinaria.estaSatisfecha());
+  }
+
+  @Test
+  @DisplayName("Una necesidad recurrente no esta satisfecha sin donaciones")
+  void necesidad_recurrente_no_satisfecha() {
+    Necesidad necesidadRecurrente = new NecesidadRecurrente(
+            subcategoria,
+            "Necesitamos ropa de invierno para niños",
+            100, 10);
+    assertFalse(necesidadRecurrente.estaSatisfecha());
+  }
 }

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class LectorCSVtest {
+public class LectorCSVtest {
 
   // Conversor de prueba simple que convierte una fila a un String concatenando sus valores
   private final FilaConverter<String> mockConverter = fila -> {
