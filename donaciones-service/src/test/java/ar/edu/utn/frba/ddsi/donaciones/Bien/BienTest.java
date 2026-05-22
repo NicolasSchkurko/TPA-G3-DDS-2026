@@ -1,11 +1,43 @@
 package ar.edu.utn.frba.ddsi.donaciones.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.time.LocalDate;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @SpringBootTest
 public class BienTest{
 
-  @Test@DIs
+  @Test
+  @DisplayName("Crear un bien con estado")
+  public void crearBienConEstado(){
+    SubcategoriaBien subcategoria = new SubcategoriaBien("Arroz", CategoriaBien.ALIMENTOS);
+    BienConEstado bien = new BienConEstado("Arroz blanco", subcategoria, 2, UnidadDeMedida.KILOGRAMOS, false);
 
+    assertEquals("Arroz blanco", bien.getDescripcion());
+    assertEquals(subcategoria, bien.getSubcategoria());
+    assertEquals(2, bien.getCantidad());
+    assertEquals(UnidadDeMedida.KILOGRAMOS, bien.getUnidadUtilizada());
+    assertFalse(bien.isUsado());
+
+  }
+  @Test
+  @DisplayName("Crear un bien perecedero")
+  public void crearBienPerecedero(){
+    SubcategoriaBien subcategoria = new SubcategoriaBien("Atun", CategoriaBien.ALIMENTOS);
+    LocalDate fechaVencimiento = LocalDate.of(2026, 12, 31);
+    BienPerecedero bien = new BienPerecedero("Atun enlatado", subcategoria, 1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
+
+    assertEquals("Atun", bien.getDescripcion());
+    assertEquals(subcategoria, bien.getSubcategoria());
+    assertEquals(1, bien.getCantidad());
+    assertEquals(UnidadDeMedida.KILOGRAMOS, bien.getUnidadUtilizada());
+    assertEquals(LocalDate.of(2026, 12, 31), bien.getFechaVencimiento());
+
+  }
 }
