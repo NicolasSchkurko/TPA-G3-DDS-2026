@@ -43,6 +43,9 @@ public class DonacionesServiceApplication {
                 case 3:
                     Creador.crearDonaciones();
                     break;
+                case 4:
+                    Creador.aniadirNecesidadAEntidad();
+                    break;
                 default:
                     System.out.println("Opción inexistente, seleccione de nuevo");
                     continue;

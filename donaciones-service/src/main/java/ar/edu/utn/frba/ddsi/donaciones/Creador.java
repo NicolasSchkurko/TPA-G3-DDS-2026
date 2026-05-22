@@ -188,6 +188,19 @@ public interface Creador {
         }
     }
 
+    static void aniadirNecesidadAEntidad(){
+        System.out.println("Vamos a añadir una necesidad nueva");
+        System.out.println("cual es la razon social de su entidad");
+        String razonSocialBuscada = scanner.nextLine().trim();
+        AsignadorDonaciones asignadorDonaciones =  AsignadorDonaciones.getInstance();
+        if(!asignadorDonaciones.estaRegistradaLaEntidad(razonSocialBuscada)){
+            System.out.println("No esta registrada esa entidad");
+            return;
+        }
+        EntidadBeneficiaria entidadBeneficiaria = asignadorDonaciones.buscarEntidadRegistrada(razonSocialBuscada);
+        crearNecesidades(entidadBeneficiaria);
+    }
+
     static void crearDonaciones() {
         String seleccion;
         PersonaDonante persona;
@@ -265,7 +278,6 @@ public interface Creador {
                         List<Donacion> donacionesSegmentadas = SegmentadorDonaciones.segmentar(persona, Creador.crearBienes());
                         for(Donacion donacion : donacionesSegmentadas){
                             AsignadorDonaciones.getInstance();
-                            AsignadorDonaciones.agregarDonacion(donacion);
                             AsignadorDonaciones.asignarDonacion(donacion);
                         }
                         System.out.println("Muchas gracias por su colaboracion, esperamos que siga colaborando con nosotros en el futuro");

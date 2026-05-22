@@ -79,4 +79,5 @@ public class NecesidadTest {
             100, 10);
     assertFalse(necesidadRecurrente.estaSatisfecha());
   }
+
 }
