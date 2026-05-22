@@ -55,9 +55,10 @@ public interface Creador {
         return new Direccion(calleUno, calleDos, altura, piso, departamento, ciudad);
     }
 
+    // In Creador.java, method crearPersonaHumana()
     static void crearPersonaHumana(){
         Humano humano = Creador.crearHumano();
-        ireccion direccion = Creador.crearDireccion();
+        Direccion direccion = Creador.crearDireccion(); // <-- fixed typo from 'ireccion' to 'Direccion'
         System.out.println("Escriba el mail de contacto del representante de la entidad");
         PersonaHumana persona = new PersonaHumana(humano, direccion);
         GestorPersonas.getInstance().agregarPersona(persona);
