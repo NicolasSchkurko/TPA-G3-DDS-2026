@@ -55,13 +55,15 @@ public interface Creador {
         return new Direccion(calleUno, calleDos, altura, piso, departamento, ciudad);
     }
 
-    // In Creador.java, method crearPersonaHumana()
     static void crearPersonaHumana(){
         Humano humano = Creador.crearHumano();
-        Direccion direccion = Creador.crearDireccion(); // <-- fixed typo from 'ireccion' to 'Direccion'
-        System.out.println("Escriba el mail de contacto del representante de la entidad");
+        Direccion direccion = Creador.crearDireccion();
         PersonaHumana persona = new PersonaHumana(humano, direccion);
+        System.out.println("Escriba el mail de contacto");
+        Mail mail = new Mail(scanner.nextLine().trim());
+        persona.agregarMedioDeContacto(mail);
         GestorPersonas.getInstance().agregarPersona(persona);
+
     }
 
     static void crearPersonaJuridica(){
@@ -103,6 +105,10 @@ public interface Creador {
             }
         }
         // Usar el constructor correcto y luego setear el nombre (la clase PersonaJuridica no recibe 'nombre' en su constructor)
+        System.out.println("Escriba el mail de contacto");
+        Mail mail = new Mail(scanner.nextLine().trim());
+        PersonaJuridica persona = new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes);
+        persona.agregarMedioDeContacto(mail);
         GestorPersonas.getInstance().agregarPersona(new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes));
     }
 

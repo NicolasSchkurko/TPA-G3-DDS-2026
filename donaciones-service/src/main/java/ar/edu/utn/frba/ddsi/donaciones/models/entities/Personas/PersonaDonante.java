@@ -14,6 +14,13 @@ public abstract class PersonaDonante {
     /*public PersonaDonante(MediosDeContacto mediosDeContacto){
         this.mediosDeContacto = mediosDeContacto;
     }*/
+    public PersonaDonante() {
+        this.mediosDeContacto = new MediosDeContacto();
+    }
+
+    public void agregarMedioDeContacto(MedioDeContacto medioDeContacto){
+        this.mediosDeContacto.agregarMedioDeContacto(medioDeContacto);
+    }
 
     public abstract String darNombre();
 }

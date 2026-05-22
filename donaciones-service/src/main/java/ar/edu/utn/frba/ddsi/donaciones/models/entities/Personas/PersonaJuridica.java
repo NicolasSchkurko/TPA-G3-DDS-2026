@@ -27,6 +27,7 @@ public class PersonaJuridica extends PersonaDonante {
       String cuit,
       List<Representante> representantes
   ) {
+    super();
     this.direccion = direccion;
     this.razonSocial = razonSocial;
     this.rubro = rubro;
