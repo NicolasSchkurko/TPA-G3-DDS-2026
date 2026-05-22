@@ -18,6 +18,11 @@ public class Telefono extends MedioDeContacto {
         this.numeroDeTelefono=numTelefono;
     }
 
+    public Telefono(String numTelefono){
+        super();
+        this.numeroDeTelefono=numTelefono;
+    }
+
     @Override
     public String getValor() {
         return numeroDeTelefono;

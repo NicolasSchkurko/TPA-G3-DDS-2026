@@ -18,6 +18,11 @@ public class Mail extends MedioDeContacto {
         this.direccionMail=dirMail;
     }
 
+    public Mail(String dirMail){
+        super();
+        this.direccionMail=dirMail;
+    }
+
     @Override
     public String getValor() {
         return direccionMail;
