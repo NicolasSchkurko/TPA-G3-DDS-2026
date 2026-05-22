@@ -15,12 +15,13 @@ public class PersonaHumana extends PersonaDonante{
     public PersonaHumana(Humano persona, Direccion direccion) {
         //super(mediosDeContacto);
         super();
+        this.persona = persona;
         this.direccion = direccion;
 
     }
 
     public String darNombre(){
-        return persona.getNombre();
+        return persona.getNombre()+" "+persona.getApellido();
     }
 
     @Override

@@ -13,11 +13,11 @@ import lombok.Setter;
 public class AsignadorDonaciones {
     private static AsignadorDonaciones instanciaUnica;
 
-    private static List<Donacion> donaciones;
+    private static List<Donacion> donacionesPendientes;
     private static List<EntidadBeneficiaria> entidades;
 
     private AsignadorDonaciones() {
-        this.donaciones = new ArrayList<>();
+        this.donacionesPendientes = new ArrayList<>();
         this.entidades = new ArrayList<>();
     }
 
@@ -41,14 +41,18 @@ public class AsignadorDonaciones {
                 }
             }
         }
-        //si la donacion no entro al bucle seguira sin asignarse
+        agregarDonacion(donacion);
     }
 
-    public static void agregarDonacion(Donacion donacion){
+    private static void agregarDonacion(Donacion donacion){
         AsignadorDonaciones.getInstance();
-        if(!donaciones.contains(donacion)){
-            donaciones.add(donacion);
+        if(!donacionesPendientes.contains(donacion)){
+            donacionesPendientes.add(donacion);
         }
+    }
+
+    public static void reasignarDonacionesPendientes() {
+        donacionesPendientes.forEach(AsignadorDonaciones::asignarDonacion);
     }
 
     public void agregarEntidad(EntidadBeneficiaria entidad){
@@ -56,5 +60,23 @@ public class AsignadorDonaciones {
         if(!entidades.contains(entidad)){
             entidades.add(entidad);
         }
+    }
+
+    public boolean estaRegistradaLaEntidad(String razonSocialBuscada) {
+        if (entidades == null) {
+            getInstance();
+        }
+        if (entidades == null || entidades.isEmpty() || razonSocialBuscada == null) {
+            return false;
+        }
+
+        return entidades.stream().anyMatch(e -> e.getRazonSocial().equalsIgnoreCase(razonSocialBuscada));
+    }
+
+    public EntidadBeneficiaria buscarEntidadRegistrada(String razonSocialBuscada) {
+        if (estaRegistradaLaEntidad(razonSocialBuscada)) {
+            return entidades.stream().filter(e -> e.getRazonSocial().equalsIgnoreCase(razonSocialBuscada)).findAny().get();
+        }
+        return null;
     }
 }

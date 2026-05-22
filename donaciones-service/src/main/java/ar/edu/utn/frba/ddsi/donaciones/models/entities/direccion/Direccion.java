@@ -62,13 +62,13 @@ public class Direccion {
   public String getDireccion() {
     String valorAltura = altura == null ? "S/N" : String.valueOf(altura);
 
-    return String.format("%s %s y %s, Piso %d, Depto %s, Cuerpo %d, %s",
-        calleUno,
-        valorAltura,
-        calleDos,
-        piso,
-        departamento,
-        ciudad.getDireccion()
+    return String.format("%s %s y %s, Piso %d, Depto %s, %s",
+            calleUno,
+            valorAltura,
+            calleDos,
+            piso,
+            departamento,
+            ciudad.getDireccion()
     );
   }
 

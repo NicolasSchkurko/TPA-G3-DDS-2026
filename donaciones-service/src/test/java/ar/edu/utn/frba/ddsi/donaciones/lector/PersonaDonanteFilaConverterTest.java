@@ -25,8 +25,6 @@ public class PersonaDonanteFilaConverterTest {
 
   @BeforeEach
   void setUp() {
-    // Se inicializa utilizando List<MapeoCSV> en lugar de Map directo,
-    // y usando los nombres del enum CampoLogico como pide el nuevo constructor.
     List<MapeoCSV> configuracionMapeo = List.of(
         new MapeoCSV(CampoLogico.TIPO_PERSONA.name(), List.of("TipoPersona")),
         new MapeoCSV(CampoLogico.TIPO_DOC.name(), List.of("TipoDoc")),
@@ -49,7 +47,6 @@ public class PersonaDonanteFilaConverterTest {
   @Test
   @DisplayName("Debe instanciar una PersonaHumana separando nombre, apellido y parseando el DNI limpio")
   void convertir_CreaPersonaHumanaCorrectamente() {
-    // Arrange
     Map<String, String> fila = new HashMap<>();
     fila.put("TipoPersona", "HUMANA");
     fila.put("Nombre", "Juan Alberto");
@@ -57,10 +54,8 @@ public class PersonaDonanteFilaConverterTest {
     fila.put("Documento", "12.345.678");
     fila.put("Email", "juan@mail.com");
 
-    // Act
     PersonaDonante donante = converter.convertir(fila);
 
-    // Assert
     assertNotNull(donante);
     assertTrue(donante instanceof PersonaHumana);
 
@@ -74,17 +69,14 @@ public class PersonaDonanteFilaConverterTest {
   @Test
   @DisplayName("Debe instanciar una PersonaJuridica cuando el tipo es JURIDICA")
   void convertir_CreaPersonaJuridicaCorrectamente() {
-    // Arrange
     Map<String, String> fila = new HashMap<>();
     fila.put("TipoPersona", "JURIDICA");
     fila.put("Razón Social", "Arcos Plateados S.A.");
     fila.put("Documento", "30-12345678-9");
     fila.put("Teléfono", "+54 11 4444-4444");
 
-    // Act
     PersonaDonante donante = converter.convertir(fila);
 
-    // Assert
     assertNotNull(donante);
     assertTrue(donante instanceof PersonaJuridica);
     PersonaJuridica juridica = (PersonaJuridica) donante;
@@ -95,30 +87,26 @@ public class PersonaDonanteFilaConverterTest {
 @Test
 @DisplayName("Debe lanzar excepción si el TipoPersona es inválido o está vacío")
 void convertir_LanzaExcepcionPorTipoPersonaDesconocido() {
-    // Arrange
     Map<String, String> fila1 = new HashMap<>();
     fila1.put("TipoPersona", "GATO");
 
     Map<String, String> fila2 = new HashMap<>();
     fila2.put("TipoPersona", "");
 
-    // Act & Assert
     assertThrows(IllegalArgumentException.class, () -> converter.convertir(fila1), "Debería lanzar excepción para tipo GATO");
     assertThrows(IllegalArgumentException.class, () -> converter.convertir(fila2), "Debería lanzar excepción para tipo vacío");
 }
   @Test
   @DisplayName("Debe asignar 0 al documento si contiene letras o datos no parseables, sin romper el proceso")
   void convertir_ManejaExcepcionAlParsearDocumentos() {
-    // Arrange
     Map<String, String> fila = new HashMap<>();
     fila.put("TipoPersona", "HUMANA");
     fila.put("Nombre", "Ana Gómez");
     fila.put("Documento", "SIN_DNI_VALIDO");
 
-    // Act
+
     PersonaDonante donante = converter.convertir(fila);
 
-    // Assert
     assertNotNull(donante);
     assertTrue(donante instanceof PersonaHumana);
     assertEquals(0, ((PersonaHumana) donante).getPersona().getNumeroDeDocumento(), "Al fallar el parseo debe quedar en 0");
