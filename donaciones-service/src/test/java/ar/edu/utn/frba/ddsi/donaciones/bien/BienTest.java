@@ -30,9 +30,9 @@ public class BienTest{
   @Test
   @DisplayName("Crear un bien perecedero")
   public void crearBienPerecedero(){
-    SubcategoriaBien subcategoria = new SubcategoriaBien("Atun", CategoriaBien.ALIMENTOS);
+    SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", CategoriaBien.ALIMENTOS);
     LocalDate fechaVencimiento = LocalDate.of(2026, 12, 31);
-    BienPerecedero bien = new BienPerecedero("Atun enlatado", subcategoria, 1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
+    BienPerecedero bien = new BienPerecedero("Atun", subcategoria, 1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
 
     assertEquals("Atun", bien.getDescripcion());
     assertEquals(subcategoria, bien.getSubcategoria());
@@ -41,4 +41,5 @@ public class BienTest{
     assertEquals(LocalDate.of(2026, 12, 31), bien.getFechaVencimiento());
 
   }
+
 }
