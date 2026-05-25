@@ -1,3 +1,16 @@
+ddsi - Grupo 3
+
+Integrantes: 
+María Mercedes Otero (222.564-5)
+Nicolas Pannunzio (172.974-3)
+Mateo Julián Galanti (208.993-2)
+Sofía Muñoz (203.888-2)
+Oriana Bellorín (213.215-1)
+Valentín Fondovila (222.311-9)
+Nahuel Marek (213.861-0)
+Nicolas Schkurko (214.128-0)
+
+
 # ddsi-tp-template
 
 Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arquitectura de servicios con Spring Boot y una biblioteca compartida, usando un reactor de Maven multi-módulo.
