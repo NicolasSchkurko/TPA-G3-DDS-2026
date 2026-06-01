@@ -1,15 +1,22 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.GestorNotificacion;
 
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.CanalNotificacion.CanalNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.TipoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Destinatario.Destinatario;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.SolicitudNotificacion.SolicitudNotificacion;
 
 import java.util.Map;
 
 public class GestorNotificacion {
 
+    public Notificacion procesarSolicitud(SolicitudNotificacion solicitud) {
+        Notificacion notificacion = null;
+        return notificacion;
+    }
+
+    public void enviarNotificacion(Notificacion notificacion) {}
+/*
     public Notificacion crearNotificacion(TipoNotificacion tipo, Destinatario destinatario, Map datos) {
         Notificacion notificacion = new Notificacion();
         notificacion.setDestinatario(destinatario);
@@ -34,4 +41,5 @@ public class GestorNotificacion {
         Notificacion notificacion = this.crearNotificacion(tipo, destinatario, datos);
         this.enviarNotificacion(notificacion, canalDeEnvio);
     }
+ */
 }
