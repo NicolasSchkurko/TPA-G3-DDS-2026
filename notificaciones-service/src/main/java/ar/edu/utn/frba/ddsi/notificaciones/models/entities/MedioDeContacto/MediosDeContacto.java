@@ -2,14 +2,17 @@ package ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MediosDeContacto {
+    @Getter
     private MedioDeContacto medioDeContactoPredeterminado;
 
     // Se inicializa la lista para evitar el NullPointerException
+    @Getter
     private List<MedioDeContacto> listaMediosDeContacto = new ArrayList<>();
 
     public MediosDeContacto() {}
@@ -34,6 +37,7 @@ public class MediosDeContacto {
     public String toString() {
         return "MediosDeContacto{listaMediosDeContacto=" + listaMediosDeContacto + '}';
     }
+
     public void enviarNotificacionAMedios(Notificacion notificacion) {
         listaMediosDeContacto.forEach(medio -> medio.enviarNotificacion(notificacion));
     }
