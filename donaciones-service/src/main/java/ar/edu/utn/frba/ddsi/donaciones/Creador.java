@@ -11,6 +11,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecu
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.*;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +63,7 @@ public interface Creador {
         System.out.println("Escriba el mail de contacto");
         Mail mail = new Mail(scanner.nextLine().trim());
         persona.agregarMedioDeContacto(mail);
-        GestorPersonas.getInstance().agregarPersona(persona);
+        RepositorioDePersonas.getInstance().agregarPersona(persona);
 
     }
 
@@ -109,7 +110,7 @@ public interface Creador {
         Mail mail = new Mail(scanner.nextLine().trim());
         PersonaJuridica persona = new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes);
         persona.agregarMedioDeContacto(mail);
-        GestorPersonas.getInstance().agregarPersona(new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes));
+        RepositorioDePersonas.getInstance().agregarPersona(new PersonaJuridica(direccion, razonSocial, rubro, tipoJuridico, cuit, representantes));
     }
 
     static void crearEntidad(){
@@ -232,8 +233,8 @@ public interface Creador {
             } else {
                 while(true){
                     System.out.println("Escriba el nombre con el que fue registrado");
-                    GestorPersonas.getInstance();
-                    persona = GestorPersonas.personaExiste(scanner.nextLine().trim());
+                    RepositorioDePersonas.getInstance();
+                    persona = RepositorioDePersonas.personaExiste(scanner.nextLine().trim());
                     if (persona == null){
                         System.out.println("Lo sentimos, no pudimos encontrar su usuario, ¿quiere intentar de nuevo? s/n");
                         while(true){
