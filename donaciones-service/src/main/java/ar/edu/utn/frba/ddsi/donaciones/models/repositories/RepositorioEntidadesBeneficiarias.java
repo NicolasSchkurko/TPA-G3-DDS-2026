@@ -15,6 +15,8 @@ public class RepositorioEntidadesBeneficiarias {
     }
 
     public void agregarEntidad(EntidadBeneficiaria entidad) {
-        entidades.add(entidad);
+        if(!entidades.contains(entidad)){
+            this.entidades.add(entidad);
+        }
     }
 }

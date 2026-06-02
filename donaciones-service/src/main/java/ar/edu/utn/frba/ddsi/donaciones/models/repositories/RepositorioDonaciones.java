@@ -16,7 +16,9 @@ public class RepositorioDonaciones {
     }
 
     public void agregarDonacion(Donacion donacion) {
-        donacionesNoAsignadas.add(donacion);
+        if(!donacionesNoAsignadas.contains(donacion)){
+            this.donacionesNoAsignadas.add(donacion);
+        }
     }
 
     public void asignarDonacion(Donacion donacion) {
