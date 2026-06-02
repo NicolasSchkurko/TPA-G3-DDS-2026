@@ -1,5 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones;
-
+/*
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
@@ -351,4 +351,4 @@ public interface Creador {
         }
         return bienes;
     }
-}
+}*/

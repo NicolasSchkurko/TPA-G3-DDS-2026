@@ -20,7 +20,8 @@ public class DonacionTest {
     @DisplayName("Crear y verificar los valores")
     public void crearDonacion() {
         // Arrange
-        SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", CategoriaBien.ALIMENTOS);
+        CategoriaBien alimentos = new CategoriaBien("Alimentos");
+        SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
         BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, 5, UnidadDeMedida.KILOGRAMOS, false);
         BienConEstado bien2 = new BienConEstado("Atun", subcategoria, 3, UnidadDeMedida.KILOGRAMOS, false);
         LocalDate fechaEntrega = LocalDate.of(2026, 12, 31);
@@ -49,7 +50,8 @@ public class DonacionTest {
     @DisplayName("Retorna la suma total de bienes dentro de la donacion")
     public void sumaCantidadBienes() {
         // Arrange
-        SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", CategoriaBien.ALIMENTOS);
+        CategoriaBien alimentos = new CategoriaBien("Alimentos");
+        SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
 
         BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, 5, UnidadDeMedida.KILOGRAMOS, false);
         BienConEstado bien2 = new BienConEstado("Garbanzo", subcategoria, 3, UnidadDeMedida.KILOGRAMOS, false);
