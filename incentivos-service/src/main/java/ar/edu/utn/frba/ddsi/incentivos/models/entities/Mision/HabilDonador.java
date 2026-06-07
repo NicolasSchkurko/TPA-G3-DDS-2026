@@ -8,8 +8,8 @@ import java.util.List;
 public class HabilDonador extends Mision {
     Integer cantidadBienesObjetivo;
 
-    public HabilDonador(Insignia insignia, Integer cantidadBienesObjetivo) {
-        super(insignia);
+    public HabilDonador(Insignia insignia, String descripcion, Integer cantidadBienesObjetivo) {
+        super(insignia, descripcion);
         this.cantidadBienesObjetivo = cantidadBienesObjetivo;
     }
 

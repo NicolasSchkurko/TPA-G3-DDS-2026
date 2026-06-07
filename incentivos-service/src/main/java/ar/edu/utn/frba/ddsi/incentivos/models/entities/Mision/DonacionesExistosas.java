@@ -8,8 +8,8 @@ import java.util.List;
 public class DonacionesExistosas extends Mision {
     Integer donacionesObjetivo;
 
-    public DonacionesExistosas(Insignia insignia, Integer donacionesObjetivo) {
-        super(insignia);
+    public DonacionesExistosas(Insignia insignia, String descripcion, Integer donacionesObjetivo) {
+        super(insignia, descripcion);
         this.donacionesObjetivo = donacionesObjetivo;
     }
 

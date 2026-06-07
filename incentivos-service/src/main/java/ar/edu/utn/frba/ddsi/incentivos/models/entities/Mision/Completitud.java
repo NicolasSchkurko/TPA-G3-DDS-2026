@@ -8,8 +8,8 @@ import java.util.List;
 public class Completitud extends Mision {
     Integer cantidadObjetivo;
 
-    public Completitud(Insignia insignia, Integer cantidadObjetivo) {
-        super(insignia);
+    public Completitud(Insignia insignia, String descripcion, Integer cantidadObjetivo) {
+        super(insignia, descripcion);
         this.cantidadObjetivo = cantidadObjetivo;
     }
 

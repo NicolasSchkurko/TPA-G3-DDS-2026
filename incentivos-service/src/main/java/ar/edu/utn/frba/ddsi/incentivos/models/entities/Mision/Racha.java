@@ -8,8 +8,8 @@ import java.util.List;
 public class Racha extends Mision {
     Integer mesesObjetivo;
 
-    public Racha(Insignia insignia, Integer mesesObjetivo) {
-        super(insignia);
+    public Racha(Insignia insignia, String descripcion, Integer mesesObjetivo) {
+        super(insignia, descripcion);
         this.mesesObjetivo = mesesObjetivo;
     }
 

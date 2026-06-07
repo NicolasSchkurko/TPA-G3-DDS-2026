@@ -8,6 +8,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class Insignia {
+    String nombreInsignia;
     LocalDate fecha;
     Mision misionCompletada;
 

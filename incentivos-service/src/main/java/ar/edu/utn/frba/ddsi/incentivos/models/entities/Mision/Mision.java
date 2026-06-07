@@ -10,9 +10,11 @@ import java.util.List;
 @Setter
 public abstract class Mision {
     Insignia insignia;
+    String descripcion;
 
-    public Mision (Insignia insignia){
+    public Mision (Insignia insignia, String descripcion){
         this.insignia = insignia;
+        this.descripcion = descripcion;
     }
 
     public abstract Boolean completarMision(Perfil perfil);
