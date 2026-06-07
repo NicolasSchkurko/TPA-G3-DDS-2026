@@ -1,0 +1,20 @@
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
+
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+
+import java.util.List;
+
+public class HabilDonador extends Mision {
+    Integer cantidadBienesObjetivo;
+
+    public HabilDonador(Insignia insignia, Integer cantidadBienesObjetivo) {
+        super(insignia);
+        this.cantidadBienesObjetivo = cantidadBienesObjetivo;
+    }
+
+    @Override
+    public Boolean completarMision(Perfil perfil) {
+        return null; //TODO
+    }
+}
