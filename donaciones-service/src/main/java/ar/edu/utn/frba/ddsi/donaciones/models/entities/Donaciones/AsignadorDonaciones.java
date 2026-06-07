@@ -28,6 +28,7 @@ public class AsignadorDonaciones {
         return instanciaUnica;
     }
 
+
     public static void asignarDonacion(Donacion donacion) {
         if(!entidades.isEmpty()){
             for (EntidadBeneficiaria entidad : entidades) {

@@ -24,12 +24,16 @@ public class EntidadBeneficiaria {
         this.razonSocial = razonSoc;
         this.direccion = dir;
         this.nroTell = nroTell;
-        this.necesidades = new ArrayList<Necesidad>();
+        this.necesidades = new ArrayList<>();
         this.correosRepresentantes = correosRepres;
     }
 
     public void agregarNecesidad(Necesidad necesidad){
         this.necesidades.add(necesidad);
+    }
+
+    public void eliminarNecesidad(Necesidad necesidad) {
+        this.necesidades.remove(necesidad);
     }
 
     public List<Donacion> verDonaciones(){
