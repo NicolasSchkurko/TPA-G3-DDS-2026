@@ -23,11 +23,18 @@ public class Perfil {
   //      this.misionActual = ;
     }
 
+    public void ascenderCategoria() {
+        categoriaActual = categoriaActual.getSiguienteCategoria();
+    }
 
-
-//    public Perfil(PersonaDonante persona){
-//        this.persona = persona;
-//
-//        this.insignias = new ArrayList<>();
-//    }
+    private void misionCompletada(){
+        if(misionActual.completarMision(this)){
+            if (categoriaActual.esUltimaMision(misionActual)) {
+                this.ascenderCategoria();
+            }
+            else{
+                misionActual = categoriaActual.siguienteMision(misionActual);
+            }
+        }
+    }
 }

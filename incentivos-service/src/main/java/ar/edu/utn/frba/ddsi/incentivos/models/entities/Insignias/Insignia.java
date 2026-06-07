@@ -12,7 +12,8 @@ public class Insignia {
     LocalDate fecha;
     Mision misionCompletada;
 
-    public Insignia(LocalDate fecha, Mision misionCompletada){
+    public Insignia(String nombreInsignia, LocalDate fecha, Mision misionCompletada){
+        this.nombreInsignia = nombreInsignia;
         this.fecha = fecha;
         this.misionCompletada = misionCompletada;
     }

@@ -14,9 +14,22 @@ public class Categoria {
     private Categoria siguienteCategoria;
     private List<Mision> misiones;
 
-import java.util.List;
+    public Categoria(TipoCategoria nombre, List<Mision> misiones) {
+        this.nombre = nombre;
+        this.misiones = misiones;
+    }
 
-public abstract class Categoria {
-    List<Mision> misiones;
-    Integer requerimiento;
+    public boolean esUltimaMision(Mision mision) {
+        return mision.equals(
+                misiones.getLast()
+        );
+    }
+
+    public Mision siguienteMision(Mision misionActual) {
+        Mision nuevaMision = misionActual;
+        int index = this.misiones.indexOf(misionActual);
+        nuevaMision = this.misiones.get(index + 1);
+
+        return nuevaMision;
+    }
 }
