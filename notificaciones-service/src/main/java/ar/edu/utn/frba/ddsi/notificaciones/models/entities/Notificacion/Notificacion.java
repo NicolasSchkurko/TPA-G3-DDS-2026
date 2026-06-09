@@ -19,14 +19,10 @@ public class Notificacion {
     private LocalDateTime fechaEnvio;
     @Setter
     private EstadoNotificacion estado;
-    @Setter
-    @Getter
-    private TipoNotificacion tipo;
 
-    public Notificacion(TipoNotificacion tipo, Destinatario destinatario, Mensaje mensaje) {
+    public Notificacion(Destinatario destinatario, Mensaje mensaje) {
         this.fechaCreacion = LocalDateTime.now();
         this.estado = EstadoNotificacion.PENDIENTE;
-        this.tipo = tipo;
         this.destinatario = destinatario;
         this.mensaje = mensaje;
     }
