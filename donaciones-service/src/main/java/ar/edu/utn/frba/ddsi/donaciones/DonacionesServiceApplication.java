@@ -8,8 +8,8 @@ import java.util.Scanner;
 
 @SpringBootApplication
 public class DonacionesServiceApplication {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+    public static void main(String[] args) {/*&Scanner scanner = new Scanner(System.in);
+
         int opcion;
         String seleccion;
 
@@ -63,6 +63,6 @@ public class DonacionesServiceApplication {
             }
         }
         System.out.println("Muchas gracias, que tenga un buen dia");
-        SpringApplication.run(DonacionesServiceApplication.class, args);
+        SpringApplication.run(DonacionesServiceApplication.class, args);*/
     }
 }

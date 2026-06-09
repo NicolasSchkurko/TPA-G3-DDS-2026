@@ -27,3 +27,4 @@ public class PersonaDonanteDTO {
 
   // agregar dto de Direccion, MediosDeContacto y Representantes.
 }
+
