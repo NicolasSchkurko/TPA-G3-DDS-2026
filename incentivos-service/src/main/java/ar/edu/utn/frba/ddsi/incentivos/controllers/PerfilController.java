@@ -7,8 +7,6 @@ import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/personas")
 public class PerfilController {
@@ -19,7 +17,7 @@ public class PerfilController {
         this.perfilService = perfilService;
     }
 
-    // GET /personas/{idDonante}/perfil
+    // GET /personas/{nombreUsuario}/perfil
     @GetMapping("/{nombreUsuario}/perfil")
     public ResponseEntity<PerfilDonanteDTO> obtenerPerfil(@PathVariable String nombreUsuario) {
         PerfilDonanteDTO perfil = perfilService.obtenerPerfil(nombreUsuario);
@@ -30,4 +28,12 @@ public class PerfilController {
 
         return ResponseEntity.ok(perfil);
     }
+
+    //endpoints especificos
+
+//    GET /personas/{nombreUsuario}/metricas
+    
+
+//    GET /personas/{nombreUsuario}/misiones
+//    GET /personas/{nombreUsuario}/insignias
 }

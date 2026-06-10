@@ -14,22 +14,24 @@ public class Categoria {
     private Categoria siguienteCategoria;
     private List<Mision> misiones;
 
+    public TipoCategoria siguienteTipoCategoria() {
+        return nombre.siguiente();
+    }
+
     public Categoria(TipoCategoria nombre, List<Mision> misiones) {
         this.nombre = nombre;
         this.misiones = misiones;
     }
 
     public boolean esUltimaMision(Mision mision) {
-        return mision.equals(
-                misiones.getLast()
-        );
+        if (misiones == null || misiones.isEmpty() || mision == null) return false;
+        return mision.equals(misiones.get(misiones.size() - 1));
     }
 
     public Mision siguienteMision(Mision misionActual) {
-        Mision nuevaMision = misionActual;
+        if (misiones == null || misiones.isEmpty() || misionActual == null) return null;
         int index = this.misiones.indexOf(misionActual);
-        nuevaMision = this.misiones.get(index + 1);
-
-        return nuevaMision;
+        if (index < 0 || index + 1 >= misiones.size()) return null;
+        return this.misiones.get(index + 1);
     }
 }

@@ -8,10 +8,9 @@ import java.time.YearMonth;
 @Getter
 @Setter
 
-public class ComparacionMensualDTO {
+public class ActividadMensualDTO {
     private YearMonth periodo;
     //tipos de cmps x mes
     private Integer cantidadDonaciones;
     private Integer organizacionesAyudadas;
-    private Integer bienesDonados;
 }

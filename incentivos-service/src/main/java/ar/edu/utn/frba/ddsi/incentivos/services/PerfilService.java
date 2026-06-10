@@ -25,7 +25,11 @@ public class PerfilService {
 
         PerfilDonanteDTO dto = new PerfilDonanteDTO();
         dto.setNombreUsuario(perfil.getNombreUsuario());
-        dto.setCategoria(perfil.getCategoriaActual().getNombre().name());
+        if (perfil.getCategoriaActual() != null && perfil.getCategoriaActual().getNombre() != null) {
+            dto.setCategoria(perfil.getCategoriaActual().getNombre().name());
+        } else {
+            dto.setCategoria(null);
+        }
 
         return dto;
     }

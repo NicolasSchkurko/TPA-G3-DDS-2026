@@ -36,9 +36,7 @@ public class RepositorioPerfiles {
     }
 
     public void eliminarPerfil(Perfil perfil) {
-        if(perfiles.contains(perfil)){
-            perfiles.remove(perfil);
-        }
+        perfiles.remove(perfil);
     }
 
     public List<Perfil> listarTodos() {

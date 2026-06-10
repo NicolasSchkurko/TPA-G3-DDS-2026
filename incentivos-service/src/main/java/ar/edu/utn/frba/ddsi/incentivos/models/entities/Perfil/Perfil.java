@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +31,23 @@ public class Perfil {
         categoriaActual = categoriaActual.getSiguienteCategoria();
     }
 
-    private void misionCompletada(){
+    public void otorgarInsignia(Insignia insignia) {
+        insignias.add(
+                new Insignia(
+                        insignia.getNombreInsignia(),
+                        LocalDate.now(),
+                        insignia.getMisionCompletada()
+                )
+        );
+    }
+
+    public void misionCompletada(){
         if(misionActual.completarMision(this)){
             if (categoriaActual.esUltimaMision(misionActual)) {
                 this.ascenderCategoria();
             }
             else{
+                this.otorgarInsignia(misionActual.getInsignia());
                 misionActual = categoriaActual.siguienteMision(misionActual);
             }
         }
