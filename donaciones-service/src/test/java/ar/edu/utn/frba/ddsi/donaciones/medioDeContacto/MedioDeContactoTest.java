@@ -1,34 +1,35 @@
 package ar.edu.utn.frba.ddsi.donaciones.medioDeContacto;
 
-import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje.ALERTA;
-import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje.BIENVENIDA;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
+
+import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje.ALERTA;
+import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje.BIENVENIDA;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 @SpringBootTest
 public class MedioDeContactoTest {
 
-    MedioDeContacto medioWhatsapp = new Whatsapp("12345",List.of(BIENVENIDA, ALERTA));
+    MedioDeContacto medioWhatsapp = new Whatsapp("12345", List.of(BIENVENIDA, ALERTA));
     String numero = "12345";
     String direccion = "donante@gmail.com";
     List<TipoDeMensaje> tiposDeMensajeAdmitidos = List.of(BIENVENIDA, ALERTA);
 
     @Test
     @DisplayName("Test enviar mensaje no falla si el tipo de mensaje no esta admitido")
-    void test_mensajes_tipo_no_admitido (){
+    void test_mensajes_tipo_no_admitido() {
         assertThrows(IllegalArgumentException.class, () -> {
-            medioWhatsapp.enviarMensaje(new Mensaje("Hola","Hola", TipoDeMensaje.CAMBIO_ESTADO));
+            medioWhatsapp.enviarMensaje(new Mensaje("Hola", "Hola", TipoDeMensaje.CAMBIO_ESTADO));
         });
     }
 
