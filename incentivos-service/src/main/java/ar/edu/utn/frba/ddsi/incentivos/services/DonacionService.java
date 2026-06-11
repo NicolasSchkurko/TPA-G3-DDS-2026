@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Donacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 
 import java.util.UUID;
 
@@ -10,17 +10,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class DonacionService {
-    private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
+    private final RepositorioDonaciones repositorioDonaciones = RepositorioDonaciones.getInstance();
 
-    public PerfilDonanteDTO obtenerPerfil(UUID id) {
-        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(id);
+    public DonacionDTO obtenerDonacion(UUID id) {
+        Donacion donacion = repositorioDonaciones.buscarPorIDDonacion(id);
 
-        if (perfil == null) {
+        if (donacion == null) {
             return null;
         }
 
-        PerfilDonanteDTO dto = new PerfilDonanteDTO();
-        dto.setNombreUsuario(perfil.getNombreUsuario());
+        DonacionDTO dto = new DonacionDTO();
+        dto.setNombreUsuario(Donacion.getNombreUsuario());
         if (perfil.getCategoriaActual() != null && perfil.getCategoriaActual().getNombre() != null) {
             dto.setCategoria(perfil.getCategoriaActual().getNombre().name());
         } else {

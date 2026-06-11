@@ -60,12 +60,12 @@ public class RepositorioPerfiles {
                 .findFirst();
     }
     
-    private Predicate<Perfil> predicatePorNombreUsuario(String busqueda) {
-        return perfil -> matchesNombreUsuario(perfil, busqueda);
+    private Predicate<Perfil> predicatePorUUID(UUID IDbusqueda) {
+        return perfil -> matchesUUID(perfil, IDbusqueda);
     }
 
-    private boolean matchesNombreUsuario(Perfil perfil, String busqueda) {
-        String nombrePerfil = perfil.getNombreUsuario();
-        return nombrePerfil != null && nombrePerfil.trim().equalsIgnoreCase(busqueda);
+    private boolean matchesUUID(Perfil perfil, UUID IDbusqueda) {
+        UUID idPerfil = perfil.getIdUsuario();
+        return idPerfil != null;
     }
 }

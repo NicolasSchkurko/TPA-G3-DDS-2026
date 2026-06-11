@@ -4,10 +4,10 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
+import ar.edu.utn.frba.ddsi.incentivos.services.DonacionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,7 +23,7 @@ public class PerfilController {
     // GET /personas/{uuid}/perfil
     @GetMapping("/{id}/perfil")
     public ResponseEntity<PerfilDonanteDTO> obtenerPerfil(@PathVariable UUID id) {
-        PerfilDonanteDTO perfil = perfilService.obtenerPerfil(id);
+        PerfilDonanteDTO perfil = perfilService.buscarPerfilPorUUID(id);
 
         if (perfil == null) {
             return ResponseEntity.notFound().build();
@@ -33,10 +33,12 @@ public class PerfilController {
     }
 
     //endpoints especificos
+
+    //no necesito todas las donaciones, solo la ultima
 //    GET /personas/{uuid}/donaciones
     @GetMapping("/{id}/donaciones")
     public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
-        List<DonacionDTO> donacion = donacionService.obtenerDonacion(id);
+        DonacionDTO donacion = donacionService.obtenerDonacion(id);
 
         if (donacion == null) {
             return ResponseEntity.notFound().build();

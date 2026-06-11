@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.ActividadMensualDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MetricasActividadDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
@@ -22,11 +20,11 @@ import static ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.TipoCategor
 public class Perfil {
     //TODO agregar los atributos necesarios que vengan del repositorio
     private UUID idUsuario;
+    private Integer totalDonaciones;
     private String nombreUsuario;
     private Categoria categoriaActual;
     private List<Insignia> insignias;
     private Mision misionActual;
-    private List<Donacion> donaciones;
     private List<MetricasActividad> metricas;
     private List<ActividadMensual> evolucionMensual;
     private Integer organizacionesAyudadas;
@@ -34,10 +32,24 @@ public class Perfil {
 
 
     public Perfil(String nombreUsuario) {
+        this(UUID.randomUUID(), nombreUsuario);
+    }
+
+    public Perfil(UUID idUsuario, String nombreUsuario) {
+        this.idUsuario = idUsuario;
+        this.totalDonaciones = 0;
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = Colaborador.getInstance();
         this.insignias = new ArrayList<>();
+        this.metricas = new ArrayList<>();
+        this.evolucionMensual = new ArrayList<>();
+        this.organizacionesAyudadas = 0;
+        this.posicionRanking = null;
         this.misionActual = categoriaActual.primeraMision();
+    }
+
+    public Perfil(UUID idUsuario) {
+        this(idUsuario, null);
     }
 
     public void ascenderCategoria() {
@@ -60,9 +72,5 @@ public class Perfil {
                 misionActual = categoriaActual.siguienteMision(misionActual);
             }
         }
-    }
-
-    public Integer totalDonaciones(){
-        return this.donaciones.toArray().length;
     }
 }
