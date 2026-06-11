@@ -40,6 +40,12 @@
             <version>1.18.34</version> <!-- O la versión más reciente -->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>ar.edu.utn.frba.ddsi</groupId>
+            <artifactId>donaciones-service</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
 </project>

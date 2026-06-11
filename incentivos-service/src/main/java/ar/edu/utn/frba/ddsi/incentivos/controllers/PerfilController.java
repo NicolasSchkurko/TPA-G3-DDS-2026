@@ -1,11 +1,14 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaObtenidaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/personas")
@@ -17,10 +20,10 @@ public class PerfilController {
         this.perfilService = perfilService;
     }
 
-    // GET /personas/{nombreUsuario}/perfil
-    @GetMapping("/{nombreUsuario}/perfil")
-    public ResponseEntity<PerfilDonanteDTO> obtenerPerfil(@PathVariable String nombreUsuario) {
-        PerfilDonanteDTO perfil = perfilService.obtenerPerfil(nombreUsuario);
+    // GET /personas/{uuid}/perfil
+    @GetMapping("/{id}/perfil")
+    public ResponseEntity<PerfilDonanteDTO> obtenerPerfil(@PathVariable UUID id) {
+        PerfilDonanteDTO perfil = perfilService.obtenerPerfil(id);
 
         if (perfil == null) {
             return ResponseEntity.notFound().build();
@@ -30,10 +33,19 @@ public class PerfilController {
     }
 
     //endpoints especificos
+//    GET /personas/{uuid}/donaciones
+    @GetMapping("/{id}/donaciones")
+    public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
+        List<DonacionDTO> donacion = donacionService.obtenerDonacion(id);
 
-//    GET /personas/{nombreUsuario}/metricas
-    
+        if (donacion == null) {
+            return ResponseEntity.notFound().build();
+        }
 
-//    GET /personas/{nombreUsuario}/misiones
-//    GET /personas/{nombreUsuario}/insignias
+        return ResponseEntity.ok(donacion);
+    }
+
+//    GET /personas/{uuid}/metricas
+//    GET /personas/{uuid}/misiones
+//    GET /personas/{uuid}/insignias
 }

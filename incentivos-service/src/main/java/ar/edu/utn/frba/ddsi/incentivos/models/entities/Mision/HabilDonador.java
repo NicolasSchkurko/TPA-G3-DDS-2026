@@ -15,6 +15,6 @@ public class HabilDonador extends Mision {
 
     @Override
     public Boolean completarMision(Perfil perfil) {
-        return null; //TODO
+        return perfil.getDonaciones().stream().anyMatch(donacion -> donacion.getBienes().size() > cantidadBienesObjetivo);
     }
 }

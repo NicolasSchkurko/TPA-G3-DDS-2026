@@ -1,14 +1,8 @@
-package ar.edu.utn.frba.ddsi.incentivos.dto;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos;
 
 import java.time.YearMonth;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-
-public class MetricasActividadDTO {
+public class MetricasActividad {
     private YearMonth periodoActual;
     private YearMonth periodoAnterior;
 
@@ -19,4 +13,8 @@ public class MetricasActividadDTO {
     private Integer organizacionesAyudadasActual;
     private Integer organizacionesAyudadasAnterior;
     private Double variacionPorcentualOrganizaciones;
+
+    public Double calcularVariacion(Integer dato1, Integer dato2){
+        return (double) ((dato1 - dato2) / dato2) * 100;
+    }
 }

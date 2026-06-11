@@ -15,6 +15,6 @@ public class Completitud extends Mision {
 
     @Override
     public Boolean completarMision(Perfil perfil) {
-        return null;//TODO
+        return perfil.getDonaciones().stream().map(donacion -> donacion.getCategoria()).distinct().count() > cantidadObjetivo;
     }
 }

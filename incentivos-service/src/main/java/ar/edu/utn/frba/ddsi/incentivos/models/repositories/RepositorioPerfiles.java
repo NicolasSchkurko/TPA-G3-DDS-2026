@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import lombok.Setter;
@@ -43,16 +44,14 @@ public class RepositorioPerfiles {
         return List.copyOf(perfiles);
     }
 
-    public Perfil buscarPorNombreUsuario(String nombreUsuario) {
-        if (perfiles.isEmpty() || nombreUsuario == null) {
+    public Perfil buscarPorIDUsuario(UUID id) {
+        if (perfiles.isEmpty() || id == null) {
             return null;
         }
 
-        String busqueda = nombreUsuario.trim();
+        Predicate<Perfil> idPredicate = perfil -> perfil.getIdUsuario().equals(id);;
 
-        Predicate<Perfil> nombrePredicate = predicatePorNombreUsuario(busqueda);
-
-        return findBy(nombrePredicate).orElse(null);
+        return findBy(idPredicate).orElse(null);
     }
 
     private Optional<Perfil> findBy(Predicate<Perfil> predicate) {

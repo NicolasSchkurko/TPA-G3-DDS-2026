@@ -1,19 +1,15 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+
+import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 
 @Service
-public class PerfilService {
+public class DonacionService {
     private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
 
     public PerfilDonanteDTO obtenerPerfil(UUID id) {

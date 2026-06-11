@@ -15,6 +15,6 @@ public class DonacionesExistosas extends Mision {
 
     @Override
     public Boolean completarMision(Perfil perfil) {
-        return null;//TODO
+        return perfil.getDonaciones().stream().filter(donacion -> !donacion.getEstado().equals(ENTREGADO)).size() > donacionesObjetivo;
     }
 }

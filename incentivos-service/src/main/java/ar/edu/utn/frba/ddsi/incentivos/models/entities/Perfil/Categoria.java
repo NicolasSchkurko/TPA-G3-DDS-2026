@@ -25,7 +25,12 @@ public class Categoria {
 
     public boolean esUltimaMision(Mision mision) {
         if (misiones == null || misiones.isEmpty() || mision == null) return false;
-        return mision.equals(misiones.get(misiones.size() - 1));
+        return mision.equals(misiones.getLast());
+    }
+
+    public Mision primeraMision(){
+        if (misiones == null || misiones.isEmpty()) return null;
+        return misiones.getFirst();
     }
 
     public Mision siguienteMision(Mision misionActual) {
@@ -35,3 +40,4 @@ public class Categoria {
         return this.misiones.get(index + 1);
     }
 }
+
