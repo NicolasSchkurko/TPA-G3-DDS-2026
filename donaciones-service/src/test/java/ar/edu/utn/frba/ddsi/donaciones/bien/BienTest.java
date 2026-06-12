@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.bien;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
-import org.junit.jupiter.api.Assertions;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,7 +17,8 @@ public class BienTest{
   @Test
   @DisplayName("Crear un bien con estado")
   public void crearBienConEstado(){
-    SubcategoriaBien subcategoria = new SubcategoriaBien("Arroz", CategoriaBien.ALIMENTOS);
+    CategoriaBien alimentos = new CategoriaBien("Alimentos");
+    SubcategoriaBien subcategoria = new SubcategoriaBien("Arroz", alimentos);
     BienConEstado bien = new BienConEstado("Arroz blanco", subcategoria, 2, UnidadDeMedida.KILOGRAMOS, false);
 
     assertEquals("Arroz blanco", bien.getDescripcion());
@@ -30,7 +31,8 @@ public class BienTest{
   @Test
   @DisplayName("Crear un bien perecedero")
   public void crearBienPerecedero(){
-    SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", CategoriaBien.ALIMENTOS);
+    CategoriaBien alimentos = new CategoriaBien("Alimentos");
+    SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
     LocalDate fechaVencimiento = LocalDate.of(2026, 12, 31);
     BienPerecedero bien = new BienPerecedero("Atun", subcategoria, 1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
 

@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
@@ -29,7 +32,7 @@ public class EntidadBeneficiaria {
         this.razonSocial = razonSoc;
         this.direccion = dir;
         this.nroTell = nroTell;
-        this.necesidades = new ArrayList<Necesidad>();
+        this.necesidades = new ArrayList<>();
         this.correosRepresentantes = correosRepres;
     }
 
@@ -37,7 +40,11 @@ public class EntidadBeneficiaria {
         this.necesidades.add(necesidad);
     }
 
-    public List<Donacion> verDonaciones() {
+    public void eliminarNecesidad(Necesidad necesidad) {
+        this.necesidades.remove(necesidad);
+    }
+
+    public List<Donacion> verDonaciones(){
         return necesidades.stream()
                 .flatMap(necesidad -> necesidad.getDonaciones().stream())
                 .toList();

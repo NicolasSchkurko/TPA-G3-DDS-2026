@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 
 public class NecesidadTest {
-  SubcategoriaBien subcategoria =
-          new SubcategoriaBien("Ropa", CategoriaBien.VESTIMENTA);
+  CategoriaBien vestimenta = new CategoriaBien("Vestimenta");
+  SubcategoriaBien subcategoria = new SubcategoriaBien("Ropa", vestimenta);
 
   @Test
   @DisplayName("Test se creo una necesidad recurrente correctamente")
