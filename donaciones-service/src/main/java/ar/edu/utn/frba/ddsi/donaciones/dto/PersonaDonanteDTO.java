@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto;
 
+import java.util.List;
+import javax.swing.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,5 +28,9 @@ public class PersonaDonanteDTO {
   private String tipoJuridico; // "ONG", "EMPRESA", etc.
 
   // agregar dto de Direccion, MediosDeContacto y Representantes.
-}
+  // private DireccionDTO direccion;
 
+  private List<MediosContactoDTO> mediosDeContacto;
+
+  private List<RepresentanteDTO> representantes;
+  }

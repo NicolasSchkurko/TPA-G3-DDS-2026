@@ -42,4 +42,4 @@ public class MediosDeContactoTest {
 
     assertEquals(List.of(medioWhatsapp), medios.getListaMediosDeContacto());
   }
-}
+}     
