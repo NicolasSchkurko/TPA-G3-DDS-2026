@@ -9,22 +9,24 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class Insignia {
-    String nombreInsignia;
-    LocalDate fecha;
-    Mision misionCompletada;
+    private String nombre;
+    private String descripcion;
+    private String urlImagen;
+    private LocalDate fechaObtencion;
 
-    public Insignia(String nombreInsignia, Mision misionCompletada){
-        this.nombreInsignia = nombreInsignia;
-        this.fecha = null;
-        this.misionCompletada = misionCompletada;
+    public Insignia(String nombreInsignia, String NombreMisionCompletada){
+        this.nombre = nombreInsignia;
+        this.fechaObtencion = null;
+        this.urlImagen = null;
+        this.descripcion = NombreMisionCompletada;
     }
 
     public InsigniaDTO toDTO() {
         InsigniaDTO dto = new InsigniaDTO();
-        dto.setNombre(this.nombreInsignia);
-        dto.setFechaObtencion(this.fecha);
-        dto.setDescripcion(null);
-        dto.setUrlImagen(null);
+        dto.setNombre(this.nombre);
+        dto.setFechaObtencion(this.fechaObtencion);
+        dto.setDescripcion(this.descripcion);
+        dto.setUrlImagen(this.urlImagen);
         return dto;
     }
 }

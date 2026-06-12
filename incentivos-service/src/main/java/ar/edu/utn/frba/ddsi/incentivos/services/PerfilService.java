@@ -1,9 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.ActividadMensualDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +9,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
@@ -22,6 +20,27 @@ import org.springframework.stereotype.Service;
 public class PerfilService {
     private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
 
+//    private final ImpactoDonacionService impactoDonacionService;
+//
+//    public PerfilService(ImpactoDonacionService impactoDonacionService) {
+//        this.impactoDonacionService = impactoDonacionService;
+//    }
+//
+//    public void procesarDonacion(
+//            UUID idDonacion) {
+//
+//        ImpactoDonacionDTO donacion =
+//                impactoDonacionService
+//                        .buscarDonacionPorUUID(idDonacion);
+//
+//        Perfil perfil =
+//                repositorioPerfiles.buscarPorIDUsuario(donacion.getIdUsuario());
+//
+//        perfil.progresarMision(donacion);
+//
+//        perfilRepository
+//                .actualizar(perfil);
+//    }
 
     public PerfilDonanteDTO buscarPerfilPorUUID(UUID id) {
         Perfil entidad = repositorioPerfiles.buscarPorIDUsuario(id);

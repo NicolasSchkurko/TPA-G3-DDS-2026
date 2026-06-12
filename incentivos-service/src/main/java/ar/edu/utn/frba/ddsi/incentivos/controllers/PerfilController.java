@@ -1,12 +1,13 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDonanteDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
-import ar.edu.utn.frba.ddsi.incentivos.services.DonacionService;
+import ar.edu.utn.frba.ddsi.incentivos.services.ImpactoDonacionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
@@ -15,9 +16,15 @@ import java.util.UUID;
 public class PerfilController {
 
     private final PerfilService perfilService;
+    private final RestTemplate restTemplate;
+    private final ImpactoDonacionService impactoDonacionService;
 
-    public PerfilController(PerfilService perfilService) {
+    public PerfilController(PerfilService perfilService,
+                            ImpactoDonacionService impactoDonacionService,
+                            RestTemplate restTemplate) {
         this.perfilService = perfilService;
+        this.impactoDonacionService = impactoDonacionService;
+        this.restTemplate = restTemplate;
     }
 
     // GET /personas/{uuid}/perfil
@@ -34,18 +41,20 @@ public class PerfilController {
 
     //endpoints especificos
 
-    //no necesito todas las donaciones, solo la ultima
-//    GET /personas/{uuid}/donaciones
-    @GetMapping("/{id}/donaciones")
-    public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
-        DonacionDTO donacion = donacionService.obtenerDonacion(id);
-
-        if (donacion == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(donacion);
-    }
+    // tomando inspiracion de notificaciones-service xd
+//    POST /personas/{idDonacion}
+//    @PostMapping("/{idDonacion}")
+//    public ResponseEntity<Void>
+//    procesarDonacion(
+//            @PathVariable UUID idDonacion) {
+//
+//        perfilService
+//                .procesarDonacion(
+//                        idDonacion);
+//
+//        return ResponseEntity.ok()
+//                .build();
+//    }
 
 //    GET /personas/{uuid}/metricas
 //    GET /personas/{uuid}/misiones

@@ -8,21 +8,24 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class Donacion {
+public class ImpactoDonacion {
     private UUID idDonacion;
+    private UUID idPerfil;
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;
     private String categoria;
     private String entidadBeneficiaria;
     private String estado;
 
-    public Donacion(String entidadBeneficiaria,
-                    Integer cantidadBienes,
-                    LocalDate fechaEntrega,
-                    String categoria,
-                    String estado,
-                    UUID idDonacion){
+    public ImpactoDonacion(String entidadBeneficiaria,
+                           Integer cantidadBienes,
+                           LocalDate fechaEntrega,
+                           String categoria,
+                           String estado,
+                           UUID idDonacion,
+                           UUID idPerfil){
         this.idDonacion = idDonacion;
+        this.idPerfil = idPerfil;
         this.estado = estado;
         this.entidadBeneficiaria = entidadBeneficiaria;
         this.cantidadBienes = cantidadBienes;

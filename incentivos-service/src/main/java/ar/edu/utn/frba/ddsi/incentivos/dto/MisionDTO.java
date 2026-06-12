@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,7 +9,7 @@ import java.util.List;
 @Setter
 
 public class MisionDTO {
-    private List<DonacionDTO> donaciones;
+    private List<ImpactoDonacionDTO> donaciones;
     private String nombreMision;
     private InsigniaDTO insigniaObjetivo;
     private Integer progresoActual;

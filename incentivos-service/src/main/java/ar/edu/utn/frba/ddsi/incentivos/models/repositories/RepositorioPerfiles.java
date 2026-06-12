@@ -36,6 +36,12 @@ public class RepositorioPerfiles {
         }
     }
 
+    public void actualizarPerfil(
+            Perfil perfil) {
+
+        //TODO cuando pueda consumir la donacion impactante
+    }
+
     public void eliminarPerfil(Perfil perfil) {
         perfiles.remove(perfil);
     }

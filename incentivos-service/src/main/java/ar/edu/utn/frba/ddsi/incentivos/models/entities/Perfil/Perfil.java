@@ -58,13 +58,14 @@ public class Perfil {
     }
 
     public void otorgarInsignia(Insignia insignia) {
-        insignia.setFecha(LocalDate.now());
+        insignia.setFechaObtencion(LocalDate.now());
         insignias.add(insignia);
     }
 
-    public void misionCompletada(){
-        if(misionActual.completarMision(this)){
-            this.otorgarInsignia(misionActual.getInsignia());
+    public void progresarMision(ImpactoDonacion donacion){
+        misionActual.registrarProgreso(donacion);
+        if(misionActual.estaCompleta()){
+            this.otorgarInsignia(misionActual.getInsigniaObjetivo());
             if (categoriaActual.esUltimaMision(misionActual)) {
                 this.ascenderCategoria();
             }
