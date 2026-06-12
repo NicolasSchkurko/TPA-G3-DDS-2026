@@ -74,4 +74,27 @@ public class Perfil {
             }
         }
     }
+
+//    public List<ActividadMensual> generarEvolucionMensual() {
+//        YearMonth esteMes = YearMonth.now();
+//        YearMonth mesPasado = esteMes.minusMonths(1);
+//
+//        // Si a futuro se quiere mostrar más meses (ej: los últimos 6),
+//        // solo agregar más objetos ActividadMensual a esta lista.
+//        List<ActividadMensual> evolucion = new ArrayList<>();
+//        evolucion.add(new ActividadMensual(mesPasado, this.donaciones));
+//        evolucion.add(new ActividadMensual(esteMes, this.donaciones));
+//
+//        return evolucion;
+//    }
+//
+//    public MetricasActividad generarMetricasComparativas() {
+//        YearMonth esteMes = YearMonth.now();
+//        YearMonth mesPasado = esteMes.minusMonths(1);
+//
+//        ActividadMensual actActual = new ActividadMensual(esteMes, this.donaciones);
+//        ActividadMensual actAnterior = new ActividadMensual(mesPasado, this.donaciones);
+//
+//        return new MetricasActividad(actActual, actAnterior);
+//    }
 }

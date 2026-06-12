@@ -36,10 +36,14 @@ public class RepositorioPerfiles {
         }
     }
 
-    public void actualizarPerfil(
-            Perfil perfil) {
-
-        //TODO cuando pueda consumir la donacion impactante
+    public void actualizar(Perfil perfilModificado) {
+        if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
+            return; // me hace ruido esto
+        }
+        int index = perfiles.indexOf(perfilModificado);
+        if (index >= 0) {
+            perfiles.set(index, perfilModificado);
+        }
     }
 
     public void eliminarPerfil(Perfil perfil) {
@@ -51,27 +55,12 @@ public class RepositorioPerfiles {
     }
 
     public Perfil buscarPorIDUsuario(UUID id) {
-        if (perfiles.isEmpty() || id == null) {
+        if (id == null || perfiles.isEmpty()) {
             return null;
         }
-
-        Predicate<Perfil> idPredicate = perfil -> perfil.getIdUsuario().equals(id);;
-
-        return findBy(idPredicate).orElse(null);
-    }
-
-    private Optional<Perfil> findBy(Predicate<Perfil> predicate) {
         return perfiles.stream()
-                .filter(predicate)
-                .findFirst();
-    }
-    
-    private Predicate<Perfil> predicatePorUUID(UUID IDbusqueda) {
-        return perfil -> matchesUUID(perfil, IDbusqueda);
-    }
-
-    private boolean matchesUUID(Perfil perfil, UUID IDbusqueda) {
-        UUID idPerfil = perfil.getIdUsuario();
-        return idPerfil != null;
+                .filter(perfil -> id.equals(perfil.getIdUsuario()))
+                .findFirst()
+                .orElse(null);
     }
 }

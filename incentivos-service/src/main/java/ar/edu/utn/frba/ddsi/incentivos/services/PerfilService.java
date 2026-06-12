@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
@@ -41,8 +43,16 @@ public class PerfilService {
 //        perfilRepository
 //                .actualizar(perfil);
 //    }
+//    public void registrarDonacionEnPerfil(UUID idUsuario, Donacion nuevaDonacion) {
+//        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
+//        if (perfil != null) {
+//            perfil.verificarProgresoMision(nuevaDonacion);
+//
+//            repositorioPerfiles.actualizar(perfil);
+//        }
+//    }
 
-    public PerfilDonanteDTO buscarPerfilPorUUID(UUID id) {
+    public PerfilNotificacionDTO buscarPerfilPorUUID(UUID id) {
         Perfil entidad = repositorioPerfiles.buscarPorIDUsuario(id);
         if (entidad == null) {
             return null;
@@ -50,7 +60,7 @@ public class PerfilService {
         return mapToDTO(entidad);
     }
 
-    public List<PerfilDonanteDTO> listarPerfiles() {
+    public List<PerfilNotificacionDTO> listarPerfiles() {
         List<Perfil> todas = repositorioPerfiles.getPerfiles();
         if (todas == null || todas.isEmpty()) {
             return new ArrayList<>();
@@ -63,12 +73,11 @@ public class PerfilService {
 
     public Perfil crearPerfil(UUID idUsuario) {
         if (idUsuario == null) {
-            throw new IllegalArgumentException("idUsuario no puede ser nulo");
+            throw new DatosInvalidosException();
         }
 
-        // si ya existe un perfil con ese id, lanzar excepción
         if (repositorioPerfiles.buscarPorIDUsuario(idUsuario) != null) {
-            throw new IllegalArgumentException("Ya existe un perfil con ese id");
+            throw new PerfilDuplicadoException();
         }
 
         Perfil nuevo = new Perfil(idUsuario);
@@ -76,28 +85,11 @@ public class PerfilService {
         return nuevo;
     }
 
-    private PerfilDonanteDTO mapToDTO(Perfil perfil) {
+    private PerfilNotificacionDTO mapToDTO(Perfil perfil) {
         if (perfil == null) return null;
 
-        PerfilDonanteDTO dto = new PerfilDonanteDTO();
-
-        dto.setIdUsuario(perfil.getIdUsuario());
-        dto.setNombreUsuario(perfil.getNombreUsuario());
-
-        dto.setCategoria(perfil.getCategoriaActual().getNombre().name());
-
-        dto.setTotalDonaciones(perfil.getTotalDonaciones());
-        dto.setOrganizacionesAyudadas(perfil.getOrganizacionesAyudadas());
-        dto.setPosicionRanking(perfil.getPosicionRanking());
-
-        dto.setInsigniasObtenidas(perfil.getInsignias().stream().map(Insignia::toDTO).collect(Collectors.toList()));
-
-        dto.setMisionActual(perfil.getMisionActual().toDTO());
-
-        dto.setEvolucionMensual(perfil.getEvolucionMensual().stream().map(ActividadMensual::toDTO).collect(Collectors.toList()));
-
-        dto.setMetricas(perfil.getMetricas().stream().map(MetricasActividad::toDTO).collect(Collectors.toList()));
-
+        PerfilNotificacionDTO dto = new PerfilNotificacionDTO();
+        //TODO
         return dto;
     }
 }

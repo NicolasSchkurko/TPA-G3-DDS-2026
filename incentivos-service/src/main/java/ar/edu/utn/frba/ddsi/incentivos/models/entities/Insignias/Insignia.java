@@ -17,16 +17,9 @@ public class Insignia {
     public Insignia(String nombreInsignia, String NombreMisionCompletada){
         this.nombre = nombreInsignia;
         this.fechaObtencion = null;
-        this.urlImagen = null;
+        this.urlImagen = "https://donatrack.org/images/insignias/default.png"; // Una URL base por defecto
         this.descripcion = NombreMisionCompletada;
     }
 
-    public InsigniaDTO toDTO() {
-        InsigniaDTO dto = new InsigniaDTO();
-        dto.setNombre(this.nombre);
-        dto.setFechaObtencion(this.fechaObtencion);
-        dto.setDescripcion(this.descripcion);
-        dto.setUrlImagen(this.urlImagen);
-        return dto;
-    }
+
 }

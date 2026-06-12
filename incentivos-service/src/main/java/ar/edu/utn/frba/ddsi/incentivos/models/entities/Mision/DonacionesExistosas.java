@@ -14,7 +14,19 @@ public class DonacionesExistosas extends Mision {
     }
 
     @Override
-    public Boolean completarMision(Perfil perfil) {
-        return perfil.getDonaciones().stream().filter(donacion -> !donacion.getEstado().equals(ENTREGADO)).size() > donacionesObjetivo;
+    public Integer getProgresoObjetivo() {
+        return this.donacionesObjetivo;
     }
+
+//    @Override
+//    public Integer calcularProgresoActual(Perfil perfil) {
+//        return (int) perfil.getDonaciones().stream()
+//                .filter(donacion -> "ENTREGADA".equalsIgnoreCase(donacion.getEstado()))
+//                .count();
+//    }
+//
+//    @Override
+//    public Boolean completarMision(Perfil perfil) {
+//        return this.calcularProgresoActual(perfil) >= this.getProgresoObjetivo();
+//    }
 }

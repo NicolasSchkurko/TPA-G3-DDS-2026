@@ -22,24 +22,32 @@ public class MetricasActividad {
     private Integer organizacionesAyudadasAnterior;
     private Double variacionPorcentualOrganizaciones;
 
-    public Double calcularVariacion(Integer dato1, Integer dato2){
-        if (dato1 == null || dato2 == null || dato2 == 0) return null;
-        return (double) ((double)(dato1 - dato2) / dato2) * 100;
+    public MetricasActividad(ActividadMensual actual, ActividadMensual anterior) {
+        this.periodoActual = actual.getPeriodo();
+        this.donacionesActual = actual.getCantidadDonaciones();
+        this.organizacionesAyudadasActual = actual.getOrganizacionesAyudadas();
+
+        if (anterior != null) {
+            this.periodoAnterior = anterior.getPeriodo();
+            this.donacionesAnterior = anterior.getCantidadDonaciones();
+            this.organizacionesAyudadasAnterior = anterior.getOrganizacionesAyudadas();
+        } else {
+            this.periodoAnterior = this.periodoActual.minusMonths(1);
+            this.donacionesAnterior = 0;
+            this.organizacionesAyudadasAnterior = 0;
+        }
+
+        this.variacionPorcentualDonaciones = calcularVariacion(this.donacionesActual, this.donacionesAnterior);
+        this.variacionPorcentualOrganizaciones = calcularVariacion(this.organizacionesAyudadasActual, this.organizacionesAyudadasAnterior);
     }
 
-    public MetricasActividadDTO toDTO(){
-        MetricasActividadDTO dto = new MetricasActividadDTO();
-        dto.setPeriodoActual(this.periodoActual);
-        dto.setPeriodoAnterior(this.periodoAnterior);
-
-        dto.setDonacionesActual(this.donacionesActual);
-        dto.setDonacionesAnterior(this.donacionesAnterior);
-        dto.setVariacionPorcentualDonaciones(this.variacionPorcentualDonaciones);
-
-        dto.setOrganizacionesAyudadasActual(this.organizacionesAyudadasActual);
-        dto.setOrganizacionesAyudadasAnterior(this.organizacionesAyudadasAnterior);
-        dto.setVariacionPorcentualOrganizaciones(this.variacionPorcentualOrganizaciones);
-
-        return dto;
+    private Double calcularVariacion(Integer dato1, Integer dato2){
+        if (dato1 == null || dato2 == null) return 0.0;
+        if (dato2 == 0) {
+            return dato1 > 0 ? 100.0 : 0.0;
+        }
+        return ((double)(dato1 - dato2) / dato2) * 100.0;
     }
+
+
 }

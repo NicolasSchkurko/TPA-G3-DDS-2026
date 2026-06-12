@@ -14,7 +14,20 @@ public class HabilDonador extends Mision {
     }
 
     @Override
-    public Boolean completarMision(Perfil perfil) {
-        return perfil.getDonaciones().stream().anyMatch(donacion -> donacion.getBienes().size() > cantidadBienesObjetivo);
+    public Integer getProgresoObjetivo() {
+        return this.cantidadBienesObjetivo;
     }
+
+//    @Override
+//    public Integer calcularProgresoActual(Perfil perfil) {
+//        return perfil.getDonaciones().stream()
+//                .mapToInt(Donacion::getCantidadBienes)
+//                .max()
+//                .orElse(0); // Si no tiene donaciones, el progreso es 0
+//    }
+//
+//    @Override
+//    public Boolean completarMision(Perfil perfil) {
+//        return this.calcularProgresoActual(perfil) > this.getProgresoObjetivo();
+//    }
 }

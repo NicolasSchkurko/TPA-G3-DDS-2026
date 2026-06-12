@@ -28,17 +28,6 @@ public abstract class Mision {
         this.progresoObjetivo = null;
     }
 
-    public MisionDTO toDTO() {
-        MisionDTO dto = new MisionDTO();
-        dto.setNombreMision(this.nombreMision);
-        if (this.insigniaObjetivo != null) {
-            dto.setInsigniaObjetivo(this.insigniaObjetivo.toDTO());
-        }
-        dto.setProgresoActual(this.progresoActual);
-        dto.setProgresoObjetivo(this.progresoObjetivo);
-        return dto;
-    }
-
     //override de este metodo en cada mision
     public void registrarProgreso(ImpactoDonacion donacion) {
         donaciones.add(donacion);

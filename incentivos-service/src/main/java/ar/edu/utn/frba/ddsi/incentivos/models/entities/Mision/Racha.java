@@ -15,8 +15,35 @@ public class Racha extends Mision {
         this.mesesObjetivo = mesesObjetivo;
     }
 
-    @Override
-    public Boolean completarMision(Perfil perfil) {
-         return null; //todo
-    }
+//    @Override
+//    public Integer getProgresoObjetivo() {
+//        return this.mesesObjetivo;
+//    }
+//
+//    @Override
+//    public Integer calcularProgresoActual(Perfil perfil) {
+//        Set<YearMonth> mesesConDonacion = perfil.getDonaciones().stream()
+//                .filter(d -> "ENTREGADA".equalsIgnoreCase(d.getEstado()))
+//                .filter(d -> d.getFechaEntrega() != null)
+//                .map(d -> YearMonth.from(d.getFechaEntrega()))
+//                .collect(Collectors.toSet());
+//
+//        YearMonth mesAExaminar = YearMonth.now();
+//        int rachaActual = 0;
+//
+//        if (!mesesConDonacion.contains(mesAExaminar)) {
+//            mesAExaminar = mesAExaminar.minusMonths(1);
+//        }
+//
+//        while (mesesConDonacion.contains(mesAExaminar)) {
+//            rachaActual++;
+//            mesAExaminar = mesAExaminar.minusMonths(1);
+//        }
+//        return rachaActual;
+//    }
+//
+//    @Override
+//    public Boolean completarMision(Perfil perfil) {
+//        return this.calcularProgresoActual(perfil) >= this.getProgresoObjetivo();
+//    }
 }
