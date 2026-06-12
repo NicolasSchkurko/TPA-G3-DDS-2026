@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones;
 
-public enum Estados {
+public enum Estado {
     EN_DEPOSITO,
     PENDIENTE_ASIGNACION,
     ASIGNADO,

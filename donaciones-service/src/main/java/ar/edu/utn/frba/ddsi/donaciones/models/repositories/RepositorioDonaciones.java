@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estados;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ public class RepositorioDonaciones {
     public void asignarDonacion(Donacion donacion) {
         if (donacionesNoAsignadas.contains(donacion)) {
             donacionesNoAsignadas.remove(donacion);
-            donacion.setEstado(Estados.EN_DEPOSITO);
+            donacion.setEstado(Estado.EN_DEPOSITO);
             donacionesAsignadas.add(donacion);
         }
     }

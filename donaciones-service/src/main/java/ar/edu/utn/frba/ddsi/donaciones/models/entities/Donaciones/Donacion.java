@@ -19,17 +19,17 @@ public class Donacion {
     private EntidadBeneficiaria entidad;
     private String descripcion;
     private List<Bien> bienes =  new ArrayList<>();
-    private Estados estado;
+    private Estado Estado;
     private SubcategoriaBien subcategoria;
     private LocalDate fechaEntrega;
 
     public Donacion(PersonaDonante donante, EntidadBeneficiaria entidad, String descripcion,
-                         List<Bien> bienes, Estados estado, SubcategoriaBien subcategoria, LocalDate fechaEntrega){
+                         List<Bien> bienes, Estado Estado, SubcategoriaBien subcategoria, LocalDate fechaEntrega){
         this.donante = donante;
         this.entidad = entidad;
         this.descripcion = descripcion;
         this.bienes = bienes;
-        this.estado = estado;
+        this.Estado = Estado;
         this.subcategoria = subcategoria;
         this.fechaEntrega = fechaEntrega;
     }
@@ -50,6 +50,6 @@ public class Donacion {
 
     @Override
     public String toString() {
-        return "Donacion{donante=" + donante + ", entidad=" + entidad + ", descripcion=" + descripcion + ", bienes=" + bienes + ", estado=" + estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
+        return "Donacion{donante=" + donante + ", entidad=" + entidad + ", descripcion=" + descripcion + ", bienes=" + bienes + ", Estado=" + Estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
     }
 }

@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estados;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,7 +26,7 @@ public class NecesidadRecurrente extends Necesidad {
         LocalDate fechaLimite = LocalDate.now().minusDays(this.plazoEnDias);
 
         return this.getDonaciones().stream()
-                .filter(donacion -> donacion.getEstado() == Estados.ENTREGADO)
+                .filter(donacion -> donacion.getEstado() == Estado.ENTREGADO)
                 // Filtramos solo las donaciones cuya fecha de entrega sea posterior a la fecha límite
                 .filter(donacion -> donacion.getFechaEntrega() != null && donacion.getFechaEntrega().isAfter(fechaLimite))
                 .mapToInt(Donacion::sumaCantidadBienes)

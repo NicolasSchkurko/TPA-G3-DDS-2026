@@ -52,13 +52,13 @@ public interface SegmentadorDonaciones {
         SubcategoriaBien sub = bienesDelGrupo.get(0).getSubcategoria();
 
         return new Donacion(
-                donante,
-                null,
-                "Segmento de donación: " + sub.getNombre(),
-                bienesDelGrupo,
-                Estados.EN_DEPOSITO,
-                sub,
-                null
+            donante,
+            null,
+            "Segmento de donación: " + sub.getNombre(),
+            bienesDelGrupo,
+            Estado.EN_DEPOSITO,
+            sub,
+            null
         );
     }
 }

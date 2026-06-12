@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estados;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,9 +29,9 @@ public abstract class Necesidad {
 
     public Integer cantidadRecibida() {
         return donaciones.stream()
-                .filter(d -> d.getEstado() == Estados.ENTREGADO) // Solo se suma lo que ya llegó
-                .mapToInt(Donacion::sumaCantidadBienes)
-                .sum();
+                         .filter(d -> d.getEstado() == Estado.ENTREGADO) // Solo se suma lo que ya llegó
+                         .mapToInt(Donacion::sumaCantidadBienes)
+                         .sum();
     }
 
     public abstract boolean estaSatisfecha();

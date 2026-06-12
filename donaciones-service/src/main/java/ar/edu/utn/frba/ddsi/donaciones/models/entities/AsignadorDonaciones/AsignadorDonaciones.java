@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estados;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import java.util.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AlgoritmosDeAsignacion.AlgoritmoAsignacion;
@@ -58,7 +58,7 @@ public class AsignadorDonaciones {
         }
 
         // Caso 2: Intervención requerida (Pasa a estado intermedio)
-        donacion.setEstado(Estados.PENDIENTE_ASIGNACION);
+        donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
 
         ResultadoMatchmaking resultado;
         if (interseccion.size() > 1) {
@@ -94,7 +94,7 @@ public class AsignadorDonaciones {
     }
 
     public void confirmarAsignacion(Donacion donacion, EntidadBeneficiaria entidadElegida) {
-        if (donacionesPendientesDeAprobacion.containsKey(donacion) && donacion.getEstado() == Estados.PENDIENTE_ASIGNACION) {
+        if (donacionesPendientesDeAprobacion.containsKey(donacion) && donacion.getEstado() == Estado.PENDIENTE_ASIGNACION) {
             asignarDonacion(donacion, entidadElegida);
             donacionesPendientesDeAprobacion.remove(donacion);
         } else {
@@ -104,7 +104,7 @@ public class AsignadorDonaciones {
 
     private void asignarDonacion(Donacion donacion, EntidadBeneficiaria entidadElegida){
         donacion.setEntidad(entidadElegida);
-        donacion.setEstado(Estados.ASIGNADO);
+        donacion.setEstado(Estado.ASIGNADO);
         //falta lo de asignarlo a la necesidad
     }
 }

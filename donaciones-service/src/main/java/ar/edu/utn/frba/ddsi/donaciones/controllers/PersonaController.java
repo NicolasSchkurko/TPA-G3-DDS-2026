@@ -28,7 +28,7 @@ public class PersonaController {
   }
 
   // Ruta para buscar: GET /personas/buscar?nombre=Juan Perez
-  @GetMapping("/buscar")
+  @GetMapping
   public ResponseEntity<PersonaDonanteDTO> buscarPersona(@RequestParam String nombre) {
     PersonaDonanteDTO resultado = personaService.buscarPorNombre(nombre);
 

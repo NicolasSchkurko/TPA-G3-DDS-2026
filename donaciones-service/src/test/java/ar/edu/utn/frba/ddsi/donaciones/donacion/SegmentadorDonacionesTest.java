@@ -5,7 +5,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienPerecedero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estados;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.junit.jupiter.api.BeforeEach;
