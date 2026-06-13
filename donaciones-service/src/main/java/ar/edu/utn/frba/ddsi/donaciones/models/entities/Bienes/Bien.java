@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes;
 
 import java.util.Optional;
 
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,6 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public abstract class Bien {
+    UUID id;
     String descripcion;
     SubcategoriaBien subcategoria;
     @Getter(AccessLevel.NONE)

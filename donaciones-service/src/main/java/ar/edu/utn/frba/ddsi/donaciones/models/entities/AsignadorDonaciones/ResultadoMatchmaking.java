@@ -1,36 +1,22 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
 
-
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import java.util.List;
-import java.util.Map;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
 public class ResultadoMatchmaking {
 
-  // Lista a mostrar si el filtro automático funcionó (Intersección)
-  private List<EntidadBeneficiaria> opcionesCoincidentes;
+  private final Donacion donacion;
 
-  // Mapa a mostrar si el filtro automático falló (Listas separadas por algoritmo)
-  private Map<String, List<EntidadBeneficiaria>> resultadosCompletos;
+  // Lista unificada de propuestas con sus respectivos metadatos de algoritmos
+  private final List<PropuestaAsignacion> propuestasOrdenadas;
 
   // Flag para la Interfaz de Usuario
-  private boolean filtroAutomaticoExitoso;
-
-  // Constructor para cuando hay coincidencias
-  public ResultadoMatchmaking(List<EntidadBeneficiaria> opcionesCoincidentes, boolean filtroAutomaticoExitoso) {
-    this.opcionesCoincidentes = opcionesCoincidentes;
-    this.resultadosCompletos = null;
-    this.filtroAutomaticoExitoso = filtroAutomaticoExitoso;
-  }
-
-  // Constructor para cuando no hay coincidencias y se muestran todas las listas
-  public ResultadoMatchmaking(Map<String, List<EntidadBeneficiaria>> resultadosCompletos, boolean filtroAutomaticoExitoso) {
-    this.opcionesCoincidentes = null;
-    this.resultadosCompletos = resultadosCompletos;
-    this.filtroAutomaticoExitoso = filtroAutomaticoExitoso;
-  }
+  private final boolean huboCoincidenciaTotal;
 }

@@ -8,12 +8,14 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeC
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class EntidadBeneficiaria {
+    UUID id;
     private String razonSocial;
     private Direccion direccion;
     private Telefono nroTell;

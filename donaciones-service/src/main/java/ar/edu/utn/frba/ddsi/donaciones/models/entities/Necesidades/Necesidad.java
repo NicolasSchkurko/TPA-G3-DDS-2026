@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 public abstract class Necesidad {
+    UUID id;
     SubcategoriaBien subcategoria;
     List<Donacion> donaciones;
     String descripcion;
@@ -35,4 +37,9 @@ public abstract class Necesidad {
     }
 
     public abstract boolean estaSatisfecha();
+
+    public boolean esCompatibleCon(Donacion donacion) {
+        return !this.estaSatisfecha() && this.subcategoria.equals(donacion.getSubcategoria());
+    }
+
 }
