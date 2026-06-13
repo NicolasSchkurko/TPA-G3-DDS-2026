@@ -12,6 +12,5 @@ import java.util.UUID;
 public class PerfilDonanteDTO {
     //recibimos de PersonaDonanteDTO-Serv-Donaciones
     private UUID idUsuario;
-    private Integer totalDonaciones;
     private String nombreUsuario;
 }

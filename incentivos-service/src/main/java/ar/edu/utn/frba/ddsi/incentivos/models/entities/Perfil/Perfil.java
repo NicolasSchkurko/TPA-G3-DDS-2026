@@ -37,19 +37,11 @@ public class Perfil {
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
-        this.totalDonaciones = 0;
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = Colaborador.getInstance();
         this.insignias = new ArrayList<>();
-        this.metricas = new ArrayList<>();
-        this.evolucionMensual = new ArrayList<>();
-        this.organizacionesAyudadas = 0;
         this.posicionRanking = null;
         this.misionActual = categoriaActual.primeraMision();
-    }
-
-    public Perfil(UUID idUsuario) {
-        this(idUsuario, null);
     }
 
     public void ascenderCategoria() {

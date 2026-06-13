@@ -52,7 +52,7 @@ public class PerfilService {
 //        }
 //    }
 
-    public PerfilNotificacionDTO buscarPerfilPorUUID(UUID id) {
+    public PerfilDonanteDTO buscarPerfilPorUUID(UUID id) {
         Perfil entidad = repositorioPerfiles.buscarPorIDUsuario(id);
         if (entidad == null) {
             return null;
