@@ -8,8 +8,8 @@ import java.util.Map;
 @Getter
 @Setter
 public class SolicitudNotificacionDTO {
-    private String servicioOrigen;
-    private Long idDestinatario;
+    private String medioDeContacto;
+    private String direccionDeContacto;
     private String cuerpoMensaje;
     private String asuntoMensaje;
 }

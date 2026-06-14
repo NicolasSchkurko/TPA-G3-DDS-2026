@@ -17,8 +17,8 @@ public class NotificadorService {
     private final GestorNotificacion gestor = GestorNotificacion.getInstance();
     public void procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO){
         SolicitudNotificacion solicitud = new SolicitudNotificacion(
-                solicitudNotificacionDTO.getServicioOrigen(),
-                solicitudNotificacionDTO.getIdDestinatario(),
+                solicitudNotificacionDTO.getMedioDeContacto(),
+                solicitudNotificacionDTO.getDireccionDeContacto(),
                 solicitudNotificacionDTO.getCuerpoMensaje(),
                 solicitudNotificacionDTO.getAsuntoMensaje()
         );

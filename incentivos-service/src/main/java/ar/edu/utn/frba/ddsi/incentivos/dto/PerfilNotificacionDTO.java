@@ -9,7 +9,6 @@ import java.util.UUID;
 @Setter
 
 public class PerfilNotificacionDTO {
-    private String servicioOrigen;
     private String medioDeContacto;
     private String direccionContacto;
     private String cuerpoMensaje;

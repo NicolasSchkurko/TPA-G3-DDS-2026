@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion;
 
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Destinatario.Destinatario;
+
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,7 +12,7 @@ public class Notificacion {
     private Mensaje mensaje;
     @Setter
     @Getter
-    private Destinatario destinatario;
+    private String direccionDeContacto;
     @Setter
     private LocalDateTime fechaCreacion;
     @Setter
@@ -20,10 +20,10 @@ public class Notificacion {
     @Setter
     private EstadoNotificacion estado;
 
-    public Notificacion(Destinatario destinatario, Mensaje mensaje) {
+    public Notificacion(String direccionDeContacto, Mensaje mensaje) {
         this.fechaCreacion = LocalDateTime.now();
         this.estado = EstadoNotificacion.PENDIENTE;
-        this.destinatario = destinatario;
+        this.direccionDeContacto = direccionDeContacto;
         this.mensaje = mensaje;
     }
 
