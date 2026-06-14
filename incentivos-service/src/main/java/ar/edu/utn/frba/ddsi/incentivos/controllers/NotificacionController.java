@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/perfiles")
+@RequestMapping("/notificaciones")
 public class NotificacionController {
     private final NotificacionService notificacionService;
 
@@ -19,6 +19,7 @@ public class NotificacionController {
         this.notificacionService = notificacionService;
     }
 
-    // @GetMapping
-
+    // @PostMapping
+    //TODO crear notificacion
+    //TODO obetener medio de contacto
 }

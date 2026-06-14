@@ -11,16 +11,24 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 @Getter
 @Setter
 public class EntidadBeneficiaria {
+    private long id; // // Por ahora es un numero aleatorio para poder enviar algo al servicio de notificaciones
     private String razonSocial;
     private Direccion direccion;
     private Telefono nroTell;
     private List<Necesidad> necesidades;
     private MediosDeContacto correosRepresentantes;
 
-    public EntidadBeneficiaria (String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres){
+    Random random;
+
+    public EntidadBeneficiaria(String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres) {
+        this.id = random.nextLong();
         this.razonSocial = razonSoc;
         this.direccion = dir;
         this.nroTell = nroTell;
@@ -28,7 +36,7 @@ public class EntidadBeneficiaria {
         this.correosRepresentantes = correosRepres;
     }
 
-    public void agregarNecesidad(Necesidad necesidad){
+    public void agregarNecesidad(Necesidad necesidad) {
         this.necesidades.add(necesidad);
     }
 
@@ -42,7 +50,7 @@ public class EntidadBeneficiaria {
                 .toList();
     }
 
-    public void confirmarRecepcion(Donacion donacion){
+    public void confirmarRecepcion(Donacion donacion) {
 
     }
 
@@ -50,4 +58,5 @@ public class EntidadBeneficiaria {
     public String toString() {
         return "EntidadBeneficiaria{razonSocial=" + razonSocial + ", direccion=" + direccion + ", telefono=" + nroTell + ", necesidades=" + necesidades + ", correosRepresentantes=" + correosRepresentantes + '}';
     }
+
 }

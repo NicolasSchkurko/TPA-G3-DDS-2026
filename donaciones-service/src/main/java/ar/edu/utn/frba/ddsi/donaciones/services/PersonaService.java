@@ -13,8 +13,8 @@ import java.util.List;
 @Service
 public class PersonaService {
 
-  // Instancia de tu gestor actual
-  private final RepositorioDePersonas gestor = RepositorioDePersonas.getInstance();
+  // Instancia de tu repositorio actual
+  private final RepositorioDePersonas repositorio = RepositorioDePersonas.getInstance();
 
   public void crearPersona(PersonaDonanteDTO dto) {
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
@@ -32,7 +32,7 @@ public class PersonaService {
 
       // null en direccion por brevedad del ejemplo
       PersonaHumana nuevaPersona = new PersonaHumana(humano, null);
-      gestor.agregarPersona(nuevaPersona);
+      repositorio.agregarPersona(nuevaPersona);
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
 
@@ -48,7 +48,7 @@ public class PersonaService {
           new ArrayList<>() // representantes
       );
 
-      gestor.agregarPersona(nuevaPersona);
+      repositorio.agregarPersona(nuevaPersona);
 
     } else {
       throw new IllegalArgumentException("Tipo de persona inválido");
@@ -64,7 +64,7 @@ public class PersonaService {
   }
 
   public List<PersonaDonanteDTO> listarTodas() {
-    List<PersonaDonante> todas = gestor.getPersonas();
+    List<PersonaDonante> todas = repositorio.getPersonas();
     if (todas == null || todas.isEmpty()) {
       return new ArrayList<>();
     }
