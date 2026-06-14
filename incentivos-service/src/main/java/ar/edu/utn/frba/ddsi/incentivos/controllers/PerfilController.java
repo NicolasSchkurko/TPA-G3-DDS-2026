@@ -8,15 +8,35 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/perfiles") // Coincide con la ruta del Gateway
+@RequestMapping("/perfiles")
 public class PerfilController {
-//para mostrarle al cliente persona
     private final PerfilService perfilService;
 
     public PerfilController(PerfilService perfilService) {
         this.perfilService = perfilService;
     }
 
+//permite q Donaciones nos pida crear un Perfil
+//TODO CrearPerfilDTO y crearPerfil(dto)
+//CrearPerfilDTO tiene la informacion necesaria del servicio de donaciones para crear el perfil
+    @PostMapping
+    public ResponseEntity<Void> crearPerfil(@RequestBody CrearPerfilDTO dto) {
+        perfilService.crearPerfil(dto);
+        return ResponseEntity.ok().build();
+    }
+}
+
+//permite q Donaciones nos pida actualizarPerfil ante una donacion
+//TODO ActualizarPerfilDTO y actualizarPerfil(dto)
+//ActualizarPerfilDTO tiene la informacion necesaria del servicio de donaciones para actualizar el perfil (debe ser una donacion nueva)
+    @PostMapping
+    public ResponseEntity<Void> actualizarPerfil(@RequestBody ActualizarPerfilDTO dto) {
+        perfilService.actualizarPerfil(dto);
+        return ResponseEntity.ok().build();
+    }
+}
+
+//esto va al apiGateway?
     @GetMapping("/perfil")
     public ResponseEntity<MetricasActividadDTO> obtenerMetricasPerfil() {
 
