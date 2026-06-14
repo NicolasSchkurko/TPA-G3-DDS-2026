@@ -2,6 +2,10 @@ package ar.edu.utn.frba.ddsi.incentivos.config;
 
 //estoy desde el celu, intellij escribe los import
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
+
 //config para conectar como cliente a servicio donaciones y notificaciones
 @Configuration
 public class ClientConfig {

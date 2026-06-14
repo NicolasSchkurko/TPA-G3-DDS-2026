@@ -10,7 +10,6 @@ import java.util.Map;
 public class SolicitudNotificacionDTO {
     private String servicioOrigen;
     private Long idDestinatario;
-    private LocalDateTime fecha;
     private String cuerpoMensaje;
     private String asuntoMensaje;
 }
