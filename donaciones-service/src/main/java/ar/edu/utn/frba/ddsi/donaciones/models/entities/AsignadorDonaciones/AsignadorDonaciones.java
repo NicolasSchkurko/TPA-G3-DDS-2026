@@ -84,20 +84,25 @@ public class AsignadorDonaciones {
         return this.donacionesPendientesDeAprobacion;
     }
 
-    public void confirmarAsignacion(Donacion donacion, PropuestaAsignacion propuestaElegida) {
-        ResultadoMatchmaking resultadoAsociado = donacionesPendientesDeAprobacion.stream()
-                                                                                 .filter(r -> r.getDonacion().equals(donacion))
-                                                                                 .findFirst()
-                                                                                 .orElseThrow(() -> new IllegalStateException("La donación no está pendiente de asignación."));
-
-        if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
-            throw new IllegalStateException("La donación no está en estado pendiente.");
-        }
-
-        asignarDonacionAutomaticamente(donacion, propuestaElegida);
-        donacionesPendientesDeAprobacion.remove(resultadoAsociado);
+public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignacion propuestaElegida) {
+    if (resultado == null || propuestaElegida == null) {
+        throw new IllegalArgumentException("Resultado y propuesta no pueden ser nulos.");
     }
 
+    Donacion donacion = resultado.getDonacion();
+
+    if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
+        throw new IllegalStateException("La donación no está en estado pendiente.");
+    }
+
+    // Validar que la propuesta pertenece a este resultado
+    if (!resultado.getPropuestasOrdenadas().contains(propuestaElegida)) {
+        throw new IllegalArgumentException("La propuesta elegida no pertenece a este matching.");
+    }
+
+    asignarDonacionAPropuesta(donacion, propuestaElegida);
+    donacionesPendientesDeAprobacion.remove(resultado);
+}
     // --------------------------------------------------
     // Métodos privados
     // --------------------------------------------------
@@ -162,7 +167,7 @@ public class AsignadorDonaciones {
         return new PropuestaAsignacion(
             representativa.getEntidad(),
             representativa.getNecesidad(),
-            mejorAparicion.getAlgoritmo(),
+            "Interseccion",
             0, // Posición final a determinar después de ordenar
             scoreNumerico
         );
@@ -175,20 +180,20 @@ public class AsignadorDonaciones {
 
         if (huboCoincidenciaTotal && resultadoFinal.size() == 1) {
             PropuestaAsignacion propuestaUnica = resultadoFinal.get(0);
-            asignarDonacionAutomaticamente(donacion, propuestaUnica);
+            asignarDonacionAPropuesta(donacion, propuestaUnica);
         } else {
             registrarDonacionPendienteDeAprobacion(donacion, resultadoFinal, huboCoincidenciaTotal);
         }
     }
 
-    private void asignarDonacionAutomaticamente(Donacion donacion, PropuestaAsignacion propuesta) {
+    private void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
         donacion.setEntidad(propuesta.getEntidad());
         donacion.setEstado(Estado.ASIGNADO);
-        registrarDonacionEnNecesidad(donacion, propuesta.getEntidad(), propuesta.getNecesidad());
+        registrarDonacionEnNecesidad(donacion, propuesta.getNecesidad());
     }
 
-    private void registrarDonacionEnNecesidad(Donacion donacion, EntidadBeneficiaria entidad, Necesidad necesidad) {
-        // TODO: Implementar lógica de asignación a la necesidad correspondiente
+    private void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
+        necesidad.registrarDonacionAsignada(donacion);
     }
 
     private void registrarDonacionPendienteDeAprobacion(
