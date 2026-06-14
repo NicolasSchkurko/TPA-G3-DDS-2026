@@ -1,37 +1,59 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.GestorNotificacion;
 
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.CanalNotificacion.CanalNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.TipoNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Destinatario.Destinatario;
-
-import java.util.Map;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.SolicitudNotificacion.SolicitudNotificacion;
 
 public class GestorNotificacion {
+    private static  GestorNotificacion instanciaUnica;
 
-    public Notificacion crearNotificacion(TipoNotificacion tipo, Destinatario destinatario, Map datos) {
-        Notificacion notificacion = new Notificacion();
-        notificacion.setDestinatario(destinatario);
-        notificacion.setTipo(tipo);
-        notificacion.setFechaCreacion(java.time.LocalDateTime.now());
-        notificacion.setEstado(EstadoNotificacion.PENDIENTE);
-        // notificacion.setAsunto(Map.asunto())
-        // notificacion.setCuerpo(Map.cuerpo())
+    private GestorNotificacion() {}
+
+    public static GestorNotificacion getInstance() {
+        if (instanciaUnica == null) {
+            instanciaUnica = new GestorNotificacion();
+        }
+        return instanciaUnica;
+    }
+
+    public Notificacion procesarSolicitud(SolicitudNotificacion solicitud) {
+        Notificacion notificacion = crearNotificacion(solicitud);
+        String direccionContacto = solicitud.getDireccionDeContacto();
+
+        enviarNotificacion(direccionContacto, notificacion);
+
         return notificacion;
     }
 
-    public void enviarNotificacion(Notificacion notificacion, CanalNotificacion canalDeEnvio) {
-        boolean enviado = canalDeEnvio.enviar(notificacion, notificacion.getDestinatario());
-        if (enviado) {
-            notificacion.marcarEnviada();
-        } else {
-            notificacion.marcarFallida();
-        }
+    // Crea una Notificacion a partir de una SolicitudNotificacion
+    private Notificacion crearNotificacion(SolicitudNotificacion solicitud) {
+        String direccionDeContacto = solicitud.getDireccionDeContacto();
+        String asunto = solicitud.getAsuntoMensaje();
+        String cuerpo = solicitud.getCuerpoMensaje();
+
+        Mensaje mensaje = new Mensaje(asunto, cuerpo);
+
+        return new Notificacion(direccionDeContacto, mensaje);
+    }
+    
+    private MedioDeEnvio mapearStringAMedioDeEnvio(String tipoMedioContacto){
+        return null;
     }
 
-    public void crearYEnviarNotificacion(TipoNotificacion tipo, Destinatario destinatario, Map datos, CanalNotificacion canalDeEnvio) {
-        Notificacion notificacion = this.crearNotificacion(tipo, destinatario, datos);
-        this.enviarNotificacion(notificacion, canalDeEnvio);
+    // Por ahora solo envia al medio predeterminado
+    public void enviarNotificacion(String direccionContacto, Notificacion notificacion) {
+
+        try {
+            MedioDeEnvio medioDeContacto = mapearStringAMedioDeEnvio(direccionContacto);
+            medioDeContacto.enviarNotificacion(direccionContacto, notificacion);
+            notificacion.marcarEnviada();
+
+        } catch (IllegalArgumentException ex) {
+
+            notificacion.marcarFallida();
+            throw new ErrorAlEnviarNotificacion("Ocurrio un problema inesperado al enviar la notificacion", ex);
+        }
     }
 }
