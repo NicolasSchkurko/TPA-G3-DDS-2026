@@ -1,20 +1,15 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.GestorNotificacion;
 
 import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.TipoMedioDeContactoInvalidoException;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Destinatario.Destinatario;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.SolicitudNotificacion.SolicitudNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioDestinatarios;
 
 public class GestorNotificacion {
     private static  GestorNotificacion instanciaUnica;
-    private RepositorioDestinatarios repositorio;
 
-    private GestorNotificacion() {
-        this.repositorio = RepositorioDestinatarios.getInstance();
-    }
+    private GestorNotificacion() {}
 
     public static GestorNotificacion getInstance() {
         if (instanciaUnica == null) {
@@ -25,14 +20,15 @@ public class GestorNotificacion {
 
     public Notificacion procesarSolicitud(SolicitudNotificacion solicitud) {
         Notificacion notificacion = crearNotificacion(solicitud);
-        enviarNotificacion(notificacion);
+        String direccionContacto = solicitud.getDireccionDeContacto();
+
+        enviarNotificacion(direccionContacto, notificacion);
 
         return notificacion;
     }
 
     // Crea una Notificacion a partir de una SolicitudNotificacion
     private Notificacion crearNotificacion(SolicitudNotificacion solicitud) {
-        TipoMedioDeContacto medioDeContacto = mapearStringAMedioContacto(solicitud.getTipoMedioDeContacto());
         String direccionDeContacto = solicitud.getDireccionDeContacto();
         String asunto = solicitud.getAsuntoMensaje();
         String cuerpo = solicitud.getCuerpoMensaje();
@@ -42,17 +38,16 @@ public class GestorNotificacion {
         return new Notificacion(direccionDeContacto, mensaje);
     }
     
-    private TipoMedioDeContacto mapearStringAMedioContacto(String tipoMedioContacto){
-
-        return;
+    private MedioDeEnvio mapearStringAMedioDeEnvio(String tipoMedioContacto){
+        return null;
     }
+
     // Por ahora solo envia al medio predeterminado
-    public void enviarNotificacion(Notificacion notificacion) {
-        Destinatario destinatario = notificacion.getDestinatario();
+    public void enviarNotificacion(String direccionContacto, Notificacion notificacion) {
 
         try {
-
-            destinatario.getMediosDeContacto().enviarNotificacionAMedios(notificacion);
+            MedioDeEnvio medioDeContacto = mapearStringAMedioDeEnvio(direccionContacto);
+            medioDeContacto.enviarNotificacion(direccionContacto, notificacion);
             notificacion.marcarEnviada();
 
         } catch (IllegalArgumentException ex) {
