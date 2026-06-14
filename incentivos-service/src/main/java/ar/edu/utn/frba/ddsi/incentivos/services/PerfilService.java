@@ -17,6 +17,41 @@ import org.springframework.stereotype.Service;
 public class PerfilService {
     private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
 
+public Void crearPerfil(CrearPerfilDTO dto) {
+        if (dto.getIdUsuario() == null) {
+            throw new DatosInvalidosException();
+        }
+
+        if (repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario()) != null) {
+            throw new PerfilDuplicadoException();
+        }
+
+        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
+        repositorioPerfiles.agregarPerfil(nuevo);
+    }
+
+public void actualizarPerfil(ActualizarPerfilDTO dto) {
+//ActualizarPerfilDTO debe tener el medioDeContacto y tipo
+
+    Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario());
+
+//guardar cosas a comparar para enviar notificacion
+
+    perfil.actualizarNivel();
+   
+   repositorioPerfiles.modificarPerfil(perfil);
+
+//segun ascenso de categoria, gana insignia o lo q se quiera notificar
+    if (perfil.getAlgo != Algo) {
+        notificacionClient.enviar(
+            new PerfilNotificacionDTO(
+                //crear notificacion
+            )
+        );
+    }
+}
+
+
 //    private final ImpactoDonacionService impactoDonacionService;
 //
 //    public PerfilService(ImpactoDonacionService impactoDonacionService) {
@@ -66,19 +101,7 @@ public class PerfilService {
                 .collect(Collectors.toList());
     }
 
-    public Perfil crearPerfil(UUID idUsuario) {
-        if (idUsuario == null) {
-            throw new DatosInvalidosException();
-        }
-
-        if (repositorioPerfiles.buscarPorIDUsuario(idUsuario) != null) {
-            throw new PerfilDuplicadoException();
-        }
-
-        Perfil nuevo = new Perfil(idUsuario);
-        repositorioPerfiles.agregarPerfil(nuevo);
-        return nuevo;
-    }
+   
 
     private PerfilNotificacionDTO mapToDTO(Perfil perfil) {
         if (perfil == null) return null;
