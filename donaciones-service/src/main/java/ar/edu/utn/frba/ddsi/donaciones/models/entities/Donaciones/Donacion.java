@@ -18,7 +18,7 @@ public class Donacion {
     private PersonaDonante donante;
     private EntidadBeneficiaria entidad;
     private String descripcion;
-    private List<Bien> bienes =  new ArrayList<>();
+    private List<Bien> bienes = new ArrayList<>();
     private Estados estado;
     private SubcategoriaBien subcategoria;
     private LocalDate fechaEntrega;

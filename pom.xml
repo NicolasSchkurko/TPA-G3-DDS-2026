@@ -7,12 +7,13 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>ddsi-tp-template</name>
-    <url>https://github.com/dds-utn</url>
-    <modules>
-        <module>donaciones-service</module>
-        <module>notificaciones-service</module>
-    </modules>
+  <name>ddsi-tp-template</name>
+  <url>https://github.com/dds-utn</url>
+  <modules>
+    <module>donaciones-service</module>
+    <module>incentivos-service</module>
+    <module>notificaciones-service</module>
+  </modules>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -52,12 +53,20 @@
             <optional>true</optional>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+      <dependency>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-web</artifactId>
+      </dependency>
+  </dependencies>
 
     <build>
         <pluginManagement>
