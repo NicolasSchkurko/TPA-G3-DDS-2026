@@ -1,16 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
-
-import java.util.UUID;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 @Service
 public class ImpactoDonacionService {

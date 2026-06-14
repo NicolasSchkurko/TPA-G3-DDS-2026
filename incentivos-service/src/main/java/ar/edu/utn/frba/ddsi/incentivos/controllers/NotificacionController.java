@@ -19,14 +19,6 @@ public class NotificacionController {
         this.notificacionService = notificacionService;
     }
 
-    @GetMapping("/{id}/perfil")
-    public ResponseEntity<PerfilNotificacionDTO> obtenerPerfil(@PathVariable UUID id) {
-        PerfilNotificacionDTO perfil = notificacionService.buscarPerfilPorUUID(id);
+    // @GetMapping
 
-        if (perfil == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(perfil);
-    }
 }

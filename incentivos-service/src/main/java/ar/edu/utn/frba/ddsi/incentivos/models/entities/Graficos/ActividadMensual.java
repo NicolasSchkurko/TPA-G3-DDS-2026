@@ -4,10 +4,9 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Objects;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import lombok.Getter;
 import lombok.Setter;
-import ar.edu.utn.frba.ddsi.incentivos.dto.ActividadMensualDTO;
 
 @Getter
 @Setter

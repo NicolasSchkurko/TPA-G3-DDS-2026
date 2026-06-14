@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import lombok.Getter;
 import lombok.Setter;
 

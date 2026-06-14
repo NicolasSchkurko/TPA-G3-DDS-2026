@@ -1,9 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Colaborador;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,31 +13,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria.*;
-import static ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.TipoCategoria.*;
-
 @Getter
 @Setter
 public class Perfil {
-    //TODO agregar los atributos necesarios que vengan del repositorio
-    private UUID idUsuario;
-    private Integer totalDonaciones;
+    private UUID idUsuario; // id en donaciones
+    private UUID idPerfil; // id interno
     private String nombreUsuario;
     private Categoria categoriaActual;
     private List<Insignia> insignias;
     private Mision misionActual;
-    private List<MetricasActividad> metricas;
-    private List<ActividadMensual> evolucionMensual;
-    private Integer organizacionesAyudadas;
     private Integer posicionRanking;
-
-
-    public Perfil(String nombreUsuario) {
-        this(UUID.randomUUID(), nombreUsuario);
-    }
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
+        this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = Colaborador.getInstance();
         this.insignias = new ArrayList<>();
@@ -54,17 +44,26 @@ public class Perfil {
         insignias.add(insignia);
     }
 
+    //usar this o no es igual mientras no recibas un parametro con el mismo nombre del atributo
     public void progresarMision(ImpactoDonacion donacion){
-        misionActual.registrarProgreso(donacion);
-        if(misionActual.estaCompleta()){
-            this.otorgarInsignia(misionActual.getInsigniaObjetivo());
-            if (categoriaActual.esUltimaMision(misionActual)) {
-                this.ascenderCategoria();
-            }
-            else{
-                misionActual = categoriaActual.siguienteMision(misionActual);
-            }
+        if (misionActual == null) {
+            return;
         }
+        misionActual.evaluarDonacion(donacion);
+
+        if (!misionActual.estaCompleta()) {
+            return;
+        }
+
+        otorgarInsignia(misionActual.getInsigniaObjetivo());
+
+        if (categoriaActual.esUltimaMision(misionActual)) {
+            categoriaActual = categoriaActual.getSiguienteCategoria();
+
+            misionActual = (categoriaActual != null) ? categoriaActual.primeraMision() : null;
+            return;
+        }
+        misionActual = categoriaActual.siguienteMision(misionActual);
     }
 
 //    public List<ActividadMensual> generarEvolucionMensual() {

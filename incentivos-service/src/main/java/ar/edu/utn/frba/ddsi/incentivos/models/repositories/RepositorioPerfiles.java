@@ -38,7 +38,7 @@ public class RepositorioPerfiles {
 
     public void actualizar(Perfil perfilModificado) {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
-            return; // me hace ruido esto
+            return;
         }
         int index = perfiles.indexOf(perfilModificado);
         if (index >= 0) {
@@ -60,6 +60,16 @@ public class RepositorioPerfiles {
         }
         return perfiles.stream()
                 .filter(perfil -> id.equals(perfil.getIdUsuario()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public Perfil buscarPorIDPerfil(UUID id) {
+        if (id == null || perfiles.isEmpty()) {
+            return null;
+        }
+        return perfiles.stream()
+                .filter(perfil -> id.equals(perfil.getIdPerfil()))
                 .findFirst()
                 .orElse(null);
     }

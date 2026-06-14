@@ -1,40 +1,38 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Getter
 @Setter
 public abstract class Mision {
-    private List<ImpactoDonacion> donaciones;
+    private List<ImpactoDonacion> donacionesExitosas = new ArrayList<>();
     private String nombreMision;
     private Insignia insigniaObjetivo;
     private Integer progresoActual;
     private Integer progresoObjetivo;
 
-    public Mision(Insignia insignia, String descripcion){
-        this.nombreMision = descripcion;
+    public Mision(String nombre,
+                  Insignia insignia,
+                  Integer objetivo) {
+        this.donacionesExitosas = new ArrayList<>();
+        this.nombreMision = nombre;
         this.insigniaObjetivo = insignia;
-        this.donaciones = new ArrayList<>();
         this.progresoActual = 0;
-        this.progresoObjetivo = null;
+        this.progresoObjetivo = objetivo;
     }
 
-    //override de este metodo en cada mision
-    public void registrarProgreso(ImpactoDonacion donacion) {
-        donaciones.add(donacion);
-        progresoActual++;
+    public Integer getProgresoActual() {
+        return this.donacionesExitosas.size();
     }
 
-    public Boolean estaCompleta() {
-        return Objects.equals(progresoActual, progresoObjetivo);
+    public boolean estaCompleta() {
+        return this.getProgresoActual() >= this.progresoObjetivo;
     }
+
+    public abstract void evaluarDonacion(ImpactoDonacion donacion);
 }

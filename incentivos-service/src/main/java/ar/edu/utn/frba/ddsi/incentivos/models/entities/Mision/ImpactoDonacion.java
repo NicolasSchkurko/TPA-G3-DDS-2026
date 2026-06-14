@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -9,8 +9,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ImpactoDonacion {
-    private UUID idDonacion;
-    private UUID idPerfil;
+    private UUID idDonacion; // id interno
+    private UUID idUsuario; // id de donaciones
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;
     private String categoria;
@@ -22,10 +22,9 @@ public class ImpactoDonacion {
                            LocalDate fechaEntrega,
                            String categoria,
                            String estado,
-                           UUID idDonacion,
-                           UUID idPerfil){
-        this.idDonacion = idDonacion;
-        this.idPerfil = idPerfil;
+                           UUID idUsuario){
+        this.idDonacion = UUID.randomUUID();
+        this.idUsuario = idUsuario;
         this.estado = estado;
         this.entidadBeneficiaria = entidadBeneficiaria;
         this.cantidadBienes = cantidadBienes;

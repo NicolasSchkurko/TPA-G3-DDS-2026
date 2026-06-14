@@ -4,17 +4,12 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
 

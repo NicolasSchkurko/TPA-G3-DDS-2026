@@ -1,15 +1,15 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import java.util.ArrayList;
+
 import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class Categoria {
-
+public abstract class Categoria {
     private TipoCategoria nombre;
     private Categoria siguienteCategoria;
     private List<Mision> misiones;

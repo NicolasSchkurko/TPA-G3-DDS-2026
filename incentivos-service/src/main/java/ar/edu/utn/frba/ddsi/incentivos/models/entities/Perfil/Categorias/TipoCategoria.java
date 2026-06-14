@@ -1,6 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
-
-import java.util.List;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias;
 
 public enum TipoCategoria {
     COLABORADOR,

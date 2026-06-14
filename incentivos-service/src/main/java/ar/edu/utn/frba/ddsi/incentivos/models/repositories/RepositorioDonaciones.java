@@ -1,8 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,14 +27,31 @@ public class RepositorioDonaciones {
         }
     }
 
+    public void eliminarDonacion(ImpactoDonacion donacion) {
+        donaciones.remove(donacion);
+    }
+
     public List<ImpactoDonacion> listarTodas() {
         return List.copyOf(donaciones);
     }
 
     public ImpactoDonacion buscarPorIDDonacion(UUID id) {
-        if (id == null) return null;
+        if (id == null || donaciones.isEmpty()) {
+            return null;
+        }
+
         return donaciones.stream()
                 .filter(d -> id.equals(d.getIdDonacion()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public ImpactoDonacion buscarPorIDUsuario(UUID id) {
+        if (id == null || donaciones.isEmpty()) {
+            return null;
+        }
+        return donaciones.stream()
+                .filter(donacion -> id.equals(donacion.getIdUsuario()))
                 .findFirst()
                 .orElse(null);
     }
