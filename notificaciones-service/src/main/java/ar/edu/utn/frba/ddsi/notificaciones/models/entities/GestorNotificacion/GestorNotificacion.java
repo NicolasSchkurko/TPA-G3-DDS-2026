@@ -2,32 +2,46 @@ package ar.edu.utn.frba.ddsi.notificaciones.models.entities.GestorNotificacion;
 
 import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.SolicitudNotificacion.SolicitudNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 
+/**
+ * Coordina el ciclo de una notificacion: la crea desde una solicitud, selecciona
+ * el medio de envio correspondiente, actualiza su estado y la registra en el repositorio.
+ */
 public class GestorNotificacion {
-    private static  GestorNotificacion instanciaUnica;
+    private final MedioDeEnvioFactory medioDeEnvioFactory;
+    private final RepositorioNotificaciones repositorioNotificaciones;
 
-    private GestorNotificacion() {}
-
-    public static GestorNotificacion getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new GestorNotificacion();
-        }
-        return instanciaUnica;
+    /*
+     * Estas dependencias se reciben por constructor para dejar explicito que el gestor
+     * necesita una factory de medios y un repositorio. Asi evitamos que busque singletons
+     * globales por su cuenta, lo que haria mas dificil testearlo o cambiar implementaciones.
+     */
+    public GestorNotificacion(MedioDeEnvioFactory medioDeEnvioFactory, RepositorioNotificaciones repositorioNotificaciones) {
+        this.medioDeEnvioFactory = medioDeEnvioFactory;
+        this.repositorioNotificaciones = repositorioNotificaciones;
     }
 
     public Notificacion procesarSolicitud(SolicitudNotificacion solicitud) {
         Notificacion notificacion = crearNotificacion(solicitud);
-        String direccionContacto = solicitud.getDireccionDeContacto();
 
-        enviarNotificacion(direccionContacto, notificacion);
+        try {
+            enviarNotificacion(
+                    solicitud.getTipoMedioDeContacto(),
+                    solicitud.getDireccionDeContacto(),
+                    notificacion
+            );
+        } finally {
+            repositorioNotificaciones.guardar(notificacion);
+        }
 
         return notificacion;
     }
 
-    // Crea una Notificacion a partir de una SolicitudNotificacion
     private Notificacion crearNotificacion(SolicitudNotificacion solicitud) {
         String direccionDeContacto = solicitud.getDireccionDeContacto();
         String asunto = solicitud.getAsuntoMensaje();
@@ -37,21 +51,13 @@ public class GestorNotificacion {
 
         return new Notificacion(direccionDeContacto, mensaje);
     }
-    
-    private MedioDeEnvio mapearStringAMedioDeEnvio(String tipoMedioContacto){
-        return null;
-    }
 
-    // Por ahora solo envia al medio predeterminado
-    public void enviarNotificacion(String direccionContacto, Notificacion notificacion) {
-
+    public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
         try {
-            MedioDeEnvio medioDeContacto = mapearStringAMedioDeEnvio(direccionContacto);
+            MedioDeEnvio medioDeContacto = medioDeEnvioFactory.crear(tipoMedioContacto);
             medioDeContacto.enviarNotificacion(direccionContacto, notificacion);
             notificacion.marcarEnviada();
-
-        } catch (IllegalArgumentException ex) {
-
+        } catch (RuntimeException ex) {
             notificacion.marcarFallida();
             throw new ErrorAlEnviarNotificacion("Ocurrio un problema inesperado al enviar la notificacion", ex);
         }

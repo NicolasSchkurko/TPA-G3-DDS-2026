@@ -1,20 +1,20 @@
 package ar.edu.utn.frba.ddsi.notificaciones.services;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import ar.edu.utn.frba.ddsi.notificaciones.dto.SolicitudNotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.GestorNotificacion.GestorNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.SolicitudNotificacion.SolicitudNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioDestinatarios;
+import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class NotificadorService {
+    private final GestorNotificacion gestor;
 
-    private final GestorNotificacion gestor = GestorNotificacion.getInstance();
+    public NotificadorService(MedioDeEnvioFactory medioDeEnvioFactory, RepositorioNotificaciones repositorioNotificaciones) {
+        this.gestor = new GestorNotificacion(medioDeEnvioFactory, repositorioNotificaciones);
+    }
+
     public void procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO){
         SolicitudNotificacion solicitud = new SolicitudNotificacion(
                 solicitudNotificacionDTO.getMedioDeContacto(),
@@ -23,6 +23,5 @@ public class NotificadorService {
                 solicitudNotificacionDTO.getAsuntoMensaje()
         );
         gestor.procesarSolicitud(solicitud);
-
     }
 }
