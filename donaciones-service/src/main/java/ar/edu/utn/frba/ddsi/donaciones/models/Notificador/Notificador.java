@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.Notificador;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestTemplate;
 
@@ -10,7 +11,7 @@ public class Notificador {
 
     private final RestTemplate restTemplate;
 
-    // @Value("${NOTIFICACIONES_SERVICE_URL}") esto es lo del .env
+    @Value("${notificaciones.service.url}")
     private String notificacionesUrl;
 
     public Notificador(RestTemplateBuilder builder) {
@@ -28,7 +29,7 @@ public class Notificador {
         );
 
         restTemplate.postForEntity(
-                notificacionesUrl + "/notificaciones",
+                notificacionesUrl,
                 dto,
                 String.class
         );
