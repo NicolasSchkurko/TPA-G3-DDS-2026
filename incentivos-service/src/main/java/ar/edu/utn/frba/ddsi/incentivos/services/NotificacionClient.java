@@ -19,7 +19,7 @@ public class NotificacionClient {
 
     public Void enviarNotificacion(PerfilNotificacionDTO dto) {
         restTemplate.getForObject(
-                notificacionesUrl + "/notificaciones/",
+                notificacionesUrl,
                 PerfilNotificacionDTO.class
         );
         return null;

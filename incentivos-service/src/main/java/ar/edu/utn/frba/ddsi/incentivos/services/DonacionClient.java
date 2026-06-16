@@ -23,7 +23,7 @@ public class DonacionClient {
 
     public MedioContactoDTO obtenerContactoPersona(UUID idUsuario) {
         return restTemplate.getForObject(
-                donacionesUrl + "/loDefineDonaciones/" + idUsuario,
+                donacionesUrl + idUsuario,
                 MedioContactoDTO.class
         );
     }
