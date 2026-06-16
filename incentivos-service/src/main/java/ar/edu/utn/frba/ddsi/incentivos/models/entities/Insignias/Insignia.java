@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
@@ -14,12 +12,10 @@ public class Insignia {
     private String urlImagen;
     private LocalDate fechaObtencion;
 
-    public Insignia(String nombreInsignia, String NombreMisionCompletada){
+    public Insignia(String nombreInsignia, String descripcion){
         this.nombre = nombreInsignia;
         this.fechaObtencion = null;
-        this.urlImagen = "https://donatrack.org/images/insignias/" + NombreMisionCompletada + ".png"; // Una URL base por nombre de mision
-        this.descripcion = NombreMisionCompletada;
+        this.urlImagen = "https://donatrack.org/images/insignias/" + nombreInsignia + ".png"; // Una URL base por nombre de insignia
+        this.descripcion = descripcion;
     }
-
-
 }

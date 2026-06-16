@@ -9,14 +9,13 @@ import lombok.Setter;
 @Setter
 
 public class MetricasActividadDTO {
-    private YearMonth periodoActual;
-    private YearMonth periodoAnterior;
-
-    private Integer donacionesActual;
-    private Integer donacionesAnterior;
+    private YearMonth periodo;
     private Double variacionPorcentualDonaciones;
-
-    private Integer organizacionesAyudadasActual;
-    private Integer organizacionesAyudadasAnterior;
     private Double variacionPorcentualOrganizaciones;
+
+    public MetricasActividadDTO(YearMonth periodo, Double variacionPorcentualDonaciones, Double variacionPorcentualOrganizaciones){
+        this.periodo = periodo;
+        this.variacionPorcentualDonaciones = variacionPorcentualDonaciones;
+        this.variacionPorcentualOrganizaciones = variacionPorcentualOrganizaciones;
+    }
 }

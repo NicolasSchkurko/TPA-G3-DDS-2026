@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -9,6 +11,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +27,7 @@ public class Perfil {
     private List<Insignia> insignias;
     private Mision misionActual;
     private Integer posicionRanking;
+    private Integer misionesCompletadasPeriodo;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
@@ -32,11 +37,12 @@ public class Perfil {
         this.insignias = new ArrayList<>();
         this.posicionRanking = null;
         this.misionActual = categoriaActual.primeraMision();
+        this.misionesCompletadasPeriodo = 0;
     }
 
     public void ascenderCategoria() {
         categoriaActual = categoriaActual.getSiguienteCategoria();
-        misionActual = categoriaActual.primeraMision();
+        misionActual = (categoriaActual != null) ? categoriaActual.primeraMision() : null;
     }
 
     public void otorgarInsignia(Insignia insignia) {
@@ -45,47 +51,24 @@ public class Perfil {
     }
 
     //usar this o no es igual mientras no recibas un parametro con el mismo nombre del atributo
-    public void progresarMision(ImpactoDonacion donacion){
+    public boolean progresarMision(ImpactoDonacion donacion){
         if (misionActual == null) {
-            return;
+            return false;
         }
         misionActual.evaluarDonacion(donacion);
 
         if (!misionActual.estaCompleta()) {
-            return;
+            return false;
         }
 
         otorgarInsignia(misionActual.getInsigniaObjetivo());
+        this.misionesCompletadasPeriodo++;
 
         if (categoriaActual.esUltimaMision(misionActual)) {
-            categoriaActual = categoriaActual.getSiguienteCategoria();
-
-            misionActual = (categoriaActual != null) ? categoriaActual.primeraMision() : null;
-            return;
+            this.ascenderCategoria();
+            return true;
         }
         misionActual = categoriaActual.siguienteMision(misionActual);
+        return true;
     }
-
-//    public List<ActividadMensual> generarEvolucionMensual() {
-//        YearMonth esteMes = YearMonth.now();
-//        YearMonth mesPasado = esteMes.minusMonths(1);
-//
-//        // Si a futuro se quiere mostrar más meses (ej: los últimos 6),
-//        // solo agregar más objetos ActividadMensual a esta lista.
-//        List<ActividadMensual> evolucion = new ArrayList<>();
-//        evolucion.add(new ActividadMensual(mesPasado, this.donaciones));
-//        evolucion.add(new ActividadMensual(esteMes, this.donaciones));
-//
-//        return evolucion;
-//    }
-//
-//    public MetricasActividad generarMetricasComparativas() {
-//        YearMonth esteMes = YearMonth.now();
-//        YearMonth mesPasado = esteMes.minusMonths(1);
-//
-//        ActividadMensual actActual = new ActividadMensual(esteMes, this.donaciones);
-//        ActividadMensual actAnterior = new ActividadMensual(mesPasado, this.donaciones);
-//
-//        return new MetricasActividad(actActual, actAnterior);
-//    }
 }

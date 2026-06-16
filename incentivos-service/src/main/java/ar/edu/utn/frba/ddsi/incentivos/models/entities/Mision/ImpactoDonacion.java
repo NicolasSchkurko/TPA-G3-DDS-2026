@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.ImpactoDonacionDTO;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,7 @@ public class ImpactoDonacion {
     private UUID idUsuario; // id de donaciones
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;
+    private String subCategoria;
     private String categoria;
     private String entidadBeneficiaria;
     private String estado;
@@ -20,6 +22,7 @@ public class ImpactoDonacion {
     public ImpactoDonacion(String entidadBeneficiaria,
                            Integer cantidadBienes,
                            LocalDate fechaEntrega,
+                           String subCategoria,
                            String categoria,
                            String estado,
                            UUID idUsuario){
@@ -30,5 +33,6 @@ public class ImpactoDonacion {
         this.cantidadBienes = cantidadBienes;
         this.fechaEntrega = fechaEntrega;
         this.categoria = categoria;
+        this.subCategoria = subCategoria;
     }
 }

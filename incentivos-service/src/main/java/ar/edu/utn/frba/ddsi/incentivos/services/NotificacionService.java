@@ -22,14 +22,13 @@ public class NotificacionService {
         this.restTemplate = restTemplate;
     }
 
-    public void enviarNotificacionDeAlgo(AlgoDTO dto) {
+    public void enviarNotificacion(PerfilNotificacionDTO dto) {
         restTemplate.postForEntity(
             "http://servicio-notificaciones/notificaciones",
             dto,
             Void.class
         );
     }
-}
 
     public void enviarNotificacion(Perfil perfil) {
         //TODO crear notificacion a partir de perfil
@@ -39,4 +38,5 @@ public class NotificacionService {
                 .retrieve()
                 .body(void.class);
     }
+}
 }

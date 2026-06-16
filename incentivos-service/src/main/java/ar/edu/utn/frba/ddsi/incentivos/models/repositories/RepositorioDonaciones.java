@@ -6,6 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.Setter;
+import lombok.Getter;
+
+@Getter
+@Setter
+
 public class RepositorioDonaciones {
     private static RepositorioDonaciones instanciaUnica;
     private final List<ImpactoDonacion> donaciones;
@@ -54,5 +60,14 @@ public class RepositorioDonaciones {
                 .filter(donacion -> id.equals(donacion.getIdUsuario()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public List<ImpactoDonacion> buscarDonacionesPorIDUsuario (UUID id){
+        if (id == null || donaciones.isEmpty()) {
+            return null;
+        }
+        return donaciones.stream()
+                .filter(d -> d.getIdUsuario().equals(id))
+                .toList();
     }
 }

@@ -21,7 +21,7 @@ public class Transformador extends Categoria {
 
             instanciaUnica = new Transformador(misionesTransformador);
 
-            instanciaUnica.setSiguienteCategoria(null);
+            instanciaUnica.setSiguienteCategoria(Transformador.getInstance());
         }
         return instanciaUnica;
     }
