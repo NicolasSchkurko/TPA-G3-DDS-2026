@@ -25,7 +25,7 @@ public class MedioDeEnvioFactory {
         this.whatsappClient = whatsappClient;
     }
 
-    public MedioDeEnvio crear(String tipoMedioContacto) {
+    public MedioDeEnvio mapearAMedioEnvio(String tipoMedioContacto) {
         String tipoNormalizado = tipoMedioContacto.toLowerCase(Locale.ROOT).trim();
 
         return switch (tipoNormalizado) {

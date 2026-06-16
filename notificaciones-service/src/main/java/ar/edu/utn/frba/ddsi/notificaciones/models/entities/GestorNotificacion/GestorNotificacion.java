@@ -54,7 +54,7 @@ public class GestorNotificacion {
 
     public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
         try {
-            MedioDeEnvio medioDeContacto = medioDeEnvioFactory.crear(tipoMedioContacto);
+            MedioDeEnvio medioDeContacto = medioDeEnvioFactory.mapearAMedioEnvio(tipoMedioContacto);
             medioDeContacto.enviarNotificacion(direccionContacto, notificacion);
             notificacion.marcarEnviada();
         } catch (RuntimeException ex) {
