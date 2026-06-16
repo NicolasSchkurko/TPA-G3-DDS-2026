@@ -2,25 +2,31 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
-import java.util.*;
-
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilInexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Mensaje;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PersonaService {
     private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
     private final PerfilService perfilService;
-    private final NotificacionService notificacionService;
+    private final NotificacionClient notificacionClient;
+    private final DonacionClient donacionClient;
 
-    public PersonaService(PerfilService metricasService, NotificacionService notificacionService) {
+
+    public PersonaService(PerfilService metricasService,
+                          NotificacionClient notificacionClient,
+                          DonacionClient donacionClient) {
         this.perfilService = metricasService;
-        this.notificacionService = notificacionService;
+        this.notificacionClient = notificacionClient;
+        this.donacionClient = donacionClient;
     }
 
     public void crearPerfil(PerfilDonanteDTO dto) {
@@ -70,13 +76,61 @@ public class PersonaService {
         if(!perfilAnterior.getCategoriaActual().equals(perfil.getCategoriaActual())){
             repositorioPerfiles.actualizar(perfil);
             //enviar notificacion
-            notificacionService.enviarNotificacionCategoria(perfil);
+            MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+            Mensaje mensaje = this.crearMensajeCategoria(perfil.getNombreUsuario(),
+                    perfilAnterior.getCategoriaActual().name(),
+                    perfil.getCategoriaActual().name(),
+                    "Ascenso Categoria"
+            );
+            PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
+                    contacto.getMedioDeContacto(),
+                    contacto.getDireccionContacto(),
+                    mensaje.getCuerpoMensaje(),
+                    mensaje.getAsuntoMensaje()
+                    );
+
+            notificacionClient.enviarNotificacion(notificacion);
         }
         if(!perfilAnterior.getInsignias().equals(perfil.getInsignias())){
             repositorioPerfiles.actualizar(perfil);
             //enviar notificacion
-            notificacionService.enviarNotificacionInsignia(perfil);
+            MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+            Mensaje mensaje = this.crearMensajeInsignia(perfil.getNombreUsuario(),
+                    perfil.getInsignias().getLast(),
+                    "Insignia Nueva"
+            );
+            PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
+                    contacto.getMedioDeContacto(),
+                    contacto.getDireccionContacto(),
+                    mensaje.getCuerpoMensaje(),
+                    mensaje.getAsuntoMensaje()
+            );
+
+            notificacionClient.enviarNotificacion(notificacion);
         }
+    }
+
+    public Mensaje crearMensajeCategoria(String nombreUsuario,
+                                         String categoriaAnterior,
+                                         String categoriaActual,
+                                         String asunto) {
+        return new Mensaje("Felicitaciones "
+                +nombreUsuario
+                +", has ascendido de "
+                +categoriaAnterior
+                + " a la nueva categoria "
+                +categoriaActual, asunto);
+    }
+
+    public Mensaje crearMensajeInsignia(String nombreUsuario,
+                                         Insignia insignia,
+                                         String asunto) {
+        return new Mensaje("Felicitaciones "
+                +nombreUsuario
+                +", has conseguido una nueva Insignia: "
+                + insignia.getNombre() + "/n"
+                + insignia.getDescripcion() + "/n"
+                + insignia.getUrlImagen(), asunto);
     }
 
     public ImpactoDonacion convertirDTO(ImpactoDonacionDTO donacion){
