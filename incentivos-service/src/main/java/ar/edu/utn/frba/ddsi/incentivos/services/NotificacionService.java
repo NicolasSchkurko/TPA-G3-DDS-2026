@@ -10,18 +10,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
-@Service //o es @Component?
+@Service
+@Value("${servicio.notificaciones.url}")
 public class NotificacionService {
-//cambiar a NotificacionClient
 //cliente para consumir el servicio de notificaciones cuando actualicemosPerfil y se identifique necesidad de notificar
 
-//en config podemos crear archivo para usar cliente gral a cualquier servicio y usar RestClient en vez de RestTemplate
-    private final RestTemplate restTemplate;
-
-    public NotificacionService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
-
+    private String donacionesUrl;
     public void enviarNotificacion(PerfilNotificacionDTO dto) {
         restTemplate.postForEntity(
             "http://servicio-notificaciones/notificaciones",

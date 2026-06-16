@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
@@ -9,18 +10,19 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public abstract class Categoria {
+public class Categoria {
     private TipoCategoria nombre;
-    private Categoria siguienteCategoria;
+    private TipoCategoria siguienteCategoria;
     private List<Mision> misiones;
 
-    public TipoCategoria siguienteTipoCategoria() {
-        return nombre.siguiente();
+    public Categoria(TipoCategoria nombre, TipoCategoria siguienteCategoria) {
+        this.nombre = nombre;
+        this.siguienteCategoria = siguienteCategoria;
+        this.misiones = new ArrayList<>();
     }
 
-    public Categoria(TipoCategoria nombre, List<Mision> misiones) {
-        this.nombre = nombre;
-        this.misiones = misiones;
+    public void agregarMision(Mision mision) {
+        this.misiones.add(mision);
     }
 
     public boolean esUltimaMision(Mision mision) {
@@ -28,7 +30,7 @@ public abstract class Categoria {
         return mision.equals(misiones.getLast());
     }
 
-    public Mision primeraMision(){
+    public Mision primeraMision() {
         if (misiones == null || misiones.isEmpty()) return null;
         return misiones.getFirst();
     }
@@ -40,4 +42,3 @@ public abstract class Categoria {
         return this.misiones.get(index + 1);
     }
 }
-

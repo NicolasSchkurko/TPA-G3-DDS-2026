@@ -1,18 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Colaborador;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,26 +17,19 @@ public class Perfil {
     private UUID idUsuario; // id en donaciones
     private UUID idPerfil; // id interno
     private String nombreUsuario;
-    private Categoria categoriaActual;
+    private TipoCategoria categoriaActual;
     private List<Insignia> insignias;
     private Mision misionActual;
     private Integer posicionRanking;
-    private Integer misionesCompletadasPeriodo;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
         this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = Colaborador.getInstance();
+        this.categoriaActual = TipoCategoria.COLABORADOR;
         this.insignias = new ArrayList<>();
         this.posicionRanking = null;
-        this.misionActual = categoriaActual.primeraMision();
-        this.misionesCompletadasPeriodo = 0;
-    }
-
-    public void ascenderCategoria() {
-        categoriaActual = categoriaActual.getSiguienteCategoria();
-        misionActual = (categoriaActual != null) ? categoriaActual.primeraMision() : null;
+        this.misionActual = null; //se inicializa en personaService cuando se crea
     }
 
     public void otorgarInsignia(Insignia insignia) {
@@ -50,25 +37,13 @@ public class Perfil {
         insignias.add(insignia);
     }
 
-    //usar this o no es igual mientras no recibas un parametro con el mismo nombre del atributo
-    public boolean progresarMision(ImpactoDonacion donacion){
-        if (misionActual == null) {
-            return false;
-        }
-        misionActual.evaluarDonacion(donacion);
+    public Perfil clonar() {
+        Perfil copia = new Perfil(this.idUsuario, this.nombreUsuario);
 
-        if (!misionActual.estaCompleta()) {
-            return false;
-        }
+        copia.setCategoriaActual(this.categoriaActual);
+        copia.setInsignias(this.insignias);
+        copia.setMisionActual(this.misionActual);
 
-        otorgarInsignia(misionActual.getInsigniaObjetivo());
-        this.misionesCompletadasPeriodo++;
-
-        if (categoriaActual.esUltimaMision(misionActual)) {
-            this.ascenderCategoria();
-            return true;
-        }
-        misionActual = categoriaActual.siguienteMision(misionActual);
-        return true;
+        return copia;
     }
 }
