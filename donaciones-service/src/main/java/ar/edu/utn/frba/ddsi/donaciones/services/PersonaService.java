@@ -3,8 +3,10 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -15,6 +17,11 @@ public class PersonaService {
 
   // Instancia de tu repositorio actual
   private final RepositorioDePersonas repositorio = RepositorioDePersonas.getInstance();
+
+  private final NotificacionesClient notificacionClient;
+  public PersonaService(NotificacionesClient notificacionClient) {
+      this.notificacionClient = notificacionClient;
+  }
 
   public void crearPersona(PersonaDonanteDTO dto) {
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
@@ -111,5 +118,32 @@ public class PersonaService {
     }
 
     return responseDTO;
+  }
+  @Scheduled(cron = "0 0 0 * * ?") // una vez por día
+  public Void revisarActividadesPersonas() {
+
+    List<PersonaDonante> personas = repositorio.findAll();
+
+    for (PersonaDonante persona : personas) {
+      revisarActividadPerfil(persona);
+    }
+    return null;
+  }
+  private void revisarActividadPerfil(PersonaDonante persona){
+    if (persona.getFormularios()
+        .getLast()
+        .getFechaRealizacion()
+        .plusDays(20)
+        .isBefore(LocalDate.now())) {
+      // perdió la racha, reiniciar misión, etc.
+      NotificacionDTO notificacion = new NotificacionDTO(
+          persona.getMediosDeContacto().getMedioDeContactoPredeterminado().//TODO Desde medio de contacto predeterminado deberia poder acceder al tipo de medio como un string, el tipo de medio seria whatsap,mail o telegram.
+     // TODO Deberia poder accederse a la direccion de contacto de la persna desde persona.getdirecciondecontacto
+      "doná porfa cada segundo que no donas muere un perrito ",
+          "Inactividad del perfil"
+      );
+
+      notificacionClient.enviarNotificacion(notificacion);
+    }
   }
 }

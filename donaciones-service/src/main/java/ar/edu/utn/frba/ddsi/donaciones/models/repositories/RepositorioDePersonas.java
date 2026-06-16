@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.Setter;
 import lombok.Getter;
+
 
 @Getter
 @Setter
@@ -79,7 +81,9 @@ public class RepositorioDePersonas {
             return false;
         }
     }
-
+    public List<PersonaDonante> findAll() {
+        return new ArrayList<>(personas);
+    }
 
 }
 
