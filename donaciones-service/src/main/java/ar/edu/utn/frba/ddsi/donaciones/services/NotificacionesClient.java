@@ -1,4 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
+import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,11 @@ public class NotificacionesClient {
     }
 
     // esto no sabemos si esta bien, hay q plantearlo mejor
-    public void enviarNotificacion (NotificacionDTO dto) {
+    public void enviarNotificacion (MediosContactoDTO.NotificacionDTO dto) {
 
       restTemplate.getForObject(
           notificacionesUrl,
-          NotificacionDTO.class
+          MediosContactoDTO.NotificacionDTO.class
       );
     }
 

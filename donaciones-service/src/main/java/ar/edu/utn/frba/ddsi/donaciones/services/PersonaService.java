@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
@@ -136,7 +137,7 @@ public class PersonaService {
         .plusDays(20)
         .isBefore(LocalDate.now())) {
       // perdió la racha, reiniciar misión, etc.
-      NotificacionDTO notificacion = new NotificacionDTO(
+      MediosContactoDTO.NotificacionDTO notificacion = new MediosContactoDTO.NotificacionDTO(
           persona.getMediosDeContacto().getMedioDeContactoPredeterminado().//TODO Desde medio de contacto predeterminado deberia poder acceder al tipo de medio como un string, el tipo de medio seria whatsap,mail o telegram.
      // TODO Deberia poder accederse a la direccion de contacto de la persna desde persona.getdirecciondecontacto
       "doná porfa cada segundo que no donas muere un perrito ",
