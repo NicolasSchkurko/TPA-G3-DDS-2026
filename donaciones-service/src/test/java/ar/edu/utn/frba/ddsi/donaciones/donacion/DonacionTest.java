@@ -1,11 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.donacion;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,7 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+
 public class DonacionTest {
 
     @Test
@@ -27,13 +29,13 @@ public class DonacionTest {
         LocalDate fechaEntrega = LocalDate.of(2026, 12, 31);
 
         Donacion donacion = new Donacion(
-            null,
-            null,
-            "Donacion de prueba",
-            List.of(bien1, bien2),
-            Estado.EN_DEPOSITO,
-            subcategoria,
-            fechaEntrega
+                null,
+                null,
+                "Donacion de prueba",
+                List.of(bien1, bien2),
+                Estado.EN_DEPOSITO,
+                subcategoria,
+                fechaEntrega
         );
 
         // Assert
@@ -45,7 +47,7 @@ public class DonacionTest {
         assertTrue(donacion.getBienes().contains(bien1));
         assertTrue(donacion.getBienes().contains(bien2));
     }
-    
+
     @Test
     @DisplayName("Retorna la suma total de bienes dentro de la donacion")
     public void sumaCantidadBienes() {
@@ -57,13 +59,13 @@ public class DonacionTest {
         BienConEstado bien2 = new BienConEstado("Garbanzo", subcategoria, 3, UnidadDeMedida.KILOGRAMOS, false);
 
         Donacion donacion = new Donacion(
-            null,
-            null,
-            "Donacion de prueba",
-            List.of(bien1, bien2),
-            Estado.EN_DEPOSITO,
-            subcategoria,
-            LocalDate.of(2026, 12, 31)
+                null,
+                null,
+                "Donacion de prueba",
+                List.of(bien1, bien2),
+                Estado.EN_DEPOSITO,
+                subcategoria,
+                LocalDate.of(2026, 12, 31)
         );
 
         // Assert

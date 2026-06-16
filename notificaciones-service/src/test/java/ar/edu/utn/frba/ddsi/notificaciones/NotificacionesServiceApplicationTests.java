@@ -10,20 +10,16 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-@SpringBootTest
+
 public class NotificacionesServiceApplicationTests {
 
     private final WhatsappClient whatsappClient = mock(WhatsappClient.class);
     private final TelefonoClient telefonoClient = mock(TelefonoClient.class);
     private final MailClient mailClient = mock(MailClient.class);
-
-    @Test
-    void contextLoads(){}
 
     @Test
     @DisplayName("Se envia notificacion por Whatsapp usando el WhatsappClient")

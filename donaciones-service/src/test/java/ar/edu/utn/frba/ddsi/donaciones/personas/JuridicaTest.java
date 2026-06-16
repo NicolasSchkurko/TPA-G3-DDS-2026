@@ -5,16 +5,12 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-@SpringBootTest
 
 public class JuridicaTest {
     @Test
@@ -45,6 +41,7 @@ public class JuridicaTest {
         assertTrue(persona.getRepresentantes().contains(representante));
         assertEquals("Fundacion Ayuda", persona.darNombre());
     }
+
     @Test
     public void crearPersonaHumanaConTodosLosValores() {
         // Arrange
