@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 
 import java.time.YearMonth;
@@ -20,6 +21,10 @@ public class RepositorioRankings {
             instanciaUnica = new RepositorioRankings();
         }
         return instanciaUnica;
+    }
+
+    public RankingMensual obtenerRankingActual() {
+        return rankings.getFirst();
     }
 
     public void guardar(RankingMensual nuevoRanking) {

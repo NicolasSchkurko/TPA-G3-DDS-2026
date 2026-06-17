@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import lombok.Getter;
 import lombok.Setter;
 

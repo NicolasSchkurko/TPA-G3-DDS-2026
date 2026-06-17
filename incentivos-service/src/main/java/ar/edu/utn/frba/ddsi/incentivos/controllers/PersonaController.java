@@ -14,6 +14,7 @@ public class PersonaController {
         this.personaService = perfilService;
     }
 
+    //https:localhost/perfiles
 //permite q Donaciones nos pida crear un Perfil
     @PostMapping
     public ResponseEntity<Void> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
@@ -21,6 +22,7 @@ public class PersonaController {
         return ResponseEntity.ok().build();
     }
 
+    //https:localhost/perfiles/{idUsuario}/perfil
 //permite q Donaciones nos pida actualizarPerfil ante una donacion
     @PostMapping("/{id}/perfil")
     public ResponseEntity<Void> actualizarPerfil(@RequestBody ImpactoDonacionDTO dto) {

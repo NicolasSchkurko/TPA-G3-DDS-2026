@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria.COLABORADOR;
+
 @Getter
 @Setter
 public class Perfil {
@@ -21,20 +23,26 @@ public class Perfil {
     private List<Insignia> insignias;
     private Mision misionActual;
     private Integer posicionRanking;
+    private Integer misionesCumplidasEnPeriodo;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
         this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = TipoCategoria.COLABORADOR;
+        this.categoriaActual = COLABORADOR;
         this.insignias = new ArrayList<>();
         this.posicionRanking = null;
+        this.misionesCumplidasEnPeriodo = 0;
         this.misionActual = null; //se inicializa en personaService cuando se crea
     }
 
     public void otorgarInsignia(Insignia insignia) {
         insignia.setFechaObtencion(LocalDate.now());
         insignias.add(insignia);
+    }
+
+    public void sumarMisionCumplida(){
+        misionesCumplidasEnPeriodo = misionesCumplidasEnPeriodo + 1;
     }
 
     public Perfil clonar() {

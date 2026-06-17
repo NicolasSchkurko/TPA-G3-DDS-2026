@@ -1,14 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
-import ar.edu.utn.frba.ddsi.incentivos.dto.ActividadMensualDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MetricasActividadDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MisionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +14,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,4 +67,14 @@ public class PerfilController {
     }
 
     //Tal vez en el futuro sea necesario los endpoints para los metodos de ranking (generar ranking y dar el top 3)
+    //me parece q hay q dar el top 3 del ranking; el ranking completo del mes no se
+    @GetMapping("/ranking")
+    public ResponseEntity<List<RankingDTO>> obtenerTop3Ranking() {
+        List<PosicionRanking> rankingMes = service.obtenerTop3DelMes(YearMonth.from(LocalDate.now().getMonth()));
+        if (rankingMes == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(rankingMes.stream().map(service::convertirRankingMesADTO).toList());
+    }
 }

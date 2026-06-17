@@ -25,6 +25,10 @@ public class Categoria {
         this.misiones.add(mision);
     }
 
+    public void eliminarMision(Mision mision) {
+        this.misiones.remove(mision);
+    }
+
     public boolean esUltimaMision(Mision mision) {
         if (misiones == null || misiones.isEmpty() || mision == null) return false;
         return mision.equals(misiones.getLast());
