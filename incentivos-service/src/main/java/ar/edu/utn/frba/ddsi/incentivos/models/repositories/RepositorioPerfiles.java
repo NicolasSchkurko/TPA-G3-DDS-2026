@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import lombok.Setter;
 import lombok.Getter;
 
@@ -35,6 +36,21 @@ public class RepositorioPerfiles {
             perfiles.add(perfil);
         }
     }
+
+    public void asignarPosicionesRanking(List<PosicionRanking> posicionesMes){
+        if (posicionesMes == null || posicionesMes.isEmpty()) return;
+
+        for (PosicionRanking pos : posicionesMes) {
+            if (pos == null || pos.getIdPerfil() == null || pos.getPuesto() == null) continue;
+            Perfil perfil = buscarPorIDPerfil(pos.getIdPerfil());
+            if (perfil != null) {
+                perfil.setPosicionRanking(pos.getPuesto());
+                // actualizar reemplaza el perfil en la lista si existe
+                actualizar(perfil);
+            }
+        }
+    }
+
 
     public void actualizar(Perfil perfilModificado) {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {

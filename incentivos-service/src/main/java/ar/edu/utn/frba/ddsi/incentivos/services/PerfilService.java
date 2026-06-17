@@ -81,13 +81,7 @@ public class PerfilService {
                 .toList();
 
         // 2. Asignamos la posición calculada a cada Perfil en el repositorio
-        posicionesFinales.forEach(pos -> {
-            Perfil perfilPersistido = repositorioPerfiles.buscarPorIDPerfil(pos.getIdPerfil());
-            if (perfilPersistido != null) {
-                perfilPersistido.setPosicionRanking(pos.getPuesto());
-                repositorioPerfiles.actualizar(perfilPersistido);
-            }
-        });
+        repositorioPerfiles.asignarPosicionesRanking(posicionesFinales);
 
         // 3. Construimos y persistimos el objeto de dominio del ranking
         RankingMensual rankingDelMes = new RankingMensual(periodo, posicionesFinales);
