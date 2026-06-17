@@ -33,8 +33,7 @@ public class Perfil {
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = COLABORADOR;
         this.insignias = new ArrayList<>();
-        // Inicializamos la posición en el ranking con valores por defecto
-        this.posicionRanking = new PosicionRanking(null, this.idPerfil, this.idUsuario, this.nombreUsuario, 0);
+        this.posicionRanking = new PosicionRanking(null);
         this.misionActual = null; //se inicializa en personaService cuando se crea
     }
 
@@ -54,11 +53,8 @@ public class Perfil {
     }
 
     private void sumarMisionCumplida(){
-        if (this.posicionRanking == null) {
-            this.posicionRanking = new PosicionRanking(null, this.idPerfil, this.idUsuario, this.nombreUsuario, 0);
-        }
-        Integer current = this.posicionRanking.getMisionesCumplidasEnPeriodo();
-        this.posicionRanking.setMisionesCumplidasEnPeriodo((current == null ? 1 : current + 1));
+        Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
+        posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
     }
 
     public Perfil clonar() {

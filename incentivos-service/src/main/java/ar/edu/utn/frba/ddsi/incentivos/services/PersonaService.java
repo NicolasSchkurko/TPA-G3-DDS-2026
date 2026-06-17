@@ -7,50 +7,46 @@ import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilInexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PersonaService {
     private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
+    private final RepositorioDonaciones repositorioDonaciones = RepositorioDonaciones.getInstance();
     private final RepositorioCategorias repositorioCategorias = RepositorioCategorias.getInstance();
-    private final RankingService rankingService;
-    private final PerfilService perfilService;
     private final NotificacionClient notificacionClient;
     private final DonacionClient donacionClient;
 
 
-    public PersonaService(PerfilService metricasService,
-                          NotificacionClient notificacionClient,
-                          DonacionClient donacionClient,
-                          RankingService rankingService) {
-        this.perfilService = metricasService;
+    public PersonaService(NotificacionClient notificacionClient,
+                          DonacionClient donacionClient) {
         this.notificacionClient = notificacionClient;
         this.donacionClient = donacionClient;
-        this.rankingService = rankingService;
     }
 
     public void crearPerfil(PerfilDonanteDTO dto) {
-            if (dto.getIdUsuario() == null) {
-                throw new DatosInvalidosException();
-            }
-
-            if (repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario()) != null) {
-                throw new PerfilDuplicadoException();
-            }
-
-            Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
-
-            // Para que el perfil nuevo no nazca con la misión en null, se la seteamos acá usando el repo
-            Categoria categoriaBase = repositorioCategorias.buscarPorTipo(nuevo.getCategoriaActual());
-            if (categoriaBase != null) {
-                nuevo.setMisionActual(categoriaBase.primeraMision());
-            }
-
-            repositorioPerfiles.agregarPerfil(nuevo);
+        if (dto.getIdUsuario() == null) {
+            throw new DatosInvalidosException();
         }
+
+        if (repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario()) != null) {
+            throw new PerfilDuplicadoException();
+        }
+
+        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
+
+        // Para que el perfil nuevo no nazca con la misión en null, se la seteamos acá usando el repo
+        Categoria categoriaBase = repositorioCategorias.buscarPorTipo(nuevo.getCategoriaActual());
+        if (categoriaBase != null) {
+            nuevo.setMisionActual(categoriaBase.primeraMision());
+        }
+        repositorioPerfiles.agregarPerfil(nuevo);
+    }
 
     public void actualizarPerfil(ImpactoDonacionDTO dto) {
         if (dto.getIdUsuario() == null) {
@@ -65,18 +61,41 @@ public class PersonaService {
         Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario());
 
         Perfil perfilAnterior = perfil.clonar();
-        perfilService.progresarMisionesPerfil(perfil, donacion);
+        perfil.progresarMision(donacion);
 
-        //si hay algun cambio actualizo repo (cambie la verificacion proque si tenia algun argumento en null iba a tirar un NullPointerException)
-        boolean cambioMision = (perfilAnterior.getMisionActual() == null && perfil.getMisionActual() != null) ||
-                (perfilAnterior.getMisionActual() != null && !perfilAnterior.getMisionActual().equals(perfil.getMisionActual()));
+        //evalua si hubo un cambio en el progreso de la mision
+        boolean cambioMision = (perfilAnterior.getMisionActual() == null
+                                && perfil.getMisionActual() != null) ||
+                        (perfilAnterior.getMisionActual() != null
+                        && !perfilAnterior.getMisionActual().equals(perfil.getMisionActual()));
 
         if (cambioMision) {
+            //evalua si el progreso en mision requiere pasar a siguiente mision o categoria
+            // en base a eso actualiza el perfil en el repo de perfiles
+            Categoria categoriaObj = repositorioCategorias.buscarPorTipo(perfil.getCategoriaActual());
+
+            if (categoriaObj != null) {
+                // Caso A: Era la última misión de la categoría, sube de nivel
+                if (categoriaObj.esUltimaMision(perfil.getMisionActual())) {
+                    TipoCategoria siguienteNivel = categoriaObj.getSiguienteCategoria();
+                    perfil.setCategoriaActual(siguienteNivel);
+
+                    // Le asignamos la primera misión del nuevo rango
+                    Categoria nuevaCategoria = repositorioCategorias.buscarPorTipo(siguienteNivel);
+                    perfil.setMisionActual(nuevaCategoria != null ? nuevaCategoria.primeraMision() : null);
+                }
+                // Caso B: Quedan misiones en esta categoría, avanzamos a la siguiente
+                else {
+                    perfil.setMisionActual(categoriaObj.siguienteMision(perfil.getMisionActual()));
+                }
+            }
+
             repositorioPerfiles.actualizar(perfil);
+            //el progreso en una mision debe actualizar el repo de donaciones
+            repositorioDonaciones.actualizar(perfil);
         }
 
         if(!perfilAnterior.getCategoriaActual().equals(perfil.getCategoriaActual())){
-            repositorioPerfiles.actualizar(perfil);
             //enviar notificacion
             MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
 
@@ -95,8 +114,6 @@ public class PersonaService {
             notificacionClient.enviarNotificacion(notificacion);
         }
         if(!perfilAnterior.getInsignias().equals(perfil.getInsignias())){
-            repositorioPerfiles.actualizar(perfil);
-            perfil.sumarMisionCumplida();
             //enviar notificacion
             MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
 

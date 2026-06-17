@@ -37,27 +37,6 @@ public class RepositorioPerfiles {
         }
     }
 
-    public void asignarPosicionesRanking(List<PosicionRanking> posicionesMes){
-        // Normalizamos estado: limpiamos posiciones previas para todos los perfiles primero
-        for (Perfil p : this.perfiles) {
-            p.setPosicionRanking(new PosicionRanking(null, p.getIdPerfil(), p.getIdUsuario(), p.getNombreUsuario(), 0));
-        }
-
-        if (posicionesMes == null || posicionesMes.isEmpty()) return;
-
-        for (PosicionRanking pos : posicionesMes) {
-            if (pos == null || pos.getIdPerfil() == null || pos.getPuesto() == null) continue;
-            Perfil perfil = buscarPorIDPerfil(pos.getIdPerfil());
-            if (perfil != null) {
-                // Asignamos el objeto PosicionRanking completo al perfil
-                perfil.setPosicionRanking(pos);
-                // actualizar reemplaza el perfil en la lista si existe
-                actualizar(perfil);
-            }
-        }
-    }
-
-
     public void actualizar(Perfil perfilModificado) {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
             return;

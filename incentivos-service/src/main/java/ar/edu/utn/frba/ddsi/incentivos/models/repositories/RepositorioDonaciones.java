@@ -80,8 +80,6 @@ public class RepositorioDonaciones {
         if (exitosas == null || exitosas.isEmpty()) {
             return;
         }
-        for (ImpactoDonacion d : exitosas) {
-            this.guardar(d);
-        }
+        this.guardar(exitosas.getLast());
     }
 }

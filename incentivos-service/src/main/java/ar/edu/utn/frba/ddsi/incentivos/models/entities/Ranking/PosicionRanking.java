@@ -10,20 +10,10 @@ import java.util.UUID;
 
 public class PosicionRanking {
     private Integer puesto;
-    private UUID idUsuario;
-    private UUID idPerfil;
-    private String nombreUsuario;
     private Integer misionesCumplidasEnPeriodo;
 
-    public PosicionRanking(Integer puesto,
-                           UUID idPerfil,
-                           UUID idUsuario,
-                           String nombreUsuario,
-                           Integer misionesCumplidasEnPeriodo) {
+    public PosicionRanking(Integer puesto) {
         this.puesto = puesto;
-        this.idUsuario = idUsuario;
-        this.idPerfil = idPerfil;
-        this.nombreUsuario = nombreUsuario;
-        this.misionesCumplidasEnPeriodo = misionesCumplidasEnPeriodo;
+        this.misionesCumplidasEnPeriodo = 0;
     }
 }

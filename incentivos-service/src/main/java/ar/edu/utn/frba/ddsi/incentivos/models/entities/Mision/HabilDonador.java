@@ -7,13 +7,6 @@ public class HabilDonador extends Mision {
         super(nombre, insignia, cantidadObjetivo);
     }
 
-    public Integer getProgresoActual() {
-        if(!this.getDonacionesExitosas().isEmpty()){
-            return this.getDonacionesExitosas().getFirst().getCantidadBienes();
-        }
-        return 0;
-    }
-
     @Override
     public void evaluarDonacion(ImpactoDonacion donacion) {
         if (donacion != null && donacion.getCantidadBienes() != null

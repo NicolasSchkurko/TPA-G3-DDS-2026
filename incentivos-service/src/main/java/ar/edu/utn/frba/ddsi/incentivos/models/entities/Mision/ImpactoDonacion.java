@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.ImpactoDonacionDTO;
 import lombok.Getter;
 import lombok.Setter;
 

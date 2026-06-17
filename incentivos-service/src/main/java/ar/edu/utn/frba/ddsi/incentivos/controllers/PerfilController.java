@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActivida
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import org.springframework.http.ResponseEntity;
@@ -75,7 +76,7 @@ public class PerfilController {
         }
 
         List<RankingDTO> dto = rankingMes.getPosiciones().stream()
-                .map(service::convertirtop3ADTO)
+                .map(service::convertirRankingADTO)
                 .toList();
 
         return ResponseEntity.ok(dto);
@@ -83,13 +84,13 @@ public class PerfilController {
 
     @GetMapping("/{id}/ranking/top3")
     public ResponseEntity<List<RankingDTO>> obtenerTop3RankingActual(@PathVariable UUID id) {
-        List<PosicionRanking> top3 = service.obtenerTop3DelMes(YearMonth.from(LocalDate.now().getMonth()));
+        List<Ranking> top3 = service.obtenerTop3DelMes(YearMonth.from(LocalDate.now().getMonth()));
         if (top3 == null) {
             return ResponseEntity.notFound().build();
         }
 
         List<RankingDTO> dto = top3.stream()
-                .map(service::convertirtop3ADTO)
+                .map(service::convertirRankingADTO)
                 .toList();
 
         return ResponseEntity.ok(dto);

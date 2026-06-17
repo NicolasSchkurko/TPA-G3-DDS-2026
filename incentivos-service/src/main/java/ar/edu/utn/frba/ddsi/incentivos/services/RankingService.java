@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,24 +29,8 @@ public class RankingService {
     private void generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = perfiles.listarTodos();
 
-        // Reiniciar posiciones previas para evitar que perfiles sin actividad mantengan puesto
-        for (Perfil p : todosLosPerfiles) {
-            p.setPosicionRanking(new PosicionRanking(0));
-            p.getPosicionRanking().setMisionesCumplidasEnPeriodo(0);
-            perfiles.actualizar(p);
-        }
-
         // 1. Generamos lista de perfiles con su cantidad de misiones en el periodo
         List<Perfil> candidatos = todosLosPerfiles.stream()
-                .peek(perfil -> {
-                    int misionesEnPeriodo = (int) perfil.getInsignias().stream()
-                            .filter(insignia -> insignia.getFechaObtencion() != null &&
-                                    YearMonth.from(insignia.getFechaObtencion()).equals(periodo))
-                            .count();
-                    // temporalmente guardamos el conteo en la posición del perfil
-                    perfil.setPosicionRanking(new PosicionRanking(null));
-                    perfil.getPosicionRanking().setMisionesCumplidasEnPeriodo(misionesEnPeriodo);
-                })
                 // solo consideramos perfiles con >0 misiones en el periodo
                 .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
                         && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
@@ -73,9 +58,11 @@ public class RankingService {
         }
 
         // 3. Construimos la lista de PosicionRanking para el RankingMensual
-        List<PosicionRanking> posiciones = candidatos.stream()
-                .map(Perfil::getPosicionRanking)
-                .toList();
+        List<Ranking> posiciones = new ArrayList<>();
+        for (Perfil candidato : candidatos) {
+            Ranking ranking = new Ranking(candidato.getPosicionRanking(), candidato.getIdUsuario(), candidato.getIdPerfil());
+            posiciones.add(ranking);
+        }
 
         // 4. Construimos y persistimos el objeto de dominio del ranking mensual
         RankingMensual rankingDelMes = new RankingMensual(periodo, posiciones);
