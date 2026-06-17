@@ -15,7 +15,7 @@ public class Insignia {
     public Insignia(String nombreInsignia, String descripcion){
         this.nombre = nombreInsignia;
         this.fechaObtencion = null;
-        this.urlImagen = "https://donatrack.org/images/insignias/" + nombreInsignia + ".png"; // Una URL base por nombre de insignia
+        this.urlImagen = null;
         this.descripcion = descripcion;
     }
 }

@@ -21,12 +21,15 @@ public class PersonaService {
     private final RepositorioCategorias repositorioCategorias = RepositorioCategorias.getInstance();
     private final NotificacionClient notificacionClient;
     private final DonacionClient donacionClient;
+    private final N8nClient n8nClient;
 
 
     public PersonaService(NotificacionClient notificacionClient,
-                          DonacionClient donacionClient) {
+                          DonacionClient donacionClient,
+                          N8nClient n8nClient) {
         this.notificacionClient = notificacionClient;
         this.donacionClient = donacionClient;
+        this.n8nClient = n8nClient;
     }
 
     public void crearPerfil(PerfilDonanteDTO dto) {
@@ -116,6 +119,13 @@ public class PersonaService {
         if(!perfilAnterior.getInsignias().equals(perfil.getInsignias())){
             //enviar notificacion
             MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+
+            n8nClient.publicarInsignia(
+                    perfil.getNombreUsuario(),
+                    perfil.getInsignias().getLast().getNombre(),
+                    "formato circulo, diseño estrella, color dorado, debe incluir el texto "
+                            + perfil.getInsignias().getLast().getNombre() + " centrado "
+            );
 
             PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
                     contacto.getMedioDeContacto(),
