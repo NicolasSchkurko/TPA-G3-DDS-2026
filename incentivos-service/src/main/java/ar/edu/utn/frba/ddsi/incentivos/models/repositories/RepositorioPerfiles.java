@@ -44,7 +44,8 @@ public class RepositorioPerfiles {
             if (pos == null || pos.getIdPerfil() == null || pos.getPuesto() == null) continue;
             Perfil perfil = buscarPorIDPerfil(pos.getIdPerfil());
             if (perfil != null) {
-                perfil.setPosicionRanking(pos.getPuesto());
+                // Asignamos el objeto PosicionRanking completo al perfil
+                perfil.setPosicionRanking(pos);
                 // actualizar reemplaza el perfil en la lista si existe
                 actualizar(perfil);
             }
