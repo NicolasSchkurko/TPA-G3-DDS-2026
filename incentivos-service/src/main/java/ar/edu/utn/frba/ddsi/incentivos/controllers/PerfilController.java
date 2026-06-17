@@ -66,15 +66,32 @@ public class PerfilController {
         return ResponseEntity.ok(insignias.stream().map(service::convertirInsigniaADTO).toList());
     }
 
-    //Tal vez en el futuro sea necesario los endpoints para los metodos de ranking (generar ranking y dar el top 3)
-    //me parece q hay q dar el top 3 del ranking; el ranking completo del mes no se
-    @GetMapping("/ranking")
-    public ResponseEntity<List<RankingDTO>> obtenerTop3Ranking() {
-        List<PosicionRanking> rankingMes = service.obtenerTop3DelMes(YearMonth.from(LocalDate.now().getMonth()));
+    //le habilito al perfil ver el ranking del mes y top3, no se si sea necesario el id en la ruta
+    @GetMapping("/{id}/ranking")
+    public ResponseEntity<List<RankingDTO>> obtenerRankingActual(@PathVariable UUID id) {
+        RankingMensual rankingMes = service.obtenerRankingDelMes(YearMonth.from(LocalDate.now().getMonth()));
         if (rankingMes == null) {
             return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.ok(rankingMes.stream().map(service::convertirRankingMesADTO).toList());
+        List<RankingDTO> dto = rankingMes.getPosiciones().stream()
+                .map(service::convertirtop3ADTO)
+                .toList();
+
+        return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/{id}/ranking/top3")
+    public ResponseEntity<List<RankingDTO>> obtenerTop3RankingActual(@PathVariable UUID id) {
+        List<PosicionRanking> top3 = service.obtenerTop3DelMes(YearMonth.from(LocalDate.now().getMonth()));
+        if (top3 == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<RankingDTO> dto = top3.stream()
+                .map(service::convertirtop3ADTO)
+                .toList();
+
+        return ResponseEntity.ok(dto);
     }
 }
