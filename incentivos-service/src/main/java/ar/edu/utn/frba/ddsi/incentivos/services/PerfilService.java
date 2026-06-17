@@ -58,27 +58,22 @@ public class PerfilService {
 
         AtomicInteger puestoCounter = new AtomicInteger(1);
 
-        // 1. Procesamos, ordenamos y asignamos puestos en una sola cadena de Streams
+        // 1. Contamos las misiones completadas en el periodo (a partir de las fechas de obtención de las insignias), ordenamos y asignamos puestos
         List<PosicionRanking> posicionesFinales = todosLosPerfiles.stream()
                 .map(perfil -> {
-                    // Filtramos las insignias que fueron ganadas en el mes que estamos cerrando
-                    long insigniasDelMes = perfil.getInsignias().stream()
+                    int misionesEnPeriodo = (int) perfil.getInsignias().stream()
                             .filter(insignia -> insignia.getFechaObtencion() != null &&
                                     YearMonth.from(insignia.getFechaObtencion()).equals(periodoAClasificar))
                             .count();
 
-                    return new PosicionRanking(perfil.getIdUsuario(), perfil.getNombreUsuario(), (int) insigniasDelMes);
+                    // Creamos la posición sin puesto (se asignará luego)
+                    return new PosicionRanking(null, perfil.getIdPerfil(), perfil.getIdUsuario(), perfil.getNombreUsuario(), misionesEnPeriodo);
                 })
-                .filter(p -> p.getMisionesCumplidasEnPeriodo() > 0)
-                // Ordenamos
+                .filter(p -> p.getMisionesCumplidasEnPeriodo() != null && p.getMisionesCumplidasEnPeriodo() > 0)
+                // Ordenamos por cantidad de misiones completadas (descendente)
                 .sorted((p1, p2) -> Integer.compare(p2.getMisionesCumplidasEnPeriodo(), p1.getMisionesCumplidasEnPeriodo()))
-                // Mapeamos a la PosicionRanking definitiva asignando el puesto de forma incremental
-                .map(temp -> new PosicionRanking(
-                        puestoCounter.getAndIncrement(), // Suma 1 automáticamente en cada iteración del stream
-                        temp.getIdUsuario(),
-                        temp.getNombreUsuario(),
-                        temp.getMisionesCumplidasEnPeriodo()
-                ))
+                // Asignamos el puesto incrementalmente
+                .map(p -> { p.setPuesto(puestoCounter.getAndIncrement()); return p; })
                 .toList();
 
         // 2. Construimos y persistimos el objeto de dominio del ranking
@@ -114,10 +109,10 @@ public class PerfilService {
         // Si se completó, le otorgamos su insignia
         if (misionActual.estaCompleta()) {
             perfil.otorgarInsignia(misionActual.getInsigniaObjetivo());
+            perfil.sumarMisionCumplida();
 
             // Buscamos la estructura de la categoría actual usando nuestro Repositorio dinámico
-            RepositorioCategorias repoCategorias = RepositorioCategorias.getInstance();
-            Categoria categoriaObj = repoCategorias.buscarPorTipo(perfil.getCategoriaActual());
+            Categoria categoriaObj = repositorioCategorias.buscarPorTipo(perfil.getCategoriaActual());
 
             if (categoriaObj != null) {
                 // Caso A: Era la última misión de la categoría, sube de nivel
@@ -126,7 +121,7 @@ public class PerfilService {
                     perfil.setCategoriaActual(siguienteNivel);
 
                     // Le asignamos la primera misión del nuevo rango
-                    Categoria nuevaCategoria = repoCategorias.buscarPorTipo(siguienteNivel);
+                    Categoria nuevaCategoria = repositorioCategorias.buscarPorTipo(siguienteNivel);
                     perfil.setMisionActual(nuevaCategoria != null ? nuevaCategoria.primeraMision() : null);
                 }
                 // Caso B: Quedan misiones en esta categoría, avanzamos a la siguiente
