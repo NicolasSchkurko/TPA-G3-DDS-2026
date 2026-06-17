@@ -167,4 +167,13 @@ public class PerfilService {
                                 insignia.getUrlImagen(),
                                 insignia.getFechaObtencion());
     }
+
+    public RankingDTO convertirRankingMesADTO(PosicionRanking posicion) {
+        if (posicion == null) return null;
+        RankingDTO dto = new RankingDTO();
+        dto.setNombreUsuario(posicion.getNombreUsuario());
+        dto.setPosicionRanking(posicion.getPuesto());
+        dto.setCantidadMisionesCompletas(posicion.getMisionesCumplidasEnPeriodo());
+        return dto;
+    }
 }
