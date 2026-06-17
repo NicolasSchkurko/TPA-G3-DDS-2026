@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,31 +54,64 @@ public class PerfilService {
                 .toList();
     }
 
-    public RankingMensual generarRankingMensualCierre(YearMonth periodoAClasificar) {
+    public RankingMensual generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = repositorioPerfiles.listarTodos();
 
         AtomicInteger puestoCounter = new AtomicInteger(1);
 
-        // 1. Contamos las misiones completadas en el periodo (a partir de las fechas de obtención de las insignias), ordenamos y asignamos puestos
+        // Local candidate class to hold count and last completion date for tie-breaking
+        class Candidate {
+            Perfil perfil;
+            int misiones;
+            LocalDate ultimoCompletado;
+
+            Candidate(Perfil perfil, int misiones, LocalDate ultimoCompletado) {
+                this.perfil = perfil;
+                this.misiones = misiones;
+                this.ultimoCompletado = ultimoCompletado;
+            }
+        }
+
+        // 1. Construimos candidatos con cantidad y fecha de última misión en el periodo
         List<PosicionRanking> posicionesFinales = todosLosPerfiles.stream()
                 .map(perfil -> {
                     int misionesEnPeriodo = (int) perfil.getInsignias().stream()
                             .filter(insignia -> insignia.getFechaObtencion() != null &&
-                                    YearMonth.from(insignia.getFechaObtencion()).equals(periodoAClasificar))
+                                    YearMonth.from(insignia.getFechaObtencion()).equals(periodo))
                             .count();
 
-                    // Creamos la posición sin puesto (se asignará luego)
-                    return new PosicionRanking(null, perfil.getIdPerfil(), perfil.getIdUsuario(), perfil.getNombreUsuario(), misionesEnPeriodo);
+                    LocalDate ultimoCompletado = perfil.getInsignias().stream()
+                            .filter(insignia -> insignia.getFechaObtencion() != null &&
+                                    YearMonth.from(insignia.getFechaObtencion()).equals(periodo))
+                            .map(Insignia::getFechaObtencion)
+                            .max(LocalDate::compareTo)
+                            .orElse(null);
+
+                    return new Candidate(perfil, misionesEnPeriodo, ultimoCompletado);
                 })
-                .filter(p -> p.getMisionesCumplidasEnPeriodo() != null && p.getMisionesCumplidasEnPeriodo() > 0)
-                // Ordenamos por cantidad de misiones completadas (descendente)
-                .sorted((p1, p2) -> Integer.compare(p2.getMisionesCumplidasEnPeriodo(), p1.getMisionesCumplidasEnPeriodo()))
-                // Asignamos el puesto incrementalmente
-                .map(p -> { p.setPuesto(puestoCounter.getAndIncrement()); return p; })
+                .filter(c -> c.misiones > 0)
+                // Ordenamos por misiones desc; en empate, gana quien completó antes (ultimoCompletado más temprano)
+                .sorted((c1, c2) -> {
+                    int cmp = Integer.compare(c2.misiones, c1.misiones);
+                    if (cmp != 0) return cmp;
+
+                    if (c1.ultimoCompletado == null && c2.ultimoCompletado == null) return 0;
+                    if (c1.ultimoCompletado == null) return 1; // nulls go last
+                    if (c2.ultimoCompletado == null) return -1;
+
+                    return c1.ultimoCompletado.compareTo(c2.ultimoCompletado); // earlier date -> higher rank
+                })
+                // Mapeamos a PosicionRanking y asignamos puesto incremental
+                .map(c -> {
+                    PosicionRanking p = new PosicionRanking(null, c.perfil.getIdPerfil(), c.perfil.getIdUsuario(),
+                            c.perfil.getNombreUsuario(), c.misiones);
+                    p.setPuesto(puestoCounter.getAndIncrement());
+                    return p;
+                })
                 .toList();
 
         // 2. Construimos y persistimos el objeto de dominio del ranking
-        RankingMensual rankingDelMes = new RankingMensual(periodoAClasificar, posicionesFinales);
+        RankingMensual rankingDelMes = new RankingMensual(periodo, posicionesFinales);
         repositorioRankings.guardar(rankingDelMes);
 
         return rankingDelMes;
