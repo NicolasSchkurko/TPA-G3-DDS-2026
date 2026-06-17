@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
@@ -27,16 +28,14 @@ public class RankingService {
     private void generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = perfiles.listarTodos();
 
-        // 1. Contamos las misiones completadas en el periodo (a partir de las fechas de obtención de las insignias)
-        // y ordenamos por cantidad de misiones completadas (descendente)
+        // 1. Contamos las misiones completadas en el periodo (a partir de las fechas de obtención de las insignias),
+        // ordenamos y creamos las posiciones
         List<PosicionRanking> posicionesFinales = todosLosPerfiles.stream()
                 .map(perfil -> {
                     int misionesEnPeriodo = (int) perfil.getInsignias().stream()
                             .filter(insignia -> insignia.getFechaObtencion() != null &&
                                     YearMonth.from(insignia.getFechaObtencion()).equals(periodo))
                             .count();
-
-                    // Creamos la posición sin puesto (se asignará luego)
                     return new PosicionRanking(null, perfil.getIdPerfil(), perfil.getIdUsuario(),
                             perfil.getNombreUsuario(), misionesEnPeriodo);
                 })
@@ -66,7 +65,12 @@ public class RankingService {
         // 2. Asignamos la posición calculada a cada Perfil en el repositorio
         perfiles.asignarPosicionesRanking(posicionesFinales);
 
-        // 3. Construimos y persistimos el objeto de dominio del ranking
+        // 2.b Creamos la lista de Ranking (valor de dominio específico para la API o logs)
+        List<Ranking> listaRankings = posicionesFinales.stream()
+                .map(p -> new Ranking(p, p.getIdUsuario(), p.getIdPerfil()))
+                .toList();
+
+        // 3. Construimos y persistimos el objeto de dominio del ranking mensual
         RankingMensual rankingDelMes = new RankingMensual(periodo, posicionesFinales);
         repo.guardar(rankingDelMes);
     }
