@@ -28,9 +28,8 @@ public class RankingService {
     private void generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = perfiles.listarTodos();
 
-        // 1. Contamos las misiones completadas en el periodo (a partir de las fechas de obtención de las insignias),
-        // ordenamos y creamos las posiciones
-        List<PosicionRanking> posicionesFinales = todosLosPerfiles.stream()
+        // 1. Generamos posiciones contando las insignias obtenidas en el periodo
+        List<PosicionRanking> posiciones = todosLosPerfiles.stream()
                 .map(perfil -> {
                     int misionesEnPeriodo = (int) perfil.getInsignias().stream()
                             .filter(insignia -> insignia.getFechaObtencion() != null &&
@@ -39,39 +38,33 @@ public class RankingService {
                     return new PosicionRanking(null, perfil.getIdPerfil(), perfil.getIdUsuario(),
                             perfil.getNombreUsuario(), misionesEnPeriodo);
                 })
-                .filter(p -> p.getMisionesCumplidasEnPeriodo() != null
-                        && p.getMisionesCumplidasEnPeriodo() > 0)
-                // Ordenamos por cantidad de misiones completadas (descendente)
-                .sorted((p1, p2) -> Integer.compare(p2.getMisionesCumplidasEnPeriodo(),
-                        p1.getMisionesCumplidasEnPeriodo()))
+                // solo consideramos perfiles con >0 misiones en el periodo
+                .filter(p -> p.getMisionesCumplidasEnPeriodo() != null && p.getMisionesCumplidasEnPeriodo() > 0)
+                // ordenamos desc por misiones cumplidas
+                .sorted((p1, p2) -> Integer.compare(p2.getMisionesCumplidasEnPeriodo(), p1.getMisionesCumplidasEnPeriodo()))
                 .toList();
 
         // 1.b Asignamos puestos teniendo en cuenta empates (misiones iguales -> mismo puesto)
         int indice = 0;
         int puestoActual = 1;
         Integer misionesPrevias = null;
-        for (PosicionRanking p : posicionesFinales) {
+        for (PosicionRanking p : posiciones) {
             indice++;
             Integer misiones = p.getMisionesCumplidasEnPeriodo();
             if (misionesPrevias != null && misiones.equals(misionesPrevias)) {
                 p.setPuesto(puestoActual); // mismo puesto que el anterior
             } else {
-                puestoActual = indice; // salto según índice (si hubo empate anteriormente, los puestos se colarán apropiadamente)
+                puestoActual = indice; // salto según índice
                 p.setPuesto(puestoActual);
             }
             misionesPrevias = misiones;
         }
 
         // 2. Asignamos la posición calculada a cada Perfil en el repositorio
-        perfiles.asignarPosicionesRanking(posicionesFinales);
-
-        // 2.b Creamos la lista de Ranking (valor de dominio específico para la API o logs)
-        List<Ranking> listaRankings = posicionesFinales.stream()
-                .map(p -> new Ranking(p, p.getIdUsuario(), p.getIdPerfil()))
-                .toList();
+        perfiles.asignarPosicionesRanking(posiciones);
 
         // 3. Construimos y persistimos el objeto de dominio del ranking mensual
-        RankingMensual rankingDelMes = new RankingMensual(periodo, posicionesFinales);
+        RankingMensual rankingDelMes = new RankingMensual(periodo, posiciones);
         repo.guardar(rankingDelMes);
     }
 }
