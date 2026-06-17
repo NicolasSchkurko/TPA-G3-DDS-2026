@@ -28,42 +28,56 @@ public class RankingService {
     private void generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = perfiles.listarTodos();
 
-        // 1. Generamos posiciones contando las insignias obtenidas en el periodo
-        List<PosicionRanking> posiciones = todosLosPerfiles.stream()
-                .map(perfil -> {
+        // Reiniciar posiciones previas para evitar que perfiles sin actividad mantengan puesto
+        for (Perfil p : todosLosPerfiles) {
+            p.setPosicionRanking(new PosicionRanking(0));
+            p.getPosicionRanking().setMisionesCumplidasEnPeriodo(0);
+            perfiles.actualizar(p);
+        }
+
+        // 1. Generamos lista de perfiles con su cantidad de misiones en el periodo
+        List<Perfil> candidatos = todosLosPerfiles.stream()
+                .peek(perfil -> {
                     int misionesEnPeriodo = (int) perfil.getInsignias().stream()
                             .filter(insignia -> insignia.getFechaObtencion() != null &&
                                     YearMonth.from(insignia.getFechaObtencion()).equals(periodo))
                             .count();
-                    return new PosicionRanking(null, perfil.getIdPerfil(), perfil.getIdUsuario(),
-                            perfil.getNombreUsuario(), misionesEnPeriodo);
+                    // temporalmente guardamos el conteo en la posición del perfil
+                    perfil.setPosicionRanking(new PosicionRanking(null));
+                    perfil.getPosicionRanking().setMisionesCumplidasEnPeriodo(misionesEnPeriodo);
                 })
                 // solo consideramos perfiles con >0 misiones en el periodo
-                .filter(p -> p.getMisionesCumplidasEnPeriodo() != null && p.getMisionesCumplidasEnPeriodo() > 0)
+                .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
+                        && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
                 // ordenamos desc por misiones cumplidas
-                .sorted((p1, p2) -> Integer.compare(p2.getMisionesCumplidasEnPeriodo(), p1.getMisionesCumplidasEnPeriodo()))
+                .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
+                        p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
                 .toList();
 
-        // 1.b Asignamos puestos teniendo en cuenta empates (misiones iguales -> mismo puesto)
+        // 2. Asignamos puestos teniendo en cuenta empates (misiones iguales -> mismo puesto)
         int indice = 0;
         int puestoActual = 1;
         Integer misionesPrevias = null;
-        for (PosicionRanking p : posiciones) {
+        for (Perfil perfil : candidatos) {
             indice++;
-            Integer misiones = p.getMisionesCumplidasEnPeriodo();
+            Integer misiones = perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo();
             if (misionesPrevias != null && misiones.equals(misionesPrevias)) {
-                p.setPuesto(puestoActual); // mismo puesto que el anterior
+                perfil.getPosicionRanking().setPuesto(puestoActual);
             } else {
-                puestoActual = indice; // salto según índice
-                p.setPuesto(puestoActual);
+                puestoActual = indice;
+                perfil.getPosicionRanking().setPuesto(puestoActual);
             }
             misionesPrevias = misiones;
+            // Persistimos el cambio en el repo de perfiles
+            perfiles.actualizar(perfil);
         }
 
-        // 2. Asignamos la posición calculada a cada Perfil en el repositorio
-        perfiles.asignarPosicionesRanking(posiciones);
+        // 3. Construimos la lista de PosicionRanking para el RankingMensual
+        List<PosicionRanking> posiciones = candidatos.stream()
+                .map(Perfil::getPosicionRanking)
+                .toList();
 
-        // 3. Construimos y persistimos el objeto de dominio del ranking mensual
+        // 4. Construimos y persistimos el objeto de dominio del ranking mensual
         RankingMensual rankingDelMes = new RankingMensual(periodo, posiciones);
         repo.guardar(rankingDelMes);
     }
