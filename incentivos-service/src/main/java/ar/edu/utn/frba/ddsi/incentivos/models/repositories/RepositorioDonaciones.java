@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,5 +70,18 @@ public class RepositorioDonaciones {
         return donaciones.stream()
                 .filter(d -> d.getIdUsuario().equals(id))
                 .toList();
+    }
+
+    public void actualizar(Perfil perfil) {
+        if (perfil == null || perfil.getMisionActual() == null) {
+            return;
+        }
+        List<ImpactoDonacion> exitosas = perfil.getMisionActual().getDonacionesExitosas();
+        if (exitosas == null || exitosas.isEmpty()) {
+            return;
+        }
+        for (ImpactoDonacion d : exitosas) {
+            this.guardar(d);
+        }
     }
 }
