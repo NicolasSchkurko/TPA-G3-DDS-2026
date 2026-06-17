@@ -38,6 +38,11 @@ public class RepositorioPerfiles {
     }
 
     public void asignarPosicionesRanking(List<PosicionRanking> posicionesMes){
+        // Normalizamos estado: limpiamos posiciones previas para todos los perfiles primero
+        for (Perfil p : this.perfiles) {
+            p.setPosicionRanking(new PosicionRanking(null, p.getIdPerfil(), p.getIdUsuario(), p.getNombreUsuario(), 0));
+        }
+
         if (posicionesMes == null || posicionesMes.isEmpty()) return;
 
         for (PosicionRanking pos : posicionesMes) {
