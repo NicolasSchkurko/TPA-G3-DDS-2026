@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto;
 
 import java.util.List;
+import java.util.UUID;
 import javax.swing.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,6 +11,7 @@ import lombok.Setter;
 public class PersonaDonanteDTO {
   // Campo discriminador para saber qué subclase instanciar
   private String tipoPersona; // Valores válidos: "HUMANA" o "JURIDICA"
+  private UUID id; // Para operaciones de actualización o búsqueda por ID
 
   // Campos comunes o de retorno
   private String nombreAMostrar;

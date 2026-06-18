@@ -1,89 +1,56 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import org.springframework.stereotype.Repository;
+
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
-import lombok.Setter;
-import lombok.Getter;
 
-
-@Getter
-@Setter
-
+@Repository
 public class RepositorioDePersonas {
-    private static RepositorioDePersonas instanciaUnica;
 
-    private static List<PersonaDonante> personas;
+    // Eliminamos el patrón Singleton estático para usar inyección de dependencias de Spring
+    private final List<PersonaDonante> personas = new ArrayList<>();
 
-    private RepositorioDePersonas() {
-        this.personas = new ArrayList<>();
-    }
-
-    public static RepositorioDePersonas getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioDePersonas();
-        }
-        return instanciaUnica;
-    }
-
-    public void agregarPersona(PersonaDonante persona) {
-        if(!personas.contains(persona)){
-            this.personas.add(persona);
-        }
-    }
-
-    public void eliminarPersona(PersonaDonante persona) {
-        if(personas.contains(persona)){
-            this.personas.remove(persona);
-        }
-    }
-
-    public static List<PersonaDonante> getPersonas() {
-        return List.copyOf(personas);
-    }
-
-    public static PersonaDonante getPersonaPorNombreCompleto(String nombreBuscado) {
-
-        if (personas == null || personas.isEmpty() || nombreBuscado == null) {
-            return null;
-        }
-
-        String busqueda = nombreBuscado.trim();
-
-        Predicate<PersonaDonante> namePredicate = predicatePorNombre(busqueda);
-
-        return findBy(namePredicate).orElse(null);
-    }
-
-    /* Helper genérico que permite buscar por cualquier predicado */
-    private static Optional<PersonaDonante> findBy(Predicate<PersonaDonante> predicate) {
-        return personas.stream()
-                       .filter(predicate)
-                       .findFirst();
-    }
-
-    /* Predicado compuesto para buscar por "nombre" (darNombre, razonSocial, nombre completo) */
-    private static Predicate<PersonaDonante> predicatePorNombre(String busqueda) {
-        return persona -> matchesDarNombre(persona, busqueda);
-    }
-
-    private static boolean matchesDarNombre(PersonaDonante persona, String busqueda) {
-        try {
-            String nombrePersona = persona.darNombre();
-            return nombrePersona != null && nombrePersona.trim().equalsIgnoreCase(busqueda);
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
     public List<PersonaDonante> findAll() {
         return new ArrayList<>(personas);
     }
 
-}
+    public Optional<PersonaDonante> findById(UUID id) {
+        return personas.stream()
+                       .filter(p -> p.getId().equals(id))
+                       .findFirst();
+    }
 
+    public PersonaDonante save(PersonaDonante persona) {
+        // Al igual que en las otras entidades, borra si existe y lo vuelve a agregar actualizado
+        deleteById(persona.getId());
+        personas.add(persona);
+        return persona;
+    }
+
+    public void deleteById(UUID id) {
+        personas.removeIf(p -> p.getId().equals(id));
+    }
+
+    // Adaptamos tu método de búsqueda por nombre a la nueva estructura
+    public Optional<PersonaDonante> findByNombreCompleto(String nombreBuscado) {
+        if (nombreBuscado == null || nombreBuscado.trim().isEmpty()) {
+            return Optional.empty();
+        }
+
+        String busqueda = nombreBuscado.trim();
+        return personas.stream()
+                       .filter(p -> {
+                           try {
+                               String nombrePersona = p.darNombre();
+                               return nombrePersona != null && nombrePersona.trim().equalsIgnoreCase(busqueda);
+                           } catch (Exception e) {
+                               return false;
+                           }
+                       })
+                       .findFirst();
+    }
+}
