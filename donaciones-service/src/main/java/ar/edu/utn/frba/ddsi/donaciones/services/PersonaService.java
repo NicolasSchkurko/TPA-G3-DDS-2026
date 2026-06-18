@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
@@ -10,6 +11,10 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -36,17 +41,19 @@ public class PersonaService {
   // --- CRUD METHODS ---
 
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
+    Direccion direccion = mapearDireccionDesdeDTO(dto.getDireccion());
+
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
       Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
       Humano humano = new Humano(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
 
-      PersonaHumana nuevaPersona = new PersonaHumana(humano, null);
+      PersonaHumana nuevaPersona = new PersonaHumana(humano, direccion);
       return mapToDto(repositorio.save(nuevaPersona));
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       TipoJuridico tipo = TipoJuridico.valueOf(dto.getTipoJuridico().toUpperCase());
       PersonaJuridica nuevaPersona = new PersonaJuridica(
-          null, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>()
+          direccion, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>()
       );
 
       return mapToDto(repositorio.save(nuevaPersona));
@@ -78,13 +85,19 @@ public class PersonaService {
     PersonaDonante existente = repositorio.findById(id)
                                           .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
 
+    Direccion nuevaDireccion = mapearDireccionDesdeDTO(dto.getDireccion());
+
     if (existente instanceof PersonaHumana ph && "HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
       ph.getPersona().setNombre(dto.getNombre());
       ph.getPersona().setApellido(dto.getApellido());
       ph.getPersona().setEdad(dto.getEdad());
+      ph.setDireccion(nuevaDireccion);
+      // Actualizar otros campos según necesidad
     } else if (existente instanceof PersonaJuridica pj && "JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       pj.setRazonSocial(dto.getRazonSocial());
       pj.setCuit(dto.getCuit());
+      pj.setDireccion(nuevaDireccion);
+      // Actualizar otros campos según necesidad
     } else {
       throw new IllegalArgumentException("El tipo de persona del DTO no coincide con la entidad almacenada o es inválido.");
     }
@@ -185,31 +198,63 @@ public class PersonaService {
 
     PersonaDonanteDTO responseDTO = new PersonaDonanteDTO();
     responseDTO.setId(entidad.getId());
+
     try {
       responseDTO.setNombreAMostrar(entidad.darNombre());
     } catch (Exception e) {
       responseDTO.setNombreAMostrar(null);
     }
 
+    Direccion direccion = null;
+
     if (entidad instanceof PersonaHumana ph) {
       responseDTO.setTipoPersona("HUMANA");
       if (ph.getPersona() != null) {
         responseDTO.setNombre(ph.getPersona().getNombre());
         responseDTO.setApellido(ph.getPersona().getApellido());
+        responseDTO.setEdad(ph.getPersona().getEdad());
+        responseDTO.setNumeroDeDocumento(ph.getPersona().getNumeroDeDocumento());
+        responseDTO.setGenero(ph.getPersona().getGenero() != null ? ph.getPersona().getGenero().name() : null);
       }
+      direccion = ph.getDireccion();
     } else if (entidad instanceof PersonaJuridica pj) {
       responseDTO.setTipoPersona("JURIDICA");
       responseDTO.setRazonSocial(pj.getRazonSocial());
       responseDTO.setCuit(pj.getCuit());
+      responseDTO.setRubro(pj.getRubro());
+      responseDTO.setTipoJuridico(pj.getTipoJuridico() != null ? pj.getTipoJuridico().name() : null);
+      direccion = pj.getDireccion();
     } else {
       responseDTO.setTipoPersona("DESCONOCIDO");
     }
 
+    // Mapeo de dirección
+    if (direccion != null) {
+      DireccionDTO dirDto = new DireccionDTO();
+      dirDto.setCalleUno(direccion.getCalleUno());
+      dirDto.setCalleDos(direccion.getCalleDos());
+      dirDto.setAltura(direccion.getAltura());
+      dirDto.setPiso(direccion.getPiso());
+      dirDto.setDepartamento(direccion.getDepartamento());
+      if (direccion.getCiudad() != null) {
+        dirDto.setCiudad(direccion.getCiudad().getNombre());
+        if (direccion.getCiudad().getProvincia() != null) {
+          dirDto.setProvincia(direccion.getCiudad().getProvincia().getNombre());
+          if (direccion.getCiudad().getProvincia().getPais() != null) {
+            dirDto.setPais(direccion.getCiudad().getProvincia().getPais().getNombre());
+          }
+        }
+      }
+      responseDTO.setDireccion(dirDto);
+    }
+
+    // Usamos el nuevo método de mapeo reutilizable
     responseDTO.setMediosDeContacto(mapMediosContactoToDto(entidad.getMediosDeContacto()));
 
     return responseDTO;
   }
 
+  // Método auxiliar para no duplicar la lógica de mapeo de contactos
   private List<MediosContactoDTO> mapMediosContactoToDto(MediosDeContacto mediosDeContacto) {
     if (mediosDeContacto != null && mediosDeContacto.getListaMediosDeContacto() != null) {
       return mediosDeContacto.getListaMediosDeContacto().stream()
@@ -229,5 +274,23 @@ public class PersonaService {
                              .collect(Collectors.toList());
     }
     return new ArrayList<>();
+  }
+
+  private Direccion mapearDireccionDesdeDTO(DireccionDTO dto) {
+    if (dto == null) {
+      return null;
+    }
+    Pais pais = new Pais(dto.getPais());
+    Provincia provincia = new Provincia(dto.getProvincia(), pais);
+    Ciudad ciudad = new Ciudad(dto.getCiudad(), provincia);
+
+    return new Direccion(
+        dto.getCalleUno(),
+        dto.getCalleDos(),
+        dto.getAltura(),
+        dto.getPiso(),
+        dto.getDepartamento(),
+        ciudad
+    );
   }
 }
