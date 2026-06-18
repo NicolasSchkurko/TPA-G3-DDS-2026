@@ -9,22 +9,21 @@ import org.springframework.stereotype.Service;
 public class NotificacionesClient {
     private final RestTemplate restTemplate;
 
-     @Value("${servicio.notificaciones.url}")
+    @Value("${servicio.notificaciones.url}")
     private String notificacionesUrl;
 
     public NotificacionesClient(RestTemplate restTemplate) {
       this.restTemplate = restTemplate;
     }
 
-    // esto no sabemos si esta bien, hay q plantearlo mejor
-    public void enviarNotificacion (NotificacionDTO dto) {
-
-      restTemplate.getForObject(
-          notificacionesUrl,
-          NotificacionDTO.class
-      );
+    public Void enviarNotificacion(NotificacionDTO dto) {
+        restTemplate.postForEntity(
+                notificacionesUrl,
+                dto,
+                Void.class
+        );
+        return null;
     }
-
 
 }
 

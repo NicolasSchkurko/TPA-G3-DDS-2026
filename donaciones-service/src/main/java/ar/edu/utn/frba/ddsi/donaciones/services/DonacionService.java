@@ -1,6 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
@@ -20,9 +23,11 @@ import java.util.stream.Collectors;
 public class DonacionService {
 
   private final RepositorioDonaciones repositorio;
+  private final IncentivosClient incentivosClient;
 
-  public DonacionService(RepositorioDonaciones repositorio) {
+  public DonacionService(RepositorioDonaciones repositorio, IncentivosClient incentivosClient) {
     this.repositorio = repositorio;
+    this.incentivosClient = incentivosClient;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -78,8 +83,22 @@ public class DonacionService {
       Donacion donacion = donacionOpt.get();
       donacion.actualizarEstado(nuevoEstado, justificacion);
       Donacion guardada = repositorio.save(donacion);
+
+      if (nuevoEstado == Estado.ASIGNADO) {
+        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
+        dto.setIdUsuario(donacion.getDonante().getId());
+        dto.setFechaEntrega(donacion.getFechaEntrega());
+        dto.setCantidadBienes(donacion.sumaCantidadBienes());
+        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
+        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
+        dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
+        dto.setEstado(nuevoEstado.name());
+        incentivosClient.notificarDonacionAsignada(dto);
+      }
+
       return this.toDTO(guardada);
     }
+
     throw new RuntimeException("Donación no encontrada con ID: " + id);
   }
 
