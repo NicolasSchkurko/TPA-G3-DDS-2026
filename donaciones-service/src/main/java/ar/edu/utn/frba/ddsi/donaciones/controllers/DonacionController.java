@@ -25,6 +25,7 @@ public class DonacionController {
 
   // CREATE (C) - Recibe la entidad (o podrías crear un DonacionCreateDTO) y devuelve el DTO
   @PostMapping
+  //el metodo crearDonacion en service esta bien, pero la ruta en controller esta de mas a mi parecer
   public ResponseEntity<DonacionDTO> crearDonacion(@RequestBody Donacion donacion) {
     DonacionDTO nuevaDonacion = donacionService.crearDonacion(donacion);
     return new ResponseEntity<>(nuevaDonacion, HttpStatus.CREATED);
