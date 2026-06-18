@@ -15,16 +15,24 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class PersonaService {
@@ -109,6 +117,47 @@ public class PersonaService {
     repositorio.deleteById(id);
   }
 
+  public String importarDonantes(MultipartFile file, List<MapeoCSV> mapeosCsv) {
+    try {
+      // 1. Extraemos los bytes del archivo para poder usarlo dentro del hilo asincrónico,
+      byte[] fileBytes = file.getBytes();
+
+      // 2. Disparamos un hilo asincrónico para no bloquear al usuario
+      CompletableFuture.runAsync(() -> {
+        try (InputStream inputStream = new ByteArrayInputStream(fileBytes)) {
+          // Instanciamos el conversor y el lector de forma temporal para esta única importación
+          PersonaDonanteFilaConverter conversor = new PersonaDonanteFilaConverter(mapeosCsv);
+          LectorCSV<PersonaDonante> lectorTemporal = new LectorCSV<>(',', conversor);
+
+          // El LectorCSV internamente hace los loggers (warnings) de las filas que fallan
+          List<PersonaDonante> donantesImportados = lectorTemporal.importar(inputStream);
+
+          int guardados = 0;
+          for (PersonaDonante donante : donantesImportados) {
+            try {
+              repositorio.save(donante);
+              guardados++;
+            } catch (Exception e) {
+              System.err.println("Fallo al persistir un donante del CSV: " + e.getMessage());
+            }
+          }
+
+          System.out.println("Importación CSV finalizada en 2do plano. Se procesaron y guardaron " + guardados + " donantes.");
+
+        } catch (IOException e) {
+          System.err.println("Error de IO al leer el stream del CSV: " + e.getMessage());
+        }
+      });
+
+      // 3. Retornamos un string rápidamente mientras el hilo sigue trabajando
+      return "El archivo fue recibido con éxito. La importación se está ejecutando en segundo plano y los errores de formato quedarán en los logs del servidor.";
+
+    } catch (IOException e) {
+      throw new RuntimeException("Error al acceder al archivo CSV", e);
+    }
+  }
+
+
   // --- GESTIÓN DE MEDIOS DE CONTACTO ---
 
   public List<MediosContactoDTO> obtenerMediosContacto(UUID id) {
@@ -189,6 +238,9 @@ public class PersonaService {
     }
   }
 
+
+
+
   // --- MAPPER ---
 
   private PersonaDonanteDTO mapToDto(PersonaDonante entidad) {
@@ -248,13 +300,11 @@ public class PersonaService {
       responseDTO.setDireccion(dirDto);
     }
 
-    // Usamos el nuevo método de mapeo reutilizable
     responseDTO.setMediosDeContacto(mapMediosContactoToDto(entidad.getMediosDeContacto()));
 
     return responseDTO;
   }
 
-  // Método auxiliar para no duplicar la lógica de mapeo de contactos
   private List<MediosContactoDTO> mapMediosContactoToDto(MediosDeContacto mediosDeContacto) {
     if (mediosDeContacto != null && mediosDeContacto.getListaMediosDeContacto() != null) {
       return mediosDeContacto.getListaMediosDeContacto().stream()
