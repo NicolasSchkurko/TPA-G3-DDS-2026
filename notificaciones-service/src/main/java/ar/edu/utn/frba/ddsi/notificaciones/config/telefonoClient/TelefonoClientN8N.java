@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Implementacion del envio por telefono mediante n8n.
  * Actualmente registra el envio; cuando se configure el workflow real, esta clase debe invocarlo.
  */
-@Component
+@Component("telefono")
 public class TelefonoClientN8N implements TelefonoClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelefonoClientN8N.class);
 

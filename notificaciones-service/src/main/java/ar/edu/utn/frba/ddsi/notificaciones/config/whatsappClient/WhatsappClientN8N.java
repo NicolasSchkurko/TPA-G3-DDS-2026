@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Implementacion del envio por whatsapp mediante n8n.
  * Actualmente registra el envio; cuando se configure el workflow real, esta clase debe invocarlo.
  */
-@Component
+@Component("whatsapp")
 public class WhatsappClientN8N implements WhatsappClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(WhatsappClientN8N.class);
 

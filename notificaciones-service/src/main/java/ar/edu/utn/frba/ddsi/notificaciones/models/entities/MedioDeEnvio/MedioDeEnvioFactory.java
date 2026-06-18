@@ -4,9 +4,11 @@ import ar.edu.utn.frba.ddsi.notificaciones.config.mailClient.MailClient;
 import ar.edu.utn.frba.ddsi.notificaciones.config.telefonoClient.TelefonoClient;
 import ar.edu.utn.frba.ddsi.notificaciones.config.whatsappClient.WhatsappClient;
 import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.TipoMedioDeContactoInvalidoException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Crea el MedioDeEnvio correspondiente a partir del tipo solicitado.
@@ -15,26 +17,19 @@ import java.util.Locale;
  */
 @Component
 public class MedioDeEnvioFactory {
-    private final MailClient mailClient;
-    private final TelefonoClient telefonoClient;
-    private final WhatsappClient whatsappClient;
+    private Map<String, MedioDeEnvio> medios;
 
-    public MedioDeEnvioFactory(MailClient mailClient, TelefonoClient telefonoClient, WhatsappClient whatsappClient) {
-        this.mailClient = mailClient;
-        this.telefonoClient = telefonoClient;
-        this.whatsappClient = whatsappClient;
+    @Autowired
+    public MedioDeEnvioFactory(Map<String, MedioDeEnvio> medios) {
+        this.medios = medios;
     }
 
-    public MedioDeEnvio mapearAMedioEnvio(String tipoMedioContacto) {
-        String tipoNormalizado = tipoMedioContacto.toLowerCase(Locale.ROOT).trim();
-
-        return switch (tipoNormalizado) {
-            case "whatsapp" -> new Whatsapp(whatsappClient);
-            case "telefono", "sms" -> new Telefono(telefonoClient);
-            case "mail", "email" -> new Mail(mailClient);
-            default -> throw new TipoMedioDeContactoInvalidoException(
-                    "El medio de contacto no es valido: " + tipoMedioContacto
-            );
-        };
+    public MedioDeEnvio mapearAMedioEnvio(String tipo) {
+        MedioDeEnvio medio = medios.get(tipo);
+        if (medio == null) {
+            throw new IllegalArgumentException("Tipo desconocido: " + tipo);
+        }
+        return medio;
     }
 }
+

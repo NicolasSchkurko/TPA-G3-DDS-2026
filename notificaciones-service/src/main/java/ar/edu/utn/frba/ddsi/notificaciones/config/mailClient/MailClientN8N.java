@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Implementacion del envio de mails mediante n8n.
  * Actualmente registra el envio; cuando se configure el workflow real, esta clase debe invocarlo.
  */
-@Component
+@Component("email")
 public class MailClientN8N implements MailClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(MailClientN8N.class);
 
