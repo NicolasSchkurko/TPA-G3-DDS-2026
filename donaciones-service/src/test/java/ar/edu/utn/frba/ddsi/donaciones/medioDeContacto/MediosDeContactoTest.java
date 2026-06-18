@@ -13,7 +13,7 @@ import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMens
 import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje.BIENVENIDA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest
+
 public class MediosDeContactoTest {
 
     MedioDeContacto medioWhatsapp = new Whatsapp("12345", List.of(BIENVENIDA, ALERTA));

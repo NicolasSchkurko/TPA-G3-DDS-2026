@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.donaciones;
+package ar.edu.utn.frba.ddsi.donaciones.donacion;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;

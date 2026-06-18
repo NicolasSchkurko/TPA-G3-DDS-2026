@@ -17,7 +17,7 @@ import static ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMens
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest
+
 public class MedioDeContactoTest {
 
     MedioDeContacto medioWhatsapp = new Whatsapp("12345", List.of(BIENVENIDA, ALERTA));
