@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.services;
+package ar.edu.utn.frba.ddsi.donaciones.clients;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.ActividadDTO;
 import org.springframework.beans.factory.annotation.Value;

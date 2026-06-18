@@ -1,7 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDePersonas;
 import java.time.LocalDate;
@@ -120,6 +126,7 @@ public class PersonaService {
 
     return responseDTO;
   }
+
   @Scheduled(cron = "0 0 0 * * ?") // una vez por día
   public Void revisarActividadesPersonas() {
 
@@ -130,17 +137,41 @@ public class PersonaService {
     }
     return null;
   }
-  private void revisarActividadPerfil(PersonaDonante persona){
+
+  private void revisarActividadPerfil(PersonaDonante persona) {
     if (persona.getFormularios()
-        .getLast()
-        .getFechaRealizacion()
-        .plusDays(20)
-        .isBefore(LocalDate.now())) {
-      // perdió la racha, reiniciar misión, etc.
-      MediosContactoDTO.NotificacionDTO notificacion = new MediosContactoDTO.NotificacionDTO(
-          persona.getMediosDeContacto().getMedioDeContactoPredeterminado().//TODO Desde medio de contacto predeterminado deberia poder acceder al tipo de medio como un string, el tipo de medio seria whatsap,mail o telegram.
-     // TODO Deberia poder accederse a la direccion de contacto de la persna desde persona.getdirecciondecontacto
-      "doná porfa cada segundo que no donas muere un perrito ",
+               .getLast()
+               .getFechaRealizacion()
+               .plusDays(20)
+               .isBefore(LocalDate.now())) {
+
+      // Obtener el medio de contacto predeterminado
+      MedioDeContacto medioPredeterminado = null;
+      if (persona.getMediosDeContacto() != null) {
+        medioPredeterminado = persona.getMediosDeContacto().getMedioDeContactoPredeterminado();
+      }
+
+      // Crear DTO del medio de contacto
+      MediosContactoDTO medioDTO = null;
+      if (medioPredeterminado != null) {
+        String tipo;
+        if (medioPredeterminado instanceof Mail) {
+          tipo = "EMAIL";
+        } else if (medioPredeterminado instanceof Whatsapp) {
+          tipo = "WHATSAPP";
+        } else if (medioPredeterminado instanceof Telefono) {
+          tipo = "TELEFONO";
+        } else {
+          tipo = medioPredeterminado.getClass().getSimpleName().toUpperCase();
+        }
+        medioDTO = new MediosContactoDTO(tipo, medioPredeterminado.getValor());
+      }
+
+      // Crear notificación con los datos completos
+      NotificacionDTO notificacion = new NotificacionDTO(
+          medioDTO,
+          medioPredeterminado != null ? medioPredeterminado.getValor() : null,
+          "doná porfa cada segundo que no donas muere un perrito ",
           "Inactividad del perfil"
       );
 
