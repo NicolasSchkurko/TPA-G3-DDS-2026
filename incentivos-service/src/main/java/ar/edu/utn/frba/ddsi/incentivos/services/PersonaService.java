@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilInexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
@@ -38,7 +39,7 @@ public class PersonaService {
         this.repositorioCategorias = repositorioCategorias;
     }
 
-    public void crearPerfil(PerfilDonanteDTO dto) {
+    public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
         if (dto.getIdUsuario() == null) {
             throw new DatosInvalidosException();
         }
@@ -55,9 +56,19 @@ public class PersonaService {
             nuevo.setMisionActual(categoriaBase.primeraMision());
         }
         repositorioPerfiles.agregarPerfil(nuevo);
+
+        PerfilDTO pDTO = new PerfilDTO(
+                nuevo.getNombreUsuario(),
+                nuevo.getCategoriaActual().name(),
+                nuevo.getInsignias().stream().map(Insignia::getNombre).toList(),
+                nuevo.getMisionActual().getNombreMision(),
+                nuevo.getPosicionRanking().getPuesto()
+        );
+
+        return pDTO;
     }
 
-    public void actualizarPerfil(ImpactoDonacionDTO dto) {
+    public PerfilDTO actualizarPerfil(ImpactoDonacionDTO dto) {
         if (dto.getIdUsuario() == null) {
             throw new DatosInvalidosException();
         }
@@ -147,6 +158,16 @@ public class PersonaService {
 
             notificacionClient.enviarNotificacion(notificacion);
         }
+
+        PerfilDTO pDTO = new PerfilDTO(
+                perfil.getNombreUsuario(),
+                perfil.getCategoriaActual().name(),
+                perfil.getInsignias().stream().map(Insignia::getNombre).toList(),
+                perfil.getMisionActual().getNombreMision(),
+                perfil.getPosicionRanking().getPuesto()
+        );
+
+        return pDTO;
     }
 
     public ImpactoDonacion convertirDTO(ImpactoDonacionDTO donacion){
