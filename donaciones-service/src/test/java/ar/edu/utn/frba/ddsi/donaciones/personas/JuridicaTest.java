@@ -31,7 +31,8 @@ public class JuridicaTest {
                 "ONGs",
                 TipoJuridico.ONG,
                 "20-12345678-9",
-                List.of(representante)
+                List.of(representante),
+                "la mejor fundacion"
         );
 
 
@@ -51,7 +52,7 @@ public class JuridicaTest {
         Ciudad ciudad = new Ciudad("Buenos Aires", new Provincia("Buenos Aires", new Pais("Argentina")));
         Direccion direccion = new Direccion("Rivadavia", "Corrientes", 1234, 2, "A", ciudad);
 
-        PersonaHumana persona = new PersonaHumana(humano, direccion);
+        PersonaHumana persona = new PersonaHumana(humano, direccion, "juan el mejorcito");
 
 
         assertEquals("Juan", persona.getPersona().getNombre());

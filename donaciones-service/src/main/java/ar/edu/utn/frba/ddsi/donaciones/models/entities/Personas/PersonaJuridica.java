@@ -15,6 +15,7 @@ public class PersonaJuridica extends PersonaDonante {
   private TipoJuridico tipoJuridico;
   private String cuit;
   private List<Representante> representantes;
+  private String nombreDeUsuario;
 
   public PersonaJuridica(
       Direccion direccion,
@@ -22,7 +23,8 @@ public class PersonaJuridica extends PersonaDonante {
       String rubro,
       TipoJuridico tipoJuridico,
       String cuit,
-      List<Representante> representantes
+      List<Representante> representantes,
+      String nombreDeUsuario
   ) {
     super(direccion);
     this.razonSocial = razonSocial;
@@ -30,6 +32,7 @@ public class PersonaJuridica extends PersonaDonante {
     this.cuit = cuit;
     this.tipoJuridico = tipoJuridico;
     this.representantes = representantes;
+    this.nombreDeUsuario=nombreDeUsuario;
   }
 
   public String darNombre(){

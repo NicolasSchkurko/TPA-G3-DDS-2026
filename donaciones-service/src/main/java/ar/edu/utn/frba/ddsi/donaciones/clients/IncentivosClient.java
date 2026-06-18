@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.clients;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.ActividadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,11 +19,13 @@ public class IncentivosClient {
       this.restTemplate = restTemplate;
     }
 
-    public ActividadDTO obtenerDiasDeInactividad(UUID idUsuario) {
-      return restTemplate.getForObject(
-          incentivosUrl + idUsuario + "/metricas",
-          ActividadDTO.class
+    public void peticionCrearPerfil(IDDTO dto) {
+      restTemplate.postForEntity(
+          incentivosUrl,
+          dto,
+          void.class
       );
     }
+
   }
 

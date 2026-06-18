@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
@@ -40,10 +42,12 @@ public class PersonaService {
   // Inyección de dependencias en lugar de llamar al getInstance()
   private final RepositorioDePersonas repositorio;
   private final NotificacionesClient notificacionClient;
+  private final IncentivosClient incentivosClient;
 
-  public PersonaService(RepositorioDePersonas repositorio, NotificacionesClient notificacionClient) {
+  public PersonaService(RepositorioDePersonas repositorio, NotificacionesClient notificacionClient, IncentivosClient incentivosClient) {
     this.repositorio = repositorio;
     this.notificacionClient = notificacionClient;
+    this.incentivosClient=incentivosClient;
   }
 
   // --- CRUD METHODS ---
@@ -55,15 +59,26 @@ public class PersonaService {
       Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
       Humano humano = new Humano(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
 
-      PersonaHumana nuevaPersona = new PersonaHumana(humano, direccion);
+      PersonaHumana nuevaPersona = new PersonaHumana(humano, direccion, dto.getNombreAMostrar());
+      IDDTO peticion = new IDDTO(
+          nuevaPersona.getId(),
+          nuevaPersona.getNombreDeUsuario()
+          );
+
+      incentivosClient.peticionCrearPerfil(peticion);
       return mapToDto(repositorio.save(nuevaPersona));
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       TipoJuridico tipo = TipoJuridico.valueOf(dto.getTipoJuridico().toUpperCase());
       PersonaJuridica nuevaPersona = new PersonaJuridica(
-          direccion, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>()
+          direccion, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>(), dto.getNombreAMostrar()
+      );
+      IDDTO peticion = new IDDTO(
+          nuevaPersona.getId(),
+          nuevaPersona.getNombreDeUsuario()
       );
 
+      incentivosClient.peticionCrearPerfil(peticion);
       return mapToDto(repositorio.save(nuevaPersona));
     } else {
       throw new IllegalArgumentException("Tipo de persona inválido");
