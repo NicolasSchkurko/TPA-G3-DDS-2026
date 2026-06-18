@@ -14,18 +14,10 @@ import lombok.Getter;
 @Setter
 
 public class RepositorioDonaciones {
-    private static RepositorioDonaciones instanciaUnica;
     private final List<ImpactoDonacion> donaciones;
 
     private RepositorioDonaciones() {
         this.donaciones = new ArrayList<>();
-    }
-
-    public static RepositorioDonaciones getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioDonaciones();
-        }
-        return instanciaUnica;
     }
 
     public void guardar(ImpactoDonacion donacion) {

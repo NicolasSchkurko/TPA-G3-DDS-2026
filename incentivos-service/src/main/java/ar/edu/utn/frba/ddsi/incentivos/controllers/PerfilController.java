@@ -5,7 +5,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/perfiles")
+@RequestMapping("/perfiles") //https:localhost:8001/perfiles
 public class PerfilController {
     private final PerfilService service;
 
@@ -29,6 +28,7 @@ public class PerfilController {
         this.service = service;
     }
 
+    //https:localhost:8001/perfiles/{id}/comparativa
     @GetMapping("/{id}/comparativa")
     public ResponseEntity<MetricasActividadDTO> obtenerComparativaPerfil(@PathVariable UUID id) {
         MetricasActividad metrica = service.obtenerMetricasDonante(id);

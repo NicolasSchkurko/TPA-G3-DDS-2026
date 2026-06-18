@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
@@ -12,12 +11,17 @@ import org.springframework.stereotype.Service;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class RankingService {
-    private final RepositorioRankings repo = RepositorioRankings.getInstance();
-    private final RepositorioPerfiles perfiles = RepositorioPerfiles.getInstance();
+    private final RepositorioPerfiles perfiles;
+    private final RepositorioRankings repo;
+
+    public RankingService(RepositorioPerfiles perfiles,
+                         RepositorioRankings rankings) {
+        this.perfiles = perfiles;
+        this.repo = rankings;
+    }
 
     // Ejecuta el proceso el día 1 de cada mes a las 00:05 y genera el ranking del mes anterior
     @Scheduled(cron = "0 5 0 1 * ?")

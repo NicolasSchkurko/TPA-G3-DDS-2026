@@ -19,7 +19,7 @@ public class NotificacionClient {
 
     public Void enviarNotificacion(PerfilNotificacionDTO dto) {
         restTemplate.postForEntity(
-               notificacionesUrl,
+                notificacionesUrl,
                 dto,
                 Void.class
         );

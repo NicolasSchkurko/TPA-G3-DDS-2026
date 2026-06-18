@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class PersonaService {
-    private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
-    private final RepositorioDonaciones repositorioDonaciones = RepositorioDonaciones.getInstance();
-    private final RepositorioCategorias repositorioCategorias = RepositorioCategorias.getInstance();
+    private final RepositorioDonaciones repositorioDonaciones;
+    private final RepositorioPerfiles repositorioPerfiles;
+    private final RepositorioCategorias repositorioCategorias;
     private final NotificacionClient notificacionClient;
     private final DonacionClient donacionClient;
     private final N8nClient n8nClient;
@@ -26,10 +26,16 @@ public class PersonaService {
 
     public PersonaService(NotificacionClient notificacionClient,
                           DonacionClient donacionClient,
-                          N8nClient n8nClient) {
+                          N8nClient n8nClient,
+                          RepositorioDonaciones repositorio,
+                          RepositorioPerfiles perfiles,
+                          RepositorioCategorias repositorioCategorias) {
         this.notificacionClient = notificacionClient;
         this.donacionClient = donacionClient;
         this.n8nClient = n8nClient;
+        this.repositorioDonaciones = repositorio;
+        this.repositorioPerfiles = perfiles;
+        this.repositorioCategorias = repositorioCategorias;
     }
 
     public void crearPerfil(PerfilDonanteDTO dto) {

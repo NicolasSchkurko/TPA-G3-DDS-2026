@@ -7,19 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RepositorioCategorias {
-    private static RepositorioCategorias instance = null;
     private final List<Categoria> categorias;
 
     private RepositorioCategorias() {
         this.categorias = new ArrayList<>();
         inicializarCategoriasBase();
-    }
-
-    public static synchronized RepositorioCategorias getInstance() {
-        if (instance == null) {
-            instance = new RepositorioCategorias();
-        }
-        return instance;
     }
 
     private void inicializarCategoriasBase() {

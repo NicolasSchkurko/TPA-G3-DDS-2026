@@ -14,16 +14,23 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PerfilService {
-    private final RepositorioDonaciones repositorioDonaciones = RepositorioDonaciones.getInstance();
-    private final RepositorioPerfiles repositorioPerfiles = RepositorioPerfiles.getInstance();
-    private final RepositorioRankings repositorioRankings = RepositorioRankings.getInstance();
+    private final RepositorioDonaciones repositorioDonaciones;
+    private final RepositorioPerfiles repositorioPerfiles;
+    private final RepositorioRankings repositorioRankings;
+
+    public PerfilService(RepositorioDonaciones repositorio,
+                         RepositorioPerfiles perfiles,
+                         RepositorioRankings rankings) {
+        this.repositorioDonaciones = repositorio;
+        this.repositorioPerfiles = perfiles;
+        this.repositorioRankings = rankings;
+    }
 
     public MetricasActividad obtenerMetricasDonante(UUID idUsuario){
         List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);

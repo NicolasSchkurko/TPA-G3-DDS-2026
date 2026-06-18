@@ -16,19 +16,10 @@ import lombok.Getter;
 @Setter
 
 public class RepositorioPerfiles {
-    private static RepositorioPerfiles instanciaUnica;
-
     private final List<Perfil> perfiles;
 
     private RepositorioPerfiles() {
         this.perfiles = new ArrayList<>();
-    }
-
-    public static RepositorioPerfiles getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioPerfiles();
-        }
-        return instanciaUnica;
     }
 
     public void agregarPerfil(Perfil perfil) {
