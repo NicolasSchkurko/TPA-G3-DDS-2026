@@ -1,33 +1,38 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+@Repository
 public class RepositorioEntidadesBeneficiarias {
     private final List<EntidadBeneficiaria> entidades;
-    //private final List<AlgoritmoAsignacion> algoritmos;
 
     public RepositorioEntidadesBeneficiarias() {
         this.entidades = new ArrayList<>();
-        //this.algoritmos = new ArrayList<>();
     }
 
-    public List<EntidadBeneficiaria> obtenerTodas() {
-        return entidades;
-    }
-    
-    public void agregarEntidad(EntidadBeneficiaria entidad) {
-        if(!entidades.contains(entidad)){
-            this.entidades.add(entidad);
-        }
+    public List<EntidadBeneficiaria> findAll() {
+        return new ArrayList<>(entidades);
     }
 
-    public EntidadBeneficiaria buscarPorRazonSocial(String razonSocial) {
+    public Optional<EntidadBeneficiaria> findById(UUID id) {
         return entidades.stream()
-                .filter(e -> e.getRazonSocial().equals(razonSocial))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró la entidad: " + razonSocial));
+                        .filter(e -> e.getId().equals(id))
+                        .findFirst();
+    }
+
+    public EntidadBeneficiaria save(EntidadBeneficiaria entidad) {
+        deleteById(entidad.getId()); // Si existe la actualiza (borra e inserta), si no, la agrega.
+        entidades.add(entidad);
+        return entidad;
+    }
+
+    public void deleteById(UUID id) {
+        entidades.removeIf(e -> e.getId().equals(id));
     }
 }

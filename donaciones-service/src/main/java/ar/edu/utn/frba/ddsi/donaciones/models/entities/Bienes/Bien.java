@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public abstract class Bien {
-    UUID id;
+    UUID id = UUID.randomUUID();
     String descripcion;
     SubcategoriaBien subcategoria;
     @Getter(AccessLevel.NONE)
