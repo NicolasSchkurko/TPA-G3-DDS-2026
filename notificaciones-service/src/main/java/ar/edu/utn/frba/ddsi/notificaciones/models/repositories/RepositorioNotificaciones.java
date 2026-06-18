@@ -14,7 +14,7 @@ import java.util.Map;
  * Repositorio en memoria de notificaciones.
  * Mantiene una lista por cada EstadoNotificacion y se inicializa desde el enum para soportar nuevos estados.
  */
-@Repository
+@Repository("repositorio")
 public class RepositorioNotificaciones {
     private final Map<EstadoNotificacion, List<Notificacion>> notificacionesPorEstado;
 

@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeE
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,16 +14,21 @@ import org.springframework.stereotype.Service;
 public class NotificadorService {
 
     private final MedioDeEnvioFactory factory;
+    private final RepositorioNotificaciones repositorioNotificaciones;
 
     @Autowired
-    public NotificadorService(MedioDeEnvioFactory factory) {
+    public NotificadorService(MedioDeEnvioFactory factory, RepositorioNotificaciones repositorioNotificaciones) {
         this.factory = factory;
+        this.repositorioNotificaciones= repositorioNotificaciones;
     }
 
     public void procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO){
         Notificacion notificacion = crearNotificacion(solicitudNotificacionDTO);
         String direccionContacto = solicitudNotificacionDTO.getDireccionDeContacto();
         String tipoDeMedioDeContacto = solicitudNotificacionDTO.getMedioDeContacto();
+
+        repositorioNotificaciones.guardar(notificacion);
+
         enviarNotificacion(tipoDeMedioDeContacto,direccionContacto, notificacion);
     }
 
