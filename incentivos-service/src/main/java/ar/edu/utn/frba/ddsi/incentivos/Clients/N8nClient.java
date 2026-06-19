@@ -32,7 +32,7 @@ public class N8nClient {
         restTemplate.postForEntity(
                 n8nUrl,
                 body,
-                Void.class
+                void.class
         );
     }
 }
