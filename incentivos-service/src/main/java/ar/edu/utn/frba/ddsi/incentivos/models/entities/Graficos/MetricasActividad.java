@@ -2,10 +2,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos;
 
 import java.time.YearMonth;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.MetricasActividadDTO;
 import lombok.Getter;
 import lombok.Setter;
-import java.util.List;
 
 @Getter
 @Setter

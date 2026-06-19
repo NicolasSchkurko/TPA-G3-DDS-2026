@@ -12,4 +12,9 @@ public class PerfilDonanteDTO {
     //recibimos de PersonaDonanteDTO-Serv-Donaciones
     private UUID idUsuario;
     private String nombreUsuario;
+
+    public PerfilDonanteDTO(UUID uuid, String sofia) {
+        this.idUsuario = uuid;
+        this.nombreUsuario = sofia;
+    }
 }

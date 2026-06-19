@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.services;
+package ar.edu.utn.frba.ddsi.incentivos.Clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.MedioContactoDTO;
 import org.springframework.beans.factory.annotation.Value;
