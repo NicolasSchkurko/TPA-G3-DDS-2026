@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
@@ -14,36 +16,47 @@ import lombok.Setter;
 @Getter
 @Setter
 public class EntidadBeneficiaria {
+    private UUID id = UUID.randomUUID(); // Identificador único autogenerado
     private String razonSocial;
     private Direccion direccion;
     private Telefono nroTell;
     private List<Necesidad> necesidades;
     private MediosDeContacto correosRepresentantes;
 
-    public EntidadBeneficiaria (String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres){
+    public EntidadBeneficiaria(String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres) {
         this.razonSocial = razonSoc;
         this.direccion = dir;
         this.nroTell = nroTell;
-        this.necesidades = new ArrayList<Necesidad>();
+        this.necesidades = new ArrayList<>();
         this.correosRepresentantes = correosRepres;
     }
 
-    public void agregarNecesidad(Necesidad necesidad){
+    public void agregarNecesidad(Necesidad necesidad) {
         this.necesidades.add(necesidad);
     }
 
-    public List<Donacion> verDonaciones(){
-        return necesidades.stream()
-                .flatMap(necesidad -> necesidad.getDonaciones().stream())
-                .toList();
+    public void eliminarNecesidad(Necesidad necesidad) {
+        this.necesidades.remove(necesidad);
     }
 
-    public void confirmarRecepcion(Donacion donacion){
+    public Optional<Necesidad> buscarNecesidadPorId(UUID idNecesidad) {
+        return necesidades.stream()
+                          .filter(n -> n.getId().equals(idNecesidad))
+                          .findFirst();
+    }
 
+    public List<Donacion> verDonaciones() {
+        return necesidades.stream()
+                          .flatMap(necesidad -> necesidad.getDonaciones().stream())
+                          .toList();
+    }
+
+    public void confirmarRecepcion(Donacion donacion) {
+        // Lógica para confirmar la recepción
     }
 
     @Override
     public String toString() {
-        return "EntidadBeneficiaria{razonSocial=" + razonSocial + ", direccion=" + direccion + ", telefono=" + nroTell + ", necesidades=" + necesidades + ", correosRepresentantes=" + correosRepresentantes + '}';
+        return "EntidadBeneficiaria{id=" + id + ", razonSocial=" + razonSocial + ", direccion=" + direccion + ", telefono=" + nroTell + ", necesidades=" + necesidades + ", correosRepresentantes=" + correosRepresentantes + '}';
     }
 }

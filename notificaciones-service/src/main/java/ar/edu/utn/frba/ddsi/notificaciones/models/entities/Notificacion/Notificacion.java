@@ -1,27 +1,32 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion;
 
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.CanalNotificacion.CanalNotificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Destinatario.Destinatario;
+
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 public class Notificacion {
-    private Number idNotificacion;
     @Setter
-    private String asunto;
-    private String cuerpo;
+    private Mensaje mensaje;
     @Setter
     @Getter
-    private Destinatario destinatario;
+    private String direccionDeContacto;
     @Setter
     private LocalDateTime fechaCreacion;
     @Setter
-    private EstadoNotificacion estado;
+    private LocalDateTime fechaEnvio;
     @Setter
-    private TipoNotificacion tipo;
-    private CanalNotificacion canalDeEnvio;
+    @Getter
+    private EstadoNotificacion estado;
+
+    public Notificacion(String direccionDeContacto, Mensaje mensaje) {
+        this.fechaCreacion = LocalDateTime.now();
+        this.estado = EstadoNotificacion.PENDIENTE;
+        this.direccionDeContacto = direccionDeContacto;
+        this.mensaje = mensaje;
+    }
 
     public void marcarEnviada(){
         this.estado = EstadoNotificacion.ENVIADA;

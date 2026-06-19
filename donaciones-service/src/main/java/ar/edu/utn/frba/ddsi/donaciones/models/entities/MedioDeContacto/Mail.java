@@ -5,6 +5,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 
@@ -12,8 +14,14 @@ public class Mail extends MedioDeContacto {
 
     private String direccionMail;
 
+    public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
+        super();
+        this.direccionMail = dirMail;
+    }
+
     public Mail(String dirMail) {
-        this.direccionMail=dirMail;
+        super();
+        this.direccionMail = dirMail;
     }
 
     @Override

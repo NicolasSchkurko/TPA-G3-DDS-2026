@@ -5,6 +5,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 
@@ -13,8 +15,14 @@ public class Whatsapp extends MedioDeContacto {
 
     private String numeroDeTelefono;
 
-    public Whatsapp(String numTelefono){
-        this.numeroDeTelefono=numTelefono;
+    public Whatsapp(String numTelefono, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
+        super(tiposDeMensajeAdmitidos);
+        this.numeroDeTelefono = numTelefono;
+    }
+
+    public Whatsapp(String numTelefono) {
+        super();
+        this.numeroDeTelefono = numTelefono;
     }
 
     @Override

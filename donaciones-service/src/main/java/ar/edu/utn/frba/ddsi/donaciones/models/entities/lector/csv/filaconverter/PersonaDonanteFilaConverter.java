@@ -107,7 +107,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
     int numeroDocumentoParseado = limpiarYParsearDocumento(documento);
 
     Humano humano = new Humano(nombre, apellido, 0, numeroDocumentoParseado, null);
-    return new PersonaHumana(humano, null);
+    return new PersonaHumana(humano, null, null);
   }
 
   /**
@@ -119,7 +119,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    * @return
    */
   private PersonaJuridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
-    return new PersonaJuridica(null, razonSocial, null, null, documento, new ArrayList<>());
+    return new PersonaJuridica(null, razonSocial, null, null, documento, new ArrayList<>(), null);
   }
 
   /**

@@ -13,11 +13,20 @@ import java.util.List;
 public abstract class MedioDeContacto {
     private List<TipoDeMensaje> tiposDeMensajeAdmitidos;
 
-    public MedioDeContacto(List<TipoDeMensaje> tiposDeMensajeAdmitidos){
+    public MedioDeContacto(List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
         this.tiposDeMensajeAdmitidos = tiposDeMensajeAdmitidos;
     }
 
-    public MedioDeContacto() {}
+    public MedioDeContacto() {
+        this.tiposDeMensajeAdmitidos = List.of(
+                TipoDeMensaje.BIENVENIDA,
+                TipoDeMensaje.ALERTA,
+                TipoDeMensaje.CRITICO,
+                TipoDeMensaje.CAMBIO_ESTADO,
+                TipoDeMensaje.MISION,
+                TipoDeMensaje.RECOMPENSAS
+        );
+    }
 
     public abstract String getValor();
 
@@ -27,11 +36,11 @@ public abstract class MedioDeContacto {
         }
     }
 
-    public void agregarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
+    public void agregarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje) {
         this.tiposDeMensajeAdmitidos.add(tipoDeMensaje);
     }
 
-    public void eliminarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje){
+    public void eliminarTipoDeMensajeAdmitido(TipoDeMensaje tipoDeMensaje) {
         this.tiposDeMensajeAdmitidos.remove(tipoDeMensaje);
     }
 

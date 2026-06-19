@@ -15,7 +15,8 @@ public class MediosDeContacto {
     // Se inicializa la lista para evitar el NullPointerException
     private List<MedioDeContacto> listaMediosDeContacto = new ArrayList<>();
 
-    public MediosDeContacto() {}
+    public MediosDeContacto() {
+    }
 
     public void agregarMedioDeContacto(MedioDeContacto medioDeContacto) {
         this.listaMediosDeContacto.add(medioDeContacto);
@@ -37,6 +38,7 @@ public class MediosDeContacto {
     public String toString() {
         return "MediosDeContacto{listaMediosDeContacto=" + listaMediosDeContacto + '}';
     }
+
     public void enviarMensajeAMedios(Mensaje mensaje) {
         listaMediosDeContacto.forEach(medio -> medio.enviarMensaje(mensaje));
     }

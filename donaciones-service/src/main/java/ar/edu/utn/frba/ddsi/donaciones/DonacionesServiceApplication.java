@@ -5,11 +5,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.Scanner;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class DonacionesServiceApplication {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+    public static void main(String[] args) {/*&Scanner scanner = new Scanner(System.in);
+
         int opcion;
         String seleccion;
 
@@ -18,6 +20,7 @@ public class DonacionesServiceApplication {
             System.out.println("1. Registrar persona donante");
             System.out.println("2. Registrar entidad beneficiaria");
             System.out.println("3. Registrar donacion");
+            System.out.println("4. Agregar una nueva necesidad");
             opcion = scanner.nextInt();
             scanner.nextLine();
             switch(opcion){
@@ -42,6 +45,9 @@ public class DonacionesServiceApplication {
                 case 3:
                     Creador.crearDonaciones();
                     break;
+                case 4:
+                    Creador.aniadirNecesidadAEntidad();
+                    break;
                 default:
                     System.out.println("Opción inexistente, seleccione de nuevo");
                     continue;
@@ -59,6 +65,6 @@ public class DonacionesServiceApplication {
             }
         }
         System.out.println("Muchas gracias, que tenga un buen dia");
-        SpringApplication.run(DonacionesServiceApplication.class, args);
+        SpringApplication.run(DonacionesServiceApplication.class, args);*/
     }
 }

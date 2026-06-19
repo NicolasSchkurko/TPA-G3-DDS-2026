@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class SegmentadorDonaciones {
+public interface SegmentadorDonaciones {
 
     public static List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
         Map<String, List<Bien>> grupos = new HashMap<>();
@@ -52,13 +52,13 @@ public class SegmentadorDonaciones {
         SubcategoriaBien sub = bienesDelGrupo.get(0).getSubcategoria();
 
         return new Donacion(
-                donante,
-                null,
-                "Segmento de donación: " + sub.getNombre(),
-                bienesDelGrupo,
-                Estados.EN_DEPOSITO,
-                sub,
-                null
+            donante,
+            null,
+            "Segmento de donación: " + sub.getNombre(),
+            bienesDelGrupo,
+            Estado.EN_DEPOSITO,
+            sub,
+            null
         );
     }
 }

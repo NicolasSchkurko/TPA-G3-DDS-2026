@@ -9,15 +9,13 @@ import lombok.Setter;
 
 @Getter
 @Setter
-
 public class PersonaJuridica extends PersonaDonante {
-  private Direccion direccion;
   private String razonSocial;
   private String rubro;
   private TipoJuridico tipoJuridico;
   private String cuit;
   private List<Representante> representantes;
-
+  private String nombreDeUsuario;
 
   public PersonaJuridica(
       Direccion direccion,
@@ -25,16 +23,17 @@ public class PersonaJuridica extends PersonaDonante {
       String rubro,
       TipoJuridico tipoJuridico,
       String cuit,
-      List<Representante> representantes
+      List<Representante> representantes,
+      String nombreDeUsuario
   ) {
-    this.direccion = direccion;
+    super(direccion);
     this.razonSocial = razonSocial;
     this.rubro = rubro;
     this.cuit = cuit;
     this.tipoJuridico = tipoJuridico;
     this.representantes = representantes;
+    this.nombreDeUsuario=nombreDeUsuario;
   }
-
 
   public String darNombre(){
     return this.getRazonSocial();
@@ -42,6 +41,6 @@ public class PersonaJuridica extends PersonaDonante {
 
   @Override
   public String toString() {
-    return "PersonaJuridica{direccion=" + direccion + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
+    return "PersonaJuridica{direccion=" + this.getDireccion() + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
   }
 }
