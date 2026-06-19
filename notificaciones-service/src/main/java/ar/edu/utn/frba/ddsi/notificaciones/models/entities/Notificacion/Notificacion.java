@@ -18,6 +18,7 @@ public class Notificacion {
     @Setter
     private LocalDateTime fechaEnvio;
     @Setter
+    @Getter
     private EstadoNotificacion estado;
 
     public Notificacion(String direccionDeContacto, Mensaje mensaje) {
