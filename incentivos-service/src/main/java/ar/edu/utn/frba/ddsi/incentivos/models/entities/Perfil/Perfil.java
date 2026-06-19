@@ -4,7 +4,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Colaborador;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,79 +14,56 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria.COLABORADOR;
+
 @Getter
 @Setter
 public class Perfil {
     private UUID idUsuario; // id en donaciones
     private UUID idPerfil; // id interno
     private String nombreUsuario;
-    private Categoria categoriaActual;
+    private TipoCategoria categoriaActual;
     private List<Insignia> insignias;
     private Mision misionActual;
-    private Integer posicionRanking;
+    private PosicionRanking posicionRanking;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
         this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = Colaborador.getInstance();
+        this.categoriaActual = COLABORADOR;
         this.insignias = new ArrayList<>();
-        this.posicionRanking = null;
-        this.misionActual = categoriaActual.primeraMision();
+        this.posicionRanking = new PosicionRanking(null);
+        this.misionActual = null; //se inicializa en personaService cuando se crea
     }
 
-    public void ascenderCategoria() {
-        categoriaActual = categoriaActual.getSiguienteCategoria();
-        misionActual = categoriaActual.primeraMision();
+    public void progresarMision(ImpactoDonacion donacion){
+        misionActual.evaluarDonacion(donacion);
+
+        if (misionActual.estaCompleta()) {
+            this.otorgarInsignia();
+            this.sumarMisionCumplida();
+        }
     }
 
-    public void otorgarInsignia(Insignia insignia) {
+    private void otorgarInsignia() {
+        Insignia insignia = misionActual.getInsigniaObjetivo();
         insignia.setFechaObtencion(LocalDate.now());
         insignias.add(insignia);
     }
 
-    //usar this o no es igual mientras no recibas un parametro con el mismo nombre del atributo
-    public void progresarMision(ImpactoDonacion donacion){
-        if (misionActual == null) {
-            return;
-        }
-        misionActual.evaluarDonacion(donacion);
-
-        if (!misionActual.estaCompleta()) {
-            return;
-        }
-
-        otorgarInsignia(misionActual.getInsigniaObjetivo());
-
-        if (categoriaActual.esUltimaMision(misionActual)) {
-            categoriaActual = categoriaActual.getSiguienteCategoria();
-
-            misionActual = (categoriaActual != null) ? categoriaActual.primeraMision() : null;
-            return;
-        }
-        misionActual = categoriaActual.siguienteMision(misionActual);
+    private void sumarMisionCumplida(){
+        Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
+        posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
     }
 
-//    public List<ActividadMensual> generarEvolucionMensual() {
-//        YearMonth esteMes = YearMonth.now();
-//        YearMonth mesPasado = esteMes.minusMonths(1);
-//
-//        // Si a futuro se quiere mostrar más meses (ej: los últimos 6),
-//        // solo agregar más objetos ActividadMensual a esta lista.
-//        List<ActividadMensual> evolucion = new ArrayList<>();
-//        evolucion.add(new ActividadMensual(mesPasado, this.donaciones));
-//        evolucion.add(new ActividadMensual(esteMes, this.donaciones));
-//
-//        return evolucion;
-//    }
-//
-//    public MetricasActividad generarMetricasComparativas() {
-//        YearMonth esteMes = YearMonth.now();
-//        YearMonth mesPasado = esteMes.minusMonths(1);
-//
-//        ActividadMensual actActual = new ActividadMensual(esteMes, this.donaciones);
-//        ActividadMensual actAnterior = new ActividadMensual(mesPasado, this.donaciones);
-//
-//        return new MetricasActividad(actActual, actAnterior);
-//    }
+    public Perfil clonar() {
+        Perfil copia = new Perfil(this.idUsuario, this.nombreUsuario);
+
+        copia.setCategoriaActual(this.categoriaActual);
+        copia.setInsignias(this.insignias);
+        copia.setMisionActual(this.misionActual);
+
+        return copia;
+    }
 }

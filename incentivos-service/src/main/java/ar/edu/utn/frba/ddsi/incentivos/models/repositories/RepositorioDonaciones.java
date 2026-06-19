@@ -1,24 +1,23 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.Setter;
+import lombok.Getter;
+
+@Getter
+@Setter
+
 public class RepositorioDonaciones {
-    private static RepositorioDonaciones instanciaUnica;
     private final List<ImpactoDonacion> donaciones;
 
     private RepositorioDonaciones() {
         this.donaciones = new ArrayList<>();
-    }
-
-    public static RepositorioDonaciones getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioDonaciones();
-        }
-        return instanciaUnica;
     }
 
     public void guardar(ImpactoDonacion donacion) {
@@ -54,5 +53,25 @@ public class RepositorioDonaciones {
                 .filter(donacion -> id.equals(donacion.getIdUsuario()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public List<ImpactoDonacion> buscarDonacionesPorIDUsuario (UUID id){
+        if (id == null || donaciones.isEmpty()) {
+            return null;
+        }
+        return donaciones.stream()
+                .filter(d -> d.getIdUsuario().equals(id))
+                .toList();
+    }
+
+    public void actualizar(Perfil perfil) {
+        if (perfil == null || perfil.getMisionActual() == null) {
+            return;
+        }
+        List<ImpactoDonacion> exitosas = perfil.getMisionActual().getDonacionesExitosas();
+        if (exitosas == null || exitosas.isEmpty()) {
+            return;
+        }
+        this.guardar(exitosas.getLast());
     }
 }

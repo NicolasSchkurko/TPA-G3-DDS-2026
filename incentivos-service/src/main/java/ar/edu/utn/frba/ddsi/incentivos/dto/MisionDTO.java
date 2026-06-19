@@ -14,4 +14,10 @@ public class MisionDTO {
     private InsigniaDTO insigniaObjetivo;
     private Integer progresoActual;
     private Integer progresoObjetivo;
+
+    public MisionDTO(String nombreMision, Integer progresoActual, Integer progresoObjetivo){
+        this.nombreMision = nombreMision;
+        this.progresoActual = progresoActual;
+        this.progresoObjetivo = progresoObjetivo;
+    }
 }

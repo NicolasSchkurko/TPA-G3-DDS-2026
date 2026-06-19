@@ -13,7 +13,6 @@ public abstract class Mision {
     private List<ImpactoDonacion> donacionesExitosas = new ArrayList<>();
     private String nombreMision;
     private Insignia insigniaObjetivo;
-    private Integer progresoActual;
     private Integer progresoObjetivo;
 
     public Mision(String nombre,
@@ -22,7 +21,6 @@ public abstract class Mision {
         this.donacionesExitosas = new ArrayList<>();
         this.nombreMision = nombre;
         this.insigniaObjetivo = insignia;
-        this.progresoActual = 0;
         this.progresoObjetivo = objetivo;
     }
 

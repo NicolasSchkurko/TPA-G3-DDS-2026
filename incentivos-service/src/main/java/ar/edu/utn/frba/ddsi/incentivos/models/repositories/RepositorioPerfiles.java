@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import lombok.Setter;
 import lombok.Getter;
 
@@ -15,19 +16,10 @@ import lombok.Getter;
 @Setter
 
 public class RepositorioPerfiles {
-    private static RepositorioPerfiles instanciaUnica;
-
     private final List<Perfil> perfiles;
 
     private RepositorioPerfiles() {
         this.perfiles = new ArrayList<>();
-    }
-
-    public static RepositorioPerfiles getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioPerfiles();
-        }
-        return instanciaUnica;
     }
 
     public void agregarPerfil(Perfil perfil) {
