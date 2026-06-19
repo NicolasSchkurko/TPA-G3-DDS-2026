@@ -4,11 +4,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import lombok.Setter;
 import lombok.Getter;
 

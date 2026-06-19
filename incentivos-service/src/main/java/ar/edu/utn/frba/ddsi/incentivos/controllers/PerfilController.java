@@ -30,7 +30,7 @@ public class PerfilController {
 
     //https:localhost:8001/perfiles/{id}/comparativa
     @GetMapping("/{id}/comparativa")
-    public ResponseEntity<MetricasActividadDTO> obtenerComparativaPerfil(@PathVariable UUID id) {
+    public ResponseEntity<MetricasActividadDTO> obtenerMetricasPerfil(@PathVariable UUID id) {
         MetricasActividad metrica = service.obtenerMetricasDonante(id);
         if (metrica == null) {
             return ResponseEntity.notFound().build();
@@ -39,7 +39,7 @@ public class PerfilController {
     }
 
     @GetMapping("/{id}/metricas")
-    public ResponseEntity<List<ActividadMensualDTO>> obtenerMetricasPerfil(@PathVariable UUID id){
+    public ResponseEntity<List<ActividadMensualDTO>> obtenerActividadPerfil(@PathVariable UUID id){
         List<ActividadMensual> metricas = service.obtenerEvolucionHistorica(id);
         if (metricas == null) {
             return ResponseEntity.notFound().build();

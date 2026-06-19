@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.services;
+package ar.edu.utn.frba.ddsi.incentivos.Clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
 import org.springframework.beans.factory.annotation.Value;

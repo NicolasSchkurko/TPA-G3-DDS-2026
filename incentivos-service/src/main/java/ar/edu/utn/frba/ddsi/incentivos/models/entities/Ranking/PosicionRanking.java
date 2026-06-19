@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.UUID;
 
 @Getter
 @Setter
