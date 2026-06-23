@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.Clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -17,12 +18,15 @@ public class NotificacionClient {
         this.restTemplate = restTemplate;
     }
 
-    public Void enviarNotificacion(PerfilNotificacionDTO dto) {
-        restTemplate.postForEntity(
-                notificacionesUrl,
-                dto,
-                Void.class
-        );
-        return null;
+    public void enviarNotificacion(PerfilNotificacionDTO dto) throws EnvioNotificacionException {
+        try {
+            restTemplate.postForEntity(
+                    notificacionesUrl,
+                    dto,
+                    void.class
+            );
+        } catch (Exception e) {
+            throw new EnvioNotificacionException(dto);
+        }
     }
 }

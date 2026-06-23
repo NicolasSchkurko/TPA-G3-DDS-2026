@@ -28,6 +28,8 @@ public class RepositorioCategorias {
                 .orElse(null);
     }
 
+    //TODO poder crear/modificar categorias
+
     public List<Categoria> obtenerTodas() {
         return new ArrayList<>(this.categorias);
     }

@@ -5,17 +5,13 @@ import ar.edu.utn.frba.ddsi.incentivos.Clients.N8nClient;
 import ar.edu.utn.frba.ddsi.incentivos.Clients.NotificacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilInexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +19,8 @@ public class PersonaService {
     private final RepositorioDonaciones repositorioDonaciones;
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioCategorias repositorioCategorias;
+    private final RepositorioNotificacionesPendientes pendientes; //en un new service decido que hacer con estas excepciones
+    private final RepositorioPublicacionesPendientes publicacionesPendientes; //en un new service decido que hacer con estas excepciones
     private final NotificacionClient notificacionClient;
     private final DonacionClient donacionClient;
     private final N8nClient n8nClient;
@@ -33,13 +31,17 @@ public class PersonaService {
                           N8nClient n8nClient,
                           RepositorioDonaciones repositorio,
                           RepositorioPerfiles perfiles,
-                          RepositorioCategorias repositorioCategorias) {
+                          RepositorioCategorias repositorioCategorias,
+                          RepositorioNotificacionesPendientes pendientes,
+                          RepositorioPublicacionesPendientes publicacionesPendientes) {
         this.notificacionClient = notificacionClient;
         this.donacionClient = donacionClient;
         this.n8nClient = n8nClient;
         this.repositorioDonaciones = repositorio;
         this.repositorioPerfiles = perfiles;
         this.repositorioCategorias = repositorioCategorias;
+        this.pendientes = pendientes;
+        this.publicacionesPendientes = publicacionesPendientes;
     }
 
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
@@ -133,19 +135,28 @@ public class PersonaService {
                             +perfil.getCategoriaActual().name(),
                     "Ascenso Categoria"
                     );
-
-            notificacionClient.enviarNotificacion(notificacion);
+            try {
+                notificacionClient.enviarNotificacion(notificacion);
+            }
+            catch (EnvioNotificacionException e) {
+                pendientes.guardar(e.getMensaje());
+            }
         }
         if(!perfilAnterior.getInsignias().equals(perfil.getInsignias())){
             //enviar notificacion
             MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
 
-            n8nClient.publicarInsignia(
-                    perfil.getNombreUsuario(),
+            PerfilPublicacionDTO publicacion = new PerfilPublicacionDTO(perfil.getNombreUsuario(),
                     perfil.getInsignias().getLast().getNombre(),
                     "formato circulo, diseño estrella, color dorado, debe incluir el texto "
-                            + perfil.getInsignias().getLast().getNombre() + " centrado "
-            );
+                            + perfil.getInsignias().getLast().getNombre() + " centrado ");
+
+            try {
+                n8nClient.publicarInsignia(publicacion);
+            }
+            catch (EnvioPublicacionException e) {
+                publicacionesPendientes.guardar(e.getPublicacion());
+            }
 
             PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
                     contacto.getMedioDeContacto(),
@@ -159,7 +170,12 @@ public class PersonaService {
                     "Mision Completa"
             );
 
-            notificacionClient.enviarNotificacion(notificacion);
+            try {
+                notificacionClient.enviarNotificacion(notificacion);
+            }
+            catch (EnvioNotificacionException e) {
+                pendientes.guardar(e.getMensaje());
+            }
         }
 
         PerfilDTO pDTO = new PerfilDTO(

@@ -1,6 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.Clients;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilPublicacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioPublicacionException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -19,20 +23,20 @@ public class N8nClient {
         this.restTemplate = restTemplate;
     }
 
-    public void publicarInsignia(
-            String nombreUsuario,
-            String nombreInsignia,
-            String descripcionInsignia) {
+    public void publicarInsignia(PerfilPublicacionDTO dto) throws EnvioPublicacionException {
+        try {
+            Map<String, String> body = new HashMap<>();
+            body.put("usuario", dto.getNombreUsuario());
+            body.put("insignia", dto.getNombreInsignia());
+            body.put("descripcion", dto.getDescripcionInsignia());
 
-        Map<String, String> body = new HashMap<>();
-        body.put("usuario", nombreUsuario);
-        body.put("insignia", nombreInsignia);
-        body.put("descripcion", descripcionInsignia);
-
-        restTemplate.postForEntity(
-                n8nUrl,
-                body,
-                void.class
-        );
+            restTemplate.postForEntity(
+                    n8nUrl,
+                    body,
+                    void.class
+            );
+        } catch (Exception e) {
+            throw new EnvioPublicacionException(dto);
+        }
     }
 }

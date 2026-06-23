@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.Regla;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,22 +10,26 @@ import java.util.List;
 
 @Getter
 @Setter
-public abstract class Mision {
-    private List<ImpactoDonacion> donacionesExitosas = new ArrayList<>();
+public class Mision {
+    private List<ImpactoDonacion> donacionesExitosas;
     private String nombreMision;
     private Insignia insigniaObjetivo;
     private Integer progresoObjetivo;
+    private Regla reglaDeProgreso; //estrategia: motor de condiciones/reglas
 
     public Mision(String nombre,
-                  Insignia insignia,
-                  Integer objetivo) {
+                  Regla regla) {
         this.donacionesExitosas = new ArrayList<>();
         this.nombreMision = nombre;
-        this.insigniaObjetivo = insignia;
-        this.progresoObjetivo = objetivo;
+        this.insigniaObjetivo = null; //se inicializa en el repositorio de misiones
+        this.progresoObjetivo = null;
+        this.reglaDeProgreso = regla;
     }
 
     public Integer getProgresoActual() {
+        if(reglaDeProgreso.getNombreRegla().equals("reglaCantidadBienes")) {
+            return this.donacionesExitosas.stream().mapToInt(ImpactoDonacion::getCantidadBienes).sum();
+        }
         return this.donacionesExitosas.size();
     }
 
@@ -32,5 +37,9 @@ public abstract class Mision {
         return this.getProgresoActual() >= this.progresoObjetivo;
     }
 
-    public abstract void evaluarDonacion(ImpactoDonacion donacion);
+    public void evaluarDonacion(ImpactoDonacion donacion){
+        Mision mision = this;
+        reglaDeProgreso.aplicar(donacion, mision);
+        this.donacionesExitosas = mision.getDonacionesExitosas();
+    }
 }

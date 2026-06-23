@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.DonacionesExistosas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
