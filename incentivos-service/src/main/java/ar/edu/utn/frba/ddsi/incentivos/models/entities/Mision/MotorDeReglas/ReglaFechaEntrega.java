@@ -25,7 +25,9 @@ public class ReglaFechaEntrega extends Regla {
 
             // Si pasó más de 1 mes, la lista vuelve a 0
             if (mesesDiferencia > 1) {
+//aunque seria mejor un cron en vez de esta solucion, es mas flexible para calcular diferentes plazos
                 mision.getDonacionesExitosas().clear();
+mision.getDonacionesExitosas().add(donacion);
             } else {
                 mision.getDonacionesExitosas().add(donacion);
             }
