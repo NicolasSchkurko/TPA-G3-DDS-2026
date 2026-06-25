@@ -14,12 +14,12 @@ import java.util.List;
 @Setter
 public class Formulario {
     private PersonaDonante donante;
-    private List<Donacion> donaciones;
+    private List<Bien> donaciones;
     private LocalDate fechaRealizacion;
 
     public Formulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
         this.donante = donante;
-        this.donaciones = SegmentadorDonaciones.segmentar(donante, bienes);
+        this.donaciones = bienes;
         this.fechaRealizacion = fechaRealizacion;
     }
 }

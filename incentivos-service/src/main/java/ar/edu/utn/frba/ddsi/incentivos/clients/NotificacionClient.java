@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.Clients;
+package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;

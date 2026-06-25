@@ -23,14 +23,7 @@ public class RankingService {
         this.repo = rankings;
     }
 
-    // Ejecuta el proceso el día 1 de cada mes a las 00:05 y genera el ranking del mes anterior
-    @Scheduled(cron = "0 5 0 1 * ?")
-    public void ejecutarRankingMensual() {
-        YearMonth periodo = YearMonth.now().minusMonths(1);
-        this.generarRankingMensual(periodo);
-    }
-
-    private void generarRankingMensual(YearMonth periodo) {
+    public void generarRankingMensual(YearMonth periodo) {
         List<Perfil> todosLosPerfiles = perfiles.listarTodos();
 
         // 1. Generamos lista de perfiles con su cantidad de misiones en el periodo

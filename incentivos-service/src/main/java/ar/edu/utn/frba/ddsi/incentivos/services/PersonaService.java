@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.Clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.Clients.N8nClient;
-import ar.edu.utn.frba.ddsi.incentivos.Clients.NotificacionClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.N8nClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.NotificacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.*;

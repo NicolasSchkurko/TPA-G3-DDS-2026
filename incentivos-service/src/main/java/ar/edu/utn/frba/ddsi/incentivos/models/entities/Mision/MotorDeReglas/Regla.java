@@ -16,4 +16,6 @@ public abstract class Regla {
     }
 
     public abstract void aplicar(ImpactoDonacion donacion, Mision mision);
+
+    public abstract void evaluarProgreso(Mision mision);
 }

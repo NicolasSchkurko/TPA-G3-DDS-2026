@@ -10,9 +10,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.services.PersonaService;
-import ar.edu.utn.frba.ddsi.incentivos.Clients.NotificacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.Clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.Clients.N8nClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.NotificacionClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
+import ar.edu.utn.frba.ddsi.incentivos.clients.N8nClient;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilDuplicadoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilInexistenteException;

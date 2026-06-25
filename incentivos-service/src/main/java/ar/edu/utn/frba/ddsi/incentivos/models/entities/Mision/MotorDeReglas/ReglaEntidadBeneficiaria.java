@@ -11,4 +11,8 @@ public class ReglaEntidadBeneficiaria extends Regla {
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
     }
+
+    @Override
+    public void evaluarProgreso(Mision mision) {
+    }
 }

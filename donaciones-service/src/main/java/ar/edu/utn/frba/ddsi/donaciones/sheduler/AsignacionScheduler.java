@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.sheduler;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import ar.edu.utn.frba.ddsi.donaciones.services.AsignacionService;

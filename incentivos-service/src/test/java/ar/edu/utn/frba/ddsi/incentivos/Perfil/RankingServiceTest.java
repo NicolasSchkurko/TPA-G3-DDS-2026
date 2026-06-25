@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
+import ar.edu.utn.frba.ddsi.incentivos.scheduler.RankingScheduler;
 import ar.edu.utn.frba.ddsi.incentivos.services.RankingService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ public class RankingServiceTest {
     @Mock
     private RepositorioRankings repo;
 
+    @Mock
+    private RankingScheduler rankingScheduler;
+
     @InjectMocks
     private RankingService rankingService;
 
@@ -49,7 +53,7 @@ public class RankingServiceTest {
         when(perfiles.listarTodos()).thenReturn(todos);
 
         // Run scheduled method (it uses YearMonth.now().minusMonths(1))
-        rankingService.ejecutarRankingMensual();
+        rankingScheduler.ejecutarRankingMensual();
 
         ArgumentCaptor<RankingMensual> captor = ArgumentCaptor.forClass(RankingMensual.class);
         verify(repo).guardar(captor.capture());

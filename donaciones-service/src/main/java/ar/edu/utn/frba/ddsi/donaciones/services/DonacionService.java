@@ -24,10 +24,14 @@ public class DonacionService {
 
   private final RepositorioDonaciones repositorio;
   private final IncentivosClient incentivosClient;
+  private final SegmentacionService  segmentacionService;
 
-  public DonacionService(RepositorioDonaciones repositorio, IncentivosClient incentivosClient) {
+  public DonacionService(RepositorioDonaciones repositorio,
+                         IncentivosClient incentivosClient,
+                         SegmentacionService segmentacionService) {
     this.repositorio = repositorio;
     this.incentivosClient = incentivosClient;
+    this.segmentacionService = segmentacionService;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -40,19 +44,20 @@ public class DonacionService {
     return repositorio.findById(id).map(this::toDTO);
   }
 
-  public DonacionDTO crearDonacion(Donacion donacion) {
-    if(donacion.getEstado() == null) {
-      donacion.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso inicial a sistema");
-    }
-    Donacion guardada = repositorio.save(donacion);
-    return this.toDTO(guardada);
-  }
+//  public DonacionDTO crearDonacion(Donacion donacion) {
+//    if(donacion.getEstado() == null) {
+//      donacion.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso inicial a sistema");
+//    }
+//    Donacion guardada = repositorio.save(donacion);
+//    return this.toDTO(guardada);
+//  }
 
   public List<DonacionDTO> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
-    Formulario formulario = new Formulario(donante, bienes, fechaRealizacion);
     List<DonacionDTO> donacionesCreadas = new ArrayList<>();
 
-    for (Donacion donacionSegmentada : formulario.getDonaciones()) {
+    List<Donacion> donacionesSegmentadas = segmentacionService.ejecutarSegmentacion(donante, bienes);
+
+    for (Donacion donacionSegmentada : donacionesSegmentadas) {
       if (donacionSegmentada.getEstado() == null) {
         donacionSegmentada.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso por segmentación de formulario");
       }

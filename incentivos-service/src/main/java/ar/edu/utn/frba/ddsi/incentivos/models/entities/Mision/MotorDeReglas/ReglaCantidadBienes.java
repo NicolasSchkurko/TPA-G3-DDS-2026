@@ -12,4 +12,8 @@ public class ReglaCantidadBienes extends Regla {
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
         mision.getDonacionesExitosas().add(donacion);
     }
+
+    @Override
+    public void evaluarProgreso(Mision mision) {
+    }
 }

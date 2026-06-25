@@ -18,4 +18,8 @@ public class ReglaCategoria extends Regla {
             mision.getDonacionesExitosas().add(donacion);
         }
     }
+
+    @Override
+    public void evaluarProgreso(Mision mision) {
+    }
 }

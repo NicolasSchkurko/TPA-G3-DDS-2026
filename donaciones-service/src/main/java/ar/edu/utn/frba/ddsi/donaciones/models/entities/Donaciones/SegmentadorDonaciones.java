@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public interface SegmentadorDonaciones {
+public class SegmentadorDonaciones {
 
     public static List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
         Map<String, List<Bien>> grupos = new HashMap<>();

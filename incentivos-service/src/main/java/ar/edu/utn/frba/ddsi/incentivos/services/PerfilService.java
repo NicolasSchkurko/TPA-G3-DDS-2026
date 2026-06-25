@@ -32,6 +32,11 @@ public class PerfilService {
         this.repositorioRankings = rankings;
     }
 
+    public void verificarProgresos(){
+        repositorioPerfiles.listarTodos()
+                .forEach(Perfil::verificarProgresoMision);
+    }
+
     public MetricasActividad obtenerMetricasDonante(UUID idUsuario){
         List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
 

@@ -1,10 +1,8 @@
-package ar.edu.utn.frba.ddsi.incentivos.Clients;
+package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilPublicacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioPublicacionException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 

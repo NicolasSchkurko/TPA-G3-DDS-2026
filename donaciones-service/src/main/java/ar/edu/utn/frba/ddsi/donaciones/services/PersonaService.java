@@ -207,16 +207,14 @@ public class PersonaService {
 
   // --- AUTOMATION ---
 
-  @Scheduled(cron = "0 0 0 * * ?") // una vez por día
-  public Void revisarActividadesPersonas() {
+  public void revisarActividades(){
     List<PersonaDonante> personas = repositorio.findAll();
     for (PersonaDonante persona : personas) {
-      revisarActividadPerfil(persona);
+      revisarActividadPersona(persona);
     }
-    return null;
   }
 
-  private void revisarActividadPerfil(PersonaDonante persona) {
+  private void revisarActividadPersona(PersonaDonante persona) {
     // Validamos que tenga formularios antes de chequear inactividad
     if (persona.getFormularios() != null && !persona.getFormularios().isEmpty()) {
       if (persona.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {

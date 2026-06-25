@@ -13,24 +13,17 @@ public class ReglaFechaEntrega extends Regla {
 
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
-        // Si es la primera donación, la agregamos y salimos
-        if (mision.getDonacionesExitosas().isEmpty()) {
-            mision.getDonacionesExitosas().add(donacion);
-        } else {
-            ImpactoDonacion ultimaDonacion = mision.getDonacionesExitosas().getLast();
-            YearMonth ultimoMes = YearMonth.from(ultimaDonacion.getFechaEntrega());
-            YearMonth mesActual = YearMonth.from(donacion.getFechaEntrega());
+        mision.getDonacionesExitosas().add(donacion);
+    }
 
-            long mesesDiferencia = ChronoUnit.MONTHS.between(ultimoMes, mesActual);
+    @Override
+    public void evaluarProgreso(Mision mision) {
+        ImpactoDonacion ultimaDonacion = mision.getDonacionesExitosas().getLast();
+        YearMonth ultimoMes = YearMonth.from(ultimaDonacion.getFechaEntrega());
 
-            // Si pasó más de 1 mes, la lista vuelve a 0
-            if (mesesDiferencia > 1) {
-//aunque seria mejor un cron en vez de esta solucion, es mas flexible para calcular diferentes plazos
-                mision.getDonacionesExitosas().clear();
-mision.getDonacionesExitosas().add(donacion);
-            } else {
-                mision.getDonacionesExitosas().add(donacion);
-            }
+        // Si pasó 1 mes desde la ultima donación, la lista vuelve a 0
+        if (ultimoMes.isBefore(YearMonth.now().minusMonths(1))) {
+            mision.getDonacionesExitosas().clear();
         }
     }
 }

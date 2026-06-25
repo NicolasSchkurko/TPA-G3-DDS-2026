@@ -36,6 +36,12 @@ public class Perfil {
         this.misionActual = null; //se inicializa en personaService cuando se crea
     }
 
+    public void verificarProgresoMision(){
+        if(misionActual.getConstante()){
+            misionActual.evaluarConstancia();
+        }
+    }
+
     public void progresarMision(ImpactoDonacion donacion){
         misionActual.evaluarDonacion(donacion);
 

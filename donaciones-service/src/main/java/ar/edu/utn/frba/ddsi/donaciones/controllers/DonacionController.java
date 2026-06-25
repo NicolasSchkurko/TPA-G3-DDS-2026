@@ -23,15 +23,15 @@ public class DonacionController {
     this.donacionService = donacionService;
   }
 
-  // CREATE (C) - Recibe la entidad (o podrías crear un DonacionCreateDTO) y devuelve el DTO
-  @PostMapping
-  //el metodo crearDonacion en service esta bien, pero la ruta en controller esta de mas a mi parecer
-  public ResponseEntity<DonacionDTO> crearDonacion(@RequestBody Donacion donacion) {
-    DonacionDTO nuevaDonacion = donacionService.crearDonacion(donacion);
-    return new ResponseEntity<>(nuevaDonacion, HttpStatus.CREATED);
-  }
+//  // CREATE (C) - Recibe la entidad (o podrías crear un DonacionCreateDTO) y devuelve el DTO
+//  @PostMapping
+//  //el metodo crearDonacion en service esta bien, pero la ruta en controller esta de mas a mi parecer
+//  public ResponseEntity<DonacionDTO> crearDonacion(@RequestBody Donacion donacion) {
+//    DonacionDTO nuevaDonacion = donacionService.crearDonacion(donacion);
+//    return new ResponseEntity<>(nuevaDonacion, HttpStatus.CREATED);
+//  }
 
-  // CREATE (C) - Endpoint que procesa el formulario completo y segmenta
+  // CREATE (C) - Endpoint que procesa el formulario completo y segmentar
   @PostMapping("/formulario")
   public ResponseEntity<List<DonacionDTO>> procesarFormulario(@RequestBody FormularioRequestDTO request) {
     List<DonacionDTO> donacionesSegmentadas = donacionService.procesarFormulario(

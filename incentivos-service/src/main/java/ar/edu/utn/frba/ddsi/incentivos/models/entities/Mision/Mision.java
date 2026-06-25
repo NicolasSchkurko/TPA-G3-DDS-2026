@@ -13,6 +13,7 @@ import java.util.List;
 public class Mision {
     private List<ImpactoDonacion> donacionesExitosas;
     private String nombreMision;
+    private Boolean constante;
     private Insignia insigniaObjetivo;
     private Integer progresoObjetivo;
     private Regla reglaDeProgreso; //estrategia: motor de condiciones/reglas
@@ -24,6 +25,12 @@ public class Mision {
         this.insigniaObjetivo = null; //se inicializa en el repositorio de misiones
         this.progresoObjetivo = null;
         this.reglaDeProgreso = regla;
+    }
+
+    public void evaluarConstancia() {
+        Mision mision = this;
+        reglaDeProgreso.evaluarProgreso(mision);
+        this.donacionesExitosas = mision.getDonacionesExitosas();
     }
 
     public Integer getProgresoActual() {

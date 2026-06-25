@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/perfiles") //https:localhost:8001/perfiles
+@RequestMapping("/api/perfiles") //https:localhost:8001/perfiles
 public class PerfilController {
     private final PerfilService service;
 
