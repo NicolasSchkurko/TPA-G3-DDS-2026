@@ -1,9 +1,11 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienPerecedero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 
 import java.util.Map;

@@ -1,10 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion.AlgoritmoAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AlgoritmosDeAsignacion.AlgoritmoAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
 
 import java.util.ArrayList;
 import java.util.Collections;

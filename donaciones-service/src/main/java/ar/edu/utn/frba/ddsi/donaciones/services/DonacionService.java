@@ -1,15 +1,18 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,15 +26,21 @@ import java.util.stream.Collectors;
 public class DonacionService {
 
   private final RepositorioDonaciones repositorio;
+  private final RepositorioFormularios repositorioFormularios;
+  private final RepositorioEntidadesBeneficiarias repositorioEntidades;
   private final IncentivosClient incentivosClient;
-  private final SegmentacionService  segmentacionService;
+  private final DonacionFacade donacionFacade;
 
   public DonacionService(RepositorioDonaciones repositorio,
+                         RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
-                         SegmentacionService segmentacionService) {
+                         RepositorioEntidadesBeneficiarias repositorioEntidades,
+                         DonacionFacade donacionFacade) {
     this.repositorio = repositorio;
+    this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
-    this.segmentacionService = segmentacionService;
+    this.donacionFacade = donacionFacade;
+    this.repositorioEntidades = repositorioEntidades;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -52,28 +61,28 @@ public class DonacionService {
 //    return this.toDTO(guardada);
 //  }
 
-  public List<DonacionDTO> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
-    List<DonacionDTO> donacionesCreadas = new ArrayList<>();
+  public List<Donacion> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
+    Formulario formulario = new Formulario(donante, bienes,  fechaRealizacion);
+    repositorioFormularios.save(formulario);
 
-    List<Donacion> donacionesSegmentadas = segmentacionService.ejecutarSegmentacion(donante, bienes);
+    List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
+    repositorio.saveFormulario(donacionesProcesadas);
 
-    for (Donacion donacionSegmentada : donacionesSegmentadas) {
-      if (donacionSegmentada.getEstado() == null) {
-        donacionSegmentada.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso por segmentación de formulario");
-      }
-      Donacion guardada = repositorio.save(donacionSegmentada);
-      donacionesCreadas.add(this.toDTO(guardada));
-    }
-
-    return donacionesCreadas;
+    return donacionesProcesadas;
   }
 
-  public DonacionDTO actualizarDonacion(UUID id, Donacion donacionActualizada) {
+  public void asignarDonaciones() {
+    List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
+    List<EntidadBeneficiaria> entidades = repositorioEntidades.findAll();
+    donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
+  }
+
+  public Donacion actualizarDonacion(UUID id, Donacion donacionActualizada) {
     Optional<Donacion> existente = repositorio.findById(id);
     if (existente.isPresent()) {
       donacionActualizada.setId(id);
-      Donacion guardada = repositorio.save(donacionActualizada);
-      return this.toDTO(guardada);
+      repositorio.save(donacionActualizada);
+      return donacionActualizada;
     }
     throw new RuntimeException("Donación no encontrada con ID: " + id);
   }
@@ -82,32 +91,20 @@ public class DonacionService {
     repositorio.deleteById(id);
   }
 
-  public DonacionDTO cambiarEstado(UUID id, Estado nuevoEstado, String justificacion) {
+  public Donacion cambiarEstado(UUID id, Estado nuevoEstado, String justificacion) {
     Optional<Donacion> donacionOpt = repositorio.findById(id);
     if (donacionOpt.isPresent()) {
       Donacion donacion = donacionOpt.get();
       donacion.actualizarEstado(nuevoEstado, justificacion);
-      Donacion guardada = repositorio.save(donacion);
+      repositorio.save(donacion);
 
-      if (nuevoEstado == Estado.ASIGNADO) {
-        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-        dto.setIdUsuario(donacion.getDonante().getId());
-        dto.setFechaEntrega(donacion.getFechaEntrega());
-        dto.setCantidadBienes(donacion.sumaCantidadBienes());
-        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
-        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-        dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
-        dto.setEstado(nuevoEstado.name());
-        incentivosClient.notificarDonacionAsignada(dto);
-      }
-
-      return this.toDTO(guardada);
+      return donacion;
     }
 
     throw new RuntimeException("Donación no encontrada con ID: " + id);
   }
 
-  private DonacionDTO toDTO(Donacion donacion) {
+  public DonacionDTO toDTO(Donacion donacion) {
     if (donacion == null) {
       return null;
     }

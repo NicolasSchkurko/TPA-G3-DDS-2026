@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;

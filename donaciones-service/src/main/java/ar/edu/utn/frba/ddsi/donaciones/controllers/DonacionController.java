@@ -23,24 +23,23 @@ public class DonacionController {
     this.donacionService = donacionService;
   }
 
-//  // CREATE (C) - Recibe la entidad (o podrías crear un DonacionCreateDTO) y devuelve el DTO
-//  @PostMapping
-//  //el metodo crearDonacion en service esta bien, pero la ruta en controller esta de mas a mi parecer
-//  public ResponseEntity<DonacionDTO> crearDonacion(@RequestBody Donacion donacion) {
-//    DonacionDTO nuevaDonacion = donacionService.crearDonacion(donacion);
-//    return new ResponseEntity<>(nuevaDonacion, HttpStatus.CREATED);
-//  }
-
   // CREATE (C) - Endpoint que procesa el formulario completo y segmentar
   @PostMapping("/formulario")
-  public ResponseEntity<List<DonacionDTO>> procesarFormulario(@RequestBody FormularioRequestDTO request) {
-    List<DonacionDTO> donacionesSegmentadas = donacionService.procesarFormulario(
+  public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
+    List<Donacion> donacionesSegmentadas = donacionService.procesarFormulario(
         request.getDonante(),
         request.getBienes(),
         request.getFechaRealizacion()
     );
-    // Devuelve un array con todas las donaciones individuales creadas a partir del formulario
-    return new ResponseEntity<>(donacionesSegmentadas, HttpStatus.CREATED);
+    if (donacionesSegmentadas == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    List<DonacionDTO> dto = donacionesSegmentadas.stream()
+            .map(donacionService::toDTO)
+            .toList();
+
+    return ResponseEntity.ok(dto);
   }
 
   // READ (R) - Devuelve lista de DTOs
@@ -62,8 +61,8 @@ public class DonacionController {
   @PutMapping("/{id}")
   public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody Donacion donacion) {
     try {
-      DonacionDTO actualizada = donacionService.actualizarDonacion(id, donacion);
-      return ResponseEntity.ok(actualizada);
+      Donacion actualizada = donacionService.actualizarDonacion(id, donacion);
+      return ResponseEntity.ok(donacionService.toDTO(actualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }
@@ -80,12 +79,12 @@ public class DonacionController {
   @PatchMapping("/{id}/estado")
   public ResponseEntity<DonacionDTO> cambiarEstado(@PathVariable UUID id, @RequestBody CambioEstadoDTO cambioEstadoDTO) {
     try {
-      DonacionDTO donacionActualizada = donacionService.cambiarEstado(
+      Donacion donacionActualizada = donacionService.cambiarEstado(
           id,
           cambioEstadoDTO.getNuevoEstado(),
           cambioEstadoDTO.getJustificacion()
       );
-      return ResponseEntity.ok(donacionActualizada);
+      return ResponseEntity.ok(donacionService.toDTO(donacionActualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }

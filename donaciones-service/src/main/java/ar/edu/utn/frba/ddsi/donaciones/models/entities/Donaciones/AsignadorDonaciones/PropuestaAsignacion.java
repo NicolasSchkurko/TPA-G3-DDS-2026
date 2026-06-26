@@ -1,7 +1,7 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
 import lombok.Getter;
 import lombok.Setter;
 

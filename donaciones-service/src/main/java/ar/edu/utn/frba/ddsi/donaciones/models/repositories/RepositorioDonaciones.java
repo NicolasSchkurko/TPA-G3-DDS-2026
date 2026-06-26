@@ -30,11 +30,12 @@ public class RepositorioDonaciones {
                          .toList();
     }
 
-    public Donacion save(Donacion donacion) {
-        // Como el UUID se autogenera en la clase, reemplazamos o agregamos directamente
-        deleteById(donacion.getId());
+    public void saveFormulario(List<Donacion> donacionesFormulario) {
+        donaciones.addAll(donacionesFormulario);
+    }
+
+    public void save(Donacion donacion) {
         donaciones.add(donacion);
-        return donacion;
     }
 
     public void deleteById(UUID id) {

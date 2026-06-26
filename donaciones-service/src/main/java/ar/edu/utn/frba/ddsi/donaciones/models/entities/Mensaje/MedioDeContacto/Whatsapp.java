@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
@@ -10,15 +10,17 @@ import java.util.List;
 @Getter
 @Setter
 
-public class Telefono extends MedioDeContacto {
+public class Whatsapp extends MedioDeContacto {
+
+
     private String numeroDeTelefono;
 
-    public Telefono(String numTelefono, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
+    public Whatsapp(String numTelefono, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
         super(tiposDeMensajeAdmitidos);
         this.numeroDeTelefono = numTelefono;
     }
 
-    public Telefono(String numTelefono) {
+    public Whatsapp(String numTelefono) {
         super();
         this.numeroDeTelefono = numTelefono;
     }
@@ -32,10 +34,5 @@ public class Telefono extends MedioDeContacto {
     public void enviarMensaje(Mensaje mensaje) {
         super.enviarMensaje(mensaje);
         //enviarNotificacion(tipo, "Notificación", mensaje.getTexto(), numeroDeTelefono);
-    }
-
-    @Override
-    public String toString() {
-        return "Telefono{numeroDeTelefono=" + numeroDeTelefono + '}';
     }
 }

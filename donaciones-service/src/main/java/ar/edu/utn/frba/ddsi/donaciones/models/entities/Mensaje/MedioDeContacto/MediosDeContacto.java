@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import lombok.Getter;

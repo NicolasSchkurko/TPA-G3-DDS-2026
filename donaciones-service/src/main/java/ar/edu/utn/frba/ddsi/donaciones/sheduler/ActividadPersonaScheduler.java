@@ -1,8 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.sheduler;
 
-import java.util.List;
-
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.services.PersonaService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

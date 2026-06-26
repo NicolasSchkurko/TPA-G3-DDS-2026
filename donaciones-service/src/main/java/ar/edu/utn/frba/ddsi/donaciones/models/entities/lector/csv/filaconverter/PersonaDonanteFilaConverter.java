@@ -1,13 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 
 import java.util.ArrayList;

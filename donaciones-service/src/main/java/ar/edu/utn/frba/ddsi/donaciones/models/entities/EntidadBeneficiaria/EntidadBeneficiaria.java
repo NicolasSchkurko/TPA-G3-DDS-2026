@@ -6,9 +6,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import lombok.Getter;
 import lombok.Setter;

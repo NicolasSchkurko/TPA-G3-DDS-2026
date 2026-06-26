@@ -1,5 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.asignadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

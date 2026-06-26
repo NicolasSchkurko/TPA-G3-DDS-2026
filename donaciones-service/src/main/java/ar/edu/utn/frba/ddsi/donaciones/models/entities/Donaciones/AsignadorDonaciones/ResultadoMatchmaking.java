@@ -1,7 +1,7 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import com.fasterxml.jackson.databind.annotation.JsonAppend;
+
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
