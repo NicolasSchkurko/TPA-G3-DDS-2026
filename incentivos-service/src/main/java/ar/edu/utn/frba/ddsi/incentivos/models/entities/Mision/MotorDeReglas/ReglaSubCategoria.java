@@ -3,11 +3,9 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
-public class ReglaSubCategoria extends Regla{
-    public ReglaSubCategoria() {
-        super("reglaSubCategoria");
-    }
+import java.util.List;
 
+public class ReglaSubCategoria implements Regla{
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
         boolean yaExisteCategoria = mision.getDonacionesExitosas().stream()
@@ -21,5 +19,10 @@ public class ReglaSubCategoria extends Regla{
 
     @Override
     public void evaluarProgreso(Mision mision) {
+    }
+
+    @Override
+    public Integer conseguirProgreso(List<ImpactoDonacion> donacionesExitosas) {
+        return donacionesExitosas.size();
     }
 }

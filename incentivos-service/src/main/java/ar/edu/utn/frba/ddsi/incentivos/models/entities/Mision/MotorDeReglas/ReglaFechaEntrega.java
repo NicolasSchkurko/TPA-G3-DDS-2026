@@ -4,13 +4,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
 
-public class ReglaFechaEntrega extends Regla {
-    public ReglaFechaEntrega() {
-        super("reglaFechaEntrega");
-    }
-
+public class ReglaFechaEntrega implements Regla {
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
         mision.getDonacionesExitosas().add(donacion);
@@ -25,5 +21,10 @@ public class ReglaFechaEntrega extends Regla {
         if (ultimoMes.isBefore(YearMonth.now().minusMonths(1))) {
             mision.getDonacionesExitosas().clear();
         }
+    }
+
+    @Override
+    public Integer conseguirProgreso(List<ImpactoDonacion> donacionesExitosas) {
+        return donacionesExitosas.size();
     }
 }

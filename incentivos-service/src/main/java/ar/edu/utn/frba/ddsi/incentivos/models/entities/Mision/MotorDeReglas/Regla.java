@@ -3,19 +3,12 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.List;
 
-@Getter
-@Setter
-public abstract class Regla {
-    private String nombreRegla;
+public interface Regla {
+    void aplicar(ImpactoDonacion donacion, Mision mision);
 
-    public Regla(String nombre) {
-        this.nombreRegla = nombre;
-    }
+    void evaluarProgreso(Mision mision);
 
-    public abstract void aplicar(ImpactoDonacion donacion, Mision mision);
-
-    public abstract void evaluarProgreso(Mision mision);
+    Integer conseguirProgreso(List<ImpactoDonacion> donacionesExitosas);
 }

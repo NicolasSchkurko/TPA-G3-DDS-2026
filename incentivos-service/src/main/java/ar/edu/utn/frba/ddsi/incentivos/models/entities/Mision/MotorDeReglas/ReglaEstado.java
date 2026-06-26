@@ -3,11 +3,9 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
-public class ReglaEstado extends Regla{
-    public ReglaEstado() {
-        super("reglaEstado");
-    }
+import java.util.List;
 
+public class ReglaEstado implements Regla{
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
         if("ENTREGADA".equalsIgnoreCase(donacion.getEstado())){
@@ -17,5 +15,10 @@ public class ReglaEstado extends Regla{
 
     @Override
     public void evaluarProgreso(Mision mision) {
+    }
+
+    @Override
+    public Integer conseguirProgreso(List<ImpactoDonacion> donacionesExitosas) {
+        return donacionesExitosas.size();
     }
 }
