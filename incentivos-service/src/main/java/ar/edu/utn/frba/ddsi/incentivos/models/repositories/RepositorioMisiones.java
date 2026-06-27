@@ -12,6 +12,7 @@ import java.util.List;
 
 public class RepositorioMisiones {
     private final List<Mision> misiones;
+    private MisionFactory factory;
 
     private RepositorioMisiones() {
         this.misiones = new ArrayList<>();
@@ -19,34 +20,17 @@ public class RepositorioMisiones {
     }
 
     private void inicializarMisionesBase() {
-        Mision mision = new Mision("racha",
-                new ReglaFechaEntrega());
-        Insignia insignia = new Insignia(mision.getNombreMision(),
-                "realizar donaciones durante" + mision.getProgresoObjetivo() + " meses consecutivos");
-        mision.setInsigniaObjetivo(insignia);
-        this.misiones.add(mision);
-
-        mision = new Mision("completitud",
-                new ReglaCategoria());
-        insignia = new Insignia(mision.getNombreMision(),
-                "hacer " + mision.getProgresoObjetivo() + " donaciones de categorias distintas");
-        mision.setInsigniaObjetivo(insignia);
-        this.misiones.add(mision);
-
-        mision = new Mision("habil donador",
-                new ReglaCantidadBienes());
-        insignia = new Insignia(mision.getNombreMision(),
-                "donar " + mision.getProgresoObjetivo() + " bienes");
-        mision.setInsigniaObjetivo(insignia);
-        this.misiones.add(mision);
-
-        mision = new Mision("donacion exitosa",
-                new ReglaEstado());
-        insignia = new Insignia(mision.getNombreMision(),
-                "realizar " + mision.getProgresoObjetivo() + " donaciones exitosas");
-        mision.setInsigniaObjetivo(insignia);
-        this.misiones.add(mision);
+        Mision mision = factory.crearMision(TipoMision.RACHA);
+        misiones.add(mision);
+        mision = factory.crearMision(TipoMision.COMPLETITUD);
+        misiones.add(mision);
+        mision = factory.crearMision(TipoMision.HABIL_DONADOR);
+        misiones.add(mision);
+        mision = factory.crearMision(TipoMision.DONACIONES_EXITOSAS);
+        misiones.add(mision);
     }
+
+//TODO habra tmb actualizar mision, guardar mision y eliminar
 
     public Mision buscarPorNombre(String nombre) {
         if (nombre == null) return null;
