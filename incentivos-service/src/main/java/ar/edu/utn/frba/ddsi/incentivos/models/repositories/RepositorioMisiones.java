@@ -1,11 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.ReglaCantidadBienes;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.ReglaCategoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.ReglaEstado;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.ReglaFechaEntrega;
 
 import java.util.ArrayList;
 import java.util.List;

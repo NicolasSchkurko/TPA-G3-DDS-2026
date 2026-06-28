@@ -15,7 +15,6 @@ import java.util.List;
 @Setter
 
 public class DonacionFacade {
-    private List<Donacion> donaciones;
     private SegmentadorDonaciones segmentador;
     private AsignadorDonaciones asignador;
 

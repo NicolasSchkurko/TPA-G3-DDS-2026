@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
@@ -53,14 +54,6 @@ public class DonacionService {
     return repositorio.findById(id).map(this::toDTO);
   }
 
-//  public DonacionDTO crearDonacion(Donacion donacion) {
-//    if(donacion.getEstado() == null) {
-//      donacion.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso inicial a sistema");
-//    }
-//    Donacion guardada = repositorio.save(donacion);
-//    return this.toDTO(guardada);
-//  }
-
   public List<Donacion> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
     Formulario formulario = new Formulario(donante, bienes,  fechaRealizacion);
     repositorioFormularios.save(formulario);
@@ -97,6 +90,16 @@ public class DonacionService {
       Donacion donacion = donacionOpt.get();
       donacion.actualizarEstado(nuevoEstado, justificacion);
       repositorio.save(donacion);
+
+      IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
+      dto.setIdUsuario(donacion.getDonante().getId());
+      dto.setFechaEntrega(donacion.getFechaEntrega());
+      dto.setCantidadBienes(donacion.sumaCantidadBienes());
+      dto.setSubCategoria(donacion.getSubcategoria().getNombre());
+      dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
+      dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
+      dto.setEstado(nuevoEstado.name());
+      incentivosClient.notificarDonacionAsignada(dto);
 
       return donacion;
     }

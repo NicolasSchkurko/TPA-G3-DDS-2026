@@ -1,5 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.clients;
-import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
+
 import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,6 @@ public class NotificacionesClient {
         );
         return null;
     }
-
 }
 
 
