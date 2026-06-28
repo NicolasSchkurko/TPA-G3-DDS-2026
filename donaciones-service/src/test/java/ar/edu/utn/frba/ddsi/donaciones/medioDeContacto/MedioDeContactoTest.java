@@ -22,44 +22,52 @@ public class MedioDeContactoTest {
     MedioDeContacto medioWhatsapp = new Whatsapp("12345", List.of(BIENVENIDA, ALERTA));
     String numero = "12345";
     String direccion = "donante@gmail.com";
-    List<TipoDeMensaje> tiposDeMensajeAdmitidos = List.of(BIENVENIDA, ALERTA);
+    List<TipoDeMensaje> tiposDeMensajeProhibidos = List.of(BIENVENIDA, ALERTA);
 
     @Test
-    @DisplayName("Test enviar mensaje no falla si el tipo de mensaje no esta admitido")
-    void test_mensajes_tipo_no_admitido() {
+    @DisplayName("Test enviar mensaje falla si el tipo de mensaje esta prohibido")
+    void test_mensajes_tipo_prohibido() {
         assertThrows(IllegalArgumentException.class, () -> {
-            medioWhatsapp.enviarMensaje(new Mensaje("Hola", "Hola", TipoDeMensaje.CAMBIO_ESTADO));
+            medioWhatsapp.enviarMensaje(new Mensaje("Hola", "Hola", BIENVENIDA));
         });
+    }
+
+    @Test
+    @DisplayName("Test medio de contacto se inicializa sin tipos prohibidos")
+    void medioDeContacto_SeInicializaSinTiposProhibidos() {
+        Mail mail = new Mail(direccion);
+
+        assertEquals(List.of(), mail.getTiposDeMensajeProhibidos());
     }
 
     @Test
     @DisplayName("Test se crea mail correctamente")
     void medioDeContacto_CreaMailCorrectamente() {
-        Mail mail = new Mail(direccion, tiposDeMensajeAdmitidos);
+        Mail mail = new Mail(direccion, tiposDeMensajeProhibidos);
 
         assertEquals("donante@gmail.com", mail.getValor());
-        assertEquals(BIENVENIDA, mail.getTiposDeMensajeAdmitidos().get(0));
-        assertEquals(ALERTA, mail.getTiposDeMensajeAdmitidos().get(1));
+        assertEquals(BIENVENIDA, mail.getTiposDeMensajeProhibidos().get(0));
+        assertEquals(ALERTA, mail.getTiposDeMensajeProhibidos().get(1));
     }
 
     @Test
     @DisplayName("Test se crea telefono correctamente")
     void medioDeContacto_CreaTelefonoCorrectamente() {
-        Telefono telefono = new Telefono(numero, tiposDeMensajeAdmitidos);
+        Telefono telefono = new Telefono(numero, tiposDeMensajeProhibidos);
 
         assertEquals("12345", telefono.getValor());
-        assertEquals(BIENVENIDA, telefono.getTiposDeMensajeAdmitidos().get(0));
-        assertEquals(ALERTA, telefono.getTiposDeMensajeAdmitidos().get(1));
+        assertEquals(BIENVENIDA, telefono.getTiposDeMensajeProhibidos().get(0));
+        assertEquals(ALERTA, telefono.getTiposDeMensajeProhibidos().get(1));
     }
 
     @Test
     @DisplayName("Test se crea whatsapp correctamente")
     void medioDeContacto_CreaWhatsappCorrectamente() {
-        Whatsapp whatsapp = new Whatsapp(numero, tiposDeMensajeAdmitidos);
+        Whatsapp whatsapp = new Whatsapp(numero, tiposDeMensajeProhibidos);
 
         assertEquals("12345", whatsapp.getValor());
-        assertEquals(BIENVENIDA, whatsapp.getTiposDeMensajeAdmitidos().get(0));
-        assertEquals(ALERTA, whatsapp.getTiposDeMensajeAdmitidos().get(1));
+        assertEquals(BIENVENIDA, whatsapp.getTiposDeMensajeProhibidos().get(0));
+        assertEquals(ALERTA, whatsapp.getTiposDeMensajeProhibidos().get(1));
     }
 
 }

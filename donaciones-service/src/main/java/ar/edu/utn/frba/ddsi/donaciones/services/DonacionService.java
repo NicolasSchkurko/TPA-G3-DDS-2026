@@ -1,14 +1,17 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.MensajesPredeterminados;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.ServicioNotificaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +27,19 @@ public class DonacionService {
 
   private final RepositorioDonaciones repositorio;
   private final IncentivosClient incentivosClient;
+  private final ServicioNotificaciones servicioNotificaciones;
+  private final MensajesPredeterminados mensajesPredeterminados;
 
-  public DonacionService(RepositorioDonaciones repositorio, IncentivosClient incentivosClient) {
+  public DonacionService(
+      RepositorioDonaciones repositorio,
+      IncentivosClient incentivosClient,
+      ServicioNotificaciones servicioNotificaciones,
+      MensajesPredeterminados mensajesPredeterminados
+  ) {
     this.repositorio = repositorio;
     this.incentivosClient = incentivosClient;
+    this.servicioNotificaciones = servicioNotificaciones;
+    this.mensajesPredeterminados = mensajesPredeterminados;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -94,12 +106,25 @@ public class DonacionService {
         dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
         dto.setEstado(nuevoEstado.name());
         incentivosClient.notificarDonacionAsignada(dto);
+        notificarAsignacionAEntidadBeneficiaria(donacion);
       }
 
       return this.toDTO(guardada);
     }
 
     throw new RuntimeException("Donación no encontrada con ID: " + id);
+  }
+
+  private void notificarAsignacionAEntidadBeneficiaria(Donacion donacion) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(
+        TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA,
+        donacion
+    );
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+        donacion.getEntidad().getCorreosRepresentantes(),
+        mensaje
+    );
   }
 
   private DonacionDTO toDTO(Donacion donacion) {
