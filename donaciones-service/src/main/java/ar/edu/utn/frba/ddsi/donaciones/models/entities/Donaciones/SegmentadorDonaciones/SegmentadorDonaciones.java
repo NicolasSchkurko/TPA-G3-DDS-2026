@@ -15,6 +15,8 @@ import java.util.HashMap;
 
 public class SegmentadorDonaciones {
 
+    public SegmentadorDonaciones segmentador;
+
     public static List<Donacion> segmentar(PersonaDonante donante, List<Bien> bienesRecibidos) {
         Map<String, List<Bien>> grupos = new HashMap<>();
 

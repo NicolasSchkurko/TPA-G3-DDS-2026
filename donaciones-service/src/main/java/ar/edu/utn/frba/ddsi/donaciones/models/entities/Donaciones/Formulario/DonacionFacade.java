@@ -18,6 +18,12 @@ public class DonacionFacade {
     private SegmentadorDonaciones segmentador;
     private AsignadorDonaciones asignador;
 
+    public DonacionFacade(SegmentadorDonaciones segmentador,
+                          AsignadorDonaciones asignador){
+        this.segmentador = segmentador;
+        this.asignador = asignador;
+    }
+
     public List<Donacion> crearDonaciones(Formulario formulario){
         List<Donacion> donaciones = segmentador.segmentar(formulario.getDonante(), formulario.getDonaciones());
         for (Donacion donacion : donaciones) {

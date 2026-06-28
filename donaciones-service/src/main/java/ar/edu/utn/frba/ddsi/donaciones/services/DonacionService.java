@@ -4,11 +4,13 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
@@ -30,17 +32,14 @@ public class DonacionService {
   private final RepositorioFormularios repositorioFormularios;
   private final RepositorioEntidadesBeneficiarias repositorioEntidades;
   private final IncentivosClient incentivosClient;
-  private final DonacionFacade donacionFacade;
 
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
-                         RepositorioEntidadesBeneficiarias repositorioEntidades,
-                         DonacionFacade donacionFacade) {
+                         RepositorioEntidadesBeneficiarias repositorioEntidades) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
-    this.donacionFacade = donacionFacade;
     this.repositorioEntidades = repositorioEntidades;
   }
 
@@ -58,6 +57,11 @@ public class DonacionService {
     Formulario formulario = new Formulario(donante, bienes,  fechaRealizacion);
     repositorioFormularios.save(formulario);
 
+    DonacionFacade donacionFacade = new DonacionFacade(
+            new SegmentadorDonaciones(),
+            new AsignadorDonaciones()
+    );
+
     List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
     repositorio.saveFormulario(donacionesProcesadas);
 
@@ -67,6 +71,12 @@ public class DonacionService {
   public void asignarDonaciones() {
     List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
     List<EntidadBeneficiaria> entidades = repositorioEntidades.findAll();
+
+    DonacionFacade donacionFacade = new DonacionFacade(
+            new SegmentadorDonaciones(),
+            new AsignadorDonaciones()
+    );
+
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
   }
 
