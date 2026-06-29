@@ -5,6 +5,11 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
 
+/**
+ * Organiza la creación de mensajes y el uso del servicio de notificaciones
+ * Permite visualizar mejor los eventos en los que se hará una notificación
+ */
+
 @Component
 public class GestorNotificacionesEventos {
 
