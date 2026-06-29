@@ -9,9 +9,10 @@ import java.util.UUID;
 @Setter
 
 public class Camion {
-    String patente;
-    Double capacidadVolumen;
-    Double altura;
-    Double capacidadCarga;
-    Boolean disponible;
+    private UUID idRuta;
+    private String patente;
+    private Double capacidadVolumen;
+    private Double altura;
+    private Double capacidadCarga;
+    private Boolean disponible;
 }

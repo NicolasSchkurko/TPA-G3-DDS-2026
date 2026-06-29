@@ -12,9 +12,9 @@ import lombok.Setter;
 @Setter
 
 public class Ruta {
-    UUID idRuta;
-    Camion camionAsignado;
-    LocalDate fechaProgramada;
-    EstadoRuta estado;
-    List<Parada> paradas;
+    private UUID idRuta;
+    private Camion camionAsignado;
+    private LocalDate fechaProgramada;
+    private EstadoRuta estado;
+    private List<Parada> paradas;
 }
