@@ -10,9 +10,10 @@
   <name>ddsi-tp-template</name>
   <url>https://github.com/dds-utn</url>
   <modules>
-    <module>donaciones-service</module>
-    <module>incentivos-service</module>
-    <module>notificaciones-service</module>
+        <module>donaciones-service</module>
+        <module>incentivos-service</module>
+        <module>notificaciones-service</module>
+      <module>logisticas-service</module>
   </modules>
 
     <properties>
