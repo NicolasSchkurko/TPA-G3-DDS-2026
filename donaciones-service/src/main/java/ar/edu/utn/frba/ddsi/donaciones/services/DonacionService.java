@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
@@ -12,7 +11,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.For
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
@@ -39,12 +37,8 @@ public class DonacionService {
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
-                         RepositorioEntidadesBeneficiarias repositorioEntidades) {
-  public DonacionService(
-          RepositorioDonaciones repositorio,
-          IncentivosClient incentivosClient,
-          GestorNotificacionesEventos gestorNotificaciones
-  ) {
+                         RepositorioEntidadesBeneficiarias repositorioEntidades,
+                          GestorNotificacionesEventos gestorNotificaciones) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
@@ -108,24 +102,15 @@ public class DonacionService {
       donacion.actualizarEstado(nuevoEstado, justificacion);
       repositorio.save(donacion);
 
-      IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-      dto.setFechaEntrega(donacion.getFechaEntrega());
-      dto.setCantidadBienes(donacion.sumaCantidadBienes());
-      dto.setSubCategoria(donacion.getSubcategoria().getNombre());
-      dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-      dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
-      dto.setEstado(nuevoEstado.name());
-      incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
       if (nuevoEstado == Estado.ASIGNADO) {
         IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-        dto.setIdUsuario(donacion.getDonante().getId());
         dto.setFechaEntrega(donacion.getFechaEntrega());
         dto.setCantidadBienes(donacion.sumaCantidadBienes());
         dto.setSubCategoria(donacion.getSubcategoria().getNombre());
         dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
         dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
         dto.setEstado(nuevoEstado.name());
-        incentivosClient.notificarDonacionAsignada(dto);
+        incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
         gestorNotificaciones.notificarDonacionAsignadaAEntidadBeneficiaria(donacion);
       }
 
