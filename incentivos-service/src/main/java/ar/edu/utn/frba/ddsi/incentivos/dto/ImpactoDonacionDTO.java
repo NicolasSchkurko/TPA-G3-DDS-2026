@@ -10,10 +10,9 @@ import lombok.Setter;
 @Setter
 
 public class ImpactoDonacionDTO {
-    private UUID idDonacion;
-    private UUID idUsuario;
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;
+    private String subCategoria;
     private String categoria;
     private String entidadBeneficiaria;
     private String estado;

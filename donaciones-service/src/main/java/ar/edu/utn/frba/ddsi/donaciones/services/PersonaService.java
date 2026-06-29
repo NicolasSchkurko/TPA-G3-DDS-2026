@@ -7,11 +7,11 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Mail;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MedioDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.Whatsapp;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
@@ -28,11 +28,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import org.springframework.scheduling.annotation.Scheduled;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -207,16 +206,14 @@ public class PersonaService {
 
   // --- AUTOMATION ---
 
-  @Scheduled(cron = "0 0 0 * * ?") // una vez por día
-  public Void revisarActividadesPersonas() {
+  public void revisarActividades(){
     List<PersonaDonante> personas = repositorio.findAll();
     for (PersonaDonante persona : personas) {
-      revisarActividadPerfil(persona);
+      revisarActividadPersona(persona);
     }
-    return null;
   }
 
-  private void revisarActividadPerfil(PersonaDonante persona) {
+  private void revisarActividadPersona(PersonaDonante persona) {
     // Validamos que tenga formularios antes de chequear inactividad
     if (persona.getFormularios() != null && !persona.getFormularios().isEmpty()) {
       if (persona.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {

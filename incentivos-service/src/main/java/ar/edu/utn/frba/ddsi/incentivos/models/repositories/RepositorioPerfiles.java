@@ -4,9 +4,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 import lombok.Setter;
 import lombok.Getter;
@@ -15,19 +13,10 @@ import lombok.Getter;
 @Setter
 
 public class RepositorioPerfiles {
-    private static RepositorioPerfiles instanciaUnica;
-
     private final List<Perfil> perfiles;
 
     private RepositorioPerfiles() {
         this.perfiles = new ArrayList<>();
-    }
-
-    public static RepositorioPerfiles getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioPerfiles();
-        }
-        return instanciaUnica;
     }
 
     public void agregarPerfil(Perfil perfil) {
@@ -40,9 +29,30 @@ public class RepositorioPerfiles {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
             return;
         }
-        int index = perfiles.indexOf(perfilModificado);
-        if (index >= 0) {
-            perfiles.set(index, perfilModificado);
+
+        Perfil existente = this.buscarPorIDUsuario(perfilModificado.getIdUsuario());
+        if (existente != null) {
+            // Actualizar solo los campos no nulos del perfilModificado
+            if (perfilModificado.getNombreUsuario() != null) {
+                existente.setNombreUsuario(perfilModificado.getNombreUsuario());
+            }
+            if (perfilModificado.getCategoriaActual() != null) {
+                existente.setCategoriaActual(perfilModificado.getCategoriaActual());
+            }
+            if (perfilModificado.getInsignias() != null) {
+                existente.setInsignias(perfilModificado.getInsignias());
+            }
+            if (perfilModificado.getMisionActual() != null) {
+                existente.setMisionActual(perfilModificado.getMisionActual());
+            }
+            if (perfilModificado.getPosicionRanking() != null) {
+                existente.setPosicionRanking(perfilModificado.getPosicionRanking());
+            }
+
+            int index = perfiles.indexOf(existente);
+            if (index >= 0) {
+                perfiles.set(index, existente);
+            }
         }
     }
 

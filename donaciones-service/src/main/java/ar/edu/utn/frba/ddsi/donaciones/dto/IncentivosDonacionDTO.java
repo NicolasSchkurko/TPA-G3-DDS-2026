@@ -10,7 +10,6 @@ import java.util.UUID;
 @Setter
 
 public class IncentivosDonacionDTO {
-    private UUID idUsuario;
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;
     private String subCategoria;

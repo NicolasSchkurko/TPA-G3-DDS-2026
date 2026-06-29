@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.incentivos.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -13,4 +12,9 @@ public class PerfilDonanteDTO {
     //recibimos de PersonaDonanteDTO-Serv-Donaciones
     private UUID idUsuario;
     private String nombreUsuario;
+
+    public PerfilDonanteDTO(UUID uuid, String sofia) {
+        this.idUsuario = uuid;
+        this.nombreUsuario = sofia;
+    }
 }

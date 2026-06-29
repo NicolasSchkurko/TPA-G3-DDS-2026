@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.Regla;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.ReglaCantidadBienes;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,30 +11,36 @@ import java.util.List;
 
 @Getter
 @Setter
-public abstract class Mision {
-    private List<ImpactoDonacion> donacionesExitosas = new ArrayList<>();
+public class Mision {
+    private List<ImpactoDonacion> donacionesExitosas;
     private String nombreMision;
+    private Boolean constante;
     private Insignia insigniaObjetivo;
-    private Integer progresoActual;
     private Integer progresoObjetivo;
+    private Regla reglaDeProgreso; //patron factory method
 
     public Mision(String nombre,
-                  Insignia insignia,
-                  Integer objetivo) {
+                  Regla regla) {
         this.donacionesExitosas = new ArrayList<>();
         this.nombreMision = nombre;
-        this.insigniaObjetivo = insignia;
-        this.progresoActual = 0;
-        this.progresoObjetivo = objetivo;
+        this.insigniaObjetivo = null; //se inicializa en el repositorio de misiones
+        this.progresoObjetivo = null;
+        this.reglaDeProgreso = regla;
+    }
+
+    public void evaluarConstancia() {
+        reglaDeProgreso.evaluarProgreso(this);
     }
 
     public Integer getProgresoActual() {
-        return this.donacionesExitosas.size();
+        return reglaDeProgreso.conseguirProgreso(donacionesExitosas);
     }
 
     public boolean estaCompleta() {
         return this.getProgresoActual() >= this.progresoObjetivo;
     }
 
-    public abstract void evaluarDonacion(ImpactoDonacion donacion);
+    public void evaluarDonacion(ImpactoDonacion donacion){
+        reglaDeProgreso.aplicar(donacion, this);
+    }
 }

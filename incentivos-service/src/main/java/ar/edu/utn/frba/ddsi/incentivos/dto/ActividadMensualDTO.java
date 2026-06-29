@@ -10,7 +10,12 @@ import java.time.YearMonth;
 
 public class ActividadMensualDTO {
     private YearMonth periodo;
-    //tipos de cmps x mes
     private Integer cantidadDonaciones;
     private Integer organizacionesAyudadas;
+
+    public ActividadMensualDTO(YearMonth periodo, Integer cantidadDonaciones, Integer organizacionesAyudadas){
+        this.periodo = periodo;
+        this.cantidadDonaciones = cantidadDonaciones;
+        this.organizacionesAyudadas = organizacionesAyudadas;
+    }
 }

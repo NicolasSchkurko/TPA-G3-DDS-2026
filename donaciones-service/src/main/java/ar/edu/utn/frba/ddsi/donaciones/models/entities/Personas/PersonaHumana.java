@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import lombok.Getter;
 import lombok.Setter;

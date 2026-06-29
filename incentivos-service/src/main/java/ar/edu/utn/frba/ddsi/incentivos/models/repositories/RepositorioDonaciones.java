@@ -1,24 +1,23 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.Setter;
+import lombok.Getter;
+
+@Getter
+@Setter
+
 public class RepositorioDonaciones {
-    private static RepositorioDonaciones instanciaUnica;
     private final List<ImpactoDonacion> donaciones;
 
     private RepositorioDonaciones() {
         this.donaciones = new ArrayList<>();
-    }
-
-    public static RepositorioDonaciones getInstance() {
-        if (instanciaUnica == null) {
-            instanciaUnica = new RepositorioDonaciones();
-        }
-        return instanciaUnica;
     }
 
     public void guardar(ImpactoDonacion donacion) {
@@ -35,24 +34,23 @@ public class RepositorioDonaciones {
         return List.copyOf(donaciones);
     }
 
-    public ImpactoDonacion buscarPorIDDonacion(UUID id) {
-        if (id == null || donaciones.isEmpty()) {
+    public ImpactoDonacion buscarDonacionPorIDs(UUID idUsuario, UUID idDonacion) {
+        if (idDonacion == null || idUsuario == null || donaciones.isEmpty()) {
             return null;
         }
 
         return donaciones.stream()
-                .filter(d -> id.equals(d.getIdDonacion()))
+                .filter(d -> idUsuario.equals(d.getIdUsuario()) && idDonacion.equals(d.getIdDonacion()))
                 .findFirst()
                 .orElse(null);
     }
 
-    public ImpactoDonacion buscarPorIDUsuario(UUID id) {
+    public List<ImpactoDonacion> buscarDonacionesPorIDUsuario (UUID id){
         if (id == null || donaciones.isEmpty()) {
             return null;
         }
         return donaciones.stream()
-                .filter(donacion -> id.equals(donacion.getIdUsuario()))
-                .findFirst()
-                .orElse(null);
+                .filter(d -> d.getIdUsuario().equals(id))
+                .toList();
     }
 }
