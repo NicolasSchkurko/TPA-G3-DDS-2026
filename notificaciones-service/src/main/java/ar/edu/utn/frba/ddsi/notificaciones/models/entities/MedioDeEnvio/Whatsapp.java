@@ -1,17 +1,27 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio;
 
-import ar.edu.utn.frba.ddsi.notificaciones.config.whatsappClient.WhatsappClient;
+
+import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import org.springframework.stereotype.Component;
 
+@Component("whatsapp")
 public class Whatsapp extends MedioDeEnvio {
-    private final WhatsappClient whatsappClient;
 
-    public Whatsapp(WhatsappClient whatsappClient) {
-        this.whatsappClient = whatsappClient;
+    public Whatsapp(NotificacionGateway gateway) {
+        super(gateway);
     }
 
     @Override
-    public void enviarNotificacion(String direccionEnvio, Notificacion notificacion) {
-        whatsappClient.enviar(direccionEnvio, notificacion);
+    public void enviarNotificacion(Notificacion notificacion) {
+        NotificacionPayload payload = new NotificacionPayload(
+                "whatsapp",
+                notificacion.getDireccionDeContacto(),
+                notificacion.getMensaje()
+        );
+
+        gateway.enviar(payload);
     }
+
 }

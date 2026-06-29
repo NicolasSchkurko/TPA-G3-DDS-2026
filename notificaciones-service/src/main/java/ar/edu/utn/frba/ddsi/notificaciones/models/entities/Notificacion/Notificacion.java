@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 public class Notificacion {
     @Setter
+    @Getter
     private Mensaje mensaje;
     @Setter
     @Getter

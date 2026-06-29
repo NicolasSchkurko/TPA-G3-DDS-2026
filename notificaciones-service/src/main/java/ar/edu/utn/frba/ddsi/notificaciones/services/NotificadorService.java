@@ -48,7 +48,7 @@ public class NotificadorService {
 
         try {
             MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioContacto);
-            medioDeContacto.enviarNotificacion(direccionContacto, notificacion);
+            medioDeContacto.enviarNotificacion(notificacion);
             notificacion.marcarEnviada();
 
         } catch (IllegalArgumentException ex) {

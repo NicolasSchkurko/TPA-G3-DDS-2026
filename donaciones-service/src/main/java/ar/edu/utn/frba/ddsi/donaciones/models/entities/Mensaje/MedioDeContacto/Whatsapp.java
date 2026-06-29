@@ -15,8 +15,8 @@ public class Whatsapp extends MedioDeContacto {
 
     private String numeroDeTelefono;
 
-    public Whatsapp(String numTelefono, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
-        super(tiposDeMensajeAdmitidos);
+    public Whatsapp(String numTelefono, List<TipoDeMensaje> tiposDeMensajeProhibidos) {
+        super(tiposDeMensajeProhibidos);
         this.numeroDeTelefono = numTelefono;
     }
 
@@ -28,6 +28,11 @@ public class Whatsapp extends MedioDeContacto {
     @Override
     public String getValor() {
         return numeroDeTelefono;
+    }
+
+    @Override
+    public String getTipo() {
+        return "WHATSAPP";
     }
 
     @Override

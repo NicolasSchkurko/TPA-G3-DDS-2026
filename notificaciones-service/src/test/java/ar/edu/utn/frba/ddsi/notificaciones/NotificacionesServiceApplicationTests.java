@@ -1,60 +1,60 @@
 package ar.edu.utn.frba.ddsi.notificaciones;
 
-import ar.edu.utn.frba.ddsi.notificaciones.config.mailClient.MailClient;
-import ar.edu.utn.frba.ddsi.notificaciones.config.telefonoClient.TelefonoClient;
-import ar.edu.utn.frba.ddsi.notificaciones.config.whatsappClient.WhatsappClient;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.Mail;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.Telefono;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.Whatsapp;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
 
 
 public class NotificacionesServiceApplicationTests {
 
-    private final WhatsappClient whatsappClient = mock(WhatsappClient.class);
-    private final TelefonoClient telefonoClient = mock(TelefonoClient.class);
-    private final MailClient mailClient = mock(MailClient.class);
 
     @Test
-    @DisplayName("Se envia notificacion por Whatsapp usando el WhatsappClient")
-    void whatsappEnviaNotificacionUsandoClienteWhatsapp() {
-        Notificacion notificacion = crearNotificacion();
+    void debeEnviarNotificacionPorMail() throws Exception {
+        NotificacionGateway gatewayMock = mock(NotificacionGateway.class);
 
-        new Whatsapp(whatsappClient).enviarNotificacion("5491112345678", notificacion);
+        Mail mail = new Mail(gatewayMock);
 
-        verify(whatsappClient).enviar("5491112345678", notificacion);
-    }
+        Mensaje mensaje = new Mensaje("Asunto test", "Cuerpo test");
+        Notificacion notificacion = new Notificacion("test@mail.com", mensaje);
 
-    @Test
-    @DisplayName("Se envia notificacion por Telefono usando el TelefonoClient")
-    void telefonoEnviaNotificacionUsandoClienteTelefono() {
-        Notificacion notificacion = crearNotificacion();
+        mail.enviarNotificacion(notificacion);
 
-        new Telefono(telefonoClient).enviarNotificacion("5491112345678", notificacion);
-
-        verify(telefonoClient).enviar("5491112345678", notificacion);
+        verify(gatewayMock, times(1)).enviar(any(NotificacionPayload.class));
     }
 
     @Test
-    @DisplayName("Se envia notificacion por Mail usando el MailClient")
-    void mailEnviaNotificacionUsandoClienteMail() {
-        Notificacion notificacion = crearNotificacion();
+    void debeConstruirCorrectamenteElPayload() throws Exception {
+        NotificacionGateway gatewayMock = mock(NotificacionGateway.class);
 
-        new Mail(mailClient).enviarNotificacion("persona@mail.com", notificacion);
+        Mail mail = new Mail(gatewayMock);
 
-        verify(mailClient).enviar("persona@mail.com", notificacion);
+        Mensaje mensaje = new Mensaje("Asunto test", "Cuerpo test");
+        Notificacion notificacion = new Notificacion("test@mail.com", mensaje);
+
+        mail.enviarNotificacion(notificacion);
+
+        ArgumentCaptor<NotificacionPayload> captor =
+                ArgumentCaptor.forClass(NotificacionPayload.class);
+
+        verify(gatewayMock).enviar(captor.capture());
+
+        NotificacionPayload payload = captor.getValue();
+
+
+        assertEquals("email", payload.getCanal());
+        assertEquals("test@mail.com", payload.getDireccionContacto());
+        assertEquals("Asunto test", payload.getMensaje().getAsunto());
+        assertEquals("Cuerpo test", payload.getMensaje().getCuerpo());
     }
 
-    private Notificacion crearNotificacion() {
-        return new Notificacion(
-                "persona@mail.com",
-                new Mensaje("Asunto de prueba", "Cuerpo de prueba")
-        );
-    }
+
 }

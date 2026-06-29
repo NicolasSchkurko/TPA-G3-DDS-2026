@@ -1,17 +1,25 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio;
 
-import ar.edu.utn.frba.ddsi.notificaciones.config.mailClient.MailClient;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import org.springframework.stereotype.Component;
 
+@Component("email")
 public class Mail extends MedioDeEnvio {
-    private final MailClient mailClient;
-
-    public Mail(MailClient mailClient) {
-        this.mailClient = mailClient;
+    public Mail(NotificacionGateway gateway) {
+        super(gateway);
     }
 
     @Override
-    public void enviarNotificacion(String direccionEnvio, Notificacion notificacion) {
-        mailClient.enviar(direccionEnvio, notificacion);
+    public void enviarNotificacion(Notificacion notificacion) {
+        NotificacionPayload payload = new NotificacionPayload(
+                "email",
+                notificacion.getDireccionDeContacto(),
+                notificacion.getMensaje()
+        );
+
+        gateway.enviar(payload);
     }
+
 }
