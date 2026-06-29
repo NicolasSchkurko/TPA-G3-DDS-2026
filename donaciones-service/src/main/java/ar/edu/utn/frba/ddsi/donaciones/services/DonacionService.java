@@ -81,6 +81,8 @@ public class DonacionService {
     );
 
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
+    List = repositorio.donacionesNoAsignadas();
+    asignadorService(list); / repositorioAsignacionesPendientes.save(list);
   }
 
   public Donacion actualizarDonacion(UUID id, DonacionDTO actualizacion) {

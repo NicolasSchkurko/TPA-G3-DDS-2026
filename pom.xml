@@ -13,7 +13,7 @@
         <module>donaciones-service</module>
         <module>incentivos-service</module>
         <module>notificaciones-service</module>
-      <module>logisticas-service</module>
+        <module>logisticas-service</module>
   </modules>
 
     <properties>

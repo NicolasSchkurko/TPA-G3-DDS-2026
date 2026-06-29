@@ -9,7 +9,7 @@ public class DireccionDTO {
     private String calleUno;
     private String calleDos;
     private Integer altura;
-    private int piso;
+    private Integer piso;
     private String departamento;
     private String ciudad;
     private String provincia;

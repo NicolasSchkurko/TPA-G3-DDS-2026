@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
+import ar.edu.utn.frba.ddsi.logisticas.dto.DestinoEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.services.LogisticaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,22 +17,15 @@ public class LogisticaCtrl {
         this.logisticaService = logisticaService;
     }
 
-    // CREATE (C) - Endpoint que procesa el formulario completo y segmentar
-    @PostMapping("/formulario")
-    public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
-        List<Donacion> donacionesSegmentadas = donacionService.procesarFormulario(
-                request.getDonante(),
-                request.getBienes(),
-                request.getFechaRealizacion()
-        );
-        if (donacionesSegmentadas == null) {
+    // CREATE (C) - Endpoint que entrega a donaciones-serv la lista de destinos
+    @PostMapping
+    public ResponseEntity<List<DestinoEntregaDTO>> crearDestinos(@RequestBody PeticionEntregaDTO request) {
+        List<DestinoEntregaDTO> destinos =
+                logisticaService.procesarPeticion(request);
+        if (destinos == null) {
             return ResponseEntity.notFound().build();
         }
 
-        List<DonacionDTO> dto = donacionesSegmentadas.stream()
-                .map(donacionService::toDTO)
-                .toList();
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(destinos);
     }
 }
