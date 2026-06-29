@@ -29,9 +29,30 @@ public class RepositorioPerfiles {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
             return;
         }
-        int index = perfiles.indexOf(perfilModificado);
-        if (index >= 0) {
-            perfiles.set(index, perfilModificado);
+
+        Perfil existente = this.buscarPorIDUsuario(perfilModificado.getIdUsuario());
+        if (existente != null) {
+            // Actualizar solo los campos no nulos del perfilModificado
+            if (perfilModificado.getNombreUsuario() != null) {
+                existente.setNombreUsuario(perfilModificado.getNombreUsuario());
+            }
+            if (perfilModificado.getCategoriaActual() != null) {
+                existente.setCategoriaActual(perfilModificado.getCategoriaActual());
+            }
+            if (perfilModificado.getInsignias() != null) {
+                existente.setInsignias(perfilModificado.getInsignias());
+            }
+            if (perfilModificado.getMisionActual() != null) {
+                existente.setMisionActual(perfilModificado.getMisionActual());
+            }
+            if (perfilModificado.getPosicionRanking() != null) {
+                existente.setPosicionRanking(perfilModificado.getPosicionRanking());
+            }
+
+            int index = perfiles.indexOf(existente);
+            if (index >= 0) {
+                perfiles.set(index, existente);
+            }
         }
     }
 

@@ -5,6 +5,9 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.UUID;
+
 @Service
 
 public class IncentivosClient {
@@ -26,9 +29,9 @@ public class IncentivosClient {
       );
     }
 
-    public void notificarDonacionAsignada(IncentivosDonacionDTO dto) {
+    public void notificarDonacionAsignada(UUID idUsuario, IncentivosDonacionDTO dto) {
         restTemplate.postForEntity(
-                incentivosUrl + dto.getIdUsuario() + "/perfil",
+                incentivosUrl + idUsuario,
                 dto,
                 void.class
         );

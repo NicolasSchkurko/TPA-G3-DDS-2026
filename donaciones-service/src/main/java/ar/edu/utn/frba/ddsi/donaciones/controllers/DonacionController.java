@@ -59,7 +59,7 @@ public class DonacionController {
 
   // UPDATE (U) - Devuelve DTO
   @PutMapping("/{id}")
-  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody Donacion donacion) {
+  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody DonacionDTO donacion) {
     try {
       Donacion actualizada = donacionService.actualizarDonacion(id, donacion);
       return ResponseEntity.ok(donacionService.toDTO(actualizada));

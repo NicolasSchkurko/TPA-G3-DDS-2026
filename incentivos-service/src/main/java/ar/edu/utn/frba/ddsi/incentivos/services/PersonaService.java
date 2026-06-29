@@ -14,6 +14,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.*;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class PersonaService {
     private final RepositorioDonaciones repositorioDonaciones;
@@ -73,19 +75,19 @@ public class PersonaService {
         return pDTO;
     }
 
-    public PerfilDTO actualizarPerfil(ImpactoDonacionDTO dto) {
-        if (dto.getIdUsuario() == null) {
+    public PerfilDTO actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
+        if (idUsuario == null) {
             throw new DatosInvalidosException();
         }
 
-        if (repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario()) == null) {
+        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
+        if (perfil == null) {
             throw new PerfilInexistenteException();
         }
 
-        ImpactoDonacion donacion = this.convertirDTO(dto);
-        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(dto.getIdUsuario());
-
+        ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
         Perfil perfilAnterior = perfil.clonar();
+
         perfil.progresarMision(donacion);
 
         //evalua si hubo un cambio en el progreso de la mision
@@ -116,8 +118,8 @@ public class PersonaService {
             }
 
             repositorioPerfiles.actualizar(perfil);
-            //el progreso en una mision debe actualizar el repo de donaciones
-            repositorioDonaciones.actualizar(perfil);
+            //el progreso en una mision debe guardar la donacion en el repo donaciones
+            repositorioDonaciones.guardar(donacion);
         }
 
         if(!perfilAnterior.getCategoriaActual().equals(perfil.getCategoriaActual())){
@@ -189,13 +191,13 @@ public class PersonaService {
         return pDTO;
     }
 
-    public ImpactoDonacion convertirDTO(ImpactoDonacionDTO donacion){
+    public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion){
         return new ImpactoDonacion(donacion.getEntidadBeneficiaria(),
                 donacion.getCantidadBienes(),
                 donacion.getFechaEntrega(),
                 donacion.getCategoria(),
                 donacion.getSubCategoria(),
                 donacion.getEstado(),
-                donacion.getIdUsuario());
+                id);
     }
 }

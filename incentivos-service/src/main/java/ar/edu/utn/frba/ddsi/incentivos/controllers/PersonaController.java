@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/perfiles")
 public class PersonaController {
@@ -19,16 +21,25 @@ public class PersonaController {
 //permite q Donaciones nos pida crear un Perfil
     @PostMapping
     public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
-        PerfilDTO nuevo = personaService.crearPerfil(dto);
-        return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+        try {
+            PerfilDTO nuevo = personaService.crearPerfil(dto);
+            return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    //https:localhost/perfiles/{idUsuario}/perfil
+    //https:localhost/perfiles/{idUsuario}
 //permite q Donaciones nos pida actualizarPerfil ante una donacion
-    @PostMapping("/{id}/perfil")
-    public ResponseEntity<PerfilDTO> actualizarPerfil(@RequestBody ImpactoDonacionDTO dto) {
+    @PutMapping("/{id}")
+    public ResponseEntity<PerfilDTO> actualizarPerfil(@PathVariable UUID id,
+                                                      @RequestBody ImpactoDonacionDTO dto) {
         //Recibe donacion, actualizar perfil y guardan en repo de donaciones
-        PerfilDTO actualizado = personaService.actualizarPerfil(dto);
-        return new ResponseEntity<>(actualizado, HttpStatus.CREATED);
+        try {
+            PerfilDTO actualizado = personaService.actualizarPerfil(id, dto);
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

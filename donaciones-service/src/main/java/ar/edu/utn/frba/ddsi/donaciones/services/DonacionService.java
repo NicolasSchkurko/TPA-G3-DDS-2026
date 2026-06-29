@@ -80,12 +80,10 @@ public class DonacionService {
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
   }
 
-  public Donacion actualizarDonacion(UUID id, Donacion donacionActualizada) {
+  public Donacion actualizarDonacion(UUID id, DonacionDTO actualizacion) {
     Optional<Donacion> existente = repositorio.findById(id);
     if (existente.isPresent()) {
-      donacionActualizada.setId(id);
-      repositorio.save(donacionActualizada);
-      return donacionActualizada;
+      return repositorio.actualizar(existente.get().getId(), actualizacion);
     }
     throw new RuntimeException("Donación no encontrada con ID: " + id);
   }
@@ -102,14 +100,13 @@ public class DonacionService {
       repositorio.save(donacion);
 
       IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-      dto.setIdUsuario(donacion.getDonante().getId());
       dto.setFechaEntrega(donacion.getFechaEntrega());
       dto.setCantidadBienes(donacion.sumaCantidadBienes());
       dto.setSubCategoria(donacion.getSubcategoria().getNombre());
       dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
       dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
       dto.setEstado(nuevoEstado.name());
-      incentivosClient.notificarDonacionAsignada(dto);
+      incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
 
       return donacion;
     }

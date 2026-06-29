@@ -34,23 +34,13 @@ public class RepositorioDonaciones {
         return List.copyOf(donaciones);
     }
 
-    public ImpactoDonacion buscarPorIDDonacion(UUID id) {
-        if (id == null || donaciones.isEmpty()) {
+    public ImpactoDonacion buscarDonacionPorIDs(UUID idUsuario, UUID idDonacion) {
+        if (idDonacion == null || idUsuario == null || donaciones.isEmpty()) {
             return null;
         }
 
         return donaciones.stream()
-                .filter(d -> id.equals(d.getIdDonacion()))
-                .findFirst()
-                .orElse(null);
-    }
-
-    public ImpactoDonacion buscarPorIDUsuario(UUID id) {
-        if (id == null || donaciones.isEmpty()) {
-            return null;
-        }
-        return donaciones.stream()
-                .filter(donacion -> id.equals(donacion.getIdUsuario()))
+                .filter(d -> idUsuario.equals(d.getIdUsuario()) && idDonacion.equals(d.getIdDonacion()))
                 .findFirst()
                 .orElse(null);
     }
@@ -62,16 +52,5 @@ public class RepositorioDonaciones {
         return donaciones.stream()
                 .filter(d -> d.getIdUsuario().equals(id))
                 .toList();
-    }
-
-    public void actualizar(Perfil perfil) {
-        if (perfil == null || perfil.getMisionActual() == null) {
-            return;
-        }
-        List<ImpactoDonacion> exitosas = perfil.getMisionActual().getDonacionesExitosas();
-        if (exitosas == null || exitosas.isEmpty()) {
-            return;
-        }
-        this.guardar(exitosas.getLast());
     }
 }
