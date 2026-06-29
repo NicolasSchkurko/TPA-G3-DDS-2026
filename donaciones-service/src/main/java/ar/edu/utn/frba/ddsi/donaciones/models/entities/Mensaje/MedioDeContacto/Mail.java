@@ -14,8 +14,8 @@ public class Mail extends MedioDeContacto {
 
     private String direccionMail;
 
-    public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeAdmitidos) {
-        super();
+    public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeProhibidos) {
+        super(tiposDeMensajeProhibidos);
         this.direccionMail = dirMail;
     }
 
@@ -27,6 +27,11 @@ public class Mail extends MedioDeContacto {
     @Override
     public String getValor() {
         return direccionMail;
+    }
+
+    @Override
+    public String getTipo() {
+        return "EMAIL";
     }
 
     @Override

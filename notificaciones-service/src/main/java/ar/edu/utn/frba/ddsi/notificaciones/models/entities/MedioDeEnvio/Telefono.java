@@ -1,17 +1,26 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio;
 
-import ar.edu.utn.frba.ddsi.notificaciones.config.telefonoClient.TelefonoClient;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import org.springframework.stereotype.Component;
 
+@Component("telefono")
 public class Telefono extends MedioDeEnvio {
-    private final TelefonoClient telefonoClient;
 
-    public Telefono(TelefonoClient telefonoClient) {
-        this.telefonoClient = telefonoClient;
+    public Telefono(NotificacionGateway gateway) {
+        super(gateway);
     }
 
     @Override
-    public void enviarNotificacion(String direccionEnvio, Notificacion notificacion) {
-        telefonoClient.enviar(direccionEnvio, notificacion);
+    public void enviarNotificacion(Notificacion notificacion) {
+        NotificacionPayload payload = new NotificacionPayload(
+                "telefono",
+                notificacion.getDireccionDeContacto(),
+                notificacion.getMensaje()
+        );
+
+        gateway.enviar(payload);
     }
+
 }

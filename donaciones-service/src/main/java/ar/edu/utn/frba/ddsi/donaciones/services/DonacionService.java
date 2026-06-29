@@ -12,7 +12,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.For
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
@@ -32,15 +34,22 @@ public class DonacionService {
   private final RepositorioFormularios repositorioFormularios;
   private final RepositorioEntidadesBeneficiarias repositorioEntidades;
   private final IncentivosClient incentivosClient;
+  private final GestorNotificacionesEventos gestorNotificaciones;
 
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
                          RepositorioEntidadesBeneficiarias repositorioEntidades) {
+  public DonacionService(
+          RepositorioDonaciones repositorio,
+          IncentivosClient incentivosClient,
+          GestorNotificacionesEventos gestorNotificaciones
+  ) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
     this.repositorioEntidades = repositorioEntidades;
+    this.gestorNotificaciones = gestorNotificaciones;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -107,6 +116,18 @@ public class DonacionService {
       dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
       dto.setEstado(nuevoEstado.name());
       incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
+      if (nuevoEstado == Estado.ASIGNADO) {
+        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
+        dto.setIdUsuario(donacion.getDonante().getId());
+        dto.setFechaEntrega(donacion.getFechaEntrega());
+        dto.setCantidadBienes(donacion.sumaCantidadBienes());
+        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
+        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
+        dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
+        dto.setEstado(nuevoEstado.name());
+        incentivosClient.notificarDonacionAsignada(dto);
+        gestorNotificaciones.notificarDonacionAsignadaAEntidadBeneficiaria(donacion);
+      }
 
       return donacion;
     }

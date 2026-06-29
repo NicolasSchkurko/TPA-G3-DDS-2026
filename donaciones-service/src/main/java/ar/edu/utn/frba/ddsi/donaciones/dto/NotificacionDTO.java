@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto;
 
+import java.util.Locale;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,20 +8,44 @@ import lombok.Setter;
 @Setter
 
 public class NotificacionDTO {
-  private MediosContactoDTO medioDeContacto;
-  private String direccionContacto;
+  private String medioDeContacto;
+  private String direccionDeContacto;
   private String cuerpoMensaje;
   private String asuntoMensaje;
 
   public NotificacionDTO(
-      MediosContactoDTO medioDeContacto,
-      String direccionContacto,
+      String medioDeContacto,
+      String direccionDeContacto,
       String cuerpoMensaje,
       String asuntoMensaje
   ) {
-    this.medioDeContacto = medioDeContacto;
-    this.direccionContacto = direccionContacto;
+    this.medioDeContacto = normalizarTipo(medioDeContacto);
+    this.direccionDeContacto = direccionDeContacto;
     this.cuerpoMensaje = cuerpoMensaje;
     this.asuntoMensaje = asuntoMensaje;
+  }
+
+  public NotificacionDTO(
+      MediosContactoDTO medioDeContacto,
+      String direccionDeContacto,
+      String cuerpoMensaje,
+      String asuntoMensaje
+  ) {
+    this(
+        medioDeContacto != null ? medioDeContacto.getTipo() : null,
+        direccionDeContacto,
+        cuerpoMensaje,
+        asuntoMensaje
+    );
+  }
+
+  private static String normalizarTipo(String tipo) {
+    if (tipo == null || tipo.isBlank()) {
+      return tipo;
+    }
+    if ("MAIL".equalsIgnoreCase(tipo) || "EMAIL".equalsIgnoreCase(tipo)) {
+      return "email";
+    }
+    return tipo.toLowerCase(Locale.ROOT);
   }
 }
