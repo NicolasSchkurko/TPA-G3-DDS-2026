@@ -25,25 +25,11 @@ public class NotificacionDTO {
     this.asuntoMensaje = asuntoMensaje;
   }
 
-  public NotificacionDTO(
-      MediosContactoDTO medioDeContacto,
-      String direccionDeContacto,
-      String cuerpoMensaje,
-      String asuntoMensaje
-  ) {
-    this(
-        medioDeContacto != null ? medioDeContacto.getTipo() : null,
-        direccionDeContacto,
-        cuerpoMensaje,
-        asuntoMensaje
-    );
-  }
-
   private static String normalizarTipo(String tipo) {
     if (tipo == null || tipo.isBlank()) {
       return tipo;
     }
-    if ("MAIL".equalsIgnoreCase(tipo) || "EMAIL".equalsIgnoreCase(tipo)) {
+    if ("MAIL".equalsIgnoreCase(tipo) || "EMAIL".equalsIgnoreCase(tipo) || "GMAIL".equalsIgnoreCase(tipo)) {
       return "email";
     }
     return tipo.toLowerCase(Locale.ROOT);
