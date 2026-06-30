@@ -14,11 +14,11 @@ import org.springframework.stereotype.Component;
 public class GestorNotificacionesEventos {
 
   private final ServicioNotificaciones servicioNotificaciones;
-  private final MensajesPredeterminados mensajesPredeterminados;
+  private final MensajesPredeterminadosDonaciones mensajesPredeterminados;
 
   public GestorNotificacionesEventos(
       ServicioNotificaciones servicioNotificaciones,
-      MensajesPredeterminados mensajesPredeterminados
+      MensajesPredeterminadosDonaciones mensajesPredeterminados
   ) {
     this.servicioNotificaciones = servicioNotificaciones;
     this.mensajesPredeterminados = mensajesPredeterminados;
@@ -26,14 +26,6 @@ public class GestorNotificacionesEventos {
 
   public void notificarDonacionAsignadaAEntidadBeneficiaria(Donacion donacion) {
     notificarEventoDeDonacion(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
-  }
-
-  public void notificarMisionCumplidaAPersonaDonante(PersonaDonante personaDonante) {
-    notificarEventoDePersonaDonante(TipoEventoNotificacion.MISION_CUMPLIDA_PERSONA_DONANTE, personaDonante);
-  }
-
-  public void notificarCambioCategoriaAPersonaDonante(PersonaDonante personaDonante) {
-    notificarEventoDePersonaDonante(TipoEventoNotificacion.CAMBIO_CATEGORIA_PERSONA_DONANTE, personaDonante);
   }
 
   public void notificarInactividadAPersonaDonante(PersonaDonante personaDonante) {
