@@ -84,7 +84,7 @@ public class RepositorioDonaciones {
                     CategoriaBien categoria = new CategoriaBien(nombreCat != null ? nombreCat : "");
                     SubcategoriaBien sub = new SubcategoriaBien(nombreSub != null ? nombreSub : "", categoria);
 
-                    UnidadDeMedida unidad = UnidadDeMedida.UNIDADES;
+                    UnidadDeMedida unidad = UnidadDeMedida.KILOGRAMOS;
                     if (b.getUnidadDeMedida() != null) {
                         try {
                             unidad = UnidadDeMedida.valueOf(b.getUnidadDeMedida().toUpperCase());
@@ -96,10 +96,10 @@ public class RepositorioDonaciones {
                     Integer cantidad = b.getCantidad() != null ? b.getCantidad() : 0;
 
                     if ("PERECEDERO".equalsIgnoreCase(b.getTipoBien())) {
-                        nuevosBienes.add(new BienPerecedero(b.getDescripcion(), sub, cantidad, unidad, b.getFechaVencimiento()));
+                        nuevosBienes.add(new BienPerecedero(b.getDescripcion(), sub, null, cantidad, unidad, b.getFechaVencimiento()));
                     } else {
                         boolean usado = b.getUsado() != null ? b.getUsado() : false;
-                        nuevosBienes.add(new BienConEstado(b.getDescripcion(), sub, cantidad, unidad, usado));
+                        nuevosBienes.add(new BienConEstado(b.getDescripcion(), sub, null, cantidad, unidad, usado));
                     }
                 }
                 donacionActualizada.setBienes(nuevosBienes);
