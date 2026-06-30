@@ -72,4 +72,5 @@ public class Donacion {
     public String toString() {
         return "Donacion{id=" + id + ", donante=" + donante + ", entidad=" + entidad + ", descripcion=" + descripcion + ", bienes=" + bienes + ", estado=" + estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
     }
+
 }

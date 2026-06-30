@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
@@ -36,5 +37,11 @@ public class DonacionFacade {
 
     public void ejecutarAsignador(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades){
         asignador.ejecutarMatchmakingBatch(donacionesNoAsignadas, entidades);
+    }
+
+    public List<ResultadoMatchmaking> obtenerDonacionesPendientesDeAprobacion(){
+        List<ResultadoMatchmaking> resultados= asignador.getDonacionesPendientesDeAprobacion();
+        asignador.limpiarDonacionesPendientesDeAprobacion();
+        return resultados;
     }
 }

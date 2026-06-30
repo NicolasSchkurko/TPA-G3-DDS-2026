@@ -1,8 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.CambioEstadoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import org.springframework.http.HttpStatus;
@@ -89,4 +87,28 @@ public class DonacionController {
       return ResponseEntity.notFound().build();
     }
   }
+
+
+  @GetMapping("/pendientes")
+  public ResponseEntity<List<ResultadoMatchmakingDTO>> verResultadosDeMatchmaking() {
+
+    List<ResultadoMatchmakingDTO> resultados =
+            donacionService.obtenerTodosLosResultadosMatchmaking();
+
+    return ResponseEntity.ok(resultados);
+  }
+
+
+  @PostMapping("/asignar")
+  public ResponseEntity<Void> asignarPropuesta(
+          @RequestBody AsignarPropuestaRequestDTO request) {
+
+    donacionService.asignarPropuesta(
+            request.getDonacionId(),
+            request.getPosicionPropuesta()
+    );
+
+    return ResponseEntity.ok().build();
+  }
+
 }
