@@ -3,7 +3,14 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
+import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
+import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.PropuestaAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
@@ -13,6 +20,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDon
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
@@ -33,23 +41,31 @@ public class DonacionService {
   private final RepositorioEntidadesBeneficiarias repositorioEntidades;
   private final IncentivosClient incentivosClient;
   private final GestorNotificacionesEventos gestorNotificaciones;
-
+  private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
+  private final MatchmakingMapper mapperMatchmaking;
+  private final DonacionMapper mapperDonacion;
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
-                          GestorNotificacionesEventos gestorNotificaciones) {
+                          GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
+                         MatchmakingMapper mapperMatchmaking,
+                         DonacionMapper mapperDonacion) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
     this.repositorioEntidades = repositorioEntidades;
     this.gestorNotificaciones = gestorNotificaciones;
+    this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
+    this.mapperMatchmaking= mapperMatchmaking;
+    this.mapperDonacion =mapperDonacion;
   }
 
   public List<DonacionDTO> obtenerTodas() {
     return repositorio.findAll().stream()
                       .map(this::toDTO)
                       .collect(Collectors.toList());
+
   }
 
   public Optional<DonacionDTO> obtenerPorId(UUID id) {
@@ -81,6 +97,8 @@ public class DonacionService {
     );
 
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
+    List<ResultadoMatchmaking> resultadosMatchmakings = donacionFacade.obtenerDonacionesPendientesDeAprobacion();
+    repositorioDeResultadosMatchmaking.guardarResultados(resultadosMatchmakings);
   }
 
   public Donacion actualizarDonacion(UUID id, DonacionDTO actualizacion) {
@@ -142,4 +160,40 @@ public class DonacionService {
 
     return dto;
   }
+
+  public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
+        return repositorioDeResultadosMatchmaking.findAll()
+                .stream()
+                .map(mapperMatchmaking::ResultadoToDTO)
+                .toList();
+  }
+
+
+    public void asignarPropuesta(UUID donacionId, Integer posicion) {
+        //Buscar resultado
+        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
+                                        "No hay resultado de matchmaking para la donación " + donacionId
+                                )
+                        );
+
+
+        if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
+            throw new IllegalArgumentException("Posición de propuesta inválida");
+        }
+
+        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
+
+        Donacion donacion = resultado.getDonacion();
+
+        if (donacion.getEstado()!=Estado.PENDIENTE_ASIGNACION) {
+            throw new IllegalStateException("La donación ya está asignada");
+        }
+
+        AsignadorDonaciones.asignarDonacionAPropuesta(donacion,propuesta);
+        DonacionDTO donacionAGuardar = mapperDonacion.toDTO(donacion);
+        repositorio.actualizar(donacionId, donacionAGuardar);
+        repositorioEntidades.save(donacion.getEntidad());
+        repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
+    }
+
 }

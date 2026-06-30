@@ -186,13 +186,13 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
         }
     }
 
-    private void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
+    public static void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
         donacion.setEntidad(propuesta.getEntidad());
         donacion.setEstado(Estado.ASIGNADO);
         registrarDonacionEnNecesidad(donacion, propuesta.getNecesidad());
     }
 
-    private void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
+    private static void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
         necesidad.registrarDonacionAsignada(donacion);
     }
 
@@ -210,5 +210,9 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
         );
 
         donacionesPendientesDeAprobacion.add(resultado);
+    }
+
+    public void limpiarDonacionesPendientesDeAprobacion(){
+        donacionesPendientesDeAprobacion.clear();
     }
 }

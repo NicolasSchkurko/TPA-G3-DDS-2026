@@ -88,4 +88,28 @@ public class DonacionController {
       return ResponseEntity.notFound().build();
     }
   }
+
+
+  @GetMapping("/pendientes")
+  public ResponseEntity<List<ResultadoMatchmakingDTO>> verResultadosDeMatchmaking() {
+
+    List<ResultadoMatchmakingDTO> resultados =
+            donacionService.obtenerTodosLosResultadosMatchmaking();
+
+    return ResponseEntity.ok(resultados);
+  }
+
+
+  @PostMapping("/asignar")
+  public ResponseEntity<Void> asignarPropuesta(
+          @RequestBody AsignarPropuestaRequestDTO request) {
+
+    donacionService.asignarPropuesta(
+            request.getDonacionId(),
+            request.getPosicionPropuesta()
+    );
+
+    return ResponseEntity.ok().build();
+  }
+
 }

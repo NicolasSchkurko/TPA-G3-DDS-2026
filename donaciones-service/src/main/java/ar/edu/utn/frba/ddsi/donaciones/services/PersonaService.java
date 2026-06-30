@@ -1,6 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
@@ -13,6 +17,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.T
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -217,35 +222,7 @@ public class PersonaService {
     // Validamos que tenga formularios antes de chequear inactividad
     if (persona.getFormularios() != null && !persona.getFormularios().isEmpty()) {
       if (persona.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
-
-        MedioDeContacto medioPredeterminado = null;
-        if (persona.getMediosDeContacto() != null) {
-          medioPredeterminado = persona.getMediosDeContacto().getMedioDeContactoPredeterminado();
-        }
-
-        MediosContactoDTO medioDTO = null;
-        if (medioPredeterminado != null) {
-          String tipo;
-          if (medioPredeterminado instanceof Mail) {
-            tipo = "EMAIL";
-          } else if (medioPredeterminado instanceof Whatsapp) {
-            tipo = "WHATSAPP";
-          } else if (medioPredeterminado instanceof Telefono) {
-            tipo = "TELEFONO";
-          } else {
-            tipo = medioPredeterminado.getClass().getSimpleName().toUpperCase();
-          }
-          medioDTO = new MediosContactoDTO(tipo, medioPredeterminado.getValor());
-        }
-
-        NotificacionDTO notificacion = new NotificacionDTO(
-            medioDTO,
-            medioPredeterminado != null ? medioPredeterminado.getValor() : null,
-            "¡Te extrañamos! Hace más de 20 días que no registras actividad. Tu ayuda es muy valiosa.",
-            "Inactividad del perfil"
-        );
-
-        notificacionClient.enviarNotificacion(notificacion);
+        gestorNotificaciones.notificarInactividadAPersonaDonante(persona);
       }
     }
   }

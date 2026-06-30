@@ -11,6 +11,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.*;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,7 @@ public class PersonaService {
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioNotificacionesPendientes pendientes; //en un new service decido que hacer con estas excepciones
     private final RepositorioPublicacionesPendientes publicacionesPendientes; //en un new service decido que hacer con estas excepciones
-    private final NotificacionClient notificacionClient;
+    private final GestorNotificacionesEventos gestorNotificaciones;
     private final DonacionClient donacionClient;
     private final N8nClient n8nClient;
 
@@ -35,8 +36,9 @@ public class PersonaService {
                           RepositorioPerfiles perfiles,
                           RepositorioCategorias repositorioCategorias,
                           RepositorioNotificacionesPendientes pendientes,
-                          RepositorioPublicacionesPendientes publicacionesPendientes) {
-        this.notificacionClient = notificacionClient;
+                          RepositorioPublicacionesPendientes publicacionesPendientes,
+                          GestorNotificacionesEventos gestorNotificaciones) {
+        this.gestorNotificaciones = gestorNotificaciones;
         this.donacionClient = donacionClient;
         this.n8nClient = n8nClient;
         this.repositorioDonaciones = repositorio;
@@ -138,7 +140,7 @@ public class PersonaService {
                     "Ascenso Categoria"
                     );
             try {
-                notificacionClient.enviarNotificacion(notificacion);
+                gestorNotificaciones.notificarCambioCategoriaAPerfil(perfil, perfilAnterior, contacto);
             }
             catch (EnvioNotificacionException e) {
                 pendientes.guardar(e.getMensaje());
@@ -160,20 +162,8 @@ public class PersonaService {
                 publicacionesPendientes.guardar(e.getPublicacion());
             }
 
-            PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
-                    contacto.getMedioDeContacto(),
-                    contacto.getDireccionContacto(),
-                    "Felicitaciones "
-                            +perfil.getNombreUsuario()
-                            +", has conseguido una nueva Insignia: "
-                            + perfil.getInsignias().getLast().getNombre() + "/n"
-                            + perfil.getInsignias().getLast().getDescripcion() + "/n"
-                            + perfil.getInsignias().getLast().getUrlImagen(),
-                    "Mision Completa"
-            );
-
             try {
-                notificacionClient.enviarNotificacion(notificacion);
+                gestorNotificaciones.notificarMisionCumplidaAPerfil(perfil, contacto);
             }
             catch (EnvioNotificacionException e) {
                 pendientes.guardar(e.getMensaje());
