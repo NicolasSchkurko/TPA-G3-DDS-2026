@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.incentivos;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,5 +15,4 @@ import lombok.Setter;
 public class IDDTO {
   private UUID idUsuario;
   private String nombreDeUsuario;
-
 }

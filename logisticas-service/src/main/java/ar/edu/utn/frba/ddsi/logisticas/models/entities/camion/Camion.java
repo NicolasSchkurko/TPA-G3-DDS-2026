@@ -14,5 +14,6 @@ public class Camion {
     private Double capacidadVolumen;
     private Double altura;
     private Double capacidadCarga;
-    private Boolean disponible;
+
+
 }

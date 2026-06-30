@@ -1,7 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante;
 
 import java.util.List;
 import java.util.UUID;
+
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import lombok.Getter;
 import lombok.Setter;
 

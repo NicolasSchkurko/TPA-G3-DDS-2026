@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.clients;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.NotificacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

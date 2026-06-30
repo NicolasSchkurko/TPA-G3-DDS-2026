@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.incentivos;
 
 import java.time.YearMonth;
 import lombok.AllArgsConstructor;

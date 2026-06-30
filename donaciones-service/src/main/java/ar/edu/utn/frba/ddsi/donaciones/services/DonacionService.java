@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
@@ -81,8 +81,6 @@ public class DonacionService {
     );
 
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
-    List = repositorio.donacionesNoAsignadas();
-    asignadorService(list); / repositorioAsignacionesPendientes.save(list);
   }
 
   public Donacion actualizarDonacion(UUID id, DonacionDTO actualizacion) {

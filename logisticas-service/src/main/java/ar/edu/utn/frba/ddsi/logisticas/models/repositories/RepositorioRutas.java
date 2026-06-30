@@ -4,6 +4,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.camion.Camion;
 
 import java.util.List;
 
-public class RepositorioCamion {
+public class RepositorioRutas {
     List<Camion> camiones;
 }

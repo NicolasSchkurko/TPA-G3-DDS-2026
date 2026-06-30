@@ -1,4 +1,6 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante;
+
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -15,21 +15,14 @@ public abstract class Bien {
     SubcategoriaBien subcategoria;
     @Getter(AccessLevel.NONE)
     String urlFoto;
-    Integer cantidad;
+    Integer peso;
     UnidadDeMedida unidadUtilizada;
 
     public Bien(String descripcion, SubcategoriaBien subcategoria, String urlFoto, Integer cantidad, UnidadDeMedida unidadUtilizada){
         this.descripcion = descripcion;
         this.subcategoria = subcategoria;
         this.urlFoto = urlFoto;
-        this.cantidad = cantidad;
-        this.unidadUtilizada = unidadUtilizada;
-    }
-    //este constructor sirve para cuando no tiene foto el bien
-    public Bien(String descripcion, SubcategoriaBien subcategoria, Integer cantidad, UnidadDeMedida unidadUtilizada){
-        this.descripcion = descripcion;
-        this.subcategoria = subcategoria;
-        this.cantidad = cantidad;
+        this.peso = cantidad;
         this.unidadUtilizada = unidadUtilizada;
     }
 

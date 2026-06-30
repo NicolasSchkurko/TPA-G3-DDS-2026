@@ -1,11 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.CambioEstadoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

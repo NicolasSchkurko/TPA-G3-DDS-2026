@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import java.time.LocalDate;
 import lombok.AllArgsConstructor;

@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.MapeoCSVDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.csv.MapeoCSVDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.services.PersonaService;
 import java.util.stream.Collectors;

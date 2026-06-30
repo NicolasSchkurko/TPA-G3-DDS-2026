@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.BienResumenDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;

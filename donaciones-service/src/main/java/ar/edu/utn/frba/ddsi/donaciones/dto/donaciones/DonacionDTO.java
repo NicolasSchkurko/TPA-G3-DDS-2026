@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto;
+package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

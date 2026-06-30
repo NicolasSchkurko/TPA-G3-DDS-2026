@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.exceptions;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.ErrorResponseDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.errors.ErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

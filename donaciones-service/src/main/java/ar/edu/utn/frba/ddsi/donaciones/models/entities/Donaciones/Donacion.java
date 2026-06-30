@@ -45,7 +45,7 @@ public class Donacion {
     }
 
     public Integer sumaCantidadBienes(){
-        return bienes.stream().mapToInt(Bien::getCantidad).sum();
+        return bienes.stream().mapToInt(Bien::getPeso).sum();
     }
 
     public void agregarBien(Bien nuevoBien) {
