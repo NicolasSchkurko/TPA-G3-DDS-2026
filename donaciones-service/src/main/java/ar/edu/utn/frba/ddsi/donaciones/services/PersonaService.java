@@ -1,15 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.IDDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
@@ -46,12 +41,16 @@ public class PersonaService {
   // Inyección de dependencias en lugar de llamar al getInstance()
   private final RepositorioDePersonas repositorio;
   private final NotificacionesClient notificacionClient;
+  private final GestorNotificacionesEventos gestorNotificaciones;
   private final IncentivosClient incentivosClient;
 
-  public PersonaService(RepositorioDePersonas repositorio, NotificacionesClient notificacionClient, IncentivosClient incentivosClient) {
+  public PersonaService(RepositorioDePersonas repositorio,
+                        GestorNotificacionesEventos gestorNotificaciones,
+  NotificacionesClient notificacionClient, IncentivosClient incentivosClient) {
     this.repositorio = repositorio;
     this.notificacionClient = notificacionClient;
     this.incentivosClient=incentivosClient;
+    this.gestorNotificaciones = gestorNotificaciones;
   }
 
   // --- CRUD METHODS ---

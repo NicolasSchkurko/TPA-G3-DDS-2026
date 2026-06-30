@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.AsignarPropuestaRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;

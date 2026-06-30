@@ -23,7 +23,7 @@ public class MatchmakingMapper {
 
         // Donación
         dto.setDonacion(
-                donacionMapper.toDTO(resultado.getDonacion())
+                donacionMapper.donaciontoDTO(resultado.getDonacion())
         );
 
         // Propuestas
@@ -46,11 +46,11 @@ public class MatchmakingMapper {
         PropuestaAsignacionDTO dto = new PropuestaAsignacionDTO();
 
         dto.setEntidad(
-                donacionMapper.toDTO(propuesta.getEntidad())
+                donacionMapper.entidadtoDTO(propuesta.getEntidad())
         );
 
         dto.setNecesidad(
-                donacionMapper.toDTO(propuesta.getNecesidad())
+                donacionMapper.necesidadtoDTO(propuesta.getNecesidad())
         );
 
         dto.setAlgoritmo(propuesta.getAlgoritmo());

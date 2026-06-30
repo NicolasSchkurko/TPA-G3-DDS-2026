@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.mappers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.*;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
@@ -12,7 +14,7 @@ import java.util.ArrayList;
 @Component
 public class DonacionMapper {
 
-    public DonacionDTO toDTO(Donacion donacion) {
+    public DonacionDTO donaciontoDTO(Donacion donacion) {
         if (donacion == null) {
             return null;
         }
@@ -35,7 +37,7 @@ public class DonacionMapper {
         return dto;
     }
 
-    public EntidadBeneficiariaDTO toDTO(EntidadBeneficiaria entidad) {
+    public EntidadBeneficiariaDTO entidadtoDTO(EntidadBeneficiaria entidad) {
         EntidadBeneficiariaDTO dto = new EntidadBeneficiariaDTO();
         // Si a futuro añades id a EntidadBeneficiariaDTO, deberías setearlo aquí (dto.setId(entidad.getId());)
         dto.setRazonSocial(entidad.getRazonSocial());
@@ -43,7 +45,7 @@ public class DonacionMapper {
         return dto;
     }
 
-    public NecesidadDTO toDTO(Necesidad necesidad) {
+    public NecesidadDTO necesidadtoDTO(Necesidad necesidad) {
         NecesidadDTO dto = new NecesidadDTO();
         // dto.setId(necesidad.getId()); // Añadir si agregas ID al DTO
         dto.setDescripcion(necesidad.getDescripcion());

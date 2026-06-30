@@ -15,13 +15,8 @@ public class BienPerecedero extends Bien {
         this.fechaVencimiento = fechaVencimiento;
     }
 
-    public BienPerecedero(String descripcion, SubcategoriaBien subcategoria, Integer cantidad, UnidadDeMedida unidadUtilizada, LocalDate fechaVencimiento) {
-        super(descripcion, subcategoria, cantidad, unidadUtilizada);
-        this.fechaVencimiento = fechaVencimiento;
-    }
-
     @Override
     public String toString() {
-        return "BienPerecedero{descripcion=" + descripcion + ", subcategoria=" + subcategoria + ", urlFoto=" + urlFoto + ", cantidad=" + cantidad + ", unidadUtilizada=" + unidadUtilizada + ", fechaVencimiento=" + fechaVencimiento + '}';
+        return "BienPerecedero{descripcion=" + descripcion + ", subcategoria=" + subcategoria + ", urlFoto=" + urlFoto + ", cantidad=" + peso + ", unidadUtilizada=" + unidadUtilizada + ", fechaVencimiento=" + fechaVencimiento + '}';
     }
 }

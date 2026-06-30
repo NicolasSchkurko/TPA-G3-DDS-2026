@@ -3,8 +3,6 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
@@ -190,7 +188,7 @@ public class DonacionService {
         }
 
         AsignadorDonaciones.asignarDonacionAPropuesta(donacion,propuesta);
-        DonacionDTO donacionAGuardar = mapperDonacion.toDTO(donacion);
+        DonacionDTO donacionAGuardar = mapperDonacion.donaciontoDTO(donacion);
         repositorio.actualizar(donacionId, donacionAGuardar);
         repositorioEntidades.save(donacion.getEntidad());
         repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
