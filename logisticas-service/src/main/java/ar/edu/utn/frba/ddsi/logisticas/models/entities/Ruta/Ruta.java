@@ -4,8 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
-
-
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +23,22 @@ public class Ruta {
     private EstadoRuta estado;
     private List<Parada> paradas = new ArrayList<>();
 
-    // Todos los items que lleva el camión en esta ruta.
+    public boolean puedeAgregar(Double pesoAdicionalKg, Double volumenAdicionalM3) {
+        return camionAsignado.puedeCargar(pesoTotalCargadoKg() + pesoAdicionalKg, volumenTotalCargadoM3() + volumenAdicionalM3);
+    }
+
+    // Agrupa por entidad: si ya hay una Parada para esa entidad en esta ruta,
+    public void agregarEntrega(ItemEntrega item) {
+        paradas.stream()
+               .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
+               .findFirst()
+               .ifPresentOrElse(
+                   parada -> parada.agregarItem(item),
+                   () -> paradas.add(new Parada(item))
+               );
+    }
+
+    // Todos los items que lleva el camión en esta ruta, sin importar en qué parada van.
     public List<ItemEntrega> obtenerTodosLosItems() {
         return paradas.stream()
                       .flatMap(p -> p.getItems().stream())
@@ -39,7 +53,7 @@ public class Ruta {
         return paradas.stream().mapToDouble(Parada::volumenTotalM3).sum();
     }
 
-    // Chequeo de capacidad contra el camión asignado.
+    // Chequeo de capacidad contra el camión asignado. Útil al armar la ruta
     public boolean excedeCapacidadDelCamion() {
         return !camionAsignado.puedeCargar(pesoTotalCargadoKg(), volumenTotalCargadoM3());
     }

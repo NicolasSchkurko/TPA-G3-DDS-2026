@@ -1,6 +1,8 @@
-
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
+
+
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,16 +15,19 @@ public class ItemEntrega {
     private UnidadDeMedida unidad;
     private EstadoEntrega estado;
     private LocalDateTime fechaCambioEstado;
-    private String fotoComprobante; // URL de la foto
+    private String fotoComprobante; // URL de la foto cargada por la entidad al confirmar recepción
+    private Entidad entidadDestino;
 
-    public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad) {
+    public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {
         this.idDonacion = idDonacion;
         this.cantidad = cantidad;
         this.unidad = unidad;
+        this.entidadDestino = entidadDestino;
         this.estado = EstadoEntrega.PENDIENTE;
         this.fechaCambioEstado = LocalDateTime.now();
     }
 
+    // Peso y volumen no se guardan, se calculan siempre a partir de cantidad+unidad.
     public Double getPesoEstimadoKg() {
         return unidad.calcularPesoKg(cantidad);
     }
@@ -53,6 +58,7 @@ public class ItemEntrega {
         cambiarEstado(EstadoEntrega.NO_RECIBIDA);
     }
 
+    // Cuando la donación vuelve al depósito tras una NO_RECIBIDA revisada,
     public void reingresarADeposito() {
         if (estado != EstadoEntrega.NO_RECIBIDA) {
             throw new IllegalStateException("Solo puede reingresar desde NO_RECIBIDA, estado actual: " + estado);

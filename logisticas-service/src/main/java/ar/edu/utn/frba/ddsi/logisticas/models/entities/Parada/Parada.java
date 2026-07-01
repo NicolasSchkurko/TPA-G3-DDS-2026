@@ -1,23 +1,34 @@
-
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 
+
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Direccion.Direccion;
 import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 public class Parada {
-    private Entidad entidadBeneficiaria;
+    private Direccion direccion;
     private List<ItemEntrega> items = new ArrayList<>();
+
+    // Se crea siempre a partir de un primer item la dirección
+    public Parada(ItemEntrega primerItem) {
+        Entidad entidad = primerItem.getEntidadDestino();
+        this.direccion = entidad.getDireccionDestino();
+        this.items.add(primerItem);
+    }
 
     public void agregarItem(ItemEntrega item) {
         items.add(item);
+    }
+
+    // Conveniencia: todos los items de una parada apuntan a la misma entidad
+    public Entidad getEntidadDestino() {
+        return items.get(0).getEntidadDestino();
     }
 
     public Double pesoTotalKg() {
@@ -28,4 +39,3 @@ public class Parada {
         return items.stream().mapToDouble(ItemEntrega::getVolumenEstimadoM3).sum();
     }
 }
- 
