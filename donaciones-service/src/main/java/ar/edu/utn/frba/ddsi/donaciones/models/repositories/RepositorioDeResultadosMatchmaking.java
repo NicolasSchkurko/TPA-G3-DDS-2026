@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.ResultadoMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;

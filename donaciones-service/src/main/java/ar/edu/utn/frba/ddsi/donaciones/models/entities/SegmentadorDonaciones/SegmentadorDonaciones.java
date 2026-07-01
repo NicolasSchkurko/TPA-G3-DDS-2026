@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;

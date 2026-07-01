@@ -6,15 +6,15 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.AsignadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.PropuestaAsignacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.ResultadoMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.SegmentadorDonaciones.SegmentadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
@@ -42,13 +42,18 @@ public class DonacionService {
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final MatchmakingMapper mapperMatchmaking;
   private final DonacionMapper mapperDonacion;
+  private final AsignadorDonaciones asignador;
+  private final SegmentadorDonaciones segmentador;
+
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
-                          GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
+                         GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          MatchmakingMapper mapperMatchmaking,
-                         DonacionMapper mapperDonacion) {
+                         DonacionMapper mapperDonacion,
+                         AsignadorDonaciones asignador,
+                         SegmentadorDonaciones segmentador) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
@@ -57,17 +62,19 @@ public class DonacionService {
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.mapperMatchmaking= mapperMatchmaking;
     this.mapperDonacion =mapperDonacion;
+    this.asignador = asignador;
+    this.segmentador = segmentador;
   }
 
   public List<DonacionDTO> obtenerTodas() {
     return repositorio.findAll().stream()
-                      .map(this::toDTO)
+                      .map(mapperDonacion::donaciontoDTO)
                       .collect(Collectors.toList());
 
   }
 
   public Optional<DonacionDTO> obtenerPorId(UUID id) {
-    return repositorio.findById(id).map(this::toDTO);
+    return repositorio.findById(id).map(mapperDonacion::donaciontoDTO);
   }
 
   public List<Donacion> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
@@ -89,10 +96,7 @@ public class DonacionService {
     List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
     List<EntidadBeneficiaria> entidades = repositorioEntidades.findAll();
 
-    DonacionFacade donacionFacade = new DonacionFacade(
-            new SegmentadorDonaciones(),
-            new AsignadorDonaciones()
-    );
+    DonacionFacade donacionFacade = new DonacionFacade(segmentador, asignador);
 
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
     List<ResultadoMatchmaking> resultadosMatchmakings = donacionFacade.obtenerDonacionesPendientesDeAprobacion();
@@ -134,29 +138,6 @@ public class DonacionService {
     }
 
     throw new RuntimeException("Donación no encontrada con ID: " + id);
-  }
-
-  public DonacionDTO toDTO(Donacion donacion) {
-    if (donacion == null) {
-      return null;
-    }
-
-    DonacionDTO dto = new DonacionDTO();
-
-    dto.setDonanteName(donacion.getDonante() != null ? donacion.getDonante().darNombre() : "Desconocido");
-    dto.setEntidadBeneficiaria(donacion.getEntidad() != null ? donacion.getEntidad().getRazonSocial() : "No asignada");
-
-    dto.setDescripcion(donacion.getDescripcion());
-    dto.setEstado(donacion.getEstado() != null ? donacion.getEstado().name() : "N/A");
-
-    dto.setSubcategoriaName(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getNombre() : "N/A");
-    dto.setCategoriaBienName("Categoría Pendiente");
-
-    dto.setFechaEntrega(donacion.getFechaEntrega());
-    dto.setCantidadTotalBienes(donacion.sumaCantidadBienes());
-    dto.setBienes(new ArrayList<>());
-
-    return dto;
   }
 
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {

@@ -1,9 +1,11 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.ComprobanteEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
+import ar.edu.utn.frba.ddsi.donaciones.services.EntregasService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -103,5 +105,14 @@ public class EntidadBeneficiariaController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PatchMapping("/entregas/{idEntrega}")
+    public ResponseEntity<Void> ingresarEstadoEntrega(
+            @PathVariable UUID idEntrega,
+            @RequestBody ComprobanteEntregaDTO dto
+    ) {
+        service.ingresarEstadoEntrega(idEntrega, dto);
+        return ResponseEntity.ok().build();
     }
 }

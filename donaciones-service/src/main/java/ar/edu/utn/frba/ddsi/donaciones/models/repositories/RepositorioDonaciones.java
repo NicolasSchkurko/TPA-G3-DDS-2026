@@ -38,6 +38,12 @@ public class RepositorioDonaciones {
                          .toList();
     }
 
+    public List<Donacion> findEntregarPendient() {
+        return donaciones.stream()
+                .filter(d -> d.getEstado() == Estado.ASIGNADO)
+                .toList();
+    }
+
     public void saveFormulario(List<Donacion> donacionesFormulario) {
         donaciones.addAll(donacionesFormulario);
     }

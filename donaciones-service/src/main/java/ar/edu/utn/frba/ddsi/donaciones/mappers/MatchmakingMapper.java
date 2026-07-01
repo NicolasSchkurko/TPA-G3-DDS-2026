@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.mappers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.*;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.PropuestaAsignacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.ResultadoMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

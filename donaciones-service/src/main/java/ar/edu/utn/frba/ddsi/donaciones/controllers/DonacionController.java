@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +20,12 @@ import java.util.UUID;
 public class DonacionController {
 
   private final DonacionService donacionService;
+  private final DonacionMapper donacionMapper;
 
-  public DonacionController(DonacionService donacionService) {
+  public DonacionController(DonacionService donacionService,
+                            DonacionMapper donacionMapper) {
     this.donacionService = donacionService;
+    this.donacionMapper = donacionMapper;
   }
 
   // CREATE (C) - Endpoint que procesa el formulario completo y segmentar
@@ -37,7 +41,7 @@ public class DonacionController {
     }
 
     List<DonacionDTO> dto = donacionesSegmentadas.stream()
-            .map(donacionService::toDTO)
+            .map(donacionMapper::donaciontoDTO)
             .toList();
 
     return ResponseEntity.ok(dto);
@@ -63,7 +67,7 @@ public class DonacionController {
   public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody DonacionDTO donacion) {
     try {
       Donacion actualizada = donacionService.actualizarDonacion(id, donacion);
-      return ResponseEntity.ok(donacionService.toDTO(actualizada));
+      return ResponseEntity.ok(donacionMapper.donaciontoDTO(actualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }
@@ -85,7 +89,7 @@ public class DonacionController {
           cambioEstadoDTO.getNuevoEstado(),
           cambioEstadoDTO.getJustificacion()
       );
-      return ResponseEntity.ok(donacionService.toDTO(donacionActualizada));
+      return ResponseEntity.ok(donacionMapper.donaciontoDTO(donacionActualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }

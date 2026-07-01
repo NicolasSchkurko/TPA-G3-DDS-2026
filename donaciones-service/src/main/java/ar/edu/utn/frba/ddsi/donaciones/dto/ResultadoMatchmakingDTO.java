@@ -1,8 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.AsignadorDonaciones.PropuestaAsignacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import lombok.Getter;
 import lombok.Setter;
 
