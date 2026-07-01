@@ -85,6 +85,8 @@ public class EntregasService {
         //save si lo encuentra x idRuta en el repo, lo remueve y lo vuelve a agregar
         //asi q si habia alguna novedad de la ruta se registra el ultimo estado
 
+
+
         //TODO revisar el repo por rutas con estado en_viaje para las notificaciones
         // notificar a cada entidad de la ruta
 

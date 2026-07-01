@@ -4,5 +4,6 @@ public enum EstadoEntrega {
     PENDIENTE,
     EN_VIAJE,
     ENTREGADA,
-    NO_RECIBIDA
+    NO_RECIBIDA,
+    REPLANIFICAR
 }
