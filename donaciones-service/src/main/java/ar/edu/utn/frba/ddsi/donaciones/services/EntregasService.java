@@ -86,6 +86,17 @@ public class EntregasService {
         //asi q si habia alguna novedad de la ruta se registra el ultimo estado
 
         //TODO revisar el repo por rutas con estado en_viaje para las notificaciones
+        // notificar a cada entidad de la ruta
+
+//        se notificará a cada entidad y personaDonante de la ruta sobre las entregas
+//        formen parte de la ruta en viaje. La notificación deberá incluir un enlace al mapa
+//        interactivo
+//
+        List<RutaEnProceso> rutasEnViaje = repositorioRutas.findAll().stream()
+                .filter(ruta -> ruta.getEstadoEntrega() == EstadoEntrega.EN_VIAJE)
+                .toList();
+
+
     }
 
     private InfoEntregasDTO convertirAInfoEntregas(List<Donacion> donaciones) {
