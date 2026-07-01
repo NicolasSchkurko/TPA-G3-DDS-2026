@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.*;
+import org.springframework.stereotype.Component;
 
+@Component
 public class MisionFactory {
     private TipoMision tipoMision;
 

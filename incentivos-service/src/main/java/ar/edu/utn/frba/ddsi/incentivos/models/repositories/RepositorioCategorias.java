@@ -2,14 +2,16 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class RepositorioCategorias {
     private final List<Categoria> categorias;
 
-    private RepositorioCategorias() {
+    public RepositorioCategorias() {
         this.categorias = new ArrayList<>();
         inicializarCategoriasBase();
     }

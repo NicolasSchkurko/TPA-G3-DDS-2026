@@ -9,14 +9,15 @@ import java.util.UUID;
 
 import lombok.Setter;
 import lombok.Getter;
+import org.springframework.stereotype.Repository;
 
 @Getter
 @Setter
-
+@Repository
 public class RepositorioDonaciones {
     private final List<ImpactoDonacion> donaciones;
 
-    private RepositorioDonaciones() {
+    public RepositorioDonaciones() {
         this.donaciones = new ArrayList<>();
     }
 
