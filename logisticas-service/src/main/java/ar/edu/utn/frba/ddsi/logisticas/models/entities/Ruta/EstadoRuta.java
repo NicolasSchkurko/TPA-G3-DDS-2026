@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.entities.ruta;
+package ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta;
 
 public enum EstadoRuta {
     PROGRAMADA,

@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.entities.pesoPaquete;
+package ar.edu.utn.frba.ddsi.logisticas.models.entities.PesoPaquete;
 
 public class PesoTotal {
     // con esta clase lo que deberiamos hacer, es que una vez aplicado el algoritmo de zonas a la
