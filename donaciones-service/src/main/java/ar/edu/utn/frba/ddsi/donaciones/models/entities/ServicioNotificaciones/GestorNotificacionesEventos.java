@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
@@ -25,18 +26,18 @@ public class GestorNotificacionesEventos {
   }
 
   public void notificarDonacionAsignadaAEntidadBeneficiaria(Donacion donacion) {
-    notificarEventoDeDonacion(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
+    notificarEventoAEntidad(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
   }
 
   public void notificarInactividadAPersonaDonante(PersonaDonante personaDonante) {
-    notificarEventoDePersonaDonante(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, personaDonante);
+    notificarEventoAPersonaDonante(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, personaDonante);
   }
 
   /**
    * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
    * entidad beneficiaria asociada a la donacion.
    */
-  private void notificarEventoDeDonacion(TipoEventoNotificacion tipoEvento, Donacion donacion) {
+  public void notificarEventoAEntidad(TipoEventoNotificacion tipoEvento, Donacion donacion) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, donacion);
 
     servicioNotificaciones.enviarNotificacionAMediosDeContacto(
@@ -46,10 +47,36 @@ public class GestorNotificacionesEventos {
   }
 
   /**
+   * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
+   * entidad beneficiaria.
+   */
+  public void notificarEventoAEntidad(TipoEventoNotificacion tipoEvento, EntidadBeneficiaria entidadBeneficiaria) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, entidadBeneficiaria);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            entidadBeneficiaria.getCorreosRepresentantes(),
+            mensaje
+    );
+  }
+
+  /**
+   * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
+   * persona donante asociada a la donacion.
+   */
+  public void notificarEventoAPersonaDonante(TipoEventoNotificacion tipoEvento, Donacion donacion) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, donacion);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            donacion.getDonante().getMediosDeContacto(),
+            mensaje
+    );
+  }
+
+  /**
    * Crea el mensaje del evento y lo envía al medio de contacto predeterminado
    * de la persona donante.
    */
-  private void notificarEventoDePersonaDonante(TipoEventoNotificacion tipoEvento, PersonaDonante personaDonante) {
+  public void notificarEventoAPersonaDonante(TipoEventoNotificacion tipoEvento, PersonaDonante personaDonante) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, personaDonante);
 
     servicioNotificaciones.enviarNotificacionAMedioPredeterminado(
