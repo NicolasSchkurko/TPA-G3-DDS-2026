@@ -6,9 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Setter;
 import lombok.Getter;
+import org.springframework.stereotype.Repository;
 
 @Getter
 @Setter
+@Repository
 //podriamos hacer un cron donde se pruebe enviar nuevamente estas notificaciones
 //a los usuarios; en caso de falla de nuevo, se eliminan y el repo queda vacio
 //para recibir nuevas notificaciones pendientes
@@ -16,7 +18,7 @@ import lombok.Getter;
 public class RepositorioNotificacionesPendientes {
     private final List<PerfilNotificacionDTO> pendientes;
 
-    private RepositorioNotificacionesPendientes() {
+    public RepositorioNotificacionesPendientes() {
         this.pendientes = new ArrayList<>();
     }
 

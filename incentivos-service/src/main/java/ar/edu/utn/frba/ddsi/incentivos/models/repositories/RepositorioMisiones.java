@@ -1,15 +1,18 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class RepositorioMisiones {
     private final List<Mision> misiones;
-    private MisionFactory factory;
+    private final MisionFactory factory;
 
-    private RepositorioMisiones() {
+    public RepositorioMisiones(MisionFactory factory) {
+        this.factory = factory;
         this.misiones = new ArrayList<>();
         inicializarMisionesBase();
     }
