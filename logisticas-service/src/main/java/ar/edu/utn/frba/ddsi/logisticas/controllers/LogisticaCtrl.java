@@ -18,16 +18,18 @@ public class LogisticaCtrl {
     }
 
     // CREATE (C) - Endpoint que entrega a donaciones-serv la lista de destinos
-    @PostMapping
-    public ResponseEntity<List<DestinoEntregaDTO>> crearDestinos(@RequestBody PeticionEntregaDTO request) {
-        List<DestinoEntregaDTO> destinos =
-                logisticaService.procesarPeticion(request);
-        if (destinos == null) {
-            return ResponseEntity.notFound().build();
-        }
+//    @PostMapping
+//    public ResponseEntity<List<DestinoEntregaDTO>> crearDestinos(@RequestBody PeticionEntregaDTO request) {
+//        List<DestinoEntregaDTO> destinos =
+//                logisticaService.procesarPeticion(request);
+//        if (destinos == null) {
+//            return ResponseEntity.notFound().build();
+//        }
+//
+//        return ResponseEntity.ok(destinos);
+//    }
 
-        return ResponseEntity.ok(destinos);
-    }
+    //habilitar endpoint para pasar a donaciones InfoDestinosDTO a donaciones
 }
 
 

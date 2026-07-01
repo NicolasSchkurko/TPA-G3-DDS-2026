@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 public class LogisticaClient {
     private final RestTemplate restTemplate;
 
-    @Value("${servicio.logistica.url}") //TODO
+    //:http://localhost:8001/logistica
+    @Value("${servicio.logisticas.url}")
     private String logisticaUrl;
 
     public LogisticaClient(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    //TODO
-    public InfoRutasDTO entregarDonaciones(InfoEntregasDTO dto){
+    public InfoRutasDTO recibirInfoCreacionRutas(InfoEntregasDTO dto){
         return restTemplate.postForEntity(
                 logisticaUrl,
                 dto,

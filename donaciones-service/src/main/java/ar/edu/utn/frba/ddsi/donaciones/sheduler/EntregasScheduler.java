@@ -13,7 +13,7 @@ public class EntregasScheduler {
     }
 
     @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
-    public void planificarRutas() {
-        entregaService.planificarRutas();
+    public void conseguirInfoRutas() {
+        entregaService.conseguirInfoAsignacionRutas();
     }
 }

@@ -1,11 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.ComprobanteEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
-import ar.edu.utn.frba.ddsi.donaciones.services.EntregasService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -108,11 +107,18 @@ public class EntidadBeneficiariaController {
     }
 
     @PatchMapping("/entregas/{idEntrega}")
-    public ResponseEntity<Void> ingresarEstadoEntrega(
+    public ResponseEntity<Void> confirmarRecepcionEntrega(
             @PathVariable UUID idEntrega,
-            @RequestBody ComprobanteEntregaDTO dto
+            @RequestBody RecepcionEntregaDTO dto
     ) {
-        service.ingresarEstadoEntrega(idEntrega, dto);
-        return ResponseEntity.ok().build();
+        try {
+            service.ingresarEstadoEntrega(idEntrega, dto);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("No se encontro la entrega")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

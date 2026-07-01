@@ -9,11 +9,9 @@ import java.util.List;
 
 @Getter
 @Setter
-public class ComprobanteEntregaDTO {
-    private String entregaSatisfactoria; //quiza sea otro tipo de dato
+public class RecepcionEntregaDTO {
+    private String estadoEntrega; //quiza sea otro tipo de dato
     private List<String> urlImagenesEntrega;
     private LocalDate fechaEntrega;
     private LocalTime horaEntrega;
-    private String nombreChofer;
-    private String patente;
 }

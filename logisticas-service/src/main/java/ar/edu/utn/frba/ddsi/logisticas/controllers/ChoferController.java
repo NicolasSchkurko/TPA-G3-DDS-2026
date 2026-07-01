@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.controllers;
+package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.CamionDisponibleDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.RutaDTO;

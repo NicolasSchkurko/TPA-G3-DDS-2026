@@ -1,11 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto.logistica;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class CamionDisponibleDTO {
-    //me parece que deberia poner los datos del chofer tmb
+public class Camion {
     private String nombreChofer;
     private String patente;
     private String inicioRuta;

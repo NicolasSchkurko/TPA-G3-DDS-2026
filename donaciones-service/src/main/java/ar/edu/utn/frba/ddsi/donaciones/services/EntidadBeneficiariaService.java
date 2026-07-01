@@ -4,10 +4,14 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.EstadoEntrega;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadRecurrente;
@@ -15,7 +19,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioRutasActivas;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
 import org.springframework.stereotype.Service;
 
@@ -27,9 +33,15 @@ import java.util.stream.Collectors;
 public class EntidadBeneficiariaService {
 
     private final RepositorioEntidadesBeneficiarias repositorio;
+    private final RepositorioRutasActivas repositorioRutasActivas;
+    private final RepositorioDonaciones repositorioDonaciones;
 
-    public EntidadBeneficiariaService(RepositorioEntidadesBeneficiarias repositorio) {
+    public EntidadBeneficiariaService(RepositorioEntidadesBeneficiarias repositorio,
+                                      RepositorioRutasActivas repositorioRutasActivas,
+                                      RepositorioDonaciones repositorioDonaciones) {
         this.repositorio = repositorio;
+        this.repositorioRutasActivas = repositorioRutasActivas;
+        this.repositorioDonaciones = repositorioDonaciones;
     }
 
     // --- OPERACIONES CRUD ENTIDADES ---
@@ -140,7 +152,6 @@ public class EntidadBeneficiariaService {
 
     private EntidadBeneficiariaDTO convertirADTO(EntidadBeneficiaria entidad) {
         EntidadBeneficiariaDTO dto = new EntidadBeneficiariaDTO();
-        // Si a futuro añades id a EntidadBeneficiariaDTO, deberías setearlo aquí (dto.setId(entidad.getId());)
         dto.setRazonSocial(entidad.getRazonSocial());
         dto.setTelefono(entidad.getNroTell() != null ? entidad.getNroTell().getNumeroDeTelefono() : null);
         return dto;
@@ -175,5 +186,61 @@ public class EntidadBeneficiariaService {
         dto.setFechaEntrega(donacion.getFechaEntrega());
         dto.setCantidadTotalBienes(donacion.sumaCantidadBienes());
         return dto;
+    }
+
+    public void ingresarEstadoEntrega(UUID idEntrega, RecepcionEntregaDTO dto){
+        if (dto == null) {
+            throw new IllegalArgumentException("La recepcion de entrega es obligatoria");
+        }
+
+        EstadoEntrega estadoEntrega = convertirEstadoEntrega(dto.getEstadoEntrega());
+        RutaEnProceso ruta = repositorioRutasActivas.findByIdEntrega(idEntrega)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontro la entrega con ID: " + idEntrega));
+
+        ruta.setEstadoEntrega(estadoEntrega);
+        ruta.setUrlImagenesEntrega(dto.getUrlImagenesEntrega());
+        ruta.setFechaEntrega(dto.getFechaEntrega());
+        ruta.setHoraEntrega(dto.getHoraEntrega());
+
+        List<UUID> idsDonaciones = ruta.getPaquete() != null ? ruta.getPaquete().getIdsDonaciones() : List.of();
+
+        if (estadoEntrega == EstadoEntrega.ENTREGADA) {
+            idsDonaciones.stream()
+                    .map(repositorioDonaciones::findById)
+                    .flatMap(java.util.Optional::stream)
+                    .forEach(donacion -> donacion.actualizarEstado(
+                            Estado.ENTREGADO,
+                            "Entrega confirmada por la entidad beneficiaria"
+                    ));
+            //cuando la donacion esta entregada, la entidad puede cubrir algunas de sus
+            //necesidades. Cuando cubra sus necesidades, se elimina de su lista
+            //y se elimina la donacion del repo de donaciones
+
+            repositorioRutasActivas.deleteByIdEntrega(idEntrega);
+            return;
+        }
+
+        if (estadoEntrega == EstadoEntrega.NO_RECIBIDA) {
+            repositorioRutasActivas.save(ruta);
+        }
+    }
+
+    private EstadoEntrega convertirEstadoEntrega(String estadoEntrega) {
+        if (estadoEntrega == null) {
+            throw new IllegalArgumentException("El estado de entrega es obligatorio");
+        }
+
+        EstadoEntrega estado;
+        estado = switch (estadoEntrega.toUpperCase()) {
+            case "ENTREGADA", "ENTREGADO" -> EstadoEntrega.ENTREGADA;
+            case "NO_RECIBIDA", "NO RECIBIDA" -> EstadoEntrega.NO_RECIBIDA;
+            default -> throw new IllegalArgumentException("Estado de entrega invalido: " + estadoEntrega);
+        };
+
+        if (estado != EstadoEntrega.ENTREGADA && estado != EstadoEntrega.NO_RECIBIDA) {
+            throw new IllegalArgumentException("La entidad solo puede informar ENTREGADA o NO_RECIBIDA");
+        }
+
+        return estado;
     }
 }

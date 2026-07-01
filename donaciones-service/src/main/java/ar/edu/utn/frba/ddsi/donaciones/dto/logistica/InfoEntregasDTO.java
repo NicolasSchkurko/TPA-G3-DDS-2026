@@ -8,5 +8,4 @@ import lombok.Setter;
 @Setter
 public class InfoEntregasDTO {
     List<EntregaDTO> entregas;
-    List<CamionDisponibleDTO> camiones;
 }
