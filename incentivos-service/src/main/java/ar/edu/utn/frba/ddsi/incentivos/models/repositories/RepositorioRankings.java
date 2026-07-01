@@ -1,15 +1,17 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
+import org.springframework.stereotype.Repository;
 
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class RepositorioRankings {
     private final List<RankingMensual> rankings;
 
-    private RepositorioRankings() {
+    public RepositorioRankings() {
         this.rankings = new ArrayList<>();
     }
 
