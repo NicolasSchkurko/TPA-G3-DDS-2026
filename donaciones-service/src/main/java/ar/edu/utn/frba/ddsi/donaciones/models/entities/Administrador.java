@@ -6,13 +6,16 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.stereotype.Component;
 
 @Getter
 @Setter
+
 public class Administrador {
     private UUID id;
 
     // Campos comunes o de retorno
+
     private String nombreAMostrar;
 
     private String nombre;
