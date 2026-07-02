@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -10,6 +9,7 @@ import java.util.UUID;
 
 @Repository
 public class RepositorioAdministradores {
+    //parece q no hay mas de 1 admin x ahora, esto queda x si acaso
     private final List<Administrador> administradores = new ArrayList<>();
 
     public List<Administrador> findAll() {

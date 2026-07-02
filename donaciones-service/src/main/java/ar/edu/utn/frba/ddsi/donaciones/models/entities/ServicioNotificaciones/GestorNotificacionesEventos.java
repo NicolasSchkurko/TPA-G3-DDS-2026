@@ -1,6 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,34 @@ public class GestorNotificacionesEventos {
     notificarEventoDeDonacion(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
   }
 
+  public void notificarDonacionEnViajeAEntidadBeneficiaria(String urlRuta, MediosDeContacto contacto) {
+    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA, urlRuta, contacto);
+  }
+
+  public void notificarComprobanteEntregaAPersonaDonante(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE, ruta, contacto);
+  }
+
+  public void notificarComprobanteEntregaAEntidadBeneficiaria(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAPersonaDonante(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_PERSONA_DONANTE, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAEntidadBeneficiaria(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAdmin(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN, ruta, contacto);
+  }
+
+  public void notificarDonacionEnViajeAPersonaDonante(String urlRuta, MediosDeContacto contacto) {
+    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE, urlRuta, contacto);
+  }
+
   public void notificarInactividadAPersonaDonante(PersonaDonante personaDonante) {
     notificarEventoDePersonaDonante(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, personaDonante);
   }
@@ -42,6 +73,24 @@ public class GestorNotificacionesEventos {
     servicioNotificaciones.enviarNotificacionAMediosDeContacto(
         donacion.getEntidad().getCorreosRepresentantes(),
         mensaje
+    );
+  }
+
+  private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, String urlRuta, MediosDeContacto contacto) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, urlRuta);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            contacto,
+            mensaje
+    );
+  }
+
+  private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta, MediosDeContacto contacto) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, ruta);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            contacto,
+            mensaje
     );
   }
 

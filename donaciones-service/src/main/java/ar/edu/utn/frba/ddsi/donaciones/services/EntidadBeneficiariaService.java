@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
@@ -15,6 +16,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadRecurrente;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -26,6 +28,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Neces
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,13 +38,19 @@ public class EntidadBeneficiariaService {
     private final RepositorioEntidadesBeneficiarias repositorio;
     private final RepositorioRutasActivas repositorioRutasActivas;
     private final RepositorioDonaciones repositorioDonaciones;
+    private final GestorNotificacionesEventos gestorNotificaciones;
+    private final Administrador admin;
 
     public EntidadBeneficiariaService(RepositorioEntidadesBeneficiarias repositorio,
                                       RepositorioRutasActivas repositorioRutasActivas,
-                                      RepositorioDonaciones repositorioDonaciones) {
+                                      RepositorioDonaciones repositorioDonaciones,
+                                      GestorNotificacionesEventos gestorNotificaciones,
+                                      Administrador admin) {
         this.repositorio = repositorio;
         this.repositorioRutasActivas = repositorioRutasActivas;
         this.repositorioDonaciones = repositorioDonaciones;
+        this.gestorNotificaciones = gestorNotificaciones;
+        this.admin = admin;
     }
 
     // --- OPERACIONES CRUD ENTIDADES ---
@@ -203,6 +212,7 @@ public class EntidadBeneficiariaService {
         ruta.setHoraEntrega(dto.getHoraEntrega());
 
         List<UUID> idsDonaciones = ruta.getPaquete() != null ? ruta.getPaquete().getIdsDonaciones() : List.of();
+        EntidadBeneficiaria ent = repositorio.findById(ruta.getPaquete().getEntidadBeneficiaria().getIdEntidad()).get();
 
         if (estadoEntrega == EstadoEntrega.ENTREGADA) {
             idsDonaciones.stream()
@@ -212,15 +222,53 @@ public class EntidadBeneficiariaService {
                             Estado.ENTREGADO,
                             "Entrega confirmada por la entidad beneficiaria"
                     ));
-            //cuando la donacion esta entregada, la entidad puede cubrir algunas de sus
+
+            //TODO cuando la donacion esta entregada, la entidad puede cubrir algunas de sus
             //necesidades. Cuando cubra sus necesidades, se elimina de su lista
             //y se elimina la donacion del repo de donaciones
 
+
+            gestorNotificaciones.notificarComprobanteEntregaAEntidadBeneficiaria(
+                    ent.getCorreosRepresentantes(),
+                    ruta
+            );
+
+            for(UUID idDonacion : idsDonaciones){
+                repositorioDonaciones.findById(idDonacion)
+                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
+                        .filter(Objects::nonNull)
+                        .ifPresent(contacto ->
+                                gestorNotificaciones.notificarComprobanteEntregaAPersonaDonante(
+                                        contacto,
+                                        ruta
+                                ));
+            }
             repositorioRutasActivas.deleteByIdEntrega(idEntrega);
             return;
         }
 
         if (estadoEntrega == EstadoEntrega.NO_RECIBIDA) {
+            gestorNotificaciones.notificarEntregaNoRecibidaAEntidadBeneficiaria(
+                    ent.getCorreosRepresentantes(),
+                    ruta
+            );
+
+            gestorNotificaciones.notificarEntregaNoRecibidaAdmin(
+                    admin.getMedioDeContacto(),
+                    ruta
+            );
+
+            for(UUID idDonacion : idsDonaciones){
+                repositorioDonaciones.findById(idDonacion)
+                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
+                        .filter(Objects::nonNull)
+                        .ifPresent(contacto ->
+                                gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(
+                                        contacto,
+                                        ruta
+                                ));
+            }
+            repositorioRutasActivas.deleteByIdEntrega(idEntrega);
             repositorioRutasActivas.save(ruta);
         }
     }

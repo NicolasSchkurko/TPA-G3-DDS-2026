@@ -16,7 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/personas") // Modificado a /api/personas para mantener consistencia
-public class PersonaController {
+public class
+PersonaController {
 
   private final PersonaService personaService;
 

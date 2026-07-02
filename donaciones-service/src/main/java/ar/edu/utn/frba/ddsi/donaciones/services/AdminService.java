@@ -41,6 +41,7 @@ public class AdminService {
             return;
         }
 
+        //no se como revisara las de replanificar
 
         ruta.setEstadoEntrega(estadoEntrega);
         repositorioRutasActivas.save(ruta);
@@ -66,9 +67,9 @@ public class AdminService {
         }
 
         return switch (estadoEntrega.toUpperCase()) {
-            case "PENDIENTE" -> EstadoEntrega.PENDIENTE;
-            case "EN_VIAJE", "EN VIAJE" -> EstadoEntrega.EN_VIAJE;
-            case "NO_RECIBIDA", "NO RECIBIDA" -> EstadoEntrega.NO_RECIBIDA;
+            case "PENDIENTE" -> EstadoEntrega.PENDIENTE; //podria o no add + casos de revision
+//            case "EN_VIAJE", "EN VIAJE" -> EstadoEntrega.EN_VIAJE;
+//            case "NO_RECIBIDA", "NO RECIBIDA" -> EstadoEntrega.NO_RECIBIDA;
             default -> throw new IllegalArgumentException("Estado de entrega invalido para revision: " + estadoEntrega);
         };
     }

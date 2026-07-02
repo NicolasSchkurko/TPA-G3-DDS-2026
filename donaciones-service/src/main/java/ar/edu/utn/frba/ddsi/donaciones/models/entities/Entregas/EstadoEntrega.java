@@ -5,5 +5,5 @@ public enum EstadoEntrega {
     EN_VIAJE,
     ENTREGADA,
     NO_RECIBIDA,
-    REPLANIFICAR
+    REPLANIFICAR //idk
 }

@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.Camion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.DonacionResumen;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -85,11 +87,6 @@ public class EntregasService {
         //save si lo encuentra x idRuta en el repo, lo remueve y lo vuelve a agregar
         //asi q si habia alguna novedad de la ruta se registra el ultimo estado
 
-
-
-        //TODO revisar el repo por rutas con estado en_viaje para las notificaciones
-        // notificar a cada entidad de la ruta
-
 //        se notificará a cada entidad y personaDonante de la ruta sobre las entregas
 //        formen parte de la ruta en viaje. La notificación deberá incluir un enlace al mapa
 //        interactivo
@@ -98,7 +95,35 @@ public class EntregasService {
                 .filter(ruta -> ruta.getEstadoEntrega() == EstadoEntrega.EN_VIAJE)
                 .toList();
 
+        for(RutaEnProceso ruta : rutasEnViaje){
+            UUID idEntidad = obtenerIdEntidad(ruta);
+            if (idEntidad == null) {
+                continue;
+            }
 
+            repositorioEntidades.findById(idEntidad)
+                    .map(EntidadBeneficiaria::getCorreosRepresentantes)
+                    .filter(Objects::nonNull)
+                    .ifPresent(contacto -> gestorNotificaciones.notificarDonacionEnViajeAEntidadBeneficiaria(ruta.getUrlSeguimiento(),
+                            contacto));
+
+            List<UUID> idsDonaciones = ruta.getPaquete().getIdsDonaciones();
+            for(UUID idDonacion : idsDonaciones){
+                repositorio.findById(idDonacion)
+                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
+                        .filter(Objects::nonNull)
+                        .ifPresent(contacto -> gestorNotificaciones.notificarDonacionEnViajeAPersonaDonante(ruta.getUrlSeguimiento(),
+                                contacto));
+            }
+        }
+    }
+
+    private UUID obtenerIdEntidad(RutaEnProceso ruta) {
+        if (ruta.getPaquete() == null || ruta.getPaquete().getEntidadBeneficiaria() == null) {
+            return null;
+        }
+
+        return ruta.getPaquete().getEntidadBeneficiaria().getIdEntidad();
     }
 
     private InfoEntregasDTO convertirAInfoEntregas(List<Donacion> donaciones) {
@@ -129,7 +154,7 @@ public class EntregasService {
 
     private DireccionEntidadDTO convertirADireccionEntidadDTO(EntidadBeneficiaria entidad) {
         DireccionEntidadDTO direccionEntidad = new DireccionEntidadDTO();
-        direccionEntidad.setNombreEntidad(entidad.getRazonSocial());
+        direccionEntidad.setIdEntidad(entidad.getId());
         direccionEntidad.setDireccion(convertirADireccionDTO(entidad.getDireccion()));
         return direccionEntidad;
     }
@@ -160,15 +185,19 @@ public class EntregasService {
     }
 
     private RutaEnProceso convertirRutaEnProceso(RutaDTO rutaDTO) {
+        Optional<RutaEnProceso> rutaExistente = repositorioRutas.findByIdRuta(rutaDTO.getIdRuta());
+
         RutaEnProceso ruta = new RutaEnProceso();
         ruta.setIdRuta(rutaDTO.getIdRuta());
-        ruta.setIdEntrega(repositorioRutas.findByIdRuta(rutaDTO.getIdRuta())
+        ruta.setIdEntrega(rutaExistente
                 .map(RutaEnProceso::getIdEntrega)
                 .orElseGet(UUID::randomUUID));
         ruta.setPaquete(convertirAEntrega(rutaDTO.getPaquete()));
         ruta.setCamionEntrega(convertirACamion(rutaDTO.getCamionEntrega()));
         ruta.setUrlSeguimiento(rutaDTO.getUrlSeguimiento());
-        ruta.setEstadoEntrega(EstadoEntrega.PENDIENTE);
+        ruta.setEstadoEntrega(rutaExistente
+                .map(RutaEnProceso::getEstadoEntrega)
+                .orElse(EstadoEntrega.PENDIENTE));
         return ruta;
     }
 
@@ -206,7 +235,7 @@ public class EntregasService {
 
         ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.DireccionEntidad direccionEntidad =
                 new ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.DireccionEntidad();
-        direccionEntidad.setNombreEntidad(direccionEntidadDTO.getNombreEntidad());
+        direccionEntidad.setIdEntidad(direccionEntidadDTO.getIdEntidad());
         direccionEntidad.setDireccion(convertirADireccion(direccionEntidadDTO.getDireccion()));
         return direccionEntidad;
     }
