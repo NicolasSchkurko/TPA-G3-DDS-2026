@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
@@ -58,6 +57,38 @@ public class EventoLogisticaService {
 
     } catch (Exception e) {
       System.err.println("Error serializando evento de entrega: " + e.getMessage());
+    }
+  }
+
+  public void publicarEntregaFallida(ItemEntrega item) {
+    try {
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("idDonacion", item.getIdDonacion());
+      payload.put("idEntidad", item.getEntidadDestino().getIdEntidadBeneficiaria());
+      payload.put("estado", "NO_RECIBIDA");
+
+      String json = objectMapper.writeValueAsString(payload);
+      EventoLogistica evento = new EventoLogistica("ENTREGA_FALLIDA", json);
+      repositorioEventos.save(evento);
+
+    } catch (Exception e) {
+      System.err.println("Error serializando evento de entrega fallida: " + e.getMessage());
+    }
+  }
+
+  public void publicarReingresoDeposito(ItemEntrega item) {
+    try {
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("idDonacion", item.getIdDonacion());
+      payload.put("estadoAnterior", "NO_RECIBIDA");
+      payload.put("estadoNuevo", "PENDIENTE");
+
+      String json = objectMapper.writeValueAsString(payload);
+      EventoLogistica evento = new EventoLogistica("REINGRESO_DEPOSITO", json);
+      repositorioEventos.save(evento);
+
+    } catch (Exception e) {
+      System.err.println("Error serializando evento de reingreso a depósito: " + e.getMessage());
     }
   }
 }

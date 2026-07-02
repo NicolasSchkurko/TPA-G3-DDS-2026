@@ -30,13 +30,8 @@ public class TrazabilidadService {
     Ruta ruta = repositorioRutas.findById(idRuta)
                                 .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrada"));
 
-    // 1. Delegamos en el Dominio (tus clases puras)
-    ruta.iniciar(); // Pasa ruta a EN_CURSO y donaciones a EN_TRASLADO
-
-    // 2. Guardamos en la Base de Datos (en este caso, en memoria)
+    ruta.iniciar();
     repositorioRutas.save(ruta);
-
-    // 3. Generamos el evento asíncrono para el HTTP Polling
     eventoService.publicarInicioRuta(ruta);
   }
 
@@ -47,13 +42,32 @@ public class TrazabilidadService {
     ItemEntrega item = repositorioItemEntrega.findById(idDonacion)
                                              .orElseThrow(() -> new IllegalArgumentException("Donación no encontrada"));
 
-    // 1. Lógica de Dominio
     item.confirmarEntrega(fotoUrl);
-
-    // 2. Persistencia
     repositorioItemEntrega.save(item);
-
-    // 3. Generamos el evento para Notificaciones
     eventoService.publicarEntregaConfirmada(item);
+  }
+
+  /**
+   * Caso de uso: La entidad reporta que la donación no llegó (falla logística).
+   */
+  public void registrarEntregaFallida(UUID idDonacion) {
+    ItemEntrega item = repositorioItemEntrega.findById(idDonacion)
+                                             .orElseThrow(() -> new IllegalArgumentException("Donación no encontrada"));
+
+    item.marcarNoRecibida();
+    repositorioItemEntrega.save(item);
+    eventoService.publicarEntregaFallida(item);
+  }
+
+  /**
+   * Caso de uso: Tras una falla, un revisor determina que la donación volvió al depósito y puede ser enviada nuevamente.
+   */
+  public void registrarReingresoDeposito(UUID idDonacion) {
+    ItemEntrega item = repositorioItemEntrega.findById(idDonacion)
+                                             .orElseThrow(() -> new IllegalArgumentException("Donación no encontrada"));
+
+    item.reingresarADeposito();
+    repositorioItemEntrega.save(item);
+    eventoService.publicarReingresoDeposito(item);
   }
 }

@@ -36,12 +36,12 @@ public class LogisticaService {
                 repositorioItemEntrega.save(new ItemEntrega(entregaActual.getIdsDonaciones().get(j), bien.getCantidad(), UnidadDeMedida.valueOf(bien.getUnidadDeMedida()), new Entidad(entregaActual.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad)));
             }
             DestinoEntregaDTO destinoDTO = new DestinoEntregaDTO();
-            new ruta
             destinoDTO.setPaquete(entregaActual);
             destinos.add(destinoDTO);
         }
         return destinos;
     }
+
 
     public Camion convertirDTO(CamionDTO dto){
         return new Camion(dto.getPatente(), dto.getCapacidadVolumen(), dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
