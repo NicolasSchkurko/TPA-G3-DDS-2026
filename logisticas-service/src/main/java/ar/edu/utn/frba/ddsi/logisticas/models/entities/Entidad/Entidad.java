@@ -12,4 +12,9 @@ import lombok.Setter;
 public class Entidad {
   private UUID idEntidadBeneficiaria;
   private Direccion direccionDestino;
+
+  public Entidad(UUID idEntidadBeneficiaria, Direccion direccionDestino){
+    this.idEntidadBeneficiaria = idEntidadBeneficiaria;
+    this.direccionDestino = direccionDestino;
+  }
 }

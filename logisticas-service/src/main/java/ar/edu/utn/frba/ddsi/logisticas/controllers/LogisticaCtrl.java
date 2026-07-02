@@ -25,10 +25,8 @@ public class LogisticaCtrl {
     //  CREATE (C) - Endpoint que entrega a donaciones-serv la lista de destinos
     @PostMapping
     public ResponseEntity<DestinosDTO> crearDestinos(@RequestBody PeticionEntregaDTO request) {
-        //TODO registrar en repositorio items de entrega
         DestinosDTO destinos = new DestinosDTO();
         destinos.setDestinos(logisticaService.procesarPeticion(request));
-
         return ResponseEntity.ok(destinos);
     }
 

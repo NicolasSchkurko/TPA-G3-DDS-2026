@@ -2,13 +2,16 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class LogisticaService {
@@ -20,10 +23,6 @@ public class LogisticaService {
         this.repositorioCamiones = repositorioCamiones;
         this.repositorioItemEntrega = repositorioItemEntrega;
     }
-    int index = perfiles.indexOf(existente);
-            if (index >= 0) {
-        perfiles.set(index, existente);
-    }
 
     public List<DestinoEntregaDTO> procesarPeticion(PeticionEntregaDTO request){
         List<EntregaDTO> entregas = request.getEntregas();
@@ -33,9 +32,10 @@ public class LogisticaService {
             List<BienDTO> bienes = entregaActual.getDonacionResumen();
             for(int j= 0; j < bienes.size(); j++){
                 BienDTO bien = bienes.get(j);
-                repositorioItemEntrega.save(new ItemEntrega((entregaActual.getIdsDonaciones().get(j), bien.getCantidad(), bien.getUnidadDeMedida(), entregaActual.getEntidadBeneficiaria()));
+                repositorioItemEntrega.save(new ItemEntrega(entregaActual.getIdsDonaciones().get(j), bien.getCantidad(), UnidadDeMedida.valueOf(bien.getUnidadDeMedida()), new Entidad(UUID.randomUUID(), entregaActual.getEntidadBeneficiaria()));
             }
             DestinoEntregaDTO destinoDTO = new DestinoEntregaDTO();
+            destinoDTO.setPaquete(entregaActual);
             destinos.add(destinoDTO);
         }
         return destinos;

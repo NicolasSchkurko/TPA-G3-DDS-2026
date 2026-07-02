@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import org.springframework.stereotype.Repository;
@@ -18,13 +19,19 @@ public class RepositorioItemEntrega {
     }
 
     public Optional<List<ItemEntrega>> findAllById(List<UUID> idDonacion) {
-        //return idDonacion.forEach(uuid -> this.findById(uuid));
+        //TODO arreglar para que los void no sean agregados
+        return idDonacion.forEach(uuid -> this.findById(uuid));
     }
 
     public Optional<ItemEntrega> findById(UUID idDonacion) {
         return itemEntregas.stream()
                 .filter(r -> r.getIdDonacion().equals(idDonacion))
                 .findFirst();
+    }
+
+    public List<ItemEntrega> findByEstado(EstadoEntrega estado) {
+        return itemEntregas.stream()
+                .filter(r -> r.getEstado().equals(estado)).toList();
     }
 
     public void save(ItemEntrega item) {
