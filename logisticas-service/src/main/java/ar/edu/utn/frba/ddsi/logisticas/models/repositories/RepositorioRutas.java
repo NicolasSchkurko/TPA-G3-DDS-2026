@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
+
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -9,16 +10,20 @@ import java.util.UUID;
 
 @Repository
 public class RepositorioRutas {
-    private final List<Rutas> rutas = new ArrayList<>();
+    private final List<Ruta> rutas = new ArrayList<>();
 
-    public List<Rutas> findAll() {
+    public List<Ruta> findAll() {
         return new ArrayList<>(rutas);
     }
 
     public Optional<Ruta> findById(UUID id) {
         return rutas.stream()
-                .filter(r -> r.getId().equals(id))
+                .filter(r -> r.getIdRuta().equals(id))
                 .findFirst();
+    }
+
+    public void saveAll(List<Ruta> rutas) {
+        rutas.forEach(ruta -> this.save(ruta));
     }
 
     public Ruta save(Ruta ruta) {
@@ -27,6 +32,6 @@ public class RepositorioRutas {
     }
 
     public void deleteById(UUID id) {
-        rutas.removeIf(r -> r.getId().equals(id));
+        rutas.removeIf(r -> r.getIdRuta().equals(id));
     }
 }

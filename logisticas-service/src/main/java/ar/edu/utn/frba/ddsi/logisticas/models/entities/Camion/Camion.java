@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
+import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,17 +9,27 @@ import java.util.UUID;
 @Getter
 @Setter
 public class Camion {
-    private UUID idCamion;
     private String patente;
     private Double capacidadVolumen;
     private Double altura;
     private Double capacidadCarga;
     private Boolean disponible;
+    private Double pesoOcupado;
+    private Double volumenOcupado;
+    private String ciudadDestinoActual;
+
+    public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.patente = patente;
+        this.capacidadVolumen = capacidadVolumen;
+        this.altura = altura;
+        this.capacidadCarga = capacidadCarga;
+        this.disponible = disponible;
+        this.pesoOcupado = 0.0;
+        this.volumenOcupado = 0.0;
+        this.ciudadDestinoActual = null;
+    }
 
     // Atributos de estado para la planificación (transitorios)
-    private Double pesoOcupado = 0.0;
-    private Double volumenOcupado = 0.0;
-    private String ciudadDestinoActual = null;
 
     public boolean puedeCargar(Double pesoKg, Double volumenM3) {
         return pesoKg <= capacidadCarga && volumenM3 <= capacidadVolumen;

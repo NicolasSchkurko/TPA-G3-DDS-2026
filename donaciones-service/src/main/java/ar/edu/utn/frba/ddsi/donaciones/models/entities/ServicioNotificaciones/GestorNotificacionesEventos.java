@@ -1,14 +1,12 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.Camion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
-
-import java.sql.Date;
-import java.sql.Time;
 
 /**
  * Organiza la creación de mensajes y el uso del servicio de notificaciones
@@ -30,67 +28,69 @@ public class GestorNotificacionesEventos {
   }
 
   public void notificarDonacionAsignadaAEntidadBeneficiaria(Donacion donacion) {
-    notificarEventoAEntidad(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
+    notificarEventoDeDonacion(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA, donacion);
+  }
+
+  public void notificarDonacionEnViajeAEntidadBeneficiaria(String urlRuta, MediosDeContacto contacto) {
+    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA, urlRuta, contacto);
+  }
+
+  public void notificarComprobanteEntregaAPersonaDonante(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE, ruta, contacto);
+  }
+
+  public void notificarComprobanteEntregaAEntidadBeneficiaria(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAPersonaDonante(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_PERSONA_DONANTE, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAEntidadBeneficiaria(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA, ruta, contacto);
+  }
+
+  public void notificarEntregaNoRecibidaAdmin(MediosDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN, ruta, contacto);
+  }
+
+  public void notificarDonacionEnViajeAPersonaDonante(String urlRuta, MediosDeContacto contacto) {
+    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE, urlRuta, contacto);
   }
 
   public void notificarInactividadAPersonaDonante(PersonaDonante personaDonante) {
-    notificarEventoAPersonaDonante(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, personaDonante);
-  }
-
-  public void notificarInicioRuta(Donacion donacion, String ruta) {
-    Mensaje mensajeDonante = mensajesPredeterminados.mensajeInicioRutaDonante(donacion, ruta);
-    Mensaje mensajeEntidad = mensajesPredeterminados.mensajeInicioRutaEntidad(donacion, ruta);
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getDonante().getMediosDeContacto(),
-            mensajeDonante
-    );
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getEntidad().getCorreosRepresentantes(),
-            mensajeEntidad
-    );
-  }
-
-  public void notificarEntregaExitosa(Donacion donacion, Date fecha, Time hora, Camion camion) {
-    Mensaje mensajeDonante = mensajesPredeterminados.mensajeEntregaRealizadaDonante(donacion, fecha, hora, camion);
-    Mensaje mensajeEntidad = mensajesPredeterminados.mensajeEntregaRealizadaEntidad(donacion, fecha, hora, camion);
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getDonante().getMediosDeContacto(),
-            mensajeDonante
-    );
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getEntidad().getCorreosRepresentantes(),
-            mensajeEntidad
-    );
-  }
-
-  public void notificarEntregaFallida(Donacion donacion, String motivo) {
-    Mensaje mensaje = mensajesPredeterminados.mensajeEntregaFallida(donacion, motivo);
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getDonante().getMediosDeContacto(),
-            mensaje
-    );
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getEntidad().getCorreosRepresentantes(),
-            mensaje
-    );
+    notificarEventoDePersonaDonante(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, personaDonante);
   }
 
   /**
    * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
    * entidad beneficiaria asociada a la donacion.
    */
-  private void notificarEventoAEntidad(TipoEventoNotificacion tipoEvento, Donacion donacion) {
+  private void notificarEventoDeDonacion(TipoEventoNotificacion tipoEvento, Donacion donacion) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, donacion);
 
     servicioNotificaciones.enviarNotificacionAMediosDeContacto(
         donacion.getEntidad().getCorreosRepresentantes(),
         mensaje
+    );
+  }
+
+  private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, String urlRuta, MediosDeContacto contacto) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, urlRuta);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            contacto,
+            mensaje
+    );
+  }
+
+  private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta, MediosDeContacto contacto) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, ruta);
+
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            contacto,
+            mensaje
     );
   }
 
@@ -127,7 +127,7 @@ public class GestorNotificacionesEventos {
    * Crea el mensaje del evento y lo envía al medio de contacto predeterminado
    * de la persona donante.
    */
-  private void notificarEventoAPersonaDonante(TipoEventoNotificacion tipoEvento, PersonaDonante personaDonante) {
+  private void notificarEventoDePersonaDonante(TipoEventoNotificacion tipoEvento, PersonaDonante personaDonante) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, personaDonante);
 
     servicioNotificaciones.enviarNotificacionAMedioPredeterminado(
