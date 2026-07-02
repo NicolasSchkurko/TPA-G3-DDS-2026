@@ -2,17 +2,15 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
 
 /**
- * Organiza la creación de mensajes y el uso del servicio de notificaciones
- * Permite visualizar mejor los eventos en los que se hará una notificación
+ * Organiza la creación de mensajes y el uso del servicio de notificaciones.
+ * Permite visualizar mejor los eventos en los que se hará una notificación.
  */
-
 @Component
 public class GestorNotificacionesEventos {
 
@@ -35,6 +33,10 @@ public class GestorNotificacionesEventos {
     notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA, urlRuta, contacto);
   }
 
+  public void notificarDonacionEnViajeAPersonaDonante(String urlRuta, MediosDeContacto contacto) {
+    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE, urlRuta, contacto);
+  }
+
   public void notificarComprobanteEntregaAPersonaDonante(MediosDeContacto contacto, RutaEnProceso ruta) {
     notificarEventoDeRuta(TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE, ruta, contacto);
   }
@@ -53,10 +55,6 @@ public class GestorNotificacionesEventos {
 
   public void notificarEntregaNoRecibidaAdmin(MediosDeContacto contacto, RutaEnProceso ruta) {
     notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN, ruta, contacto);
-  }
-
-  public void notificarDonacionEnViajeAPersonaDonante(String urlRuta, MediosDeContacto contacto) {
-    notificarEventoDeRuta(TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE, urlRuta, contacto);
   }
 
   public void notificarInactividadAPersonaDonante(PersonaDonante personaDonante) {
@@ -79,48 +77,13 @@ public class GestorNotificacionesEventos {
   private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, String urlRuta, MediosDeContacto contacto) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, urlRuta);
 
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            contacto,
-            mensaje
-    );
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(contacto, mensaje);
   }
 
   private void notificarEventoDeRuta(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta, MediosDeContacto contacto) {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, ruta);
 
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            contacto,
-            mensaje
-    );
-  }
-
-
-  // Metodos opcionales
-
-  /**
-   * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
-   * entidad beneficiaria.
-   */
-  private void notificarEventoAEntidad(TipoEventoNotificacion tipoEvento, EntidadBeneficiaria entidadBeneficiaria) {
-    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, entidadBeneficiaria);
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            entidadBeneficiaria.getCorreosRepresentantes(),
-            mensaje
-    );
-  }
-
-  /**
-   * Crea el mensaje del evento y lo envía a todos los medios de contacto de la
-   * persona donante asociada a la donacion.
-   */
-  private void notificarEventoAPersonaDonante(TipoEventoNotificacion tipoEvento, Donacion donacion) {
-    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, donacion);
-
-    servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-            donacion.getDonante().getMediosDeContacto(),
-            mensaje
-    );
+    servicioNotificaciones.enviarNotificacionAMediosDeContacto(contacto, mensaje);
   }
 
   /**

@@ -2,22 +2,16 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.Camion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import org.springframework.stereotype.Component;
 
-import java.sql.Date;
-import java.sql.Time;
-
 /**
  * Permite crear mensajes predeterminados según el evento por el
- * que se está notificando
+ * que se está notificando.
  */
-
 @Component
 public class MensajesPredeterminadosDonaciones {
 
@@ -28,89 +22,28 @@ public class MensajesPredeterminadosDonaciones {
     };
   }
 
-  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String ruta) {
+  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String urlRuta) {
     return switch (tipoEvento) {
-      case DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA -> mensajeDonacionEnViajeAEntidadBeneficiaria(ruta);
+      case DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA -> mensajeDonacionEnViajeAEntidadBeneficiaria(urlRuta);
+      default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
+    };
+  }
+
+  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String urlRuta, EntidadBeneficiaria entidadBeneficiaria) {
+    return switch (tipoEvento) {
+      case DONACION_EN_VIAJE_PERSONA_DONANTE ->
+          mensajeDonacionEnViajeAPersonaDonante(urlRuta, entidadBeneficiaria.getRazonSocial());
       default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
     };
   }
 
   public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta) {
     return switch (tipoEvento) {
-      case COMPROBANTE_ENTREGA_PERSONA_DONANTE -> mensajeComprobante(ruta);
-      case COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA -> mensajeComprobante(ruta);
-      case ENTREGA_NO_RECIBIDA_ADMIN -> mensajeDisculpas(ruta);
-      case ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA -> mensajeDisculpas(ruta);
-      case ENTREGA_NO_RECIBIDA_PERSONA_DONANTE -> mensajeDisculpas(ruta);
+      case COMPROBANTE_ENTREGA_PERSONA_DONANTE, COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA -> mensajeComprobante(ruta);
+      case ENTREGA_NO_RECIBIDA_ADMIN, ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA, ENTREGA_NO_RECIBIDA_PERSONA_DONANTE ->
+          mensajeDisculpas(ruta);
       default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
     };
-  }
-
-  public Mensaje mensajeComprobante(RutaEnProceso ruta) {
-    String asunto = "Donacion Entregada Exitosamente";
-    String cuerpo = String.format(
-            "Comprobante de Entrega:" +
-                    "fecha entrega: %s," +
-                    "hora entrega: %s." +
-                    "patente camion: %s," +
-                    "conductor a cargo: %s",
-            ruta.getFechaEntrega(),
-            ruta.getHoraEntrega(),
-            ruta.getCamionEntrega().getPatente(),
-            ruta.getCamionEntrega().getNombreChofer()
-
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-  public Mensaje mensajeDisculpas(RutaEnProceso ruta) {
-    String asunto = "Entrega Fallida";
-    String cuerpo = String.format(
-            "lo sentimos, la entrega:" +
-                    "fecha entrega: %s," +
-                    "hora entrega: %s." +
-                    "patente camion: %s," +
-                    "conductor a cargo: %s." +
-                    "ha fallado",
-            ruta.getFechaEntrega(),
-            ruta.getHoraEntrega(),
-            ruta.getCamionEntrega().getPatente(),
-            ruta.getCamionEntrega().getNombreChofer()
-
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String ruta, String nomEntidad) {
-    return switch (tipoEvento) {
-      case DONACION_EN_VIAJE_PERSONA_DONANTE -> mensajeDonacionEnViajeAPersonaDonante(ruta, nomEntidad);
-      default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
-    };
-  }
-
-  private Mensaje mensajeDonacionEnViajeAEntidadBeneficiaria(String url) {
-    String asunto = "Nueva Donacion En Viaje";
-    String cuerpo = String.format(
-            "la/s donacion/es" +
-                    "se encuentra en viaje. Sigue tu entrega: %s",
-            url
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-  private Mensaje mensajeDonacionEnViajeAPersonaDonante(String url, String nomEntidad) {
-    String asunto = "Nueva Donacion En Viaje";
-    String cuerpo = String.format(
-            "tu donacion/es se encuentra en viaje para la entidad %s." +
-                    "Sigue la entrega de tu donacion: %s",
-            nomEntidad,
-            url
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
   }
 
   public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, PersonaDonante personaDonante) {
@@ -119,6 +52,8 @@ public class MensajesPredeterminadosDonaciones {
       default -> throw new IllegalArgumentException("El evento no corresponde a una persona donante: " + tipoEvento);
     };
   }
+
+  // Mensajes de donación asignada
 
   private Mensaje mensajeDonacionAsignadaAEntidadBeneficiaria(Donacion donacion) {
     String asunto = "Nueva donacion asignada";
@@ -133,6 +68,54 @@ public class MensajesPredeterminadosDonaciones {
     return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
   }
 
+  // Mensajes de donación en viaje
+
+  private Mensaje mensajeDonacionEnViajeAEntidadBeneficiaria(String urlRuta) {
+    String asunto = "Nueva Donacion En Viaje";
+    String cuerpo = String.format(
+        "La/s donacion/es se encuentra/n en viaje. Sigue tu entrega: %s",
+        urlRuta
+    );
+
+    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
+  }
+
+  private Mensaje mensajeDonacionEnViajeAPersonaDonante(String urlRuta, String nombreEntidad) {
+    String asunto = "Nueva Donacion En Viaje";
+    String cuerpo = String.format(
+        "Tu donacion/es se encuentra/n en viaje para la entidad %s. Sigue la entrega de tu donacion: %s",
+        nombreEntidad,
+        urlRuta
+    );
+
+    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
+  }
+
+  // Mensajes de entrega (comprobante / disculpas)
+
+  private Mensaje mensajeComprobante(RutaEnProceso ruta) {
+    String asunto = "Donacion Entregada Exitosamente";
+    String cuerpo = "Comprobante de Entrega: " + datosDeEntrega(ruta);
+
+    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
+  }
+
+  private Mensaje mensajeDisculpas(RutaEnProceso ruta) {
+    String asunto = "Entrega Fallida";
+    String cuerpo = "Lo sentimos, la entrega ha fallado. " + datosDeEntrega(ruta);
+
+    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
+  }
+
+  private String datosDeEntrega(RutaEnProceso ruta) {
+    return String.format(
+        "Fecha entrega: %s. Hora entrega: %s. Patente camion: %s. Conductor a cargo: %s.",
+        ruta.getFechaEntrega(),
+        ruta.getHoraEntrega(),
+        ruta.getCamionEntrega().getPatente(),
+        ruta.getCamionEntrega().getNombreChofer()
+    );
+  }
 
   // Mensaje por inactividad de donante
 
@@ -145,74 +128,6 @@ public class MensajesPredeterminadosDonaciones {
 
     return new Mensaje(asunto, cuerpo, TipoDeMensaje.ALERTA);
   }
-
-
-  // Mensajes de Inicio de Ruta de donación
-
-  public Mensaje mensajeInicioRutaEntidad(Donacion donacion, String ruta) {
-    String asunto = "Viene una donación en camino";
-    String cuerpo = String.format(
-            "Felicidades, %s, te esta por llegar una donación. Siguela aquí: %s",
-            donacion.getEntidad().getRazonSocial(),
-            ruta
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-  public Mensaje mensajeInicioRutaDonante(Donacion donacion, String ruta) {
-    String asunto = "Una de tus donaciones esta en camino";
-    String cuerpo = String.format(
-            "Felicidades, %s, tu donacion esta por llegar a %s. Siguela aquí: %s",
-            donacion.getDonante().darNombre(),
-            donacion.getEntidad().getRazonSocial(),
-            ruta
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-
-  // Mensaje por entrega realizada con éxito
-
-  public Mensaje mensajeEntregaRealizadaEntidad(Donacion donacion, Date fecha, Time hora, Camion camion) {
-    String asunto = "Entrega exitosa";
-    String cuerpo = String.format(
-            "Acabas de recibir una donación. Fecha y hora: %s %s. Camion: %s",
-            fecha,
-            hora,
-            camion.getPatente()
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-  public Mensaje mensajeEntregaRealizadaDonante(Donacion donacion, Date fecha, Time hora, Camion camion) {
-    String asunto = "Entrega exitosa";
-    String cuerpo = String.format(
-            "Una de tus donaciones fue entregada. Fecha y hora: %s %s. Camion: %s",
-            fecha,
-            hora,
-            camion.getPatente()
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
-
-  // Mensaje entrega no satisfactoría
-
-  public Mensaje mensajeEntregaFallida(Donacion donacion, String motivo) {
-    String asunto = "Entrega Fallida";
-    String cuerpo = String.format(
-            "La donación a %s no se pudo entregar por el siguiente motivo: %s",
-            donacion.getEntidad().getRazonSocial(),
-            motivo
-    );
-
-    return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
-  }
-
 
   // Metodos privados
 
