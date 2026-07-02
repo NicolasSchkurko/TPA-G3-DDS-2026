@@ -19,11 +19,11 @@ public class BienTest{
   public void crearBienConEstado(){
     CategoriaBien alimentos = new CategoriaBien("Alimentos");
     SubcategoriaBien subcategoria = new SubcategoriaBien("Arroz", alimentos);
-    BienConEstado bien = new BienConEstado("Arroz blanco", subcategoria, 2, UnidadDeMedida.KILOGRAMOS, false);
+    BienConEstado bien = new BienConEstado("Arroz blanco", subcategoria, "2", 2,UnidadDeMedida.KILOGRAMOS, false);
 
     assertEquals("Arroz blanco", bien.getDescripcion());
     assertEquals(subcategoria, bien.getSubcategoria());
-    assertEquals(2, bien.getCantidad());
+    assertEquals(2, bien.getPeso());
     assertEquals(UnidadDeMedida.KILOGRAMOS, bien.getUnidadUtilizada());
     assertFalse(bien.isUsado());
 
@@ -34,11 +34,11 @@ public class BienTest{
     CategoriaBien alimentos = new CategoriaBien("Alimentos");
     SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
     LocalDate fechaVencimiento = LocalDate.of(2026, 12, 31);
-    BienPerecedero bien = new BienPerecedero("Atun", subcategoria, 1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
+    BienPerecedero bien = new BienPerecedero("Atun", subcategoria, "1",1, UnidadDeMedida.KILOGRAMOS, fechaVencimiento);
 
     assertEquals("Atun", bien.getDescripcion());
     assertEquals(subcategoria, bien.getSubcategoria());
-    assertEquals(1, bien.getCantidad());
+    assertEquals(1, bien.getPeso());
     assertEquals(UnidadDeMedida.KILOGRAMOS, bien.getUnidadUtilizada());
     assertEquals(LocalDate.of(2026, 12, 31), bien.getFechaVencimiento());
 

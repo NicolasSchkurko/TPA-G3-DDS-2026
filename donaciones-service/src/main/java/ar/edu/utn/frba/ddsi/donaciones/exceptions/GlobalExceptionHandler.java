@@ -19,9 +19,14 @@ public class GlobalExceptionHandler {
   // m"sumidero" (catch‑all) para cualquier excepción no reconocida, devuelve un 500 genérico.
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponseDTO> manejarErroresInesperados(Exception ex) {
-    ErrorResponseDTO error = new ErrorResponseDTO("Ocurrió un error interno en el servidor", HttpStatus.INTERNAL_SERVER_ERROR.value());
 
-    // Aquí también podrías hacer un log del error real (ex.printStackTrace())
+    System.err.println("ERROR CAPTURADO:");
+    ex.printStackTrace();
+
+    ErrorResponseDTO error = new ErrorResponseDTO(
+            ex.getMessage(),
+            HttpStatus.INTERNAL_SERVER_ERROR.value());
+
     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

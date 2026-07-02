@@ -24,8 +24,8 @@ public class DonacionTest {
         // Arrange
         CategoriaBien alimentos = new CategoriaBien("Alimentos");
         SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
-        BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, 5, UnidadDeMedida.KILOGRAMOS, false);
-        BienConEstado bien2 = new BienConEstado("Atun", subcategoria, 3, UnidadDeMedida.KILOGRAMOS, false);
+        BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, "5", 5,UnidadDeMedida.KILOGRAMOS, false);
+        BienConEstado bien2 = new BienConEstado("Atun", subcategoria, "3", 3, UnidadDeMedida.KILOGRAMOS, false);
         LocalDate fechaEntrega = LocalDate.of(2026, 12, 31);
 
         Donacion donacion = new Donacion(
@@ -55,8 +55,8 @@ public class DonacionTest {
         CategoriaBien alimentos = new CategoriaBien("Alimentos");
         SubcategoriaBien subcategoria = new SubcategoriaBien("Enlatados", alimentos);
 
-        BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, 5, UnidadDeMedida.KILOGRAMOS, false);
-        BienConEstado bien2 = new BienConEstado("Garbanzo", subcategoria, 3, UnidadDeMedida.KILOGRAMOS, false);
+        BienConEstado bien1 = new BienConEstado("Lentejas", subcategoria, "5",5, UnidadDeMedida.KILOGRAMOS, false);
+        BienConEstado bien2 = new BienConEstado("Garbanzo", subcategoria, "3", 3,UnidadDeMedida.KILOGRAMOS, false);
 
         Donacion donacion = new Donacion(
                 null,
