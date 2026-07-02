@@ -1,12 +1,26 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
+
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioRutasActivas;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,11 +28,100 @@ import java.util.UUID;
 public class AdminService {
     private final RepositorioRutasActivas repositorioRutasActivas;
     private final RepositorioDonaciones repositorioDonaciones;
+    private final RepositorioAdministradores repositorio;
 
     public AdminService(RepositorioRutasActivas repositorioRutasActivas,
-                        RepositorioDonaciones repositorioDonaciones) {
+                        RepositorioDonaciones repositorioDonaciones,
+                        RepositorioAdministradores repositorio) {
         this.repositorioRutasActivas = repositorioRutasActivas;
         this.repositorioDonaciones = repositorioDonaciones;
+        this.repositorio = repositorio;
+    }
+
+    public AdminDTO crearAdministrador(AdminDTO dto) {
+        Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
+
+        MedioDeContacto contacto;
+        switch (dto.getMedioDeContacto().getTipo().toUpperCase()) {
+            case "EMAIL":
+                contacto = new Mail(dto.getMedioDeContacto().getValor());
+                break;
+            case "TELEFONO":
+                contacto = new Telefono(dto.getMedioDeContacto().getValor());
+                break;
+            case "WHATSAPP":
+                contacto = new Whatsapp(dto.getMedioDeContacto().getValor());
+                break;
+            default:
+                throw new IllegalArgumentException("Tipo de medio de contacto no soportado. Use EMAIL, TELEFONO o WHATSAPP.");
+        }
+
+        Administrador nuevoAdmin = new Administrador(dto.getNombreAMostrar(),
+                dto.getNombre(), dto.getApellido(), dto.getEdad(),
+                dto.getNumeroDeDocumento(), genero.name(), contacto);
+
+        return mapToDto(repositorio.save(nuevoAdmin));
+    }
+
+    private AdminDTO mapToDto(Administrador admin) {
+        if (admin == null) {
+            return null;
+        }
+
+        AdminDTO responseDTO = new AdminDTO();
+        responseDTO.setId(admin.getId());
+
+        try {
+            responseDTO.setNombreAMostrar(admin.darNombre());
+        } catch (Exception e) {
+            responseDTO.setNombreAMostrar(null);
+        }
+
+        responseDTO.setNombre(admin.getNombre());
+        responseDTO.setApellido(admin.getApellido());
+        responseDTO.setEdad(admin.getEdad());
+        responseDTO.setNumeroDeDocumento(admin.getNumeroDeDocumento());
+        responseDTO.setGenero(admin.getGenero() != null ? admin.getGenero() : null);
+
+        MediosContactoDTO medio = new MediosContactoDTO(admin.getMedioDeContacto().getTipo(),
+                admin.getMedioDeContacto().getValor());
+        responseDTO.setMedioDeContacto(medio);
+
+        return responseDTO;
+    }
+
+    public AdminDTO actualizarAdmin(UUID id, AdminDTO dto) {
+        Administrador existente = repositorio.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
+
+        Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
+
+        MedioDeContacto contacto;
+        switch (dto.getMedioDeContacto().getTipo().toUpperCase()) {
+            case "EMAIL":
+                contacto = new Mail(dto.getMedioDeContacto().getValor());
+                break;
+            case "TELEFONO":
+                contacto = new Telefono(dto.getMedioDeContacto().getValor());
+                break;
+            case "WHATSAPP":
+                contacto = new Whatsapp(dto.getMedioDeContacto().getValor());
+                break;
+            default:
+                throw new IllegalArgumentException("Tipo de medio de contacto no soportado. Use EMAIL, TELEFONO o WHATSAPP.");
+        }
+
+        existente.setNombre(dto.getNombre());
+        existente.setApellido(dto.getApellido());
+        existente.setEdad(dto.getEdad());
+        existente.setGenero(genero.name());
+        existente.setMedioDeContacto(contacto);
+
+        return mapToDto(repositorio.save(existente));
+    }
+
+    public void eliminarAdmin(UUID id) {
+        repositorio.deleteById(id);
     }
 
     public List<RutaEnProceso> obtenerEntregasNoRecibidas() {

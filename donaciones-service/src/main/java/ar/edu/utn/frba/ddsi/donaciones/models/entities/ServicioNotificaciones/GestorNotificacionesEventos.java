@@ -51,8 +51,8 @@ public class GestorNotificacionesEventos {
     notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA, ruta, contacto);
   }
 
-  public void notificarEntregaNoRecibidaAdmin(MediosDeContacto contacto, RutaEnProceso ruta) {
-    notificarEventoDeRuta(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN, ruta, contacto);
+  public void notificarEntregaNoRecibidaAdmin(MedioDeContacto contacto, RutaEnProceso ruta) {
+    notificarEventoDeRutaAdmin(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN, ruta, contacto);
   }
 
   public void notificarDonacionEnViajeAPersonaDonante(String urlRuta, MediosDeContacto contacto) {
@@ -80,6 +80,15 @@ public class GestorNotificacionesEventos {
     Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, urlRuta);
 
     servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+            contacto,
+            mensaje
+    );
+  }
+
+  private void notificarEventoDeRutaAdmin(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta, MedioDeContacto contacto) {
+    Mensaje mensaje = mensajesPredeterminados.crearMensaje(tipoEvento, ruta);
+
+    servicioNotificaciones.enviarNotificacionAMedioDeContacto(
             contacto,
             mensaje
     );
