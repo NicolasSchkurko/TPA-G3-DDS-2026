@@ -26,12 +26,15 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificadorDeRutasService {
 
-  private final ProveedorRutasExterno proveedorExterno:
+  private final ProveedorRutasExterno proveedorExterno;
+  private RepositorioItemEntrega repositorioItemEntrega;
+  private RepositorioCamiones repositorioCamiones;
+  private RepositorioRutas repositorioRutas;
   private PlanificadorDeRutas planificadorDominio;
 
   @Autowired
   public PlanificadorDeRutasService(
-      ProveedorRutasExterno proveedorExterno {
+      ProveedorRutasExterno proveedorExterno) {
     this.proveedorExterno = proveedorExterno;
     this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
@@ -45,8 +48,8 @@ public class PlanificadorDeRutasService {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = RepositorioItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
-      camionesDisponibles = RepositorioCamiones.findAll();
+      itemsPendientes = repositorioItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      camionesDisponibles = repositorioCamiones.findAll();
     } catch (Exception e) {
       System.err.println("Error de lectura en la base de datos: " + e.getMessage());
       return;
@@ -86,8 +89,8 @@ public class PlanificadorDeRutasService {
 
     // 3. Traer de la Base de Datos los camiones y los items necesarios
     try {
-      camionesDb = RepositorioCamiones.findAll();
-      itemsDb = RepositorioItemEntrega.findAllById(todosLosIdsItems);
+      camionesDb = repositorioCamiones.findAll();
+      itemsDb = repositorioItemEntrega.findAllById(todosLosIdsItems);
     } catch (Exception e) {
       throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
     }
@@ -98,7 +101,7 @@ public class PlanificadorDeRutasService {
 
     // 6. Guardar el resultado final en la BD
     try {
-      RepositorioRutas.saveAll(rutasGeneradas);
+      repositorioRutas.saveAll(rutasGeneradas);
       System.out.println("Se guardaron exitosamente " + rutasGeneradas.size() + " rutas nuevas.");
     } catch (Exception e) {
       throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);

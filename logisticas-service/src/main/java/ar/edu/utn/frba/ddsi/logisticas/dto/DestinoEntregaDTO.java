@@ -10,6 +10,6 @@ import java.util.UUID;
 public class DestinoEntregaDTO {//pasar a donaciones serv
     private UUID idRuta;
     private EntregaDTO paquete;//PAQUETE A ENTREGARLE (donaciones)
-    private CamionDTO camionEntrega;//camion ASIGNADO
+    private CamionDTO camionEntrega; //camion ASIGNADO
     private String urlSeguimiento; //URL CON LA RUTA PARA EL SEGUIMIENTO (n8nClient para conectar la ruta y q la persona pueda hacer el seguimiento)
 }

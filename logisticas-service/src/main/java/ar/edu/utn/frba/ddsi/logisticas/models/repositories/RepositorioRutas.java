@@ -22,8 +22,8 @@ public class RepositorioRutas {
                 .findFirst();
     }
 
-    public void saveAll(List<Ruta> rutas) {
-        rutas.forEach(ruta -> this.save(ruta));
+    public void saveAll(List<Ruta> listaRutas) {
+        rutas.addAll(listaRutas);
     }
 
     public Ruta save(Ruta ruta) {
