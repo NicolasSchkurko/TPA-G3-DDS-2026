@@ -8,6 +8,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Plani
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -20,38 +23,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-
-// Interfases de repositorio (mocks locales para ilustrar la dependencia con la base de datos).
-interface CamionRepository {
-  List<Camion> findAll();
-}
-interface ItemEntregaRepository {
-  List<ItemEntrega> findAllById(List<UUID> ids);
-  List<ItemEntrega> findByEstado(EstadoEntrega estado);
-}
-interface RutaRepository {
-  void saveAll(List<Ruta> rutas);
-}
-
 @Service
 public class PlanificadorDeRutasService {
 
-  private final ProveedorRutasExterno proveedorExterno;
-  private final CamionRepository camionRepository;
-  private final ItemEntregaRepository itemRepository;
-  private final RutaRepository rutaRepository;
+  private final ProveedorRutasExterno proveedorExterno:
   private PlanificadorDeRutas planificadorDominio;
 
   @Autowired
   public PlanificadorDeRutasService(
-      ProveedorRutasExterno proveedorExterno,
-      CamionRepository camionRepository,
-      ItemEntregaRepository itemRepository,
-      RutaRepository rutaRepository) {
+      ProveedorRutasExterno proveedorExterno {
     this.proveedorExterno = proveedorExterno;
-    this.camionRepository = camionRepository;
-    this.itemRepository = itemRepository;
-    this.rutaRepository = rutaRepository;
     this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
   }
@@ -64,8 +45,8 @@ public class PlanificadorDeRutasService {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = itemRepository.findByEstado(EstadoEntrega.PENDIENTE);
-      camionesDisponibles = camionRepository.findAll();
+      itemsPendientes = RepositorioItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      camionesDisponibles = RepositorioCamiones.findAll();
     } catch (Exception e) {
       System.err.println("Error de lectura en la base de datos: " + e.getMessage());
       return;
@@ -105,8 +86,8 @@ public class PlanificadorDeRutasService {
 
     // 3. Traer de la Base de Datos los camiones y los items necesarios
     try {
-      camionesDb = camionRepository.findAll();
-      itemsDb = itemRepository.findAllById(todosLosIdsItems);
+      camionesDb = RepositorioCamiones.findAll();
+      itemsDb = RepositorioItemEntrega.findAllById(todosLosIdsItems);
     } catch (Exception e) {
       throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
     }
@@ -117,7 +98,7 @@ public class PlanificadorDeRutasService {
 
     // 6. Guardar el resultado final en la BD
     try {
-      rutaRepository.saveAll(rutasGeneradas);
+      RepositorioRutas.saveAll(rutasGeneradas);
       System.out.println("Se guardaron exitosamente " + rutasGeneradas.size() + " rutas nuevas.");
     } catch (Exception e) {
       throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);

@@ -8,7 +8,8 @@ import lombok.Setter;
 public class CamionDTO {
     private String nombreChofer;
     private String patente;
-    private Integer capacidadVolumen; //m2
-    private Integer altura; //m
-    private Integer capacidadCarga;
+    private Double capacidadVolumen; //m2
+    private Double altura; //m
+    private Double capacidadCarga;
+    private Boolean disponible;
 }

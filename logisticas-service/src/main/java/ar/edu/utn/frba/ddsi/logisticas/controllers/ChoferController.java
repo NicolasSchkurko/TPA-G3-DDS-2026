@@ -1,10 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.CamionDisponibleDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.RutaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
-import ar.edu.utn.frba.ddsi.donaciones.services.ChoferService;
-import ar.edu.utn.frba.ddsi.donaciones.services.EntregasService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
@@ -41,6 +36,4 @@ public class ChoferController {
         return ruta.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
-
-
 }
