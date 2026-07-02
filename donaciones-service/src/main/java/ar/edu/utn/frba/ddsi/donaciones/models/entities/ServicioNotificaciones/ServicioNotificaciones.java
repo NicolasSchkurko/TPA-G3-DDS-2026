@@ -53,6 +53,14 @@ public class ServicioNotificaciones {
         .forEach(medioDeContacto -> enviarNotificacion(medioDeContacto, mensaje));
   }
 
+  public void enviarNotificacionAMedioDeContacto(MedioDeContacto medioDeContacto, Mensaje mensaje) {
+    if (medioDeContacto == null) {
+      throw new IllegalArgumentException("No hay medios de contacto para enviar la notificacion");
+    }
+
+    enviarNotificacion(medioDeContacto, mensaje);
+  }
+
   private void validarSolicitud(MedioDeContacto medioDeContacto, Mensaje mensaje) {
     if (medioDeContacto == null) {
       throw new IllegalArgumentException("El medio de contacto no puede ser nulo");

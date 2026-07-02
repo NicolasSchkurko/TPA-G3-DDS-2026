@@ -28,5 +28,5 @@ ARG SERVICE_NAME=donaciones-service
 # Copiar el JAR compilado desde la etapa anterior
 COPY --from=builder /app/${SERVICE_NAME}/target/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8084
 ENTRYPOINT ["java", "-jar", "app.jar"]

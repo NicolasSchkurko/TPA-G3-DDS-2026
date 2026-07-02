@@ -21,6 +21,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioRutasActivas;
@@ -39,18 +40,19 @@ public class EntidadBeneficiariaService {
     private final RepositorioRutasActivas repositorioRutasActivas;
     private final RepositorioDonaciones repositorioDonaciones;
     private final GestorNotificacionesEventos gestorNotificaciones;
-    private final Administrador admin;
+    private final RepositorioAdministradores repositorioAdministradores;
+
 
     public EntidadBeneficiariaService(RepositorioEntidadesBeneficiarias repositorio,
                                       RepositorioRutasActivas repositorioRutasActivas,
                                       RepositorioDonaciones repositorioDonaciones,
-                                      GestorNotificacionesEventos gestorNotificaciones,
-                                      Administrador admin) {
+                                      GestorNotificacionesEventos gestorNotificaciones, RepositorioAdministradores repositorioAdministradores) {
         this.repositorio = repositorio;
         this.repositorioRutasActivas = repositorioRutasActivas;
         this.repositorioDonaciones = repositorioDonaciones;
         this.gestorNotificaciones = gestorNotificaciones;
-        this.admin = admin;
+        this.repositorioAdministradores = repositorioAdministradores;
+
     }
 
     // --- OPERACIONES CRUD ENTIDADES ---
@@ -253,10 +255,13 @@ public class EntidadBeneficiariaService {
                     ruta
             );
 
-            gestorNotificaciones.notificarEntregaNoRecibidaAdmin(
-                    admin.getMedioDeContacto(),
-                    ruta
-            );
+            List<Administrador> administradores =repositorioAdministradores.findAll();
+            for(Administrador admin : administradores){
+                gestorNotificaciones.notificarEntregaNoRecibidaAdmin(
+                        admin.getMedioDeContacto(),
+                        ruta
+                );
+            }
 
             for(UUID idDonacion : idsDonaciones){
                 repositorioDonaciones.findById(idDonacion)

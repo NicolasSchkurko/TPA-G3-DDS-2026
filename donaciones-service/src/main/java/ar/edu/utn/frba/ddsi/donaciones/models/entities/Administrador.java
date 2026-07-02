@@ -24,12 +24,12 @@ public class Administrador {
     private int numeroDeDocumento;
     private String genero; // "HOMBRE", "MUJER", "OTRO"
 
-    private MediosDeContacto medioDeContacto;
+    private MedioDeContacto medioDeContacto;
 
     public Administrador(String nomMostrar, String nom, String apellido, int edad,
                          int numDoc, String genero, MedioDeContacto medioDeContacto) {
         this.id = UUID.randomUUID();
-        this.medioDeContacto.agregarMedioDeContacto(medioDeContacto);
+        this.medioDeContacto = medioDeContacto;
         this.nombre = nom;
         this.apellido = apellido;
         this.edad = edad;

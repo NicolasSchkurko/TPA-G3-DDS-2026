@@ -1,0 +1,40 @@
+services:
+
+  notificaciones-service:
+    image: notificaciones-service:latest
+    container_name: notificaciones-service
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
+
+  incentivos-service:
+    image: incentivos-service:latest
+    container_name: incentivos-service
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      DONACIONES_URL: http://donaciones-service:8084
+      NOTIFICACIONES_URL: http://notificaciones-service:8083
+      N8N_URL: http://host.docker.internal:5678/webhook/lo-que-corresponda
+
+  donaciones-service:
+    image: donaciones-service:latest
+    container_name: donaciones-service
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      NOTIFICACIONES_URL: http://notificaciones-service:8083
+      INCENTIVOS_URL: http://incentivos-service:8082
+      LOGISTICAS_URL: http://logisticas-service:8001
+
+#  logisticas-service:
+#    image: logisticas-service:latest
+#    container_name: logisticas-service
+#    ports:
+#      - "8001:8001"
+#    environment:
+#      SERVER_PORT: 8001
