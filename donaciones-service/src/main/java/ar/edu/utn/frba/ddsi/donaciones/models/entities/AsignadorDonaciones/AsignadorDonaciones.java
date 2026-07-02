@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
  * Procesa donaciones mediante múltiples algoritmos, calcula intersecciones de propuestas
  * y asigna scores basándose en la suma de posiciones.
  */
+
 public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;

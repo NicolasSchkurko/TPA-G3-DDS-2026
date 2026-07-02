@@ -42,8 +42,9 @@ public class DonacionService {
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final MatchmakingMapper mapperMatchmaking;
   private final DonacionMapper mapperDonacion;
-  private final AsignadorDonaciones asignador;
-  private final SegmentadorDonaciones segmentador;
+//  private final AsignadorDonaciones asignador;
+//  private final SegmentadorDonaciones segmentador;
+
 
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
@@ -51,9 +52,10 @@ public class DonacionService {
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
                          GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          MatchmakingMapper mapperMatchmaking,
-                         DonacionMapper mapperDonacion,
-                         AsignadorDonaciones asignador,
-                         SegmentadorDonaciones segmentador) {
+                         DonacionMapper mapperDonacion
+//                         AsignadorDonaciones asignador,
+//                         SegmentadorDonaciones segmentador
+                          ) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
@@ -62,8 +64,8 @@ public class DonacionService {
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.mapperMatchmaking= mapperMatchmaking;
     this.mapperDonacion =mapperDonacion;
-    this.asignador = asignador;
-    this.segmentador = segmentador;
+  //  this.asignador = asignador;
+  //  this.segmentador = segmentador;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -96,7 +98,8 @@ public class DonacionService {
     List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
     List<EntidadBeneficiaria> entidades = repositorioEntidades.findAll();
 
-    DonacionFacade donacionFacade = new DonacionFacade(segmentador, asignador);
+    DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
+            new AsignadorDonaciones());
 
     donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
     List<ResultadoMatchmaking> resultadosMatchmakings = donacionFacade.obtenerDonacionesPendientesDeAprobacion();
