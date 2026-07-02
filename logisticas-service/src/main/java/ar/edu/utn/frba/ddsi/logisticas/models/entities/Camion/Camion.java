@@ -9,6 +9,7 @@ import java.util.UUID;
 @Getter
 @Setter
 public class Camion {
+    private Chofer chofer;
     private String patente;
     private Double capacidadVolumen;
     private Double altura;

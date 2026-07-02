@@ -48,7 +48,4 @@ public class LogisticaCtrl {
             return ResponseEntity.badRequest().build();
         }
     }
-
-
-    //habilitar endpoint para pasar a donaciones InfoDestinosDTO a donaciones
 }
