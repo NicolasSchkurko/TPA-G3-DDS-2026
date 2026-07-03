@@ -4,91 +4,42 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class EventoLogisticaService {
 
   private final RepositorioEventoLogistica repositorioEventos;
-  private final ObjectMapper objectMapper;
 
   public EventoLogisticaService(RepositorioEventoLogistica repositorioEventos) {
     this.repositorioEventos = repositorioEventos;
-    this.objectMapper = new ObjectMapper();
   }
 
-  public List<EventoLogistica> obtenerEventosNuevos(Long ultimoIdProcesado) {
-    return repositorioEventos.findByIdGreaterThanOrderByFechaAsc(ultimoIdProcesado);
+  public List<EventoLogistica> obtenerEventosNuevos(Long desdeId) {
+    return repositorioEventos.findByIdGreaterThanOrderByFechaAsc(desdeId);
   }
 
   public void publicarInicioRuta(Ruta ruta) {
-    try {
-      Map<String, Object> payload = new HashMap<>();
-      payload.put("idRuta", ruta.getIdRuta());
-      payload.put("patenteCamion", ruta.getCamionAsignado().getPatente());
-      payload.put("items", ruta.obtenerTodosLosItems().stream()
-                               .map(ItemEntrega::getIdDonacion)
-                               .collect(Collectors.toList()));
-
-      String json = objectMapper.writeValueAsString(payload);
-      EventoLogistica evento = new EventoLogistica("INICIO_RUTA", json);
-      repositorioEventos.save(evento);
-
-    } catch (Exception e) {
-      System.err.println("Error serializando evento de inicio de ruta: " + e.getMessage());
-    }
+    EventoLogistica evento = new EventoLogistica("INICIO_RUTA", ruta.getIdRuta().toString(), LocalDateTime.now(), null);
+    repositorioEventos.save(evento);
   }
 
   public void publicarEntregaConfirmada(ItemEntrega item) {
-    try {
-      Map<String, Object> payload = new HashMap<>();
-      payload.put("idDonacion", item.getIdDonacion());
-      payload.put("idEntidad", item.getEntidadDestino().getIdEntidadBeneficiaria());
-
-      String json = objectMapper.writeValueAsString(payload);
-      EventoLogistica evento = new EventoLogistica("ENTREGA_CONFIRMADA", json);
-      repositorioEventos.save(evento);
-
-    } catch (Exception e) {
-      System.err.println("Error serializando evento de entrega: " + e.getMessage());
-    }
+    EventoLogistica evento = new EventoLogistica("ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null);
+    repositorioEventos.save(evento);
   }
 
-  public void publicarEntregaFallida(ItemEntrega item) {
-    try {
-      Map<String, Object> payload = new HashMap<>();
-      payload.put("idDonacion", item.getIdDonacion());
-      payload.put("idEntidad", item.getEntidadDestino().getIdEntidadBeneficiaria());
-      payload.put("estado", "NO_RECIBIDA");
-
-      String json = objectMapper.writeValueAsString(payload);
-      EventoLogistica evento = new EventoLogistica("ENTREGA_FALLIDA", json);
-      repositorioEventos.save(evento);
-
-    } catch (Exception e) {
-      System.err.println("Error serializando evento de entrega fallida: " + e.getMessage());
-    }
+  // Adaptado para recibir la justificación separada y persistirla en el evento
+  public void publicarEntregaFallida(ItemEntrega item, String justificacion) {
+    EventoLogistica evento = new EventoLogistica("ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion);
+    repositorioEventos.save(evento);
   }
 
   public void publicarReingresoDeposito(ItemEntrega item) {
-    try {
-      Map<String, Object> payload = new HashMap<>();
-      payload.put("idDonacion", item.getIdDonacion());
-      payload.put("estadoAnterior", "NO_RECIBIDA");
-      payload.put("estadoNuevo", "PENDIENTE");
-
-      String json = objectMapper.writeValueAsString(payload);
-      EventoLogistica evento = new EventoLogistica("REINGRESO_DEPOSITO", json);
-      repositorioEventos.save(evento);
-
-    } catch (Exception e) {
-      System.err.println("Error serializando evento de reingreso a depósito: " + e.getMessage());
-    }
+    EventoLogistica evento = new EventoLogistica("REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null);
+    repositorioEventos.save(evento);
   }
 }

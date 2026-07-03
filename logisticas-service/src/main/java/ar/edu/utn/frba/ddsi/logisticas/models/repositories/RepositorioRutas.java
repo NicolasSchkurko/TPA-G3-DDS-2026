@@ -21,8 +21,17 @@ public class RepositorioRutas {
 
     public Optional<Ruta> findById(UUID id) {
         return rutas.stream()
-                .filter(r -> r.getIdRuta().equals(id))
-                .findFirst();
+                    .filter(r -> r.getIdRuta().equals(id))
+                    .findFirst();
+    }
+
+    // NUEVO MÉTODO: Filtra la ruta directamente por el chofer asignado a su camión
+    public Optional<Ruta> findByChofer(Chofer chofer) {
+        if (chofer == null) return Optional.empty();
+        return rutas.stream()
+                    .filter(ruta -> ruta.getCamionAsignado() != null &&
+                        chofer.equals(ruta.getCamionAsignado().getChofer()))
+                    .findFirst();
     }
 
     public void saveAll(List<Ruta> listaRutas) {
@@ -30,28 +39,39 @@ public class RepositorioRutas {
     }
 
     public Ruta save(Ruta ruta) {
-        rutas.add(ruta);
+        int posicion = rutas.indexOf(ruta);
+        if (posicion != -1) {
+            rutas.set(posicion, ruta);
+        } else {
+            rutas.add(ruta);
+        }
         return ruta;
     }
 
     public Ruta findByItem(ItemEntrega item) {
         return rutas.stream()
-                .filter(ruta -> ruta.getParadas().stream()
-                        .anyMatch(parada -> parada.getItems().contains(item)))
-                .findFirst()
-                .orElse(null);
+                    .filter(ruta -> ruta.getParadas().stream()
+                                        .anyMatch(parada -> parada.getItems().contains(item)))
+                    .findFirst()
+                    .orElse(null);
     }
 
     public void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
         int posicion = rutas.indexOf(ruta);
         ruta.setEstado(nuevoEstado);
-        rutas.set(posicion, ruta);
+        if (posicion != -1) {
+            rutas.set(posicion, ruta);
+        }
     }
 
     public void actualizarChofer(Ruta ruta, Chofer chofer){
         int posicion = rutas.indexOf(ruta);
-        ruta.getCamionAsignado().setChofer(chofer);
-        rutas.set(posicion, ruta);
+        if (ruta.getCamionAsignado() != null) {
+            ruta.getCamionAsignado().setChofer(chofer);
+        }
+        if (posicion != -1) {
+            rutas.set(posicion, ruta);
+        }
     }
 
     public void deleteById(UUID id) {

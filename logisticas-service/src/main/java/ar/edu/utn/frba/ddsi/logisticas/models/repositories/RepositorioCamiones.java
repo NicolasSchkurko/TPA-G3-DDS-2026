@@ -6,19 +6,28 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class RepositorioCamiones {
     private final List<Camion> camiones = new ArrayList<>();
 
     public List<Camion> findAll() {
-        return camiones;
+        return new ArrayList<>(camiones);
     }
 
     public Optional<Camion> findById(String patente) {
         return camiones.stream()
-                .filter(c -> c.getPatente().equals(patente))
-                .findFirst();
+                       .filter(c -> c.getPatente().equals(patente))
+                       .findFirst();
+    }
+
+    public Optional<Camion> findByChoferId(UUID idChofer) {
+        if (idChofer == null) return Optional.empty();
+        return camiones.stream()
+                       .filter(camion -> camion.getChofer() != null &&
+                           idChofer.equals(camion.getChofer().getIdChofer()))
+                       .findFirst();
     }
 
     public void save(Camion camion) {
@@ -35,7 +44,9 @@ public class RepositorioCamiones {
         int posicion = camiones.indexOf(camion);
         camion.setCiudadDestinoActual(null);
         camion.resetearCargaOcupada();
-        camiones.set(posicion, camion);
+        if (posicion != -1) {
+            camiones.set(posicion, camion);
+        }
     }
 
     public void deleteById(String patente) {

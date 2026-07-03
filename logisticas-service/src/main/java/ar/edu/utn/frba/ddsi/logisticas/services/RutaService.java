@@ -21,36 +21,57 @@ public class RutaService {
   private final RepositorioChoferes repositorioChoferes;
   private final RepositorioItemEntrega repositorioItemEntrega;
   private final RepositorioCamiones repositorioCamiones;
+  private final EventoLogisticaService eventoService;
 
-  public RutaService(RepositorioRutas repositorioRutas, RepositorioChoferes repositorioChoferes,
-                     RepositorioItemEntrega repositorioItemEntrega, RepositorioCamiones repositorioCamiones) {
+  public RutaService(RepositorioRutas repositorioRutas,
+                     RepositorioChoferes repositorioChoferes,
+                     RepositorioItemEntrega repositorioItemEntrega,
+                     RepositorioCamiones repositorioCamiones,
+                     EventoLogisticaService eventoService) {
     this.repositorioRutas = repositorioRutas;
     this.repositorioChoferes = repositorioChoferes;
     this.repositorioItemEntrega = repositorioItemEntrega;
     this.repositorioCamiones = repositorioCamiones;
+    this.eventoService = eventoService;
   }
 
   public Ruta obtenerRutaDeChofer(Chofer chofer) {
     if (chofer == null) return null;
-    return repositorioRutas.findAll().stream()
-                           .filter(ruta -> ruta.getCamionAsignado() != null &&
-                               chofer.equals(ruta.getCamionAsignado().getChofer()))
-                           .findFirst()
-                           .orElse(null);
+    return repositorioRutas.findByChofer(chofer).orElse(null);
   }
 
   public Camion obtenerCamionDeChofer(UUID idChofer) {
     if (idChofer == null) return null;
-    return repositorioCamiones.findAll().stream()
-                              .filter(camion -> camion.getChofer() != null &&
-                                  idChofer.equals(camion.getChofer().getIdChofer()))
-                              .findFirst()
-                              .orElse(null);
+    return repositorioCamiones.findByChoferId(idChofer).orElse(null);
+  }
+
+  public void iniciarRuta(UUID idChofer) {
+    Chofer chofer = repositorioChoferes.findById(idChofer);
+    if (chofer == null) {
+      throw new IllegalArgumentException("No se encontró el chofer con el ID especificado");
+    }
+
+    Ruta rutaActual = this.obtenerRutaDeChofer(chofer);
+    if (rutaActual == null) {
+      throw new IllegalStateException("El chofer no tiene ninguna ruta asignada para iniciar");
+    }
+
+    repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
+
+    rutaActual.getParadas().forEach(parada ->
+                                        parada.getItems().forEach(item -> {
+                                          repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.EN_TRASLADO);
+                                        })
+    );
+
+    eventoService.publicarInicioRuta(rutaActual);
   }
 
   public void terminarRuta(UUID idChofer) {
     Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) return;
+    if (chofer == null) {
+      throw new IllegalArgumentException("No se encontró el chofer con el ID especificado");
+    }
 
     Ruta rutaActual = obtenerRutaDeChofer(chofer);
 
@@ -69,26 +90,10 @@ public class RutaService {
 
     Camion camion = obtenerCamionDeChofer(idChofer);
     if (camion != null) {
+      camion.eliminarChofer(); // Rompemos el vínculo del lado del camión
       repositorioCamiones.actualizarcarga(camion);
     }
 
-    repositorioChoferes.actualizarCamion(chofer);
-  }
 
-  public void iniciarRuta(UUID idChofer) {
-    Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) return;
-
-    Ruta rutaActual = this.obtenerRutaDeChofer(chofer);
-
-    if (rutaActual != null) {
-      repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
-
-      rutaActual.getParadas().forEach(parada ->
-                                          parada.getItems().forEach(item ->
-                                                                        repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.EN_TRASLADO)
-                                          )
-      );
-    }
   }
 }

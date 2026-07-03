@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
-
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import org.springframework.stereotype.Repository;
 
@@ -17,8 +16,15 @@ public class RepositorioEventoLogistica {
   public void save(EventoLogistica evento) {
     if (evento.getId() == null) {
       evento.setId(idCounter++);
+      eventos.add(evento);
+    } else {
+      int posicion = eventos.indexOf(evento);
+      if (posicion != -1) {
+        eventos.set(posicion, evento);
+      } else {
+        eventos.add(evento);
+      }
     }
-    eventos.add(evento);
   }
 
   public List<EventoLogistica> findByIdGreaterThanOrderByFechaAsc(Long id) {

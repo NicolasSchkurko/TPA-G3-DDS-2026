@@ -64,7 +64,6 @@ public class EntregaService {
         if (request.getFotoUrl() == null || request.getFotoUrl().trim().isEmpty()) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        // Asegúrate de tener este método en tu entidad ItemEntrega
         item.confirmarEntrega(request.getFotoUrl());
         eventoService.publicarEntregaConfirmada(item);
         break;
@@ -73,13 +72,11 @@ public class EntregaService {
         if (request.getJustificacion() == null || request.getJustificacion().trim().isEmpty()) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        // Asegúrate de tener este método en tu entidad ItemEntrega
         item.marcarNoRecibida();
-        eventoService.publicarEntregaFallida(item,request.getJustificacion());
+        eventoService.publicarEntregaFallida(item, request.getJustificacion());
         break;
 
       case "PENDIENTE":
-        // Caso: Un revisor determinó que la donación volvió al depósito
         item.reingresarADeposito();
         eventoService.publicarReingresoDeposito(item);
         break;
@@ -88,7 +85,6 @@ public class EntregaService {
         throw new IllegalArgumentException("Estado no válido. Use ENTREGADA, NO_RECIBIDA o PENDIENTE.");
     }
 
-    // Se persiste el cambio (en caso de usar JPA, el save actualiza si la entidad ya existe)
     repositorioItemEntrega.save(item);
   }
 

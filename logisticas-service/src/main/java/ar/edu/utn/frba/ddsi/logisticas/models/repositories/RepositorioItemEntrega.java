@@ -11,40 +11,46 @@ public class RepositorioItemEntrega {
     private final List<ItemEntrega> itemEntregas = new ArrayList<>();
 
     public List<ItemEntrega> findAll() {
-        return itemEntregas;
+        return new ArrayList<>(itemEntregas);
     }
 
     public List<ItemEntrega> findAllById(List<UUID> idDonacion) {
         return idDonacion.stream()
-                .map(this::findById)
-                .filter(Objects::nonNull)
-                .toList();
+                         .map(this::findById)
+                         .filter(Objects::nonNull)
+                         .toList();
     }
 
     public ItemEntrega findById(UUID idDonacion) {
         return itemEntregas.stream()
-                .filter(r -> r.getIdDonacion().equals(idDonacion))
-                .findFirst()
-                .orElse(null);
+                           .filter(r -> r.getIdDonacion().equals(idDonacion))
+                           .findFirst()
+                           .orElse(null);
     }
 
     public List<ItemEntrega> findByEstado(EstadoEntrega estado) {
         return itemEntregas.stream()
-                .filter(r -> r.getEstado().equals(estado)).toList();
+                           .filter(r -> r.getEstado().equals(estado)).toList();
     }
 
     public void save(ItemEntrega item) {
-        itemEntregas.add(item);
+        int posicion = itemEntregas.indexOf(item);
+        if (posicion != -1) {
+            itemEntregas.set(posicion, item); // Actualiza si ya existe
+        } else {
+            itemEntregas.add(item); // Agrega si es nuevo
+        }
     }
 
     public void actualizarEstado(ItemEntrega item, EstadoEntrega nuevoEstado){
         int posicion = itemEntregas.indexOf(item);
         item.setEstado(nuevoEstado);
-        itemEntregas.set(posicion, item);
+        if (posicion != -1) {
+            itemEntregas.set(posicion, item);
+        }
     }
 
     public void deleteById(UUID idDonacion) {
         itemEntregas.removeIf(r -> r.getIdDonacion().equals(idDonacion));
     }
 }
-
