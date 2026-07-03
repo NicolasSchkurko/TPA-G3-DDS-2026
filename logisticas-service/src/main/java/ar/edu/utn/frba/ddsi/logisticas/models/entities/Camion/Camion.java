@@ -1,10 +1,9 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import lombok.Getter;
 import lombok.Setter;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -19,7 +18,8 @@ public class Camion {
     private Double volumenOcupado;
     private String ciudadDestinoActual;
 
-    public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+    public Camion(Chofer chofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.chofer = chofer;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;

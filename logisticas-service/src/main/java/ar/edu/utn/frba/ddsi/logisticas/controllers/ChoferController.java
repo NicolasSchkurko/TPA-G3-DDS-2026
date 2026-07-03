@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
+import ar.edu.utn.frba.ddsi.logisticas.dto.ChoferDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.services.LogisticaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
@@ -12,29 +15,21 @@ import java.util.UUID;
 @RequestMapping("/choferes")
 public class ChoferController {
 
-    private final ChoferService choferService;
+    private final LogisticaService logisticaService;
 
-    public ChoferController(ChoferService choferService) {
-        this.choferService = choferService;
+    public ChoferController(LogisticaService logisticaService) {
+        this.logisticaService = logisticaService;
     }
 
-    //tiene que poder conseguir (GET) las rutas asignadas disponibles
-    //tiene que poder brindarme los datos del camion q tenga a disposicion
-    @PostMapping
-    public ResponseEntity<?> registrarCamion(@RequestBody CamionDisponibleDTO dto) {
-        try {
-            CamionDisponibleDTO choferCreado = choferService.crearChofer(dto);
-            return new ResponseEntity<>(choferCreado, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @PostMapping("/{id}/iniciar_ruta")
+    public ResponseEntity<String> iniciarRuta(@PathVariable UUID id) {
+        logisticaService.iniciarRuta(id);
+        return ResponseEntity.ok("Ruta Inicializada del chofer " + id);
     }
 
-    //q pueda decirme cuando inicie la ruta
-    @GetMapping("/{id}")
-    public ResponseEntity<RutaDTO> iniciarRuta(@PathVariable UUID id) {
-        Optional<RutaDTO> ruta = choferService.iniciarRuta();
-        return ruta.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    @PostMapping("/{id}/terminar_ruta")
+    public ResponseEntity<String> terminarRuta(@PathVariable UUID id){
+        logisticaService.terminarRuta(id);
+        return ResponseEntity.ok("Ruta finalizada del chofer " + id);
     }
 }

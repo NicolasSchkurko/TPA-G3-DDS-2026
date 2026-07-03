@@ -4,10 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Repository
 public class RepositorioItemEntrega {
@@ -20,14 +17,15 @@ public class RepositorioItemEntrega {
     public List<ItemEntrega> findAllById(List<UUID> idDonacion) {
         return idDonacion.stream()
                 .map(this::findById)
-                .flatMap(Optional::stream)
+                .filter(Objects::nonNull)
                 .toList();
     }
 
-    public Optional<ItemEntrega> findById(UUID idDonacion) {
+    public ItemEntrega findById(UUID idDonacion) {
         return itemEntregas.stream()
                 .filter(r -> r.getIdDonacion().equals(idDonacion))
-                .findFirst();
+                .findFirst()
+                .orElse(null);
     }
 
     public List<ItemEntrega> findByEstado(EstadoEntrega estado) {
@@ -37,6 +35,12 @@ public class RepositorioItemEntrega {
 
     public void save(ItemEntrega item) {
         itemEntregas.add(item);
+    }
+
+    public void actualizarEstado(ItemEntrega item, EstadoEntrega nuevoEstado){
+        int posicion = itemEntregas.indexOf(item);
+        item.setEstado(nuevoEstado);
+        itemEntregas.set(posicion, item);
     }
 
     public void deleteById(UUID idDonacion) {

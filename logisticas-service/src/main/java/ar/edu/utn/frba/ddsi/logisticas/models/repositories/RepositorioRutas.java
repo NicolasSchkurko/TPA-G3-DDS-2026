@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +32,26 @@ public class RepositorioRutas {
     public Ruta save(Ruta ruta) {
         rutas.add(ruta);
         return ruta;
+    }
+
+    public Ruta findByItem(ItemEntrega item) {
+        return rutas.stream()
+                .filter(ruta -> ruta.getParadas().stream()
+                        .anyMatch(parada -> parada.getItems().contains(item)))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
+        int posicion = rutas.indexOf(ruta);
+        ruta.setEstado(nuevoEstado);
+        rutas.set(posicion, ruta);
+    }
+
+    public void actualizarChofer(Ruta ruta, Chofer chofer){
+        int posicion = rutas.indexOf(ruta);
+        ruta.getCamionAsignado().setChofer(chofer);
+        rutas.set(posicion, ruta);
     }
 
     public void deleteById(UUID id) {

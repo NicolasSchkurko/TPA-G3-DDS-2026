@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public class RepositorioCamiones {
@@ -30,6 +29,13 @@ public class RepositorioCamiones {
 
     public void addAll(List<Camion> camiones){
         this.camiones.addAll(camiones);
+    }
+
+    public void actualizarcarga(Camion camion){
+        int posicion = camiones.indexOf(camion);
+        camion.setCiudadDestinoActual(null);
+        camion.resetearCargaOcupada();
+        camiones.set(posicion, camion);
     }
 
     public void deleteById(String patente) {

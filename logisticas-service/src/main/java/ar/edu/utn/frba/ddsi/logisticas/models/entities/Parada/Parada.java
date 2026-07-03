@@ -28,7 +28,7 @@ public class Parada {
 
     // Conveniencia: todos los items de una parada apuntan a la misma entidad
     public Entidad getEntidadDestino() {
-        return items.get(0).getEntidadDestino();
+        return items.getFirst().getEntidadDestino();
     }
 
     public Double pesoTotalKg() {
