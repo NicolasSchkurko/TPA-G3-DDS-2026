@@ -5,6 +5,9 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.services.PersonaService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -85,24 +88,23 @@ PersonaController {
   @PostMapping("/importar")
   public ResponseEntity<String> importarPersonasCSV(
       @RequestPart("file") MultipartFile file,
-      @RequestPart("mapeos") List<MapeoCSVDTO> mapeosDto) {
+      @RequestParam("mapeos") String mapeosDtoJson) {  // Cambiar a RequestParam
     try {
       if (file.isEmpty()) {
         return ResponseEntity.badRequest().body("El archivo enviado está vacío.");
       }
 
-      // 1. Convertimos la lista de DTOs provenientes de la web a los MapeoCSV del Dominio
-      List<MapeoCSV> mapeosDominio = mapeosDto.stream()
-                                              .map(dto -> new MapeoCSV(dto.getCampo(), dto.getNombresColumnas()))
-                                              .collect(Collectors.toList());
+      // Deserializar el JSON manualmente
+      ObjectMapper objectMapper = new ObjectMapper();
+      List<MapeoCSV> mapeosDominio = objectMapper.readValue(
+          mapeosDtoJson,
+          new TypeReference<List<MapeoCSV>>() {}
+      );
 
-      // 2. Delegamos la ejecución al servicio utilizando las entidades del dominio
       String mensaje = personaService.importarDonantes(file, mapeosDominio);
-
-      // HttpStatus 202 (Accepted) indica que se aceptó para procesamiento asincrónico
       return ResponseEntity.status(HttpStatus.ACCEPTED).body(mensaje);
 
-    } catch (RuntimeException e) {
+    } catch (RuntimeException | JsonProcessingException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
