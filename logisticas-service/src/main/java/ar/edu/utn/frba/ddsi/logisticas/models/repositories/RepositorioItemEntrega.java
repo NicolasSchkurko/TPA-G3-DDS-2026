@@ -4,7 +4,10 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Repository
 public class RepositorioItemEntrega {
@@ -33,19 +36,20 @@ public class RepositorioItemEntrega {
                            .filter(r -> r.getEstado().equals(estado)).toList();
     }
 
-    public void save(ItemEntrega item) {
+    public ItemEntrega save(ItemEntrega item) {
         int posicion = itemEntregas.indexOf(item);
         if (posicion != -1) {
-            itemEntregas.set(posicion, item); // Actualiza si ya existe
+            itemEntregas.set(posicion, item);
         } else {
-            itemEntregas.add(item); // Agrega si es nuevo
+            itemEntregas.add(item);
         }
+        return item;
     }
 
     public void actualizarEstado(ItemEntrega item, EstadoEntrega nuevoEstado){
         int posicion = itemEntregas.indexOf(item);
-        item.setEstado(nuevoEstado);
         if (posicion != -1) {
+            item.setEstado(nuevoEstado);
             itemEntregas.set(posicion, item);
         }
     }

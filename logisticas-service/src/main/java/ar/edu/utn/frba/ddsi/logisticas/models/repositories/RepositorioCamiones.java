@@ -30,10 +30,14 @@ public class RepositorioCamiones {
                        .findFirst();
     }
 
-    public void save(Camion camion) {
-        if (camion != null && !camiones.contains(camion)) {
+    public Camion save(Camion camion) {
+        int posicion = camiones.indexOf(camion);
+        if (posicion != -1) {
+            camiones.set(posicion, camion);
+        } else {
             camiones.add(camion);
         }
+        return camion;
     }
 
     public void addAll(List<Camion> camiones){
@@ -42,9 +46,9 @@ public class RepositorioCamiones {
 
     public void actualizarcarga(Camion camion){
         int posicion = camiones.indexOf(camion);
-        camion.setCiudadDestinoActual(null);
-        camion.resetearCargaOcupada();
         if (posicion != -1) {
+            camion.setCiudadDestinoActual(null);
+            camion.resetearCargaOcupada();
             camiones.set(posicion, camion);
         }
     }

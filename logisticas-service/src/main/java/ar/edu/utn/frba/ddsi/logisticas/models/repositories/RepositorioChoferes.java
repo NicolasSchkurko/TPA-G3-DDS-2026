@@ -5,7 +5,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -23,14 +22,14 @@ public class RepositorioChoferes {
                        .orElse(null);
     }
 
-    // Renombrado a 'save' para seguir estándar de Spring Data
-    public void save(Chofer chofer) {
+    public Chofer save(Chofer chofer) {
         int posicion = choferes.indexOf(chofer);
-        if(posicion != -1) {
+        if (posicion != -1) {
             choferes.set(posicion, chofer);
         } else {
             choferes.add(chofer);
         }
+        return chofer;
     }
 
     public void addAll(List<Chofer> nuevosChoferes) {

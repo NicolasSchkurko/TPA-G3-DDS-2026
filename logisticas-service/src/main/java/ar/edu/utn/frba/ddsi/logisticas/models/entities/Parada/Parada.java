@@ -26,7 +26,6 @@ public class Parada {
         items.add(item);
     }
 
-    // Conveniencia: todos los items de una parada apuntan a la misma entidad
     public Entidad getEntidadDestino() {
         return items.getFirst().getEntidadDestino();
     }

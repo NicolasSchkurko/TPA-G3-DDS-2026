@@ -28,6 +28,6 @@ public class Chofer {
     }
 
     public void disponible(){
-        this.disponible = false;
+        this.disponible = true;
     }
 }

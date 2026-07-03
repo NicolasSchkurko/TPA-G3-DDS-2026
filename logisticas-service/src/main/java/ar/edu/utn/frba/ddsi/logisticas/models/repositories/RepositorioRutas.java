@@ -25,17 +25,12 @@ public class RepositorioRutas {
                     .findFirst();
     }
 
-    // NUEVO MÉTODO: Filtra la ruta directamente por el chofer asignado a su camión
     public Optional<Ruta> findByChofer(Chofer chofer) {
         if (chofer == null) return Optional.empty();
         return rutas.stream()
                     .filter(ruta -> ruta.getCamionAsignado() != null &&
                         chofer.equals(ruta.getCamionAsignado().getChofer()))
                     .findFirst();
-    }
-
-    public void saveAll(List<Ruta> listaRutas) {
-        rutas.addAll(listaRutas);
     }
 
     public Ruta save(Ruta ruta) {
@@ -48,28 +43,14 @@ public class RepositorioRutas {
         return ruta;
     }
 
-    public Ruta findByItem(ItemEntrega item) {
-        return rutas.stream()
-                    .filter(ruta -> ruta.getParadas().stream()
-                                        .anyMatch(parada -> parada.getItems().contains(item)))
-                    .findFirst()
-                    .orElse(null);
+    public void saveAll(List<Ruta> listaRutas) {
+        rutas.addAll(listaRutas);
     }
 
     public void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
         int posicion = rutas.indexOf(ruta);
-        ruta.setEstado(nuevoEstado);
         if (posicion != -1) {
-            rutas.set(posicion, ruta);
-        }
-    }
-
-    public void actualizarChofer(Ruta ruta, Chofer chofer){
-        int posicion = rutas.indexOf(ruta);
-        if (ruta.getCamionAsignado() != null) {
-            ruta.getCamionAsignado().setChofer(chofer);
-        }
-        if (posicion != -1) {
+            ruta.setEstado(nuevoEstado);
             rutas.set(posicion, ruta);
         }
     }

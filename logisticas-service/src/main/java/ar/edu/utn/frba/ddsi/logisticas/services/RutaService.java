@@ -90,7 +90,7 @@ public class RutaService {
 
     Camion camion = obtenerCamionDeChofer(idChofer);
     if (camion != null) {
-      camion.eliminarChofer(); // Rompemos el vínculo del lado del camión
+      camion.eliminarChofer();
       repositorioCamiones.actualizarcarga(camion);
     }
 
