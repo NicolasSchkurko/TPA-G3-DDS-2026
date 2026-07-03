@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class MisionFactory {
     private TipoMision tipoMision;
 
-    public Mision crearMision(TipoMision tipo) {
+    public static Mision crearMision(TipoMision tipo) {
         return switch (tipo) {
             case RACHA -> new Mision("Racha",
                     new ReglaFechaEntrega());

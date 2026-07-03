@@ -5,7 +5,9 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.mappers.RepresentanteDTOToObject;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
@@ -56,19 +58,42 @@ public class PersonaService {
   // --- CRUD METHODS ---
 
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
+
     Direccion direccion = mapearDireccionDesdeDTO(dto.getDireccion());
+
+    List<MedioDeContacto> medios = new ArrayList<>();
+    MedioDeContacto medioPredeterminado=null;
+    for(MediosContactoDTO medioDTO : dto.getMediosDeContacto()){
+      MedioDeContacto nuevoMedio=pasarMediosDeContactoDTOAObjeto(medioDTO);
+      medios.add(nuevoMedio);
+      if(medioPredeterminado==null){
+        medioPredeterminado=nuevoMedio;
+      }
+      if(nuevoMedio.toString().toUpperCase().equals(dto.getMedioPredeterminado().getTipo().toUpperCase()) &&
+              nuevoMedio.getValor().toUpperCase().equals(dto.getMedioPredeterminado().getValor().toUpperCase())){
+        medioPredeterminado=nuevoMedio;
+      }
+    }
+    if (medioPredeterminado==null){throw new RuntimeException("error al registrar medio predeterminado durante registro de persona");}
 
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
       Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
       Humano humano = new Humano(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
 
       PersonaHumana nuevaPersona = new PersonaHumana(humano, direccion, dto.getNombreAMostrar());
+      nuevaPersona.getMediosDeContacto().agregarMediosDeContacto(medios);
+      nuevaPersona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
       IDDTO peticion = new IDDTO(
           nuevaPersona.getId(),
           nuevaPersona.getNombreDeUsuario()
           );
 
       incentivosClient.peticionCrearPerfil(peticion);
+//      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
+//              nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
+//              "Gracias por registrarse en DonaTrack",
+//              "Nuevo Registro en DonaTrack");
+//      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
       return mapToDto(repositorio.save(nuevaPersona));
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
@@ -76,12 +101,20 @@ public class PersonaService {
       PersonaJuridica nuevaPersona = new PersonaJuridica(
           direccion, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>(), dto.getNombreAMostrar()
       );
+      nuevaPersona.agregarRepresentantes(RepresentanteDTOToObject.convertirEnObjeto(dto.getRepresentantes()));
+      nuevaPersona.getMediosDeContacto().agregarMediosDeContacto(medios);
+      nuevaPersona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
       IDDTO peticion = new IDDTO(
           nuevaPersona.getId(),
           nuevaPersona.getNombreDeUsuario()
       );
 
       incentivosClient.peticionCrearPerfil(peticion);
+      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
+              nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
+              "Gracias por registrarse en DonaTrack",
+              "Nuevo Registro en DonaTrack");
+      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
       return mapToDto(repositorio.save(nuevaPersona));
     } else {
       throw new IllegalArgumentException("Tipo de persona inválido");
@@ -189,20 +222,7 @@ public class PersonaService {
     PersonaDonante persona = repositorio.findById(id)
                                         .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
 
-    MedioDeContacto nuevoMedio;
-    switch (dto.getTipo().toUpperCase()) {
-      case "EMAIL":
-        nuevoMedio = new Mail(dto.getValor());
-        break;
-      case "TELEFONO":
-        nuevoMedio = new Telefono(dto.getValor());
-        break;
-      case "WHATSAPP":
-        nuevoMedio = new Whatsapp(dto.getValor());
-        break;
-      default:
-        throw new IllegalArgumentException("Tipo de medio de contacto no soportado. Use EMAIL, TELEFONO o WHATSAPP.");
-    }
+    MedioDeContacto nuevoMedio=pasarMediosDeContactoDTOAObjeto(dto);
 
     persona.agregarMedioDeContacto(nuevoMedio);
     return mapToDto(repositorio.save(persona));
@@ -330,5 +350,23 @@ public class PersonaService {
         dto.getDepartamento(),
         ciudad
     );
+  }
+
+  private MedioDeContacto pasarMediosDeContactoDTOAObjeto(MediosContactoDTO dto){
+    MedioDeContacto nuevoMedio;
+    switch (dto.getTipo().toUpperCase()) {
+      case "EMAIL":
+        nuevoMedio = new Mail(dto.getValor());
+        break;
+      case "TELEFONO":
+        nuevoMedio = new Telefono(dto.getValor());
+        break;
+      case "WHATSAPP":
+        nuevoMedio = new Whatsapp(dto.getValor());
+        break;
+      default:
+        throw new IllegalArgumentException("Tipo de medio de contacto no soportado. Use EMAIL, TELEFONO o WHATSAPP.");
+    }
+    return nuevoMedio;
   }
 }

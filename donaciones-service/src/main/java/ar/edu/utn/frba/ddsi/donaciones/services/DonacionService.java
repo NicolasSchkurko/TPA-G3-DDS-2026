@@ -1,27 +1,30 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -42,6 +45,7 @@ public class DonacionService {
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final MatchmakingMapper mapperMatchmaking;
   private final DonacionMapper mapperDonacion;
+  private final RepositorioDePersonas repositorioDePersonas;
 //  private final AsignadorDonaciones asignador;
 //  private final SegmentadorDonaciones segmentador;
 
@@ -52,7 +56,8 @@ public class DonacionService {
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
                          GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          MatchmakingMapper mapperMatchmaking,
-                         DonacionMapper mapperDonacion
+                         DonacionMapper mapperDonacion,
+                        RepositorioDePersonas repositorioDePersonas
 //                         AsignadorDonaciones asignador,
 //                         SegmentadorDonaciones segmentador
                           ) {
@@ -64,6 +69,7 @@ public class DonacionService {
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.mapperMatchmaking= mapperMatchmaking;
     this.mapperDonacion =mapperDonacion;
+    this.repositorioDePersonas=repositorioDePersonas;
   //  this.asignador = asignador;
   //  this.segmentador = segmentador;
   }
@@ -79,8 +85,15 @@ public class DonacionService {
     return repositorio.findById(id).map(mapperDonacion::donaciontoDTO);
   }
 
-  public List<Donacion> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
-    Formulario formulario = new Formulario(donante, bienes,  fechaRealizacion);
+  public List<Donacion> procesarFormulario(UUID idDonante, List<BienResumenDTO> bienes, LocalDate fechaRealizacion) {
+
+    Optional<PersonaDonante> donanteOptional = repositorioDePersonas.findById(idDonante);
+    if(donanteOptional.isEmpty()){throw new NullPointerException("no se encontro persona con ese id");}
+    PersonaDonante donante = donanteOptional.get();
+
+    List<Bien> bienesNormal = this.maptodto(bienes);
+
+    Formulario formulario = new Formulario(donante, bienesNormal,  fechaRealizacion);
     repositorioFormularios.save(formulario);
 
     DonacionFacade donacionFacade = new DonacionFacade(
@@ -92,6 +105,44 @@ public class DonacionService {
     repositorio.saveFormulario(donacionesProcesadas);
 
     return donacionesProcesadas;
+  }
+
+  private List<Bien> maptodto(List<BienResumenDTO> bienes){
+    List<Bien> b = new ArrayList<>();
+
+    for(BienResumenDTO x : bienes){
+      Bien bienNormal;
+      switch(x.getTipoBien().toUpperCase()){
+        case "CON_ESTADO":
+          CategoriaBien a = new CategoriaBien(x.getCategoria());
+          SubcategoriaBien p = new SubcategoriaBien(x.getSubcategoria(), a);
+          bienNormal = new BienConEstado(x.getDescripcion(),
+                  p,
+                  null,
+                  x.getCantidad(),
+                  mapToUM(x.getUnidadDeMedida()),
+                  x.getUsado());
+          b.add(bienNormal);
+          break;
+        case "PERECEDERO":
+          CategoriaBien d = new CategoriaBien(x.getCategoria());
+          SubcategoriaBien c = new SubcategoriaBien(x.getSubcategoria(), d);
+          bienNormal = new BienPerecedero(x.getDescripcion(),
+                  c,
+                  null,
+                  x.getCantidad(),
+                  mapToUM(x.getUnidadDeMedida()),
+                  x.getFechaVencimiento());
+          b.add(bienNormal);
+          break;
+      }
+    }
+
+     return b;
+  }
+
+  private UnidadDeMedida mapToUM(String unidad){
+    return unidad.toUpperCase().equals("KILOGRAMOS") ? UnidadDeMedida.KILOGRAMOS : UnidadDeMedida.LITROS;
   }
 
   public void asignarDonaciones() {
@@ -118,21 +169,35 @@ public class DonacionService {
     repositorio.deleteById(id);
   }
 
-  public Donacion cambiarEstado(UUID id, Estado nuevoEstado, String justificacion) {
+  public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
     Optional<Donacion> donacionOpt = repositorio.findById(id);
+
     if (donacionOpt.isPresent()) {
+      Estado e = null;
+
+      switch (nuevoEstado.toUpperCase()){
+        case "EN_DEPOSITO": e = Estado.EN_DEPOSITO;
+        break;
+        case "PENDIENTE_ASIGNACION": e = Estado.PENDIENTE_ASIGNACION;
+          break;
+        case "ENTREGADO": e = Estado.ENTREGADO;
+          break;
+        case "VENCIDO": e = Estado.VENCIDO;
+          break;
+      }
+
       Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(nuevoEstado, justificacion);
+      donacion.actualizarEstado(e, justificacion);
       repositorio.save(donacion);
 
-      if (nuevoEstado == Estado.ASIGNADO) {
+      if (nuevoEstado.toUpperCase().equals("ASIGNADO")) {
         IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
         dto.setFechaEntrega(donacion.getFechaEntrega());
         dto.setCantidadBienes(donacion.sumaCantidadBienes());
         dto.setSubCategoria(donacion.getSubcategoria().getNombre());
         dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
         dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
-        dto.setEstado(nuevoEstado.name());
+        dto.setEstado(nuevoEstado);
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
         gestorNotificaciones.notificarDonacionAsignadaAEntidadBeneficiaria(donacion);
       }

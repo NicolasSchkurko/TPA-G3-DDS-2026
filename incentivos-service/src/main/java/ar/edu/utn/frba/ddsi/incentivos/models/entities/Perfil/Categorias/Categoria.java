@@ -19,6 +19,7 @@ public class Categoria {
         this.nombre = nombre;
         this.siguienteCategoria = siguienteCategoria;
         this.misiones = new ArrayList<>();
+
     }
 
     public void agregarMision(Mision mision) {

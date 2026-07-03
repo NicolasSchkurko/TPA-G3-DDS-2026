@@ -12,14 +12,14 @@ import java.util.List;
 @Setter
 
 public abstract class MedioDeContacto {
-    private List<TipoDeMensaje> tiposDeMensajeProhibidos;
+    //private List<TipoDeMensaje> tiposDeMensajeProhibidos;
 
     public MedioDeContacto(List<TipoDeMensaje> tiposDeMensajeProhibidos) {
-        this.tiposDeMensajeProhibidos = new ArrayList<>(tiposDeMensajeProhibidos);
+       // this.tiposDeMensajeProhibidos = new ArrayList<>(tiposDeMensajeProhibidos);
     }
 
     public MedioDeContacto() {
-        this.tiposDeMensajeProhibidos = new ArrayList<>();
+      //  this.tiposDeMensajeProhibidos = new ArrayList<>();
     }
 
     public abstract String getValor();
@@ -27,18 +27,18 @@ public abstract class MedioDeContacto {
     public abstract String getTipo();
 
     public void enviarMensaje(Mensaje mensaje) {
-        if (tiposDeMensajeProhibidos.contains(mensaje.getTipoDeMensaje())) {
-            throw new IllegalArgumentException("Tipo de mensaje no permitido: " + mensaje.getTipoDeMensaje());
-        }
+//        if (tiposDeMensajeProhibidos.contains(mensaje.getTipoDeMensaje())) {
+//            throw new IllegalArgumentException("Tipo de mensaje no permitido: " + mensaje.getTipoDeMensaje());
+//        }
     }
 
-    public void agregarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
-        this.tiposDeMensajeProhibidos.add(tipoDeMensaje);
-    }
+//    public void agregarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
+//        this.tiposDeMensajeProhibidos.add(tipoDeMensaje);
+//    }
 
-    public void eliminarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
-        this.tiposDeMensajeProhibidos.remove(tipoDeMensaje);
-    }
+//    public void eliminarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
+//        this.tiposDeMensajeProhibidos.remove(tipoDeMensaje);
+//    }
 
 
 }

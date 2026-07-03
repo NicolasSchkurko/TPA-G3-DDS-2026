@@ -1,15 +1,11 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import java.time.LocalDate;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class BienResumenDTO {
   private String descripcion;
   private String subcategoria;

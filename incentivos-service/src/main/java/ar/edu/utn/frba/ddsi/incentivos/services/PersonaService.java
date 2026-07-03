@@ -66,6 +66,14 @@ public class PersonaService {
         }
         repositorioPerfiles.agregarPerfil(nuevo);
 
+        System.out.println(categoriaBase);
+
+        System.out.println(
+                categoriaBase == null
+                        ? null
+                        : categoriaBase.primeraMision()
+        );
+
         PerfilDTO pDTO = new PerfilDTO(
                 nuevo.getNombreUsuario(),
                 nuevo.getCategoriaActual().name(),

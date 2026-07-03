@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.TipoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import org.springframework.stereotype.Repository;
@@ -20,6 +23,7 @@ public class RepositorioCategorias {
         this.categorias.add(new Categoria(TipoCategoria.COLABORADOR, TipoCategoria.SOSTENEDOR));
         this.categorias.add(new Categoria(TipoCategoria.SOSTENEDOR, TipoCategoria.TRANSFORMADOR));
         this.categorias.add(new Categoria(TipoCategoria.TRANSFORMADOR, TipoCategoria.TRANSFORMADOR));
+        this.categorias.getFirst().agregarMision(MisionFactory.crearMision(TipoMision.COMPLETITUD));
     }
 
     public Categoria buscarPorTipo(TipoCategoria tipo) {

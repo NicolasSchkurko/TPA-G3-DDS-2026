@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,7 +46,7 @@ public class DonacionController {
   @PostMapping("/formulario")
   public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
     List<Donacion> donacionesSegmentadas = donacionService.procesarFormulario(
-        request.getDonante(),
+        request.getIdDonante(),
         request.getBienes(),
         request.getFechaRealizacion()
     );
