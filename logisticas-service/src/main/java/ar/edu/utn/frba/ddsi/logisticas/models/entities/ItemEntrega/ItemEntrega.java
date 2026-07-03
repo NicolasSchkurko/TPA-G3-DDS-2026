@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
-
-
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -38,13 +36,6 @@ public class ItemEntrega {
         return unidad.calcularVolumenM3(cantidad);
     }
 
-    public void iniciarTraslado() {
-        if (estado != EstadoEntrega.PENDIENTE) {
-            throw new IllegalStateException("Solo se puede iniciar traslado desde PENDIENTE, estado actual: " + estado);
-        }
-        cambiarEstado(EstadoEntrega.EN_TRASLADO);
-    }
-
     public void confirmarEntrega(String fotoComprobante) {
         if (estado != EstadoEntrega.EN_TRASLADO) {
             throw new IllegalStateException("Solo se puede confirmar entrega desde EN_TRASLADO, estado actual: " + estado);
@@ -60,7 +51,6 @@ public class ItemEntrega {
         cambiarEstado(EstadoEntrega.NO_RECIBIDA);
     }
 
-    // Cuando la donación vuelve al depósito tras una NO_RECIBIDA revisada,
     public void reingresarADeposito() {
         if (estado != EstadoEntrega.NO_RECIBIDA) {
             throw new IllegalStateException("Solo puede reingresar desde NO_RECIBIDA, estado actual: " + estado);
