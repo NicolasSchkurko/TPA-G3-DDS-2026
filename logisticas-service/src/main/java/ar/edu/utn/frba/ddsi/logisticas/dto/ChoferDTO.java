@@ -12,5 +12,4 @@ import lombok.Setter;
 public class ChoferDTO {
     private UUID idChofer;
     private boolean disponible;
-    private CamionDTO camionAsignado;
 }

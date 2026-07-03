@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 
 import java.util.UUID;
 

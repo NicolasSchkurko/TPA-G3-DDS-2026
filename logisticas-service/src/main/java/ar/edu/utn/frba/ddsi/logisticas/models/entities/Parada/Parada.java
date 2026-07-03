@@ -4,7 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import java.util.ArrayList;
 import java.util.List;
 

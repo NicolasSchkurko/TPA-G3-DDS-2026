@@ -1,5 +1,5 @@
 
-package ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Direccion;
+package ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion;
 
 import lombok.Getter;
 import lombok.Setter;

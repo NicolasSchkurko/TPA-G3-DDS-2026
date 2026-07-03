@@ -12,11 +12,22 @@ import lombok.Setter;
 public class Chofer {
     private UUID idChofer;
     private boolean disponible;
-    private Camion camionAsignado;
 
-    public Chofer(UUID idChofer, Camion camionAsignado){
+    public Chofer(UUID idChofer){
         this.idChofer = idChofer;
         this.disponible = true;
-        this.camionAsignado = camionAsignado;
+    }
+
+    public Chofer(UUID idChofer, boolean disponible){
+        this.idChofer = idChofer;
+        this.disponible = disponible;
+    }
+
+    public void ocupado(){
+        this.disponible = false;
+    }
+
+    public void disponible(){
+        this.disponible = false;
     }
 }

@@ -30,6 +30,18 @@ public class Camion {
         this.ciudadDestinoActual = null;
     }
 
+    public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.chofer = null;
+        this.patente = patente;
+        this.capacidadVolumen = capacidadVolumen;
+        this.altura = altura;
+        this.capacidadCarga = capacidadCarga;
+        this.disponible = disponible;
+        this.pesoOcupado = 0.0;
+        this.volumenOcupado = 0.0;
+        this.ciudadDestinoActual = null;
+    }
+
     // Atributos de estado para la planificación (transitorios)
 
     public boolean puedeCargar(Double pesoKg, Double volumenM3) {
@@ -58,11 +70,15 @@ public class Camion {
         return this.pesoOcupado == 0.0 && this.volumenOcupado == 0.0;
     }
 
-    public void marcarNoDisponible() {
+    public void ocupado() {
         this.disponible = false;
     }
 
-    public void marcarDisponible() {
+    public void disponible() {
         this.disponible = true;
+    }
+
+    public void eliminarChofer() {
+        this.chofer = null;
     }
 }
