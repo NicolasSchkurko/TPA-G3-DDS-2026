@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
@@ -18,10 +19,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.Seg
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -42,6 +40,7 @@ public class DonacionService {
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final MatchmakingMapper mapperMatchmaking;
   private final DonacionMapper mapperDonacion;
+  private final RepositorioDePersonas repositorioDePersonas;
 //  private final AsignadorDonaciones asignador;
 //  private final SegmentadorDonaciones segmentador;
 
@@ -52,7 +51,8 @@ public class DonacionService {
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
                          GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          MatchmakingMapper mapperMatchmaking,
-                         DonacionMapper mapperDonacion
+                         DonacionMapper mapperDonacion,
+                        RepositorioDePersonas repositorioDePersonas
 //                         AsignadorDonaciones asignador,
 //                         SegmentadorDonaciones segmentador
                           ) {
@@ -64,6 +64,7 @@ public class DonacionService {
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.mapperMatchmaking= mapperMatchmaking;
     this.mapperDonacion =mapperDonacion;
+    this.repositorioDePersonas=repositorioDePersonas;
   //  this.asignador = asignador;
   //  this.segmentador = segmentador;
   }
@@ -79,8 +80,15 @@ public class DonacionService {
     return repositorio.findById(id).map(mapperDonacion::donaciontoDTO);
   }
 
-  public List<Donacion> procesarFormulario(PersonaDonante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
-    Formulario formulario = new Formulario(donante, bienes,  fechaRealizacion);
+  public List<Donacion> procesarFormulario(UUID idDonante, List<BienResumenDTO> bienes, LocalDate fechaRealizacion) {
+
+    Optional<PersonaDonante> donanteOptional = repositorioDePersonas.findById(idDonante);
+    if(donanteOptional.isEmpty()){throw new NullPointerException("no se encontro persona con ese id");}
+    PersonaDonante donante = donanteOptional.get();
+
+    List<Bien> bienesNormal = this.maptodto(bienes);
+
+    Formulario formulario = new Formulario(donante, bienesNormal,  fechaRealizacion);
     repositorioFormularios.save(formulario);
 
     DonacionFacade donacionFacade = new DonacionFacade(

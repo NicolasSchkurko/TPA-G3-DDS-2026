@@ -10,7 +10,7 @@ import lombok.Setter;
 public class RepresentanteDTO {
   private String nombre;
   private String apellido;
-  private String numeroDeDocumento;
+  private int numeroDeDocumento;
   private boolean activo;
   private int edad;
   private String genero;

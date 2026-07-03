@@ -42,6 +42,7 @@ public class MediosDeContacto {
     public void enviarMensajeAMedios(Mensaje mensaje) {
         listaMediosDeContacto.forEach(medio -> medio.enviarMensaje(mensaje));
     }
+
 }
 
 

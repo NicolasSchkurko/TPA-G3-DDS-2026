@@ -14,5 +14,5 @@ import lombok.Setter;
 //dto de ids, se lo envía a servicio de incentivos
 public class IDDTO {
   private UUID idUsuario;
-  private String nombreDeUsuario;
+  private String nombreUsuario;
 }

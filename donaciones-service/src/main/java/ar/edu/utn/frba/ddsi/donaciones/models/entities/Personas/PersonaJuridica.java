@@ -37,7 +37,9 @@ public class PersonaJuridica extends PersonaDonante {
   public String darNombre(){
     return this.getRazonSocial();
   }
-
+  public void agregarRepresentantes(List<Representante> representantes){
+      this.representantes.addAll(representantes);
+  }
   @Override
   public String toString() {
     return "PersonaJuridica{direccion=" + this.getDireccion() + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';

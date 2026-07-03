@@ -45,7 +45,7 @@ public class DonacionController {
   @PostMapping("/formulario")
   public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
     List<Donacion> donacionesSegmentadas = donacionService.procesarFormulario(
-        request.getDonante(),
+        request.getIdDonante(),
         request.getBienes(),
         request.getFechaRealizacion()
     );
