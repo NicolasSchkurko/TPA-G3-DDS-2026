@@ -13,6 +13,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntreg
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,6 +36,35 @@ public class RutaService {
     this.eventoService = eventoService;
   }
 
+  // --- MÉTODOS CRUD ---
+  public List<Ruta> findAll() {
+    return repositorioRutas.findAll();
+  }
+
+  public Ruta findById(UUID idRuta) {
+    return repositorioRutas.findById(idRuta)
+                           .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrada"));
+  }
+
+  public Ruta create(Ruta ruta) {
+    return repositorioRutas.save(ruta);
+  }
+
+  public Ruta update(UUID id, Ruta rutaActualizada) {
+    Ruta rutaExistente = findById(id);
+    rutaExistente.setCamionAsignado(rutaActualizada.getCamionAsignado());
+    rutaExistente.setParadas(rutaActualizada.getParadas());
+    return repositorioRutas.save(rutaExistente);
+  }
+
+  public void delete(UUID idRuta) {
+    if (repositorioRutas.findById(idRuta).isEmpty()) {
+      throw new IllegalArgumentException("Ruta no encontrada");
+    }
+    repositorioRutas.deleteById(idRuta);
+  }
+
+  // --- MÉTODOS DE NEGOCIO ---
   public Ruta obtenerRutaDeChofer(Chofer chofer) {
     if (chofer == null) return null;
     return repositorioRutas.findByChofer(chofer).orElse(null);
@@ -47,14 +77,10 @@ public class RutaService {
 
   public void iniciarRuta(UUID idChofer) {
     Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) {
-      throw new IllegalArgumentException("No se encontró el chofer con el ID especificado");
-    }
+    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
 
     Ruta rutaActual = this.obtenerRutaDeChofer(chofer);
-    if (rutaActual == null) {
-      throw new IllegalStateException("El chofer no tiene ninguna ruta asignada para iniciar");
-    }
+    if (rutaActual == null) throw new IllegalStateException("El chofer no tiene ninguna ruta asignada");
 
     repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
 
@@ -69,9 +95,7 @@ public class RutaService {
 
   public void terminarRuta(UUID idChofer) {
     Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) {
-      throw new IllegalArgumentException("No se encontró el chofer con el ID especificado");
-    }
+    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
 
     Ruta rutaActual = obtenerRutaDeChofer(chofer);
 
@@ -93,7 +117,5 @@ public class RutaService {
       camion.eliminarChofer();
       repositorioCamiones.actualizarcarga(camion);
     }
-
-
   }
 }

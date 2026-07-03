@@ -2,6 +2,10 @@ package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorDeRutasService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +21,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/logistica/rutas")
+@Tag(name = "Planificador de Rutas", description = "API para la interacción con el proveedor externo de planificación de rutas logísticas")
 public class PlanificadorDeRutasController {
 
   private final PlanificadorDeRutasService planificadorService;
@@ -32,6 +37,14 @@ public class PlanificadorDeRutasController {
    *
    * @param jsonAsignacion El JSON crudo recibido en el body.
    */
+  @Operation(summary = "Recibir rutas planificadas (Webhook/Callback)",
+      description = "Punto de entrada para que el proveedor externo devuelva las rutas optimizadas. El sistema las procesa y asigna los camiones y choferes disponibles.")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Rutas procesadas y guardadas exitosamente / Falta de choferes manejada correctamente"),
+      @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos (JSON malformado o IDs inexistentes)"),
+      @ApiResponse(responseCode = "422", description = "Error de validación de negocio (ej: ruta rechazada por capacidad excedida)"),
+      @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+  })
   @PostMapping("/callback")
   public ResponseEntity<String> recibirRutasPlanificadas(@RequestBody String jsonAsignacion) {
     try {
@@ -62,6 +75,12 @@ public class PlanificadorDeRutasController {
    * Endpoint: POST /api/logistica/rutas/planificar-manual
    * Útil para forzar la ejecución manualmente en caso de que el proceso automático falle o se requiera adelantar trabajo.
    */
+  @Operation(summary = "Disparar planificación manual",
+      description = "Fuerza la ejecución del algoritmo de planificación enviando las donaciones pendientes al proveedor externo de manera inmediata.")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Proceso de planificación disparado con éxito"),
+      @ApiResponse(responseCode = "500", description = "Error al intentar comunicar con el proveedor externo")
+  })
   @PostMapping("/planificar-manual")
   public ResponseEntity<String> forzarPlanificacionManual() {
     try {

@@ -1,18 +1,21 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.services.RutaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/rutas")
-@Tag(name = "Rutas", description = "API para el control operacional de las rutas y su ciclo de vida")
+@Tag(name = "Rutas", description = "API para el control CRUD y el ciclo de vida de las Rutas de reparto")
 public class RutaController {
 
   private final RutaService rutaService;
@@ -21,11 +24,58 @@ public class RutaController {
     this.rutaService = rutaService;
   }
 
-  @Operation(summary = "Iniciar la ruta de un chofer",
-      description = "Cambia el estado de la ruta activa a EN_CURSO y setea las entregas en estado EN_TRASLADO.")
+  // --- CRUD ---
+
+  @Operation(summary = "Listar todas las rutas generadas")
+  @GetMapping
+  public ResponseEntity<List<Ruta>> obtenerTodas() {
+    return ResponseEntity.ok(rutaService.findAll());
+  }
+
+  @Operation(summary = "Obtener una ruta por su ID")
+  @GetMapping("/{id}")
+  public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
+    try {
+      return ResponseEntity.ok(rutaService.findById(id));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    }
+  }
+
+  @Operation(summary = "Crear una ruta manual", description = "Usualmente generadas por el servicio planificador.")
+  @PostMapping
+  public ResponseEntity<Ruta> crearRuta(@RequestBody Ruta ruta) {
+    return new ResponseEntity<>(rutaService.create(ruta), HttpStatus.CREATED);
+  }
+
+  @Operation(summary = "Actualizar datos de una ruta")
+  @PutMapping("/{id}")
+  public ResponseEntity<?> actualizarRuta(@PathVariable UUID id, @RequestBody Ruta ruta) {
+    try {
+      return ResponseEntity.ok(rutaService.update(id, ruta));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    }
+  }
+
+  @Operation(summary = "Eliminar una ruta")
+  @DeleteMapping("/{id}")
+  public ResponseEntity<?> eliminarRuta(@PathVariable UUID id) {
+    try {
+      rutaService.delete(id);
+      return ResponseEntity.noContent().build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    }
+  }
+
+  // --- OPERACIONES DE NEGOCIO ---
+
+  @Operation(summary = "El chofer informa el inicio de su ruta",
+      description = "Cambia el estado de la ruta a EN_CURSO y transiciona los ítems a EN_TRASLADO. Notifica vía eventos.")
   @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Ruta iniciada con éxito. Evento publicado."),
-      @ApiResponse(responseCode = "400", description = "El chofer especificado no existe o no posee rutas asignadas")
+      @ApiResponse(responseCode = "200", description = "Ruta iniciada con éxito."),
+      @ApiResponse(responseCode = "400", description = "Validación de negocio fallida.")
   })
   @PatchMapping("/chofer/{idChofer}/iniciar")
   public ResponseEntity<String> iniciarRuta(@PathVariable UUID idChofer) {
@@ -39,12 +89,8 @@ public class RutaController {
     }
   }
 
-  @Operation(summary = "Finalizar la ruta de un chofer",
-      description = "Concluye la ruta del día. Los paquetes no entregados retornan a estado PENDIENTE y se limpia el camión.")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Ruta finalizada y recursos liberados con éxito"),
-      @ApiResponse(responseCode = "400", description = "Error al procesar la finalización")
-  })
+  @Operation(summary = "El chofer finaliza su jornada y ruta activa",
+      description = "Finaliza la ruta, limpia el camión y retorna los ítems no entregados a PENDIENTE.")
   @PatchMapping("/chofer/{idChofer}/terminar")
   public ResponseEntity<String> terminarRuta(@PathVariable UUID idChofer) {
     try {
