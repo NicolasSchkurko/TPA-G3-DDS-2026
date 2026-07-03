@@ -51,4 +51,8 @@ public class Ruta {
     public boolean puedeAgregar(Double pesoAdicionalKg, Double volumenAdicionalM3) {
         return camionAsignado.puedeCargar(pesoTotalCargadoKg() + pesoAdicionalKg, volumenTotalCargadoM3() + volumenAdicionalM3);
     }
+
+    public boolean excedeCapacidadDelCamion() {
+        return !puedeAgregar(0.0, 0.0);
+    }
 }

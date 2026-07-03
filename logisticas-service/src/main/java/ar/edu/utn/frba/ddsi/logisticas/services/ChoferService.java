@@ -74,7 +74,7 @@ public class ChoferService {
   // --- MAPPERS ---
   public Chofer convertirChoferDTO(ChoferDTO dto){
     if (dto == null) return null;
-    return new Chofer(dto.getIdChofer(), dto.isDisponible());
+    return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
   }
 
   public ChoferDTO convertirAChoferDTO(Chofer chofer){
