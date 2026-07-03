@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorDeRutasService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * Controlador REST que expone los endpoints requeridos para el Servicio de Logística.
@@ -33,10 +36,13 @@ public class PlanificadorDeRutasController {
   public ResponseEntity<String> recibirRutasPlanificadas(@RequestBody String jsonAsignacion) {
     try {
       // Pasamos el JSON crudo directamente. El servicio se encarga de parsearlo a Map.
-      planificadorService.procesarCallbackRutas(jsonAsignacion);
-
-      // Retornamos 200 OK al proveedor externo para avisar que recibimos bien los datos
-      return ResponseEntity.ok("Rutas procesadas y guardadas exitosamente en el sistema de logística.");
+      List<Ruta> rutasGeneradas = planificadorService.procesarCallbackRutas(jsonAsignacion);
+      if (rutasGeneradas.equals(planificadorService.asignarChoferes(rutasGeneradas))){
+        // Retornamos 200 OK al proveedor externo para avisar que recibimos bien los datos
+        return ResponseEntity.ok("Rutas procesadas y guardadas exitosamente en el sistema de logística.");
+      } else {
+        return ResponseEntity.ok("Lo sentimos, no pudimos asignar todas las rutas por falta de choferes");
+      }
 
     } catch (IllegalStateException e) {
       // Si el objeto de dominio PlanificadorDeRutas rechaza la ruta por capacidad excedida

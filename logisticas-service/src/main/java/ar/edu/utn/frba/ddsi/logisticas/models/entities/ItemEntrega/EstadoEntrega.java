@@ -6,4 +6,3 @@ public enum EstadoEntrega {
     ENTREGADA,
     NO_RECIBIDA
 }
-
