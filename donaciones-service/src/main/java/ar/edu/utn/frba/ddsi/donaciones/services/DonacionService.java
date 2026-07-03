@@ -7,14 +7,19 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
@@ -102,6 +107,44 @@ public class DonacionService {
     return donacionesProcesadas;
   }
 
+  private List<Bien> maptodto(List<BienResumenDTO> bienes){
+    List<Bien> b = new ArrayList<>();
+
+    for(BienResumenDTO x : bienes){
+      Bien bienNormal;
+      switch(x.getTipoBien().toUpperCase()){
+        case "CON_ESTADO":
+          CategoriaBien a = new CategoriaBien(x.getCategoria());
+          SubcategoriaBien p = new SubcategoriaBien(x.getSubcategoria(), a);
+          bienNormal = new BienConEstado(x.getDescripcion(),
+                  p,
+                  null,
+                  x.getCantidad(),
+                  mapToUM(x.getUnidadDeMedida()),
+                  x.getUsado());
+          b.add(bienNormal);
+          break;
+        case "PERECEDERO":
+          CategoriaBien d = new CategoriaBien(x.getCategoria());
+          SubcategoriaBien c = new SubcategoriaBien(x.getSubcategoria(), d);
+          bienNormal = new BienPerecedero(x.getDescripcion(),
+                  c,
+                  null,
+                  x.getCantidad(),
+                  mapToUM(x.getUnidadDeMedida()),
+                  x.getFechaVencimiento());
+          b.add(bienNormal);
+          break;
+      }
+    }
+
+     return b;
+  }
+
+  private UnidadDeMedida mapToUM(String unidad){
+    return unidad.toUpperCase().equals("KILOGRAMOS") ? UnidadDeMedida.KILOGRAMOS : UnidadDeMedida.LITROS;
+  }
+
   public void asignarDonaciones() {
     List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
     List<EntidadBeneficiaria> entidades = repositorioEntidades.findAll();
@@ -126,21 +169,35 @@ public class DonacionService {
     repositorio.deleteById(id);
   }
 
-  public Donacion cambiarEstado(UUID id, Estado nuevoEstado, String justificacion) {
+  public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
     Optional<Donacion> donacionOpt = repositorio.findById(id);
+
     if (donacionOpt.isPresent()) {
+      Estado e = null;
+
+      switch (nuevoEstado.toUpperCase()){
+        case "EN_DEPOSITO": e = Estado.EN_DEPOSITO;
+        break;
+        case "PENDIENTE_ASIGNACION": e = Estado.PENDIENTE_ASIGNACION;
+          break;
+        case "ENTREGADO": e = Estado.ENTREGADO;
+          break;
+        case "VENCIDO": e = Estado.VENCIDO;
+          break;
+      }
+
       Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(nuevoEstado, justificacion);
+      donacion.actualizarEstado(e, justificacion);
       repositorio.save(donacion);
 
-      if (nuevoEstado == Estado.ASIGNADO) {
+      if (nuevoEstado.toUpperCase().equals("ASIGNADO")) {
         IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
         dto.setFechaEntrega(donacion.getFechaEntrega());
         dto.setCantidadBienes(donacion.sumaCantidadBienes());
         dto.setSubCategoria(donacion.getSubcategoria().getNombre());
         dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
         dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
-        dto.setEstado(nuevoEstado.name());
+        dto.setEstado(nuevoEstado);
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
         gestorNotificaciones.notificarDonacionAsignadaAEntidadBeneficiaria(donacion);
       }

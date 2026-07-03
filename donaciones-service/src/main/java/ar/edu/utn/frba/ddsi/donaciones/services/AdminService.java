@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.EstadoEntrega;
@@ -14,13 +13,11 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.T
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioRutasActivas;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
