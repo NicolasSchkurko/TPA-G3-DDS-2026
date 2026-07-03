@@ -110,7 +110,7 @@ public class PersonaService {
       );
 
       incentivosClient.peticionCrearPerfil(peticion);
-      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
+      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
               nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
               "Gracias por registrarse en DonaTrack",
               "Nuevo Registro en DonaTrack");
@@ -356,7 +356,7 @@ public class PersonaService {
     MedioDeContacto nuevoMedio;
     switch (dto.getTipo().toUpperCase()) {
       case "EMAIL":
-        nuevoMedio = new Mail(dto.getValor());
+        nuevoMedio = new Mail(dto.getValor().toLowerCase());
         break;
       case "TELEFONO":
         nuevoMedio = new Telefono(dto.getValor());
