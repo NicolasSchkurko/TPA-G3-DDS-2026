@@ -1,5 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador.Administrador;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;

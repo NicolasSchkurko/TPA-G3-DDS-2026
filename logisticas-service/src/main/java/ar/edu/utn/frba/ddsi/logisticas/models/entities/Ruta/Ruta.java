@@ -19,6 +19,7 @@ public class Ruta {
     private Camion camionAsignado;
     private LocalDate fechaProgramada;
     private EstadoRuta estado;
+    private String urlSeguimiento; // Enlace al mapa interactivo para tracking en tiempo real
     private List<Parada> paradas = new ArrayList<>();
 
     // Agrupa por entidad: si ya hay una Parada para esa entidad en esta ruta, se agrega al listado

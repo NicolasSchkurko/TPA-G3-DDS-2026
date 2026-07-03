@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class EventoLogisticaDTO {
   private Long id;
   private String tipoEvento;
-  private LocalDateTime fecha;
-  private String payloadJson; // Acá viene la info variable según el evento
+  private String referenciaId;
+  private String justificacion;
+  private String payloadJson;
 }

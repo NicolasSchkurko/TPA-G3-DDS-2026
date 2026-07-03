@@ -1,12 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
@@ -68,49 +69,60 @@ public class LogisticaEventosConsumerService {
 
   private void procesarEvento(EventoLogisticaDTO evento) {
     try {
-      JsonNode payload = objectMapper.readTree(evento.getPayloadJson());
-
       switch (evento.getTipoEvento()) {
         case "INICIO_RUTA":
-          manejarInicioRuta(payload);
+          manejarInicioRuta(evento);
           break;
         case "ENTREGA_CONFIRMADA":
-          manejarEntregaConfirmada(payload);
+          manejarEntregaConfirmada(evento);
           break;
         case "ENTREGA_FALLIDA":
-          manejarEntregaFallida(payload);
+          manejarEntregaFallida(evento);
           break;
         case "REINGRESO_DEPOSITO":
-          manejarReingresoDeposito(payload);
+          manejarReingresoDeposito(evento);
           break;
         default:
           System.out.println("Evento de logística desconocido: " + evento.getTipoEvento());
       }
     } catch (Exception e) {
-      System.err.println("Error al procesar el payload del evento " + evento.getId() + ": " + e.getMessage());
+      System.err.println("Error al procesar el evento " + evento.getId() + ": " + e.getMessage());
     }
   }
 
-  private void manejarInicioRuta(JsonNode payload) {
-    // Logística nos manda una lista de IDs de donaciones
-    payload.get("items").forEach(itemNode -> {
-      UUID idDonacion = UUID.fromString(itemNode.asText());
-      Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
-
-      if (donacionOpt.isPresent()) {
-        Donacion donacion = donacionOpt.get();
-        donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
-        repositorioDonaciones.save(donacion);
-
-        // Disparamos notificaciones
-        gestorNotificaciones.notificarDonacionEnViajeAEntidadBeneficiaria(donacion.getEntidad().getCorreosRepresentantes());
-        gestorNotificaciones.notificarDonacionEnViajeAPersonaDonante(donacion.getDonante().getMediosDeContacto());
+  private void manejarInicioRuta(EventoLogisticaDTO evento) {
+    try {
+      if (evento.getPayloadJson() == null || evento.getPayloadJson().isEmpty()) {
+        System.err.println("Evento INICIO_RUTA " + evento.getId() + " sin payload, se ignora.");
+        return;
       }
-    });
+
+      PayloadInicioRutaDTO payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+
+      if (payload.getItems() == null) return;
+
+      for (String idTexto : payload.getItems()) {
+        UUID idDonacion = UUID.fromString(idTexto);
+        Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
+
+        if (donacionOpt.isPresent()) {
+          Donacion donacion = donacionOpt.get();
+          donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
+          repositorioDonaciones.save(donacion);
+
+          gestorNotificaciones.notificarDonacionEnViajeAEntidadBeneficiaria(
+              payload.getUrlRuta(), donacion.getEntidad().getCorreosRepresentantes());
+          gestorNotificaciones.notificarDonacionEnViajeAPersonaDonante(
+              payload.getUrlRuta(), donacion.getDonante().getMediosDeContacto());
+        }
+      }
+    } catch (Exception e) {
+      System.err.println("Error parseando items de la ruta: " + e.getMessage());
+    }
   }
 
-  private void manejarEntregaConfirmada(JsonNode payload) {
-    UUID idDonacion = UUID.fromString(payload.get("idDonacion").asText());
+  private void manejarEntregaConfirmada(EventoLogisticaDTO evento) {
+    UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
     if (donacionOpt.isPresent()) {
@@ -118,37 +130,54 @@ public class LogisticaEventosConsumerService {
       donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
       repositorioDonaciones.save(donacion);
 
-      gestorNotificaciones.notificarComprobanteEntregaAEntidadBeneficiaria(donacion.getEntidad().getCorreosRepresentantes());
-      gestorNotificaciones.notificarComprobanteEntregaAPersonaDonante(donacion.getDonante().getMediosDeContacto());
+      PayloadEntregaDTO datos = parsearPayloadEntrega(evento);
 
-      // TODO: Podés agregar acá la lógica para reducir la necesidad de la Entidad.
+      gestorNotificaciones.notificarComprobanteEntregaAEntidadBeneficiaria(
+          donacion.getEntidad().getCorreosRepresentantes(), datos);
+      gestorNotificaciones.notificarComprobanteEntregaAPersonaDonante(
+          donacion.getDonante().getMediosDeContacto(), datos);
     }
   }
 
-  private void manejarEntregaFallida(JsonNode payload) {
-    UUID idDonacion = UUID.fromString(payload.get("idDonacion").asText());
+  private void manejarEntregaFallida(EventoLogisticaDTO evento) {
+    UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
     if (donacionOpt.isPresent()) {
       Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(Estado.EN_DEPOSITO, "Falla reportada en destino");
+
+      String justificacion = evento.getJustificacion() != null ? evento.getJustificacion() : "Falla reportada en destino";
+
+      donacion.actualizarEstado(Estado.EN_DEPOSITO, justificacion);
       repositorioDonaciones.save(donacion);
 
-      gestorNotificaciones.notificarEntregaNoRecibidaAEntidadBeneficiaria(donacion.getEntidad().getCorreosRepresentantes());
-      gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(donacion.getDonante().getMediosDeContacto());
-      gestorNotificaciones.notificarEntregaNoRecibidaAdmin(donacion.getDonante().getMediosDeContacto());
+      PayloadEntregaDTO datos = parsearPayloadEntrega(evento);
+
+      gestorNotificaciones.notificarEntregaNoRecibidaAEntidadBeneficiaria(
+          donacion.getEntidad().getCorreosRepresentantes(), datos);
+      gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(
+          donacion.getDonante().getMediosDeContacto(), datos);
+
     }
   }
 
-  private void manejarReingresoDeposito(JsonNode payload) {
-    UUID idDonacion = UUID.fromString(payload.get("idDonacion").asText());
+  private void manejarReingresoDeposito(EventoLogisticaDTO evento) {
+    UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
     if (donacionOpt.isPresent()) {
       Donacion donacion = donacionOpt.get();
-      // Vuelve a estar pendiente para ser asignada en la próxima corrida del Matchmaking
       donacion.actualizarEstado(Estado.PENDIENTE_ASIGNACION, "Reingresado a depósito tras revisión de entrega fallida");
       repositorioDonaciones.save(donacion);
+    }
+  }
+
+  private PayloadEntregaDTO parsearPayloadEntrega(EventoLogisticaDTO evento) {
+    try {
+      return objectMapper.readValue(evento.getPayloadJson(), PayloadEntregaDTO.class);
+    } catch (Exception e) {
+      System.err.println("Error parseando datos de entrega del evento " + evento.getId() + ": " + e.getMessage());
+      return new PayloadEntregaDTO();
     }
   }
 }

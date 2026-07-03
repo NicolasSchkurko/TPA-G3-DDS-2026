@@ -9,7 +9,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,10 +21,14 @@ import java.util.UUID;
 public class EntregaService {
 
   private final RepositorioItemEntrega repositorioItemEntrega;
+  private final RepositorioRutas repositorioRutas;
   private final EventoLogisticaService eventoService;
 
-  public EntregaService(RepositorioItemEntrega repositorioItemEntrega, EventoLogisticaService eventoService) {
+  public EntregaService(RepositorioItemEntrega repositorioItemEntrega,
+                        RepositorioRutas repositorioRutas,
+                        EventoLogisticaService eventoService) {
     this.repositorioItemEntrega = repositorioItemEntrega;
+    this.repositorioRutas = repositorioRutas;
     this.eventoService = eventoService;
   }
 
@@ -109,7 +115,7 @@ public class EntregaService {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
         item.confirmarEntrega(request.getFotoUrl());
-        eventoService.publicarEntregaConfirmada(item);
+        eventoService.publicarEntregaConfirmada(item, obtenerRutaDelItem(idDonacion));
         break;
 
       case "NO_RECIBIDA":
@@ -117,7 +123,7 @@ public class EntregaService {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
         item.marcarNoRecibida();
-        eventoService.publicarEntregaFallida(item, request.getJustificacion());
+        eventoService.publicarEntregaFallida(item, obtenerRutaDelItem(idDonacion), request.getJustificacion());
         break;
 
       case "PENDIENTE":
@@ -130,6 +136,12 @@ public class EntregaService {
     }
 
     repositorioItemEntrega.save(item);
+  }
+
+  private Ruta obtenerRutaDelItem(UUID idDonacion) {
+    return repositorioRutas.findByIdDonacion(idDonacion)
+                           .orElseThrow(() -> new IllegalStateException(
+                               "No se encontró la ruta correspondiente a la donación " + idDonacion));
   }
 
   private Direccion convertirDireccionDTO(DireccionDTO dto) {

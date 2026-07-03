@@ -8,18 +8,20 @@ import lombok.Setter;
 
 @Getter
 @Setter
-
 public class Chofer {
     private UUID idChofer;
+    private String nombre;
     private boolean disponible;
 
-    public Chofer(UUID idChofer){
+    public Chofer(UUID idChofer, String nombre){
         this.idChofer = idChofer;
+        this.nombre = nombre;
         this.disponible = true;
     }
 
-    public Chofer(UUID idChofer, boolean disponible){
+    public Chofer(UUID idChofer, String nombre, boolean disponible){
         this.idChofer = idChofer;
+        this.nombre = nombre;
         this.disponible = disponible;
     }
 

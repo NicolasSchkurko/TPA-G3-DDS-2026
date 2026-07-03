@@ -5,7 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;

@@ -1,8 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
@@ -25,23 +24,16 @@ public class MensajesPredeterminadosDonaciones {
   public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String urlRuta) {
     return switch (tipoEvento) {
       case DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA -> mensajeDonacionEnViajeAEntidadBeneficiaria(urlRuta);
+      case DONACION_EN_VIAJE_PERSONA_DONANTE -> mensajeDonacionEnViajeAPersonaDonante(urlRuta);
       default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
     };
   }
 
-  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, String urlRuta, EntidadBeneficiaria entidadBeneficiaria) {
+  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, PayloadEntregaDTO datos) {
     return switch (tipoEvento) {
-      case DONACION_EN_VIAJE_PERSONA_DONANTE ->
-          mensajeDonacionEnViajeAPersonaDonante(urlRuta, entidadBeneficiaria.getRazonSocial());
-      default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
-    };
-  }
-
-  public Mensaje crearMensaje(TipoEventoNotificacion tipoEvento, RutaEnProceso ruta) {
-    return switch (tipoEvento) {
-      case COMPROBANTE_ENTREGA_PERSONA_DONANTE, COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA -> mensajeComprobante(ruta);
+      case COMPROBANTE_ENTREGA_PERSONA_DONANTE, COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA -> mensajeComprobante(datos);
       case ENTREGA_NO_RECIBIDA_ADMIN, ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA, ENTREGA_NO_RECIBIDA_PERSONA_DONANTE ->
-          mensajeDisculpas(ruta);
+          mensajeDisculpas(datos);
       default -> throw new IllegalArgumentException("El evento no corresponde a una donacion: " + tipoEvento);
     };
   }
@@ -80,11 +72,10 @@ public class MensajesPredeterminadosDonaciones {
     return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
   }
 
-  private Mensaje mensajeDonacionEnViajeAPersonaDonante(String urlRuta, String nombreEntidad) {
+  private Mensaje mensajeDonacionEnViajeAPersonaDonante(String urlRuta) {
     String asunto = "Nueva Donacion En Viaje";
     String cuerpo = String.format(
-        "Tu donacion/es se encuentra/n en viaje para la entidad %s. Sigue la entrega de tu donacion: %s",
-        nombreEntidad,
+        "Tu donacion se encuentra en viaje. Sigue la entrega de tu donacion: %s",
         urlRuta
     );
 
@@ -93,27 +84,27 @@ public class MensajesPredeterminadosDonaciones {
 
   // Mensajes de entrega (comprobante / disculpas)
 
-  private Mensaje mensajeComprobante(RutaEnProceso ruta) {
+  private Mensaje mensajeComprobante(PayloadEntregaDTO datos) {
     String asunto = "Donacion Entregada Exitosamente";
-    String cuerpo = "Comprobante de Entrega: " + datosDeEntrega(ruta);
+    String cuerpo = "Comprobante de Entrega: " + datosDeEntregaTexto(datos);
 
     return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
   }
 
-  private Mensaje mensajeDisculpas(RutaEnProceso ruta) {
+  private Mensaje mensajeDisculpas(PayloadEntregaDTO datos) {
     String asunto = "Entrega Fallida";
-    String cuerpo = "Lo sentimos, la entrega ha fallado. " + datosDeEntrega(ruta);
+    String cuerpo = "Lo sentimos, la entrega ha fallado. " + datosDeEntregaTexto(datos);
 
     return new Mensaje(asunto, cuerpo, TipoDeMensaje.CAMBIO_ESTADO);
   }
 
-  private String datosDeEntrega(RutaEnProceso ruta) {
+  private String datosDeEntregaTexto(PayloadEntregaDTO datos) {
     return String.format(
         "Fecha entrega: %s. Hora entrega: %s. Patente camion: %s. Conductor a cargo: %s.",
-        ruta.getFechaEntrega(),
-        ruta.getHoraEntrega(),
-        ruta.getCamionEntrega().getPatente(),
-        ruta.getCamionEntrega().getNombreChofer()
+        valorOTexto(datos.getFechaEntrega(), "sin dato"),
+        valorOTexto(datos.getHoraEntrega(), "sin dato"),
+        valorOTexto(datos.getPatenteCamion(), "sin dato"),
+        valorOTexto(datos.getNombreChofer(), "sin dato")
     );
   }
 
