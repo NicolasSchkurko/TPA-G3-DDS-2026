@@ -49,6 +49,13 @@ public class CamionController {
     return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
   }
 
+  @Operation(summary = "Registrar múltiples camiones")
+@PostMapping("/registrar")
+  public ResponseEntity<List<CamionDTO>> registrarCamiones(@RequestBody List<CamionDTO> camiones) {
+  List<CamionDTO> nuevosCamiones = camionService.createMultiple(camiones);
+  return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
+}
+
   @Operation(summary = "Actualizar un camión existente")
   @PutMapping("/{patente}")
   public ResponseEntity<?> actualizarCamion(@PathVariable String patente, @RequestBody CamionDTO request) {

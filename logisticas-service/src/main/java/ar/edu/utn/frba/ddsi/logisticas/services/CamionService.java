@@ -39,6 +39,12 @@ public class CamionService {
     return convertirADTO(nuevoCamion);
   }
 
+  public List<CamionDTO> createMultiple(List<CamionDTO> dtos) {
+  return dtos.stream()
+      .map(this::create)
+      .collect(Collectors.toList());
+  }
+
   public CamionDTO update(String patente, CamionDTO dto) {
     Camion camionExistente = repositorioCamiones.findById(patente)
                                                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
