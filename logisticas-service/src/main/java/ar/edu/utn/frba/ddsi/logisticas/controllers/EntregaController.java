@@ -34,6 +34,12 @@ public class EntregaController {
         return ResponseEntity.ok(entregaService.findAll());
     }
 
+    @Operation(summary = "Listar ítems de entrega NO_RECIBIDA pendientes de revisión")
+    @GetMapping("/no-recibidas")
+    public ResponseEntity<List<ItemEntrega>> obtenerNoRecibidas() {
+        return ResponseEntity.ok(entregaService.obtenerEntregasNoRecibidas());
+    }
+
     @Operation(summary = "Obtener detalle de un ítem de entrega por su ID de Donación")
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
@@ -73,7 +79,8 @@ public class EntregaController {
     }
 
     @Operation(summary = "Trazabilidad: Actualizar estado de una entrega (Recepción, Rechazo, Reingreso)",
-        description = "Permite a la entidad confirmar (requiere URL de foto) o rechazar (requiere justificación).")
+        description = "Permite confirmar (requiere URL de foto), rechazar (requiere justificación) " +
+            "o reingresar a depósito una entrega NO_RECIBIDA tras revisión (estado PENDIENTE).")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente. Evento emitido."),
         @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria.")

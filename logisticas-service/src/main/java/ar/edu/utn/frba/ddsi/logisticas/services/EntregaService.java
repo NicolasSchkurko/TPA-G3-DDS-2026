@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
@@ -127,6 +128,8 @@ public class EntregaService {
         break;
 
       case "PENDIENTE":
+        // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
+        // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
         item.reingresarADeposito();
         eventoService.publicarReingresoDeposito(item);
         break;
@@ -136,6 +139,15 @@ public class EntregaService {
     }
 
     repositorioItemEntrega.save(item);
+  }
+
+  /**
+   * Ítems en estado NO_RECIBIDA, pendientes de revisión (reingreso a depósito
+   * o replanificación). El control de quién puede llamar a este endpoint
+   * es responsabilidad del front/capa de autorización, no de este servicio.
+   */
+  public List<ItemEntrega> obtenerEntregasNoRecibidas() {
+    return repositorioItemEntrega.findByEstado(EstadoEntrega.NO_RECIBIDA);
   }
 
   private Ruta obtenerRutaDelItem(UUID idDonacion) {

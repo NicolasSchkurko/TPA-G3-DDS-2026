@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,6 +25,7 @@ public class LogisticaEventosConsumerService {
 
   private final RepositorioDonaciones repositorioDonaciones;
   private final GestorNotificacionesEventos gestorNotificaciones;
+  private final AdminService adminService;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
 
@@ -32,9 +34,11 @@ public class LogisticaEventosConsumerService {
   private final String LOGISTICA_URL = "http://localhost:8080/api/logistica/eventos?desdeId=";
 
   public LogisticaEventosConsumerService(RepositorioDonaciones repositorioDonaciones,
-                                         GestorNotificacionesEventos gestorNotificaciones) {
+                                         GestorNotificacionesEventos gestorNotificaciones,
+                                         AdminService adminService) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.gestorNotificaciones = gestorNotificaciones;
+    this.adminService = adminService;
     this.objectMapper = new ObjectMapper();
     this.httpClient = HttpClient.newHttpClient();
   }
@@ -158,6 +162,9 @@ public class LogisticaEventosConsumerService {
       gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(
           donacion.getDonante().getMediosDeContacto(), datos);
 
+      for (MedioDeContacto contactoAdmin : adminService.obtenerContactosAdministradores()) {
+        gestorNotificaciones.notificarEntregaNoRecibidaAdmin(contactoAdmin, datos);
+      }
     }
   }
 
