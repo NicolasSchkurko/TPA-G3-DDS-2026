@@ -42,14 +42,21 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
     }
 
     this.mapeoColumnas = new HashMap<>();
+    System.out.println("DEBUG: Inicializando conversor con " + mapeosCsv.size() + " mapeos");
+
     for (MapeoCSV mapeo : mapeosCsv) {
+      System.out.println("DEBUG: Procesando mapeo con campo: '" + mapeo.getCampo() + "'");
       try {
         CampoLogico campo = CampoLogico.valueOf(mapeo.getCampo().toUpperCase());
         this.mapeoColumnas.put(campo, mapeo.getNombresColumnas());
+        System.out.println("DEBUG: Mapeo aceptado para campo: " + campo + " con columnas: " + mapeo.getNombresColumnas());
       } catch (IllegalArgumentException e) {
+        System.out.println("DEBUG: Campo no reconocido: '" + mapeo.getCampo() + "' - Error: " + e.getMessage());
         logger.warning("Campo mapeado no reconocido en el sistema y será ignorado: " + mapeo.getCampo());
       }
     }
+    System.out.println("DEBUG: Total de mapeos aceptados: " + mapeoColumnas.size());
+    System.out.println("DEBUG: Mapeos finales: " + mapeoColumnas.keySet());
   }
 
   /**
@@ -59,7 +66,11 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    */
   @Override
   public PersonaDonante convertir(Map<String, String> fila) {
+    System.out.println("DEBUG CONVERTIR: Claves en la fila: " + fila.keySet());
+
     String tipoPersona = obtenerPrimerValor(fila, CampoLogico.TIPO_PERSONA).orElse("").trim().toUpperCase();
+    System.out.println("DEBUG CONVERTIR: tipoPersona extraído: '" + tipoPersona + "'");
+
     String tipoDoc = obtenerPrimerValor(fila, CampoLogico.TIPO_DOC).orElse("");
     String documento = obtenerPrimerValor(fila, CampoLogico.DOCUMENTO).orElse("");
     String nombreRazonSocial = obtenerValorConcatenado(fila, CampoLogico.NOMBRE_RAZON_SOCIAL);
@@ -195,6 +206,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
 
   /**
    * Obtiene el valor concatenado de todas las columnas posibles para un campo lógico dado, separando los valores por espacios.
+   * Limpia el BOM (Byte Order Mark) de las claves de la fila.
    * @param fila
    * @param claveLogica
    * @return
@@ -202,10 +214,22 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
   private String obtenerValorConcatenado(Map<String, String> fila, CampoLogico claveLogica) {
     List<String> posiblesColumnasCSV = mapeoColumnas.get(claveLogica);
     if (posiblesColumnasCSV == null) {
+      System.out.println("DEBUG obtenerValorConcatenado: No hay mapeo para " + claveLogica);
       return "";
     }
+
+    // Limpiar BOM de las claves de la fila
+    Map<String, String> filaLimpia = new HashMap<>();
+    for (Map.Entry<String, String> entry : fila.entrySet()) {
+      String llave = entry.getKey();
+      if (llave.startsWith("\uFEFF")) {
+        llave = llave.substring(1);
+      }
+      filaLimpia.put(llave, entry.getValue());
+    }
+
     return posiblesColumnasCSV.stream()
-                              .map(fila::get)
+                              .map(filaLimpia::get)
                               .filter(valor -> valor != null && !valor.isBlank())
                               .collect(Collectors.joining(" "))
                               .trim();
@@ -213,6 +237,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
 
   /**
    * Obtiene el primer valor no nulo y no vacío de las columnas posibles para un campo lógico dado.
+   * Limpia el BOM (Byte Order Mark) de las claves de la fila.
    * @param fila
    * @param claveLogica
    * @return
@@ -220,10 +245,22 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
   private Optional<String> obtenerPrimerValor(Map<String, String> fila, CampoLogico claveLogica) {
     List<String> posiblesColumnasCSV = mapeoColumnas.get(claveLogica);
     if (posiblesColumnasCSV == null) {
+      System.out.println("DEBUG obtenerPrimerValor: No hay mapeo para " + claveLogica);
       return Optional.empty();
     }
+
+    // Limpiar BOM de las claves de la fila
+    Map<String, String> filaLimpia = new HashMap<>();
+    for (Map.Entry<String, String> entry : fila.entrySet()) {
+      String llave = entry.getKey();
+      if (llave.startsWith("\uFEFF")) {
+        llave = llave.substring(1);
+      }
+      filaLimpia.put(llave, entry.getValue());
+    }
+
     return posiblesColumnasCSV.stream()
-                              .map(fila::get)
+                              .map(filaLimpia::get)
                               .filter(valor -> valor != null && !valor.isBlank())
                               .findFirst();
   }
