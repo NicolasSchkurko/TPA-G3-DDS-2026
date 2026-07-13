@@ -23,14 +23,9 @@ public class N8nClient {
 
     public void publicarInsignia(PerfilPublicacionDTO dto) throws EnvioPublicacionException {
         try {
-            Map<String, String> body = new HashMap<>();
-            body.put("usuario", dto.getNombreUsuario());
-            body.put("insignia", dto.getNombreInsignia());
-            body.put("descripcion", dto.getDescripcionInsignia());
-
             restTemplate.postForEntity(
                     n8nUrl,
-                    body,
+                    dto,
                     void.class
             );
         } catch (Exception e) {
