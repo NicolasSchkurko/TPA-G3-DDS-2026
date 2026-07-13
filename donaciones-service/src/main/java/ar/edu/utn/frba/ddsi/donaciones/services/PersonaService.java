@@ -1,11 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.mappers.RepresentanteDTOToObject;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
@@ -15,7 +13,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.W
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
@@ -44,19 +41,15 @@ public class PersonaService {
 
   // Inyección de dependencias en lugar de llamar al getInstance()
   private final RepositorioDePersonas repositorio;
-  private final NotificacionesClient notificacionClient;
-  private final GestorNotificacionesEventos gestorNotificaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
 
   public PersonaService(RepositorioDePersonas repositorio,
-                        GestorNotificacionesEventos gestorNotificaciones,
-                        NotificacionesClient notificacionClient, FabricaEstrategiasNotificacion fabricaEstrategias, IncentivosClient incentivosClient) {
+                        FabricaEstrategiasNotificacion fabricaEstrategias,
+                        IncentivosClient incentivosClient) {
     this.repositorio = repositorio;
-    this.notificacionClient = notificacionClient;
       this.fabricaEstrategias = fabricaEstrategias;
       this.incentivosClient=incentivosClient;
-    this.gestorNotificaciones = gestorNotificaciones;
   }
 
   // --- CRUD METHODS ---
@@ -93,11 +86,16 @@ public class PersonaService {
           );
 
       incentivosClient.peticionCrearPerfil(peticion);
+
+      fabricaEstrategias
+              .obtenerEstrategia(TipoEventoNotificacion.REGISTRO_PERSONA)
+              .ejecutar(nuevaPersona);
 //      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
 //              nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
 //              "Gracias por registrarse en DonaTrack",
 //              "Nuevo Registro en DonaTrack");
 //      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
+
       return mapToDto(repositorio.save(nuevaPersona));
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
@@ -114,11 +112,16 @@ public class PersonaService {
       );
 
       incentivosClient.peticionCrearPerfil(peticion);
-      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
-              nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
-              "Gracias por registrarse en DonaTrack",
-              "Nuevo Registro en DonaTrack");
-      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
+
+      fabricaEstrategias
+              .obtenerEstrategia(TipoEventoNotificacion.REGISTRO_PERSONA)
+              .ejecutar(nuevaPersona);
+//      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo(),
+//              nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
+//              "Gracias por registrarse en DonaTrack",
+//              "Nuevo Registro en DonaTrack");
+//      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
+
       return mapToDto(repositorio.save(nuevaPersona));
     } else {
       throw new IllegalArgumentException("Tipo de persona inválido");
