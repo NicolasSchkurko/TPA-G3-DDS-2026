@@ -5,6 +5,9 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaAdminDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
@@ -16,7 +19,10 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadRecurrente;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -30,6 +36,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,18 +46,19 @@ public class EntidadBeneficiariaService {
     private final RepositorioEntidadesBeneficiarias repositorio;
     private final RepositorioRutasActivas repositorioRutasActivas;
     private final RepositorioDonaciones repositorioDonaciones;
-    private final GestorNotificacionesEventos gestorNotificaciones;
+    private final FabricaEstrategiasNotificacion fabricaEstrategias;
     private final RepositorioAdministradores repositorioAdministradores;
 
 
     public EntidadBeneficiariaService(RepositorioEntidadesBeneficiarias repositorio,
                                       RepositorioRutasActivas repositorioRutasActivas,
                                       RepositorioDonaciones repositorioDonaciones,
-                                      GestorNotificacionesEventos gestorNotificaciones, RepositorioAdministradores repositorioAdministradores) {
+                                      FabricaEstrategiasNotificacion fabricaEstrategias,
+                                      RepositorioAdministradores repositorioAdministradores) {
         this.repositorio = repositorio;
         this.repositorioRutasActivas = repositorioRutasActivas;
         this.repositorioDonaciones = repositorioDonaciones;
-        this.gestorNotificaciones = gestorNotificaciones;
+        this.fabricaEstrategias = fabricaEstrategias;
         this.repositorioAdministradores = repositorioAdministradores;
 
     }
@@ -229,52 +237,76 @@ public class EntidadBeneficiariaService {
             //necesidades. Cuando cubra sus necesidades, se elimina de su lista
             //y se elimina la donacion del repo de donaciones
 
+            PayloadEntregaDTO payload = new PayloadEntregaDTO(dto.getFechaEntrega(), dto.getHoraEntrega(), dto.)
 
-            gestorNotificaciones.notificarComprobanteEntregaAEntidadBeneficiaria(
-                    ent.getCorreosRepresentantes(),
-                    ruta
-            );
+            fabricaEstrategias
+                    .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA)
+                    .ejecutar(new NotificacionEntregaDTO(
+                            ruta,
+                            ent.getCorreosRepresentantes()
+                    ));
 
-            for(UUID idDonacion : idsDonaciones){
-                repositorioDonaciones.findById(idDonacion)
-                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
-                        .filter(Objects::nonNull)
-                        .ifPresent(contacto ->
-                                gestorNotificaciones.notificarComprobanteEntregaAPersonaDonante(
-                                        contacto,
-                                        ruta
-                                ));
-            }
+            EstrategiaNotificacion estrategiaDonante =
+                    fabricaEstrategias.obtenerEstrategia(
+                            TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE);
+
+            idsDonaciones.stream()
+                    .map(repositorioDonaciones::findById)
+                    .flatMap(Optional::stream)
+                    .map(Donacion::getDonante)
+                    .map(PersonaDonante::getMediosDeContacto)
+                    .filter(Objects::nonNull)
+                    .forEach(contacto ->
+                            estrategiaDonante.ejecutar(
+                                    new NotificacionEntregaDTO(
+                                            ruta,
+                                            contacto
+                                    )));
+
             repositorioRutasActivas.deleteByIdEntrega(idEntrega);
             return;
         }
 
         if (estadoEntrega == EstadoEntrega.NO_RECIBIDA) {
-            gestorNotificaciones.notificarEntregaNoRecibidaAEntidadBeneficiaria(
-                    ent.getCorreosRepresentantes(),
-                    ruta
-            );
+            fabricaEstrategias
+                    .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA)
+                    .ejecutar(new NotificacionEntregaDTO(
+                            ruta,
+                            ent.getCorreosRepresentantes()
+                    ));
 
-            List<Administrador> administradores =repositorioAdministradores.findAll();
-            for(Administrador admin : administradores){
-                gestorNotificaciones.notificarEntregaNoRecibidaAdmin(
-                        admin.getMedioDeContacto(),
-                        ruta
-                );
-            }
+            EstrategiaNotificacion estrategiaAdmin =
+                    fabricaEstrategias.obtenerEstrategia(
+                            TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN);
 
-            for(UUID idDonacion : idsDonaciones){
-                repositorioDonaciones.findById(idDonacion)
-                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
-                        .filter(Objects::nonNull)
-                        .ifPresent(contacto ->
-                                gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(
-                                        contacto,
-                                        ruta
-                                ));
-            }
+            repositorioAdministradores.findAll()
+                    .forEach(admin ->
+                            estrategiaAdmin.ejecutar(
+                                    new NotificacionEntregaAdminDTO(
+                                            ruta,
+                                            admin.getMedioDeContacto()
+                                    )));
+
+            EstrategiaNotificacion estrategiaDonante =
+                    fabricaEstrategias.obtenerEstrategia(
+                            TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_PERSONA_DONANTE);
+
+            idsDonaciones.stream()
+                    .map(repositorioDonaciones::findById)
+                    .flatMap(Optional::stream)
+                    .map(Donacion::getDonante)
+                    .map(PersonaDonante::getMediosDeContacto)
+                    .filter(Objects::nonNull)
+                    .forEach(contacto ->
+                            estrategiaDonante.ejecutar(
+                                    new NotificacionEntregaDTO(
+                                            ruta,
+                                            contacto
+                                    )));
+
             repositorioRutasActivas.deleteByIdEntrega(idEntrega);
             repositorioRutasActivas.save(ruta);
+
         }
     }
 

@@ -3,10 +3,16 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaAdminDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +30,7 @@ import java.util.UUID;
 public class LogisticaEventosConsumerService {
 
   private final RepositorioDonaciones repositorioDonaciones;
-  private final GestorNotificacionesEventos gestorNotificaciones;
+  private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final AdminService adminService;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
@@ -34,11 +40,11 @@ public class LogisticaEventosConsumerService {
   private final String LOGISTICA_URL = "http://localhost:8080/api/logistica/eventos?desdeId=";
 
   public LogisticaEventosConsumerService(RepositorioDonaciones repositorioDonaciones,
-                                         GestorNotificacionesEventos gestorNotificaciones,
+                                         FabricaEstrategiasNotificacion fabricaEstrategias,
                                          AdminService adminService) {
     this.repositorioDonaciones = repositorioDonaciones;
-    this.gestorNotificaciones = gestorNotificaciones;
-    this.adminService = adminService;
+      this.fabricaEstrategias = fabricaEstrategias;
+      this.adminService = adminService;
     this.objectMapper = new ObjectMapper();
     this.httpClient = HttpClient.newHttpClient();
   }
@@ -101,71 +107,135 @@ public class LogisticaEventosConsumerService {
         return;
       }
 
-      PayloadInicioRutaDTO payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+      PayloadInicioRutaDTO payload =
+              objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
 
-      if (payload.getItems() == null) return;
+      if (payload.getItems() == null) {
+        return;
+      }
+
+      EstrategiaNotificacion estrategiaEntidad =
+              fabricaEstrategias.obtenerEstrategia(
+                      TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA);
+
+      EstrategiaNotificacion estrategiaDonante =
+              fabricaEstrategias.obtenerEstrategia(
+                      TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE);
 
       for (String idTexto : payload.getItems()) {
+
         UUID idDonacion = UUID.fromString(idTexto);
-        Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
-        if (donacionOpt.isPresent()) {
-          Donacion donacion = donacionOpt.get();
-          donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
-          repositorioDonaciones.save(donacion);
+        repositorioDonaciones.findById(idDonacion)
+                .ifPresent(donacion -> {
 
-          gestorNotificaciones.notificarDonacionEnViajeAEntidadBeneficiaria(
-              payload.getUrlRuta(), donacion.getEntidad().getCorreosRepresentantes());
-          gestorNotificaciones.notificarDonacionEnViajeAPersonaDonante(
-              payload.getUrlRuta(), donacion.getDonante().getMediosDeContacto());
-        }
+                  donacion.actualizarEstado(
+                          Estado.EN_TRASLADO,
+                          "Ruta iniciada por Logística");
+
+                  repositorioDonaciones.save(donacion);
+
+                  estrategiaEntidad.ejecutar(
+                          new NotificacionViajeDTO(
+                                  payload.getUrlRuta(),
+                                  donacion.getEntidad().getCorreosRepresentantes()
+                          ));
+
+                  estrategiaDonante.ejecutar(
+                          new NotificacionViajeDTO(
+                                  payload.getUrlRuta(),
+                                  donacion.getDonante().getMediosDeContacto()
+                          ));
+                });
       }
+
     } catch (Exception e) {
       System.err.println("Error parseando items de la ruta: " + e.getMessage());
     }
   }
 
   private void manejarEntregaConfirmada(EventoLogisticaDTO evento) {
+
     UUID idDonacion = UUID.fromString(evento.getReferenciaId());
-    Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
-    if (donacionOpt.isPresent()) {
-      Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
-      repositorioDonaciones.save(donacion);
+    repositorioDonaciones.findById(idDonacion)
+            .ifPresent(donacion -> {
 
-      PayloadEntregaDTO datos = parsearPayloadEntrega(evento);
+              donacion.actualizarEstado(
+                      Estado.ENTREGADO,
+                      "Entrega confirmada por la entidad");
 
-      gestorNotificaciones.notificarComprobanteEntregaAEntidadBeneficiaria(
-          donacion.getEntidad().getCorreosRepresentantes(), datos);
-      gestorNotificaciones.notificarComprobanteEntregaAPersonaDonante(
-          donacion.getDonante().getMediosDeContacto(), datos);
-    }
+              repositorioDonaciones.save(donacion);
+
+              PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
+
+              fabricaEstrategias
+                      .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA)
+                      .ejecutar(
+                              new NotificacionEntregaDTO(
+                                      payload,
+                                      donacion.getEntidad().getCorreosRepresentantes()
+                              ));
+
+              fabricaEstrategias
+                      .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE)
+                      .ejecutar(
+                              new NotificacionEntregaDTO(
+                                      payload,
+                                      donacion.getDonante().getMediosDeContacto()
+                              ));
+            });
   }
 
   private void manejarEntregaFallida(EventoLogisticaDTO evento) {
+
     UUID idDonacion = UUID.fromString(evento.getReferenciaId());
-    Optional<Donacion> donacionOpt = repositorioDonaciones.findById(idDonacion);
 
-    if (donacionOpt.isPresent()) {
-      Donacion donacion = donacionOpt.get();
+    repositorioDonaciones.findById(idDonacion)
+            .ifPresent(donacion -> {
 
-      String justificacion = evento.getJustificacion() != null ? evento.getJustificacion() : "Falla reportada en destino";
+              String justificacion =
+                      evento.getJustificacion() != null
+                              ? evento.getJustificacion()
+                              : "Falla reportada en destino";
 
-      donacion.actualizarEstado(Estado.EN_DEPOSITO, justificacion);
-      repositorioDonaciones.save(donacion);
+              donacion.actualizarEstado(
+                      Estado.EN_DEPOSITO,
+                      justificacion);
 
-      PayloadEntregaDTO datos = parsearPayloadEntrega(evento);
+              repositorioDonaciones.save(donacion);
 
-      gestorNotificaciones.notificarEntregaNoRecibidaAEntidadBeneficiaria(
-          donacion.getEntidad().getCorreosRepresentantes(), datos);
-      gestorNotificaciones.notificarEntregaNoRecibidaAPersonaDonante(
-          donacion.getDonante().getMediosDeContacto(), datos);
+              PayloadEntregaDTO payload =
+                      parsearPayloadEntrega(evento);
 
-      for (MedioDeContacto contactoAdmin : adminService.obtenerContactosAdministradores()) {
-        gestorNotificaciones.notificarEntregaNoRecibidaAdmin(contactoAdmin, datos);
-      }
-    }
+              fabricaEstrategias
+                      .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA)
+                      .ejecutar(
+                              new NotificacionEntregaDTO(
+                                      payload,
+                                      donacion.getEntidad().getCorreosRepresentantes()
+                              ));
+
+              fabricaEstrategias
+                      .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_PERSONA_DONANTE)
+                      .ejecutar(
+                              new NotificacionEntregaDTO(
+                                      payload,
+                                      donacion.getDonante().getMediosDeContacto()
+                              ));
+
+              EstrategiaNotificacion estrategiaAdmin =
+                      fabricaEstrategias.obtenerEstrategia(
+                              TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN);
+
+              adminService.obtenerContactosAdministradores()
+                      .forEach(contacto ->
+                              estrategiaAdmin.ejecutar(
+                                      new NotificacionEntregaAdminDTO(
+                                              payload,
+                                              contacto
+                                      )));
+            });
   }
 
   private void manejarReingresoDeposito(EventoLogisticaDTO evento) {

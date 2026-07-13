@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.InfoEntregasDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.InfoRutasDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.RutaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -15,8 +16,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.Camion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.RutaEnProceso;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Entregas.DonacionResumen;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -35,18 +37,15 @@ public class EntregasService {
 
     private final RepositorioDonaciones repositorio;
     private final RepositorioEntidadesBeneficiarias repositorioEntidades;
-    private final GestorNotificacionesEventos gestorNotificaciones;
     private final LogisticaClient logisticaClient;
     private final RepositorioRutasActivas repositorioRutas;
 
     public EntregasService(RepositorioDonaciones repositorio,
                            RepositorioEntidadesBeneficiarias repositorioEntidades,
-                           GestorNotificacionesEventos gestorNotificaciones,
                            LogisticaClient logistica,
                            RepositorioRutasActivas repoRutas) {
         this.repositorio = repositorio;
         this.repositorioEntidades = repositorioEntidades;
-        this.gestorNotificaciones = gestorNotificaciones;
         this.logisticaClient = logistica;
         this.repositorioRutas = repoRutas;
     }
@@ -95,8 +94,18 @@ public class EntregasService {
                 .filter(ruta -> ruta.getEstadoEntrega() == EstadoEntrega.EN_VIAJE)
                 .toList();
 
-        for(RutaEnProceso ruta : rutasEnViaje){
+        EstrategiaNotificacion estrategiaEntidad =
+                fabricaEstrategias.obtener(
+                        TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA);
+
+        EstrategiaNotificacion estrategiaDonante =
+                fabricaEstrategias.obtener(
+                        TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE);
+
+        for (RutaEnProceso ruta : rutasEnViaje) {
+
             UUID idEntidad = obtenerIdEntidad(ruta);
+
             if (idEntidad == null) {
                 continue;
             }
@@ -104,16 +113,25 @@ public class EntregasService {
             repositorioEntidades.findById(idEntidad)
                     .map(EntidadBeneficiaria::getCorreosRepresentantes)
                     .filter(Objects::nonNull)
-                    .ifPresent(contacto -> gestorNotificaciones.notificarDonacionEnViajeAEntidadBeneficiaria(ruta.getUrlSeguimiento(),
-                            contacto));
+                    .ifPresent(contacto ->
+                            ejecutarNotificacionViaje(
+                                    estrategiaEntidad,
+                                    ruta.getUrlSeguimiento(),
+                                    contacto
+                            ));
 
-            List<UUID> idsDonaciones = ruta.getPaquete().getIdsDonaciones();
-            for(UUID idDonacion : idsDonaciones){
+            for (UUID idDonacion : ruta.getPaquete().getIdsDonaciones()) {
+
                 repositorio.findById(idDonacion)
-                        .map(donacion -> donacion.getDonante().getMediosDeContacto())
+                        .map(Donacion::getDonante)
+                        .map(PersonaDonante::getMediosDeContacto)
                         .filter(Objects::nonNull)
-                        .ifPresent(contacto -> gestorNotificaciones.notificarDonacionEnViajeAPersonaDonante(ruta.getUrlSeguimiento(),
-                                contacto));
+                        .ifPresent(contacto ->
+                                ejecutarNotificacionViaje(
+                                        estrategiaDonante,
+                                        ruta.getUrlSeguimiento(),
+                                        contacto
+                                ));
             }
         }
     }
@@ -268,5 +286,18 @@ public class EntregasService {
         camion.setPatente(camionDTO.getPatente());
         camion.setInicioRuta(camionDTO.getInicioRuta());
         return camion;
+    }
+
+    private void ejecutarNotificacionViaje(
+            EstrategiaNotificacion estrategia,
+            String urlSeguimiento,
+            MediosDeContacto destinatarios) {
+
+        estrategia.ejecutar(
+                new NotificacionViajeDTO(
+                        urlSeguimiento,
+                        destinatarios
+                )
+        );
     }
 }

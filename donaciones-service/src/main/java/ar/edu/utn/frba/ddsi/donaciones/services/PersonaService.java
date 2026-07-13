@@ -14,7 +14,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.T
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -44,14 +46,16 @@ public class PersonaService {
   private final RepositorioDePersonas repositorio;
   private final NotificacionesClient notificacionClient;
   private final GestorNotificacionesEventos gestorNotificaciones;
+  private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
 
   public PersonaService(RepositorioDePersonas repositorio,
                         GestorNotificacionesEventos gestorNotificaciones,
-  NotificacionesClient notificacionClient, IncentivosClient incentivosClient) {
+                        NotificacionesClient notificacionClient, FabricaEstrategiasNotificacion fabricaEstrategias, IncentivosClient incentivosClient) {
     this.repositorio = repositorio;
     this.notificacionClient = notificacionClient;
-    this.incentivosClient=incentivosClient;
+      this.fabricaEstrategias = fabricaEstrategias;
+      this.incentivosClient=incentivosClient;
     this.gestorNotificaciones = gestorNotificaciones;
   }
 
@@ -240,8 +244,16 @@ public class PersonaService {
   private void revisarActividadPersona(PersonaDonante persona) {
     // Validamos que tenga formularios antes de chequear inactividad
     if (persona.getFormularios() != null && !persona.getFormularios().isEmpty()) {
-      if (persona.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
-        gestorNotificaciones.notificarInactividadAPersonaDonante(persona);
+
+      if (persona.getFormularios()
+              .getLast()
+              .getFechaRealizacion()
+              .plusDays(20)
+              .isBefore(LocalDate.now())) {
+
+        fabricaEstrategias
+                .obtenerEstrategia(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE)
+                .ejecutar(persona);
       }
     }
   }

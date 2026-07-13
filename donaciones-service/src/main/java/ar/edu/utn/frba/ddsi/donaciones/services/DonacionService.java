@@ -16,14 +16,12 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +39,7 @@ public class DonacionService {
   private final RepositorioFormularios repositorioFormularios;
   private final RepositorioEntidadesBeneficiarias repositorioEntidades;
   private final IncentivosClient incentivosClient;
-  private final GestorNotificacionesEventos gestorNotificaciones;
+  private final FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final MatchmakingMapper mapperMatchmaking;
   private final DonacionMapper mapperDonacion;
@@ -54,10 +52,11 @@ public class DonacionService {
                          RepositorioFormularios repositorioFormularios,
                          IncentivosClient incentivosClient,
                          RepositorioEntidadesBeneficiarias repositorioEntidades,
-                         GestorNotificacionesEventos gestorNotificaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
+                         FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion,
+                         RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          MatchmakingMapper mapperMatchmaking,
                          DonacionMapper mapperDonacion,
-                        RepositorioDePersonas repositorioDePersonas
+                         RepositorioDePersonas repositorioDePersonas
 //                         AsignadorDonaciones asignador,
 //                         SegmentadorDonaciones segmentador
                           ) {
@@ -65,7 +64,7 @@ public class DonacionService {
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
     this.repositorioEntidades = repositorioEntidades;
-    this.gestorNotificaciones = gestorNotificaciones;
+    this.fabricaEstrategiasNotificacion = fabricaEstrategiasNotificacion;
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.mapperMatchmaking= mapperMatchmaking;
     this.mapperDonacion =mapperDonacion;
@@ -199,7 +198,9 @@ public class DonacionService {
         dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
         dto.setEstado(nuevoEstado);
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
-        gestorNotificaciones.notificarDonacionAsignadaAEntidadBeneficiaria(donacion);
+
+        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA);
+        estrategia.ejecutar(donacion);
       }
 
       return donacion;
