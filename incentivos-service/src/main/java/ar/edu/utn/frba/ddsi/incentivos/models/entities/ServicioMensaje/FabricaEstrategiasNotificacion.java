@@ -1,6 +1,7 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje.EstrategiaNotificacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

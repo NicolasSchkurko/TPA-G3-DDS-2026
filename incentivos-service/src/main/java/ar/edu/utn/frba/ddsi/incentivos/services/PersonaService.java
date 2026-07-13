@@ -5,13 +5,16 @@ import ar.edu.utn.frba.ddsi.incentivos.clients.N8nClient;
 import ar.edu.utn.frba.ddsi.incentivos.clients.NotificacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.NotificacionCambioCategoriaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.NotificacionMisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias.TipoCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.*;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +27,7 @@ public class PersonaService {
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioNotificacionesPendientes pendientes; //en un new service decido que hacer con estas excepciones
     private final RepositorioPublicacionesPendientes publicacionesPendientes; //en un new service decido que hacer con estas excepciones
-    private final GestorNotificacionesEventos gestorNotificaciones;
+    private final FabricaEstrategiasNotificacion fabricaEstrategias;
     private final DonacionClient donacionClient;
     private final N8nClient n8nClient;
 
@@ -37,8 +40,7 @@ public class PersonaService {
                           RepositorioCategorias repositorioCategorias,
                           RepositorioNotificacionesPendientes pendientes,
                           RepositorioPublicacionesPendientes publicacionesPendientes,
-                          GestorNotificacionesEventos gestorNotificaciones) {
-        this.gestorNotificaciones = gestorNotificaciones;
+                          FabricaEstrategiasNotificacion fabricaEstrategias) {
         this.donacionClient = donacionClient;
         this.n8nClient = n8nClient;
         this.repositorioDonaciones = repositorio;
@@ -46,6 +48,7 @@ public class PersonaService {
         this.repositorioCategorias = repositorioCategorias;
         this.pendientes = pendientes;
         this.publicacionesPendientes = publicacionesPendientes;
+        this.fabricaEstrategias = fabricaEstrategias;
     }
 
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
@@ -136,19 +139,16 @@ public class PersonaService {
             //enviar notificacion
             MedioContactoDTO contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
 
-            PerfilNotificacionDTO notificacion = new PerfilNotificacionDTO(
-                    contacto.getMedioDeContacto(),
-                    contacto.getDireccionContacto(),
-                    "Felicitaciones "
-                            +perfil.getNombreUsuario()
-                            +", has ascendido de "
-                            +perfilAnterior.getCategoriaActual().name()
-                            + " a la nueva categoria "
-                            +perfil.getCategoriaActual().name(),
-                    "Ascenso Categoria"
-                    );
             try {
-                gestorNotificaciones.notificarCambioCategoriaAPerfil(perfil, perfilAnterior, contacto);
+                fabricaEstrategias
+                        .obtenerEstrategia(TipoEventoNotificacion.CAMBIO_CATEGORIA_PERSONA_DONANTE)
+                        .ejecutar(
+                                new NotificacionCambioCategoriaDTO(
+                                        perfil,
+                                        perfilAnterior,
+                                        contacto
+                                )
+                        );
             }
             catch (EnvioNotificacionException e) {
                 pendientes.guardar(e.getMensaje());
@@ -171,7 +171,14 @@ public class PersonaService {
             }
 
             try {
-                gestorNotificaciones.notificarMisionCumplidaAPerfil(perfil, contacto);
+                fabricaEstrategias
+                        .obtenerEstrategia(TipoEventoNotificacion.MISION_CUMPLIDA_PERSONA_DONANTE)
+                        .ejecutar(
+                                new NotificacionMisionDTO(
+                                        perfil,
+                                        contacto
+                                )
+                        );
             }
             catch (EnvioNotificacionException e) {
                 pendientes.guardar(e.getMensaje());

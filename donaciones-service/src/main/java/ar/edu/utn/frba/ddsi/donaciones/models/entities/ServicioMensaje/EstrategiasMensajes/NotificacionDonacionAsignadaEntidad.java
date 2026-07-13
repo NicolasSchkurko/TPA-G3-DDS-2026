@@ -38,7 +38,7 @@ public class NotificacionDonacionAsignadaEntidad extends EstrategiaMensaje {
                         ),
                         donacion.sumaCantidadBienes(),
                         donacion.getFechaEntrega() != null
-                                ? donacion.getFechaEntrega()
+                                ? donacion.getFechaEntrega().toString()
                                 : "sin fecha definida"
                 ),
                 TipoDeMensaje.CAMBIO_ESTADO

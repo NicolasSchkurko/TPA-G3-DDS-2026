@@ -1,7 +1,6 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 
 /**
  * Uso de patron Strategy para el llamado al servicio de notificaciones

@@ -1,7 +1,7 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje.EstrategiaMensaje.java;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.ServicioNotificaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioMensaje.EstrategiaNotificacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones.ServicioNotificaciones;
 
 /**
  * Una estrategia de mensaje base en caso de que se tenga que repetir logica
