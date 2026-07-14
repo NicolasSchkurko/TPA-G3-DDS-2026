@@ -1,9 +1,10 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categorias;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -11,15 +12,18 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Categoria {
-    private TipoCategoria nombre;
-    private TipoCategoria siguienteCategoria;
+    private UUID idCategoria; // id interno
+    private String nombre;
+    private Integer posicionSecuencia;
     private List<Mision> misiones;
 
-    public Categoria(TipoCategoria nombre, TipoCategoria siguienteCategoria) {
+    public Categoria(String nombre,
+                     Integer posicionSecuencia,
+                     List<Mision> misiones) {
+        this.idCategoria = UUID.randomUUID();
         this.nombre = nombre;
-        this.siguienteCategoria = siguienteCategoria;
-        this.misiones = new ArrayList<>();
-
+        this.posicionSecuencia = posicionSecuencia;
+        this.misiones = misiones;
     }
 
     public void agregarMision(Mision mision) {
@@ -46,4 +50,5 @@ public class Categoria {
         if (index < 0 || index + 1 >= misiones.size()) return null;
         return this.misiones.get(index + 1);
     }
+
 }
