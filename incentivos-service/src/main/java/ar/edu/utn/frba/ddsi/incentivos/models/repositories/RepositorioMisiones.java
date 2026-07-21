@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.TipoMision;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;

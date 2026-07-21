@@ -2,10 +2,11 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Regla;
 
 import java.util.List;
 
-public class ReglaEstado implements Regla{
+public class ReglaEstado implements Regla {
     @Override
     public void aplicar(ImpactoDonacion donacion, Mision mision) {
         if("ENTREGADA".equalsIgnoreCase(donacion.getEstado())){

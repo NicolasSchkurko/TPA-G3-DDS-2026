@@ -5,11 +5,9 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.SecuenciaCategoriasDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,26 +16,16 @@ import java.util.UUID;
 public class GestorCategoria {
     //gestiona la secuencia de categorias existentes en el repositorio
     private final RepositorioCategorias repositorio;
-    private final RepositorioMisiones repositorioMisiones;
+    private final GestorMision gestorMisiones;
 
     public GestorCategoria(RepositorioCategorias repositorio,
-                           RepositorioMisiones repositorioMisiones) {
+                           GestorMision gestorMisiones) {
         this.repositorio = repositorio;
-        this.repositorioMisiones = repositorioMisiones;
+        this.gestorMisiones = gestorMisiones;
     }
 
     public SecuenciaCategoriasDTO crearCategoria(CategoriaDTO nuevaCategoria) {
-        List<Mision> misiones = new ArrayList<>();
-        List<String> misionesNuevaCategoria = nuevaCategoria.getMisiones();
-
-        for(String mision : misionesNuevaCategoria){
-            List<Mision> lstMisiones = repositorioMisiones.obtenerTodas();
-            for(Mision m : lstMisiones){
-                if(m.getNombreMision().equals(mision)){
-                    misiones.add(m);
-                }
-            }
-        }
+        List<Mision> misiones = gestorMisiones.conseguirMisiones(nuevaCategoria.getMisiones());
 
         Categoria nueva = new Categoria(nuevaCategoria.getNombre(),
                 nuevaCategoria.getPosicionSecuencia(),

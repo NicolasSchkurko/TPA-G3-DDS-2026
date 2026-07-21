@@ -34,9 +34,7 @@ public class Perfil {
     }
 
     public void verificarProgresoMision(){
-        if(misionActual.getConstante()){
-            misionActual.evaluarConstancia();
-        }
+        misionActual.evaluarConstancia();
     }
 
     public void progresarMision(ImpactoDonacion donacion){
