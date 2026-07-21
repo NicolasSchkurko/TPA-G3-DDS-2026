@@ -1,14 +1,14 @@
 package ar.edu.utn.frba.ddsi.incentivos.scheduler;
 
-import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 public class MisionesScheduler {
-    private final PerfilService serv;
+    private final GestorPerfiles serv;
 
-    public MisionesScheduler(PerfilService serv) {
+    public MisionesScheduler(GestorPerfiles serv) {
         this.serv = serv;
     }
 

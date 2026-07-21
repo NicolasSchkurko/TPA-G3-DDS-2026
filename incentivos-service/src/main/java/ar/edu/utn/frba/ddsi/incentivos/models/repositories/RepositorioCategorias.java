@@ -1,12 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MisionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.TipoMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.TipoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -37,7 +36,7 @@ public class RepositorioCategorias {
                 .orElse(null);
     }
 
-    //TODO poder crear/modificar categorias
+    //TODO poder modificar categorias
 
     // Método genérico para ordenar cualquier lista por el atributo que le indiquemos
     public <U extends Comparable<? super U>> List<String> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {

@@ -1,6 +1,6 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import org.springframework.stereotype.Component;
 
 @Component

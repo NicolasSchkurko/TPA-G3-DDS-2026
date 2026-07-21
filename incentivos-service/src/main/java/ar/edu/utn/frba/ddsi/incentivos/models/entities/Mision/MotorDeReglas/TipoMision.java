@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas;
 
 public enum TipoMision {
     RACHA,
