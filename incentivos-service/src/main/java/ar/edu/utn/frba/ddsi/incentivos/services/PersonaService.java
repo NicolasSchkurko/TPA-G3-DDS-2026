@@ -91,7 +91,7 @@ public class PersonaService {
 
         Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
         if (perfil == null) {
-            throw new PerfilInexistenteException();
+            throw new InexistenteException();
         }
 
         ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);

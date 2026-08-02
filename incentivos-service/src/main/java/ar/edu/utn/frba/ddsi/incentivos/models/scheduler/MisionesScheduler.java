@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.scheduler;
+package ar.edu.utn.frba.ddsi.incentivos.models.scheduler;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 import org.springframework.scheduling.annotation.Scheduled;

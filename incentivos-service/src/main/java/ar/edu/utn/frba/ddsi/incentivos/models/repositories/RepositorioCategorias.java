@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.MisionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorDeReglas.TipoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import org.springframework.stereotype.Repository;
 
@@ -24,7 +22,7 @@ public class RepositorioCategorias {
         this.categorias.add(new Categoria("Colaborador", 1, new ArrayList<>() ));
         this.categorias.add(new Categoria("Sostenedor", 2, new ArrayList<>() ));
         this.categorias.add(new Categoria("Transformador", 3, new ArrayList<>() ));
-        this.categorias.getFirst().agregarMision(MisionFactory.crearMision(TipoMision.COMPLETITUD));
+        // this.categorias.getFirst().agregarMision(MisionFactory.crearMision(TipoMision.COMPLETITUD));
     }
 
     public Categoria buscarPorId(UUID id) {
@@ -35,8 +33,6 @@ public class RepositorioCategorias {
                 .findFirst()
                 .orElse(null);
     }
-
-    //TODO poder modificar categorias
 
     // Método genérico para ordenar cualquier lista por el atributo que le indiquemos
     public <U extends Comparable<? super U>> List<String> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {
@@ -63,5 +59,24 @@ public class RepositorioCategorias {
 
     public Categoria obtenerSiguiente(int nivel) {
         return categorias.get(nivel + 1);
+    }
+
+    //para modificacion de categorias
+    public Categoria actualizar(Categoria categoriaModificada) {
+        if (categoriaModificada == null) {
+            return null;
+        }
+
+        Categoria existente = this.buscarPorId(categoriaModificada.getIdCategoria());
+
+        if (existente != null) {
+            int index = categorias.indexOf(existente);
+            if (index >= 0) {
+                categorias.set(index, existente);
+            }
+            return existente;
+        }
+
+        return null;
     }
 }
