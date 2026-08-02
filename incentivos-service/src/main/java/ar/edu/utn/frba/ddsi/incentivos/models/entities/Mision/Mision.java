@@ -60,7 +60,13 @@ public class Mision {
         return reglaDeProgreso.estaCompleta(progreso);
     }
 
-    public void evaluarDonacion(ImpactoDonacion donacion){
-        reglaDeProgreso.aplicar(donacion);
+    public void evaluarProgreso(ImpactoDonacion donacion){
+        //va a ser 1 o 0 el resultado
+        Boolean resultado = reglaDeProgreso.aplicar(donacion, donacionesExitosas);
+
+        if(resultado){
+            donacionesExitosas.add(donacion);
+            this.setProgreso(progreso+1);
+        }
     }
 }

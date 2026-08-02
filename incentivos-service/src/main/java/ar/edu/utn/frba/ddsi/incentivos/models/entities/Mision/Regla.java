@@ -26,14 +26,13 @@ public class Regla {
         this.operacion = operacion;
     }
 
-    public Integer conseguirProgreso(List<ImpactoDonacion> donaciones) {
-        return operacion.calcularProgreso(donaciones, atributo);
-    }
-
-    public boolean estaCompleta(Integer progreso) {
+    public Boolean estaCompleta(Integer progreso) {
         return operacion.estaCompleta(progreso);
     }
 
-    void aplicar(ImpactoDonacion donacion, Mision mision);
-
+    public Boolean aplicar(ImpactoDonacion donacion,
+                           List<ImpactoDonacion> donaciones){
+        Object valorAtributo = atributo.apply(donacion);
+        return
+    }
 }
