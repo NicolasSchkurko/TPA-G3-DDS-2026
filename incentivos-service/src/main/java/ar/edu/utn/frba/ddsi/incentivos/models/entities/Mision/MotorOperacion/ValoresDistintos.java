@@ -1,12 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 @Getter
 @Setter
@@ -23,6 +21,8 @@ public class ValoresDistintos extends Operacion{
     public Boolean calcularProgreso(
             Object valorAtributo
     ){
-        return !valoresDistintos.contains(valorAtributo);
+        if (valoresDistintos.contains(valorAtributo)) return false;
+        valoresDistintos.add(valorAtributo);
+        return true;
     }
 }

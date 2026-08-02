@@ -21,7 +21,6 @@ public class Mision {
 
     public Mision(String nombre,
                   String nombreInsignia,
-                  ReglaConstancia constancia,
                   Regla regla) {
         this.idMision = UUID.randomUUID();
         this.donacionesExitosas = new ArrayList<>();
