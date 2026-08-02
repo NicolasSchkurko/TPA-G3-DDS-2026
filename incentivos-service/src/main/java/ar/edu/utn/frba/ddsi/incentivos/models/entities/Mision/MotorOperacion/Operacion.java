@@ -17,7 +17,6 @@ public abstract class Operacion {
     }
 
     public abstract Boolean calcularProgreso(
-            List<ImpactoDonacion> donaciones,
-            Function<ImpactoDonacion, ?> atributo
+            Object valorAtributo
     );
 }

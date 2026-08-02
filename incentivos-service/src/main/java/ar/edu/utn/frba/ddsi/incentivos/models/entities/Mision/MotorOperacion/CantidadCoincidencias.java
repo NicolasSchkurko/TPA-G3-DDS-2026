@@ -10,13 +10,19 @@ import java.util.function.Function;
 @Getter
 @Setter
 public class CantidadCoincidencias extends Operacion{
+    //5 donaciones "ENTREGADAS"
     private Object valorEsperado;
+
+    public CantidadCoincidencias(Integer progresoObjetivo,
+                                 Object valorEsperado) {
+        super(progresoObjetivo);
+        this.valorEsperado = valorEsperado;
+    }
 
     @Override
     public Boolean calcularProgreso(
-            List<ImpactoDonacion> donaciones,
-            Function<ImpactoDonacion, ?> atributo
+            Object valorAtributo
     ){
-
+        return valorAtributo.equals(valorEsperado);
     }
 }
