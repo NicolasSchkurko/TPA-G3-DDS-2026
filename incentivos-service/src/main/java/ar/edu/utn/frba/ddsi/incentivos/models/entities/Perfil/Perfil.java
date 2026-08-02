@@ -38,7 +38,7 @@ public class Perfil {
     }
 
     public void progresarMision(ImpactoDonacion donacion){
-        misionActual.evaluarDonacion(donacion);
+        misionActual.evaluarProgreso(donacion);
 
         if (misionActual.estaCompleta()) {
             this.otorgarInsignia();

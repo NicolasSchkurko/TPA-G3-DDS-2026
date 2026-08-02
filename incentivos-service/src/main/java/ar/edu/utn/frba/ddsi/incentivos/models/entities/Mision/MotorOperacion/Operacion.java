@@ -12,11 +12,11 @@ public abstract class Operacion {
         this.progresoObjetivo = progresoObjetivo;
     }
 
-    public boolean estaCompleta(Integer progresoActual) {
+    public Boolean estaCompleta(Integer progresoActual) {
         return progresoActual >= progresoObjetivo;
     }
 
-    public abstract Integer calcularProgreso(
+    public abstract Boolean calcularProgreso(
             List<ImpactoDonacion> donaciones,
             Function<ImpactoDonacion, ?> atributo
     );
