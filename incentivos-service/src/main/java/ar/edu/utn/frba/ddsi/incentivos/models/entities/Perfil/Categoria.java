@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 
 import java.util.ArrayList;
@@ -51,4 +52,12 @@ public class Categoria {
         return this.misiones.get(index + 1);
     }
 
+    public CategoriaDTO toDTO(){
+        List<String> nomMisiones = misiones.stream()
+                .map(Mision::getNombreMision).toList();
+
+        return new CategoriaDTO(
+                nombre, posicionSecuencia, nomMisiones
+        );
+    }
 }

@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 
 public class ImpactoDonacionDTO {
-    private LocalDate fechaEntrega;
+    private LocalDateTime fechaEntrega;
     private Integer cantidadBienes;
     private String subCategoria;
     private String categoria;

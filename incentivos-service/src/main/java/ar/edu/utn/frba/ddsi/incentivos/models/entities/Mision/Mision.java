@@ -4,8 +4,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.Period;
-import java.time.YearMonth;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,26 +31,36 @@ public class Mision {
         this.reglaDeProgreso = regla;
     }
 
-    //<atributoImpactoDonacion, cantidadTiempo>
-    //cantidadTiempo: Period para dias/meses/años, Duration para horas/minutos
     public void evaluarConstancia() {
-        ImpactoDonacion ultimaDonacion = donacionesExitosas.getLast();
-        T tiempo = Period.between(ultimaDonacion.getFechaEntrega(), );
-        // Si pasó 1 mes desde la ultima donación, la lista vuelve a 0
-        if (ultimoMes.isBefore(YearMonth.now().minusMonths(1))) {
-            mision.getDonacionesExitosas().clear();
+        //para evaluar la constancia de una mision:
+        //si la ultima donacionExitosa de la persona esta dentro del
+        //periodo en la reglaConstancia de la reglaProgreso
+        //el progreso se mantiene, sino vuelve a 0
+        ReglaConstancia constancia = reglaDeProgreso.getConstancia();
+
+        if (constancia == null || donacionesExitosas.isEmpty()) {
+            return;
+        }
+
+        ImpactoDonacion ultimaDonacion =
+                donacionesExitosas.getLast();
+
+        LocalDateTime limite = ultimaDonacion.getFechaEntrega().plus(
+                constancia.getCantidad(),
+                constancia.getUnidadTiempo()
+        );
+
+        if (LocalDateTime.now().isAfter(limite)) {
+            donacionesExitosas.clear();
+            this.setProgreso(0);
         }
     }
 
-    public Integer getProgresoActual() {
-        return reglaDeProgreso.conseguirProgreso(donacionesExitosas);
-    }
-
     public boolean estaCompleta() {
-        return this.getProgresoActual() >= this.progresoObjetivo;
+        return reglaDeProgreso.estaCompleta(progreso);
     }
 
     public void evaluarDonacion(ImpactoDonacion donacion){
-        reglaDeProgreso.aplicar(donacion, this);
+        reglaDeProgreso.aplicar(donacion);
     }
 }

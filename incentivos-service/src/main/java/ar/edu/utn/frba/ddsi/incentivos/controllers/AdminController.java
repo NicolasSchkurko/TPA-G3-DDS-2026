@@ -1,15 +1,15 @@
-/*package ar.edu.utn.frba.ddsi.incentivos.controllers;
+package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admin") //https:localhost:8001/admin
+@RequestMapping("/api/admin") //https:localhost:8001/api/admin
 public class AdminController {
     private final AdminService service;
 
@@ -35,14 +35,13 @@ public class AdminController {
         return ResponseEntity.ok(service.misionToDTO(nuevaMision));
     }
 
-    @PutMapping("/categorias/{id}")
-    public ResponseEntity<DonacionDTO> actualizarCategoria(@PathVariable UUID id, @RequestBody CategoriaDTO categoria) {
-        try {
-            Donacion actualizada = donacionService.actualizarDonacion(id, donacion);
-            return ResponseEntity.ok(donacionService.toDTO(actualizada));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
+//    @PutMapping("/categorias/{id}")
+//    public ResponseEntity<DonacionDTO> actualizarCategoria(@PathVariable UUID id, @RequestBody CategoriaDTO categoria) {
+//        try {
+//            Donacion actualizada = donacionService.actualizarDonacion(id, donacion);
+//            return ResponseEntity.ok(donacionService.toDTO(actualizada));
+//        } catch (RuntimeException e) {
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
 }
-*/

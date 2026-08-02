@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/perfiles") //https:localhost:8001/perfiles
+@RequestMapping("/api/perfiles") //https:localhost:8001/api/perfiles
 @Tag(name = "Gestión de Perfiles e Incentivos", description = "Endpoints para consultar métricas, misiones, insignias y rankings de los perfiles de colaboradores.")
 public class PerfilController {
     private final PerfilService service;
