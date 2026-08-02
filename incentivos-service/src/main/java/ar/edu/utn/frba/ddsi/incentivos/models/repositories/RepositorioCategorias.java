@@ -22,7 +22,6 @@ public class RepositorioCategorias {
         this.categorias.add(new Categoria("Colaborador", 1, new ArrayList<>() ));
         this.categorias.add(new Categoria("Sostenedor", 2, new ArrayList<>() ));
         this.categorias.add(new Categoria("Transformador", 3, new ArrayList<>() ));
-        // this.categorias.getFirst().agregarMision(MisionFactory.crearMision(TipoMision.COMPLETITUD));
     }
 
     public Categoria buscarPorId(UUID id) {
@@ -34,7 +33,7 @@ public class RepositorioCategorias {
                 .orElse(null);
     }
 
-    // Método genérico para ordenar cualquier lista por el atributo que le indiquemos
+    // Metodo genérico para ordenar cualquier lista por el atributo que le indiquemos
     public <U extends Comparable<? super U>> List<String> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {
         List<Categoria> listaOrdenada = new ArrayList<>(this.categorias);
         listaOrdenada.sort(Comparator.comparing(keyExtractor));
