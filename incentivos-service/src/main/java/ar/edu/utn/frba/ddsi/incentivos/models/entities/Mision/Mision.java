@@ -61,8 +61,10 @@ public class Mision {
     }
 
     public void evaluarProgreso(ImpactoDonacion donacion){
+        Object valorAtributo = reglaDeProgreso.aplicar(donacion);
+
         //va a ser 1 o 0 el resultado
-        Boolean resultado = reglaDeProgreso.aplicar(donacion, donacionesExitosas);
+        Boolean resultado = reglaDeProgreso.operar(valorAtributo);
 
         if(resultado){
             donacionesExitosas.add(donacion);

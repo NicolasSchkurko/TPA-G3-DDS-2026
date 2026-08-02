@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
-import java.util.List;
 import java.util.function.Function;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
@@ -11,7 +10,7 @@ import lombok.Setter;
 @Setter
 public class Regla {
     //que sea capaz de hacer una mision tipo:
-//hacer x cantidad de donaciones de categorias diferentes por x cant de tiempo x
+//hacer x cantidad de x tipo de donaciones por x cant de tiempo
     private ReglaConstancia constancia;
     private Function<ImpactoDonacion, ?> atributo; //atributo de ImpactoDonacion
     private Operacion operacion; //define relacion entre atributo y lista donaciones
@@ -30,9 +29,11 @@ public class Regla {
         return operacion.estaCompleta(progreso);
     }
 
-    public Boolean aplicar(ImpactoDonacion donacion,
-                           List<ImpactoDonacion> donaciones){
-        Object valorAtributo = atributo.apply(donacion);
-        return
+    public Object aplicar(ImpactoDonacion donacion){
+        return atributo.apply(donacion);
+    }
+
+    public Boolean operar(Object valorAtributo){
+        return operacion.calcularProgreso(valorAtributo);
     }
 }
