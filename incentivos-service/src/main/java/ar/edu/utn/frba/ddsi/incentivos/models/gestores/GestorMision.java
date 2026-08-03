@@ -5,19 +5,20 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * @param repositorio gestiona las misiones existentes en el repositorio
  */
 public record GestorMision(RepositorioMisiones repositorio) {
 
-    public List<Mision> conseguirMisiones(List<String> nombreMisiones) {
+    public List<Mision> conseguirMisiones(List<UUID> idMisiones) {
         List<Mision> misiones = new ArrayList<>();
 
-        for (String nombreMision : nombreMisiones) {
+        for (UUID idMision : idMisiones) {
             List<Mision> lstMisiones = repositorio.obtenerTodas();
             for (Mision m : lstMisiones) {
-                if (m.getNombreMision().equals(nombreMision)) {
+                if (m.getIdMision().equals(idMision)) {
                     misiones.add(m);
                 }
             }

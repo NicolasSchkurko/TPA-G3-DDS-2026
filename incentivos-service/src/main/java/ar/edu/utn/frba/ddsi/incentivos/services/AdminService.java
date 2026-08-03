@@ -55,8 +55,8 @@ public class AdminService {
     }
 
     public CategoriaDTO categoriaToDTO(Categoria actualizada){
-        List<String> nomMisiones = actualizada.getMisiones().stream()
-                .map(Mision::getNombreMision).toList();
+        List<UUID> nomMisiones = actualizada.getMisiones().stream()
+                .map(Mision::getIdMision).toList();
 
         return new CategoriaDTO(
                 actualizada.getNombre(),

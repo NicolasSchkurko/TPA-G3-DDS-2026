@@ -11,18 +11,29 @@ import java.util.List;
 public class ValoresDistintos extends Operacion{
     // hacer 6 donaciones de 3 categorias distintas
     private List<Object> valoresDistintos;
+    private Integer cantValoresDistintos;
 
-    public ValoresDistintos(Integer progresoObjetivo) {
+    public ValoresDistintos(Integer progresoObjetivo,
+                            Integer cantidad) {
         super(progresoObjetivo);
         this.valoresDistintos = new ArrayList<>();
+        this.cantValoresDistintos = cantidad;
+    }
+
+    @Override
+    public Boolean estaCompleta(Integer progresoActual) {
+        return progresoActual >= getProgresoObjetivo()
+                && valoresDistintos.size() >= cantValoresDistintos;
     }
 
     @Override
     public Boolean calcularProgreso(
             Object valorAtributo
     ){
-        if (valoresDistintos.contains(valorAtributo)) return false;
-        valoresDistintos.add(valorAtributo);
+        if (!valoresDistintos.contains(valorAtributo)) {
+            valoresDistintos.add(valorAtributo);
+        }
+
         return true;
     }
 }
