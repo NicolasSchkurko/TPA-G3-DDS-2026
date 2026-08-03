@@ -3,11 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
-import java.util.UUID;
 
 @Repository
 public class RepositorioCategorias {
@@ -15,13 +12,6 @@ public class RepositorioCategorias {
 
     public RepositorioCategorias() {
         this.categorias = new ArrayList<>();
-        inicializarCategoriasBase();
-    }
-
-    private void inicializarCategoriasBase() {
-        categorias.add(new Categoria("Colaborador", 1, new ArrayList<>() ));
-        categorias.add(new Categoria("Sostenedor", 2, new ArrayList<>() ));
-        categorias.add(new Categoria("Transformador", 3, new ArrayList<>() ));
     }
 
     public Categoria buscarPorId(UUID id) {
@@ -34,10 +24,11 @@ public class RepositorioCategorias {
     }
 
     // Metodo genérico para ordenar cualquier lista por el atributo que le indiquemos
-    public <U extends Comparable<? super U>> List<String> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {
+    public <U extends Comparable<? super U>>
+    List<Categoria> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {
         List<Categoria> listaOrdenada = new ArrayList<>(this.categorias);
         listaOrdenada.sort(Comparator.comparing(keyExtractor));
-        return listaOrdenada.stream().map(Categoria::getNombre).toList();
+        return listaOrdenada;
     }
 
     public void agregarCategoria(Categoria categoria) {
@@ -56,8 +47,10 @@ public class RepositorioCategorias {
                 .toList();
     }
 
-    public Categoria obtenerSiguiente(int nivel) {
-        return categorias.get(nivel + 1);
+    public Optional<Categoria> obtenerSiguiente(int nivel) {
+        return categorias.stream()
+                .filter(c -> c.getPosicionSecuencia() == nivel + 1)
+                .findFirst();
     }
 
     //para modificacion de categorias

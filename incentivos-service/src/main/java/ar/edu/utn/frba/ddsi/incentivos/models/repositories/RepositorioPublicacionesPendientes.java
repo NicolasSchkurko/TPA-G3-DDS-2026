@@ -4,12 +4,8 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilPublicacionDTO;
 
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Setter;
-import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
-@Getter
-@Setter
 @Repository
 //guardar las publicaciones y es decision de la empresa pensar que hacer con ellas
 //al fallar la publicacion en redes sociales

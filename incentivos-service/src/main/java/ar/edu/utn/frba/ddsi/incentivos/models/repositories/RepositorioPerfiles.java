@@ -6,12 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import lombok.Setter;
-import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
-@Getter
-@Setter
 @Repository
 public class RepositorioPerfiles {
     private final List<Perfil> perfiles;

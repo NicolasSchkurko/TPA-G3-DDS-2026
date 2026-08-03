@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,11 +32,43 @@ public class AdminService {
                 misiones
         );
 
-        return gestorCategoria.crearCategoria(categoria);
+        List<Categoria> categorias = gestorCategoria.crearCategoria(categoria);
+
+        List<CategoriaDTO> categoriasDTO = new ArrayList<>();
+        for(Categoria x : categorias){
+            List<UUID> idMisiones = x.getMisiones().stream()
+                    .map(Mision::getIdMision).toList();
+
+            CategoriaDTO cat = new CategoriaDTO(
+                    x.getNombre(),
+                    x.getPosicionSecuencia(),
+                    idMisiones
+            );
+
+            categoriasDTO.add(cat);
+        }
+
+        return new SecuenciaCategoriasDTO(categoriasDTO);
     }
 
     public SecuenciaCategoriasDTO eliminarCategoria(UUID id){
-        return gestorCategoria.eliminarCategoria(id);
+        List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
+
+        List<CategoriaDTO> categoriasDTO = new ArrayList<>();
+        for(Categoria x : categorias){
+            List<UUID> idMisiones = x.getMisiones().stream()
+                    .map(Mision::getIdMision).toList();
+
+            CategoriaDTO cat = new CategoriaDTO(
+                    x.getNombre(),
+                    x.getPosicionSecuencia(),
+                    idMisiones
+            );
+
+            categoriasDTO.add(cat);
+        }
+
+        return new SecuenciaCategoriasDTO(categoriasDTO);
     }
 
     public CategoriaDTO actualizarCategoria(UUID id, CategoriaDTO dto){
@@ -55,13 +88,13 @@ public class AdminService {
     }
 
     public CategoriaDTO categoriaToDTO(Categoria actualizada){
-        List<UUID> nomMisiones = actualizada.getMisiones().stream()
+        List<UUID> idMisiones = actualizada.getMisiones().stream()
                 .map(Mision::getIdMision).toList();
 
         return new CategoriaDTO(
                 actualizada.getNombre(),
                 actualizada.getPosicionSecuencia(),
-                nomMisiones
+                idMisiones
         );
     }
 }

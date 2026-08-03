@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.SecuenciaCategoriasDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
 
@@ -13,24 +12,33 @@ import java.util.UUID;
  */
 public record GestorCategoria(RepositorioCategorias repositorio) {
 
-    public SecuenciaCategoriasDTO crearCategoria(Categoria nueva) {
+    //init default, dsp el admin puede modificarlas
+    public List<Categoria> inicializarCategoriasBase(){
+        repositorio.agregarCategoria(new Categoria("Colaborador", 1, new ArrayList<>()) );
+        repositorio.agregarCategoria(new Categoria("Sostenedor", 2, new ArrayList<>()) );
+        repositorio.agregarCategoria(new Categoria("Transformador", 3, new ArrayList<>()) );
+
+        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
+    }
+
+    public List<Categoria> crearCategoria(Categoria nueva) {
         repositorio.obtenerDesdeNivel(nueva.getPosicionSecuencia())
                 .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
 
         repositorio.agregarCategoria(nueva);
 
         //para retornar al admin
-        return new SecuenciaCategoriasDTO(repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia));
+        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
     }
 
-    public SecuenciaCategoriasDTO eliminarCategoria(UUID idCategoria) {
+    public List<Categoria> eliminarCategoria(UUID idCategoria) {
         Categoria cat = repositorio.buscarPorId(idCategoria);
         repositorio.eliminarCategoria(cat);
         repositorio.obtenerDesdeNivel(cat.getPosicionSecuencia() + 1)
                 .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
 
         //para retornar al admin
-        return new SecuenciaCategoriasDTO(repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia));
+        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
     }
 
     public Categoria actualizarCategoria(Categoria categoria) {
