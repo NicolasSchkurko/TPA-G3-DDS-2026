@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 @Component
 public class MisionFactory {
-    private Mision crearMision(
+    public Mision crearMision(
             String nombreMision,
             String nombreInsignia,
             ReglaConstancia constancia,

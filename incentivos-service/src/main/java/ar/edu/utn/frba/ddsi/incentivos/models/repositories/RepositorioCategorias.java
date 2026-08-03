@@ -19,9 +19,9 @@ public class RepositorioCategorias {
     }
 
     private void inicializarCategoriasBase() {
-        this.categorias.add(new Categoria("Colaborador", 1, new ArrayList<>() ));
-        this.categorias.add(new Categoria("Sostenedor", 2, new ArrayList<>() ));
-        this.categorias.add(new Categoria("Transformador", 3, new ArrayList<>() ));
+        categorias.add(new Categoria("Colaborador", 1, new ArrayList<>() ));
+        categorias.add(new Categoria("Sostenedor", 2, new ArrayList<>() ));
+        categorias.add(new Categoria("Transformador", 3, new ArrayList<>() ));
     }
 
     public Categoria buscarPorId(UUID id) {

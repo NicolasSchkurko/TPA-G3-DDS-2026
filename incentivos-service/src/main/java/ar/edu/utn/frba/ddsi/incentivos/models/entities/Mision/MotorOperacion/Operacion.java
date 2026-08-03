@@ -1,5 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
 
+import lombok.Getter;
+
+@Getter
 //patron strategy
 public abstract class Operacion {
     private final Integer progresoObjetivo;

@@ -12,8 +12,8 @@ public class OperacionFactory {
         return new CantidadCoincidencias(progresoObjetivo, valorEsperado);
     }
 
-    public Operacion valoresDistintos(Integer progresoObjetivo) {
-        return new ValoresDistintos(progresoObjetivo);
+    public Operacion valoresDistintos(Integer progresoObjetivo, Integer cantidad) {
+        return new ValoresDistintos(progresoObjetivo, cantidad);
     }
 
     public Operacion superaCantidad(Integer progresoObjetivo, Integer cantidadEsperada) {
