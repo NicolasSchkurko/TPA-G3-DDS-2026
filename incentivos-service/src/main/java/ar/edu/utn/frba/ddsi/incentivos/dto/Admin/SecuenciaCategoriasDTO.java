@@ -9,9 +9,9 @@ import java.util.List;
 @Setter
 
 public class SecuenciaCategoriasDTO {
-    private List<String> categorias;
+    private List<CategoriaDTO> categorias;
 
-    public SecuenciaCategoriasDTO(List<String> categorias) {
+    public SecuenciaCategoriasDTO(List<CategoriaDTO> categorias) {
         this.categorias = categorias;
     }
 }

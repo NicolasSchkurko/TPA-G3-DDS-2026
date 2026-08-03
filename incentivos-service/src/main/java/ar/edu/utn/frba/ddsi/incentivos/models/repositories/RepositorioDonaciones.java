@@ -1,18 +1,13 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import lombok.Setter;
-import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
-@Getter
-@Setter
 @Repository
 public class RepositorioDonaciones {
     private final List<ImpactoDonacion> donaciones;

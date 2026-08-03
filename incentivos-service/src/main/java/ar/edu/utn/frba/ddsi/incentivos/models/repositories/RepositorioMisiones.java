@@ -1,70 +1,53 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import org.springframework.stereotype.Repository;
 
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public class RepositorioMisiones {
     private final List<Mision> misiones;
-    private final MisionFactory misionFactory;
-    private final OperacionFactory operacionFactory;
 
-    public RepositorioMisiones(MisionFactory factory,
-                               OperacionFactory operacionFactory) {
-        this.misionFactory = factory;
-        this.operacionFactory = operacionFactory;
+    public RepositorioMisiones() {
         this.misiones = new ArrayList<>();
-        inicializarMisionesBase();
     }
 
-    private void inicializarMisionesBase() {
-        Operacion operacion = operacionFactory.coincidencias(1,
-                "ENTREGADA");
-        Mision mision = misionFactory.crearMision("Racha",
-                "Usuario Constante",
-                new ReglaConstancia(5, ChronoUnit.MONTHS),
-                ImpactoDonacion::getEstado,
-                operacion);
-        misiones.add(mision);
-
-        operacion = operacionFactory.valoresDistintos(5, 3);
-        mision = misionFactory.crearMision("Completitud",
-                "Usuario Variado",
-                null,
-                ImpactoDonacion::getCategoria,
-                operacion);
-        misiones.add(mision);
-
-        operacion = operacionFactory.superaCantidad(1, 3);
-        mision = misionFactory.crearMision("Habil Donador",
-                "Usuario Generoso",
-                null,
-                ImpactoDonacion::getCantidadBienes,
-                operacion);
-        misiones.add(mision);
-
-        operacion = operacionFactory.coincidencias(6, "ENTREGADO");
-        mision = misionFactory.crearMision("Donaciones Exitosas",
-                "Usuario Exitoso",
-                null,
-                ImpactoDonacion::getEstado,
-                operacion);
-        misiones.add(mision);
+    public void agregarMision(Mision mision) {
+        if (!misiones.contains(mision)) {
+            misiones.add(mision);
+        }
     }
 
-//TODO habra tmb actualizar mision, guardar mision y eliminar
+    public void eliminarMision(Mision mision) {
+        misiones.remove(mision);
+    }
 
-    public Mision buscarPorNombre(String nombre) {
-        if (nombre == null) return null;
-        return this.misiones.stream()
-                .filter(m -> m.getNombreMision().equals(nombre))
+    public Mision actualizar(Mision misionModificada) {
+        if (misionModificada == null) {
+            return null;
+        }
+
+        Mision existente = this.buscarPorId(misionModificada.getIdMision());
+
+        if (existente != null) {
+            int index = misiones.indexOf(existente);
+            if (index >= 0) {
+                misiones.set(index, existente);
+            }
+            return existente;
+        }
+
+        return null;
+    }
+
+    public Mision buscarPorId(UUID id) {
+        if (id == null || misiones.isEmpty()) return null;
+
+        return misiones.stream()
+                .filter(m -> id.equals(m.getIdMision()))
                 .findFirst()
                 .orElse(null);
     }
