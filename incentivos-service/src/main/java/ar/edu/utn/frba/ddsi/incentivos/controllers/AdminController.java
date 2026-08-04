@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.SecuenciaCategoriasDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.AdminService;
 import org.springframework.http.ResponseEntity;
@@ -46,13 +47,31 @@ public class AdminController {
         }
     }
 
-//    @PostMapping("/misiones")
-//    public ResponseEntity<MisionDTO> crearMision(@RequestBody MisionDTO request) {
-//        Mision nuevaMision = service.agregarMision(request);
-//        if (nuevaMision == null) {
-//            return ResponseEntity.notFound().build();
-//        }
-//        return ResponseEntity.ok(service.misionToDTO(nuevaMision));
-//    }
+    @PostMapping("/misiones")
+    public ResponseEntity<MisionDTO> crearMision(@RequestBody MisionDTO request) {
+        MisionDTO nuevaMision = service.crearMision(request);
+        if (nuevaMision == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(nuevaMision);
+    }
 
+    @DeleteMapping("/misiones/{id}")
+    public ResponseEntity<MisionDTO> eliminarMision(@PathVariable UUID id) {
+        MisionDTO misionEliminada = service.eliminarMision(id);
+        if (misionEliminada == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(misionEliminada);
+    }
+
+    @PutMapping("/misiones/modificar/{id}")
+    public ResponseEntity<MisionDTO> actualizarMision(@PathVariable UUID id, @RequestBody MisionDTO mision) {
+        try {
+            MisionDTO actualizada = service.actualizarMision(id, mision);
+            return ResponseEntity.ok(actualizada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

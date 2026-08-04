@@ -1,8 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.SecuenciaCategoriasDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.CantidadCoincidencias;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.SuperaCantidad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.ValoresDistintos;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
@@ -87,6 +91,29 @@ public class AdminService {
         return actualizada != null? this.categoriaToDTO(actualizada) : null;
     }
 
+    public MisionDTO crearMision(MisionDTO nuevaMision){
+        Mision m = gestorMisiones.crearMision(nuevaMision.getNombreMision(),
+                nuevaMision.getInsigniaObjetivo(),
+                nuevaMision.getRegla().getConstancia().getCantidad(),
+                nuevaMision.getRegla().getConstancia().getUnidadTiempo(),
+                nuevaMision.getRegla().getAtributo(),
+                nuevaMision.getRegla().getOperacion().getTipoOperacion(),
+                nuevaMision.getRegla().getOperacion().getProgresoObjetivo(),
+                nuevaMision.getRegla().getOperacion().getCantidad(),
+                nuevaMision.getRegla().getOperacion().getValorEsperado());
+
+        return misionToDTO(m);
+    }
+
+    public MisionDTO eliminarMision(UUID idMision){
+        Mision mision = gestorMisiones.eliminarMision(idMision);
+        return misionToDTO(mision);
+    }
+
+    public MisionDTO actualizarMision(UUID idMision, MisionDTO mision){
+
+    }
+
     public CategoriaDTO categoriaToDTO(Categoria actualizada){
         List<UUID> idMisiones = actualizada.getMisiones().stream()
                 .map(Mision::getIdMision).toList();
@@ -95,6 +122,61 @@ public class AdminService {
                 actualizada.getNombre(),
                 actualizada.getPosicionSecuencia(),
                 idMisiones
+        );
+    }
+
+    public MisionDTO misionToDTO(Mision mision) {
+        if (mision == null) {
+            return null;
+        }
+
+        ReglaConstancia reglaConstancia = mision.getReglaDeProgreso().getConstancia();
+        ConstanciaDTO constancia = reglaConstancia == null
+                ? null
+                : new ConstanciaDTO(
+                        reglaConstancia.getCantidad(),
+                        reglaConstancia.getUnidadTiempo().toString()
+                );
+
+        return new MisionDTO(
+                mision.getNombreMision(),
+                mision.getInsigniaObjetivo().getNombre(),
+                constancia,
+                mision.getReglaDeProgreso().getAtributo().name(),
+                operacionToDTO(mision.getReglaDeProgreso().getOperacion())
+        );
+    }
+
+    private OperacionDTO operacionToDTO(Operacion operacion) {
+        if (operacion instanceof CantidadCoincidencias coincidencias) {
+            return new OperacionDTO(
+                    "COINCIDENCIAS",
+                    coincidencias.getProgresoObjetivo(),
+                    String.valueOf(coincidencias.getValorEsperado()),
+                    null
+            );
+        }
+
+        if (operacion instanceof ValoresDistintos distintos) {
+            return new OperacionDTO(
+                    "VALORES_DISTINTOS",
+                    distintos.getProgresoObjetivo(),
+                    null,
+                    distintos.getCantValoresDistintos()
+            );
+        }
+
+        if (operacion instanceof SuperaCantidad superaCantidad) {
+            return new OperacionDTO(
+                    "SUPERA_CANTIDAD",
+                    superaCantidad.getProgresoObjetivo(),
+                    null,
+                    superaCantidad.getCantidadEsperada()
+            );
+        }
+
+        throw new IllegalArgumentException(
+                "Tipo de operación no soportado: " + operacion.getClass().getSimpleName()
         );
     }
 }
