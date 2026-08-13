@@ -204,7 +204,8 @@ public class DonacionService {
         dto.setEstado(nuevoEstado);
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
 
-        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA);
+        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
+                TipoEventoNotificacion.DONACION_ASIGNADA);
         estrategia.ejecutar(donacion);
       }
 

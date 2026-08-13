@@ -5,12 +5,12 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import lombok.Getter;
 
 @Getter
-public class NotificacionEntregaAdminDTO {
+public class NotificacionEntregaFallidaAdminDTO {
     private RutaEnProceso ruta;
     private PayloadEntregaDTO datosEntrega;
     private MedioDeContacto contactoAdmin;
 
-    public NotificacionEntregaDTO(PayloadEntregaDTO datosEntrega, MedioDeContacto contacto) {
+    public NotificacionEntregaFallidaAdminDTO(PayloadEntregaDTO datosEntrega, MedioDeContacto contacto) {
         this.ruta = ruta;
         this.datosEntrega = datosEntrega;
         this.contactoAdmin = contacto;

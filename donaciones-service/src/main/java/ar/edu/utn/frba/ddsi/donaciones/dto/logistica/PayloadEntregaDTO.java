@@ -8,13 +8,6 @@ public class PayloadEntregaDTO {
 
   public PayloadEntregaDTO() {}
 
-  public PayloadEntregaDTO(String fechaEntrega, String horaEntrega, String patenteCamion, String nombreChofer) {
-    this.fechaEntrega = fechaEntrega;
-    this.horaEntrega = horaEntrega;
-    this.patenteCamion = patenteCamion;
-    this.nombreChofer = nombreChofer;
-  }
-
   public String getFechaEntrega() { return fechaEntrega; }
   public String getHoraEntrega() { return horaEntrega; }
   public String getPatenteCamion() { return patenteCamion; }

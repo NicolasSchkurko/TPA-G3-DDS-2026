@@ -1,17 +1,15 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaAdminDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.ServicioNotificaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
-import org.springframework.stereotype.Component;
 
-@Component
-public class NotificacionViajeDonante extends EstrategiaMensaje {
-
-    public NotificacionViajeDonante(
+public class NotificacionEntregaFallida extends EstrategiaMensaje {
+    public NotificacionEntregaFallida(
             ServicioNotificaciones servicioNotificaciones) {
 
         super(servicioNotificaciones);
@@ -19,27 +17,36 @@ public class NotificacionViajeDonante extends EstrategiaMensaje {
 
     @Override
     public TipoEventoNotificacion getTipoEvento() {
-        return TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE;
+        return TipoEventoNotificacion.ENTREGA_NO_RECIBIDA;
     }
 
     @Override
     public void ejecutar(Object datos) {
 
-        NotificacionViajeDTO dto =
-                (NotificacionViajeDTO) datos;
+        NotificacionEntregaFallidaDTO dto =
+                (NotificacionEntregaFallidaDTO) datos;
 
         Mensaje mensaje = new Mensaje(
-                "Nueva Donación En Viaje",
-                String.format(
-                        "Tu donación se encuentra en viaje. Sigue la entrega de tu donación: %s",
-                        dto.getUrlRuta()
-                ),
+                "Entrega Fallida",
+                "Lo sentimos, la entrega ha fallado.",
                 TipoDeMensaje.CAMBIO_ESTADO
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                dto.getDestinatarios(),
+                dto.getContactoDonante(),
                 mensaje
         );
+
+        servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+                dto.getContactoEntidad(),
+                mensaje
+        );
+
+        dto.getContactosAdmin().forEach(
+                contacto ->
+                        servicioNotificaciones.enviarNotificacionAMedioDeContacto(
+                            contacto,
+                            mensaje
+                ));
     }
 }

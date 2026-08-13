@@ -8,10 +8,13 @@ public class NotificacionViajeDTO {
 
     private String urlRuta;
 
-    private MediosDeContacto destinatarios;
+    private MediosDeContacto contactoDonante;
 
-    public NotificacionViajeDTO(String urlRuta, MediosDeContacto destinatarios) {
+    private MediosDeContacto contactoEntidad;
+
+    public NotificacionViajeDTO(String urlRuta, MediosDeContacto destinatarios, MediosDeContacto contactoEntidad) {
         this.urlRuta = urlRuta;
-        this.destinatarios = destinatarios;
+        this.contactoDonante = destinatarios;
+        this.contactoEntidad = contactoEntidad;
     }
 }

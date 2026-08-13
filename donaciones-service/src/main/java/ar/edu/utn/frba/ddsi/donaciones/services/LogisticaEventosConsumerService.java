@@ -3,8 +3,9 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaAdminDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaAdminDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
@@ -112,13 +113,9 @@ public class LogisticaEventosConsumerService {
         return;
       }
 
-      EstrategiaNotificacion estrategiaEntidad =
+      EstrategiaNotificacion estrategiaViaje =
               fabricaEstrategias.obtenerEstrategia(
-                      TipoEventoNotificacion.DONACION_EN_VIAJE_ENTIDAD_BENEFICIARIA);
-
-      EstrategiaNotificacion estrategiaDonante =
-              fabricaEstrategias.obtenerEstrategia(
-                      TipoEventoNotificacion.DONACION_EN_VIAJE_PERSONA_DONANTE);
+                      TipoEventoNotificacion.DONACION_EN_VIAJE);
 
       for (String idTexto : payload.getItems()) {
 
@@ -133,16 +130,11 @@ public class LogisticaEventosConsumerService {
 
                   repositorioDonaciones.save(donacion);
 
-                  estrategiaEntidad.ejecutar(
+                  estrategiaViaje.ejecutar(
                           new NotificacionViajeDTO(
                                   payload.getUrlRuta(),
+                                  donacion.getDonante().getMediosDeContacto(),
                                   donacion.getEntidad().getCorreosRepresentantes()
-                          ));
-
-                  estrategiaDonante.ejecutar(
-                          new NotificacionViajeDTO(
-                                  payload.getUrlRuta(),
-                                  donacion.getDonante().getMediosDeContacto()
                           ));
                 });
       }
@@ -168,19 +160,12 @@ public class LogisticaEventosConsumerService {
               PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
 
               fabricaEstrategias
-                      .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA_ENTIDAD_BENEFICIARIA)
+                      .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA)
                       .ejecutar(
                               new NotificacionEntregaDTO(
                                       payload,
+                                      donacion.getDonante().getMediosDeContacto(),
                                       donacion.getEntidad().getCorreosRepresentantes()
-                              ));
-
-              fabricaEstrategias
-                      .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA_PERSONA_DONANTE)
-                      .ejecutar(
-                              new NotificacionEntregaDTO(
-                                      payload,
-                                      donacion.getDonante().getMediosDeContacto()
                               ));
             });
   }
@@ -207,32 +192,14 @@ public class LogisticaEventosConsumerService {
                       parsearPayloadEntrega(evento);
 
               fabricaEstrategias
-                      .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ENTIDAD_BENEFICIARIA)
+                      .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA)
                       .ejecutar(
-                              new NotificacionEntregaDTO(
+                              new NotificacionEntregaFallidaDTO(
                                       payload,
-                                      donacion.getEntidad().getCorreosRepresentantes()
+                                      donacion.getDonante().getMediosDeContacto(),
+                                      donacion.getEntidad().getCorreosRepresentantes(),
+                                      adminService.obtenerContactosAdministradores()
                               ));
-
-              fabricaEstrategias
-                      .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_PERSONA_DONANTE)
-                      .ejecutar(
-                              new NotificacionEntregaDTO(
-                                      payload,
-                                      donacion.getDonante().getMediosDeContacto()
-                              ));
-
-              EstrategiaNotificacion estrategiaAdmin =
-                      fabricaEstrategias.obtenerEstrategia(
-                              TipoEventoNotificacion.ENTREGA_NO_RECIBIDA_ADMIN);
-
-              adminService.obtenerContactosAdministradores()
-                      .forEach(contacto ->
-                              estrategiaAdmin.ejecutar(
-                                      new NotificacionEntregaAdminDTO(
-                                              payload,
-                                              contacto
-                                      )));
             });
   }
 

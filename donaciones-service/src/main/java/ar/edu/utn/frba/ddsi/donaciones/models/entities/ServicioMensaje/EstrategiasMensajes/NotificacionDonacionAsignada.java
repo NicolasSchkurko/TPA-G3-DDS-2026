@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
@@ -10,9 +9,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.Ti
 import org.springframework.stereotype.Component;
 
 @Component
-public class NotificacionEntregaCompletada extends EstrategiaMensaje {
+public class NotificacionDonacionAsignada extends EstrategiaMensaje {
 
-    public NotificacionEntregaCompletada(
+    public NotificacionDonacionAsignada(
             ServicioNotificaciones servicioNotificaciones) {
 
         super(servicioNotificaciones);
@@ -20,43 +19,39 @@ public class NotificacionEntregaCompletada extends EstrategiaMensaje {
 
     @Override
     public TipoEventoNotificacion getTipoEvento() {
-        return TipoEventoNotificacion.COMPROBANTE_ENTREGA;
+        return TipoEventoNotificacion.DONACION_ASIGNADA;
     }
 
     @Override
     public void ejecutar(Object datos) {
 
-        NotificacionEntregaDTO evento = (NotificacionEntregaDTO) datos;
+        Donacion donacion = (Donacion) datos;
 
         Mensaje mensaje = new Mensaje(
-                "Donación Entregada Exitosamente",
-                "Comprobante de Entrega: "
-                        + datosEntregaTexto(evento.getDatosEntrega()),
+                "Nueva donación asignada",
+                String.format(
+                        "Se asignó una donación a la entidad %s. Donación: %s. Cantidad total de bienes: %d. Fecha de entrega: %s.",
+                        donacion.getEntidad().getRazonSocial(),
+                        valorOTexto(
+                                donacion.getDescripcion(),
+                                "sin descripción"
+                        ),
+                        donacion.sumaCantidadBienes(),
+                        donacion.getFechaEntrega() != null
+                                ? donacion.getFechaEntrega().toString()
+                                : "sin fecha definida"
+                ),
                 TipoDeMensaje.CAMBIO_ESTADO
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                evento.getMediosDonante(),
+                donacion.getEntidad().getCorreosRepresentantes(),
                 mensaje
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                evento.getMediosEntidad(),
+                donacion.getDonante().getMediosDeContacto(),
                 mensaje
         );
-
     }
-
-    private String datosEntregaTexto(
-            PayloadEntregaDTO datos) {
-
-        return String.format(
-                "Fecha entrega: %s. Hora entrega: %s. Patente camión: %s. Conductor a cargo: %s.",
-                valorOTexto(datos.getFechaEntrega(), "sin dato"),
-                valorOTexto(datos.getHoraEntrega(), "sin dato"),
-                valorOTexto(datos.getPatenteCamion(), "sin dato"),
-                valorOTexto(datos.getNombreChofer(), "sin dato")
-        );
-    }
-
 }

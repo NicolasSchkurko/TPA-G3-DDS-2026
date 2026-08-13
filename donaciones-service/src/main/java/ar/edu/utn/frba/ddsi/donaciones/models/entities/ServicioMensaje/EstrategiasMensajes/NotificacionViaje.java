@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
@@ -9,9 +9,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.Ti
 import org.springframework.stereotype.Component;
 
 @Component
-public class NotificacionDonacionAsignadaEntidad extends EstrategiaMensaje {
+public class NotificacionViaje extends EstrategiaMensaje {
 
-    public NotificacionDonacionAsignadaEntidad(
+    public NotificacionViaje(
             ServicioNotificaciones servicioNotificaciones) {
 
         super(servicioNotificaciones);
@@ -19,33 +19,31 @@ public class NotificacionDonacionAsignadaEntidad extends EstrategiaMensaje {
 
     @Override
     public TipoEventoNotificacion getTipoEvento() {
-        return TipoEventoNotificacion.DONACION_ASIGNADA_ENTIDAD_BENEFICIARIA;
+        return TipoEventoNotificacion.DONACION_EN_VIAJE;
     }
 
     @Override
     public void ejecutar(Object datos) {
 
-        Donacion donacion = (Donacion) datos;
+        NotificacionViajeDTO dto =
+                (NotificacionViajeDTO) datos;
 
         Mensaje mensaje = new Mensaje(
-                "Nueva donación asignada",
+                "Nueva Donación En Viaje",
                 String.format(
-                        "Se asignó una donación a la entidad %s. Donación: %s. Cantidad total de bienes: %d. Fecha de entrega: %s.",
-                        donacion.getEntidad().getRazonSocial(),
-                        valorOTexto(
-                                donacion.getDescripcion(),
-                                "sin descripción"
-                        ),
-                        donacion.sumaCantidadBienes(),
-                        donacion.getFechaEntrega() != null
-                                ? donacion.getFechaEntrega().toString()
-                                : "sin fecha definida"
+                        "La/s donación/es se encuentra/n en viaje. Sigue la entrega: %s",
+                        dto.getUrlRuta()
                 ),
                 TipoDeMensaje.CAMBIO_ESTADO
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                donacion.getEntidad().getCorreosRepresentantes(),
+                dto.getContactoDonante(),
+                mensaje
+        );
+
+        servicioNotificaciones.enviarNotificacionAMediosDeContacto(
+                dto.getContactoEntidad(),
                 mensaje
         );
     }
