@@ -34,6 +34,10 @@ public class ChoferController {
     }
 
     @Operation(summary = "Obtener un chofer por ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Chofer encontrado"),
+            @ApiResponse(responseCode = "404", description = "Chofer no encontrado")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
         try {
@@ -51,6 +55,10 @@ public class ChoferController {
     }
 
     @Operation(summary = "Actualizar datos de un chofer")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Chofer actualizado"),
+            @ApiResponse(responseCode = "404", description = "Chofer no encontrado")
+    })
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarChofer(@PathVariable UUID id, @RequestBody ChoferDTO request) {
         try {
@@ -61,6 +69,10 @@ public class ChoferController {
     }
 
     @Operation(summary = "Eliminar un chofer")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Chofer eliminado"),
+            @ApiResponse(responseCode = "404", description = "Chofer no encontrado")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarChofer(@PathVariable UUID id) {
         try {
@@ -75,7 +87,7 @@ public class ChoferController {
 
     @Operation(summary = "Actualizar la disponibilidad de un chofer")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Estado actualizado"),
+        @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente"),
         @ApiResponse(responseCode = "404", description = "Chofer no encontrado")
     })
     @PatchMapping("/{id}/estado")

@@ -2,11 +2,14 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
@@ -18,50 +21,43 @@ import java.util.UUID;
 
 @Service
 public class RutaService {
-  private final RepositorioRutas repositorioRutas;
-  private final RepositorioChoferes repositorioChoferes;
-  private final RepositorioItemEntrega repositorioItemEntrega;
-  private final RepositorioCamiones repositorioCamiones;
+  private final GestorRutas gestorRutas;
+  private final GestorChoferes gestorChoferes;
+  private final GestorItemEntrega gestorItemEntrega;
+  private final GestorCamiones gestorCamiones;
   private final EventoLogisticaService eventoService;
 
-  public RutaService(RepositorioRutas repositorioRutas,
-                     RepositorioChoferes repositorioChoferes,
-                     RepositorioItemEntrega repositorioItemEntrega,
-                     RepositorioCamiones repositorioCamiones,
+  public RutaService(GestorRutas gestorRutas,
+                     GestorChoferes gestorChoferes,
+                     GestorItemEntrega gestorItemEntrega,
+                     GestorCamiones gestorCamiones,
                      EventoLogisticaService eventoService) {
-    this.repositorioRutas = repositorioRutas;
-    this.repositorioChoferes = repositorioChoferes;
-    this.repositorioItemEntrega = repositorioItemEntrega;
-    this.repositorioCamiones = repositorioCamiones;
+    this.gestorRutas = gestorRutas;
+    this.gestorChoferes = gestorChoferes;
+    this.gestorItemEntrega = gestorItemEntrega;
+    this.gestorCamiones = gestorCamiones;
     this.eventoService = eventoService;
   }
 
   // --- MÉTODOS CRUD ---
   public List<Ruta> findAll() {
-    return repositorioRutas.findAll();
+      return gestorRutas.listarRutas();
   }
 
   public Ruta findById(UUID idRuta) {
-    return repositorioRutas.findById(idRuta)
-                           .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrada"));
+    return gestorRutas.buscarRuta(idRuta);
   }
 
   public Ruta create(Ruta ruta) {
-    return repositorioRutas.save(ruta);
+    return gestorRutas.guardarRuta(ruta);
   }
 
   public Ruta update(UUID id, Ruta rutaActualizada) {
-    Ruta rutaExistente = findById(id);
-    rutaExistente.setCamionAsignado(rutaActualizada.getCamionAsignado());
-    rutaExistente.setParadas(rutaActualizada.getParadas());
-    return repositorioRutas.save(rutaExistente);
+    return gestorRutas.actualizarRuta(id, rutaActualizada);
   }
 
   public void delete(UUID idRuta) {
-    if (repositorioRutas.findById(idRuta).isEmpty()) {
-      throw new IllegalArgumentException("Ruta no encontrada");
-    }
-    repositorioRutas.deleteById(idRuta);
+    gestorRutas.eliminarRuta(idRuta);
   }
 
   // --- MÉTODOS DE NEGOCIO ---

@@ -32,10 +32,6 @@ public class RepositorioChoferes {
         return chofer;
     }
 
-    public void addAll(List<Chofer> nuevosChoferes) {
-        this.choferes.addAll(nuevosChoferes);
-    }
-
     public void deleteById(UUID idChofer) {
         choferes.removeIf(c -> c.getIdChofer().equals(idChofer));
     }

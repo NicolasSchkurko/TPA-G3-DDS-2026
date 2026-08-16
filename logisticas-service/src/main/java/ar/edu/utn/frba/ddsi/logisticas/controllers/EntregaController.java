@@ -41,6 +41,10 @@ public class EntregaController {
     }
 
     @Operation(summary = "Obtener detalle de un ítem de entrega por su ID de Donación")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Item encontrado"),
+            @ApiResponse(responseCode = "404", description = "Item no encontrado")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
         try {
@@ -51,6 +55,10 @@ public class EntregaController {
     }
 
     @Operation(summary = "Eliminar un ítem de entrega del sistema logístico")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Item eliminado"),
+            @ApiResponse(responseCode = "404", description = "Item no encontrado")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarEntrega(@PathVariable UUID id) {
         try {
@@ -82,7 +90,7 @@ public class EntregaController {
         description = "Permite confirmar (requiere URL de foto), rechazar (requiere justificación) " +
             "o reingresar a depósito una entrega NO_RECIBIDA tras revisión (estado PENDIENTE).")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente. Evento emitido."),
+        @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente."),
         @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria.")
     })
     @PatchMapping("/{id}/estado")

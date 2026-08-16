@@ -1,12 +1,11 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Repository
@@ -17,13 +16,6 @@ public class RepositorioItemEntrega {
         return new ArrayList<>(itemEntregas);
     }
 
-    public List<ItemEntrega> findAllById(List<UUID> idDonacion) {
-        return idDonacion.stream()
-                         .map(this::findById)
-                         .filter(Objects::nonNull)
-                         .toList();
-    }
-
     public ItemEntrega findById(UUID idDonacion) {
         return itemEntregas.stream()
                            .filter(r -> r.getIdDonacion().equals(idDonacion))
@@ -31,9 +23,10 @@ public class RepositorioItemEntrega {
                            .orElse(null);
     }
 
-    public List<ItemEntrega> findByEstado(EstadoEntrega estado) {
+    public List<ItemEntrega> findByEstado(Class<? extends EstadoEntrega> estado) {
         return itemEntregas.stream()
-                           .filter(r -> r.getEstado().equals(estado)).toList();
+                .filter(r -> estado.isInstance(r.getEstado()))
+                .toList();
     }
 
     public ItemEntrega save(ItemEntrega item) {

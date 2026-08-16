@@ -2,8 +2,12 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EstadoEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,13 +21,14 @@ public class ItemEntrega {
     private LocalDateTime fechaCambioEstado;
     private String fotoComprobante; // URL de la foto cargada por la entidad al confirmar recepción
     private Entidad entidadDestino;
+    private List<EventoLogistica> eventos;
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {
         this.idDonacion = idDonacion;
         this.cantidad = cantidad;
         this.unidad = unidad;
         this.entidadDestino = entidadDestino;
-        this.estado = EstadoEntrega.PENDIENTE;
+        this.estado = new Pendiente(this);
         this.fechaCambioEstado = LocalDateTime.now();
     }
 
@@ -58,7 +63,7 @@ public class ItemEntrega {
         cambiarEstado(EstadoEntrega.PENDIENTE);
     }
 
-    private void cambiarEstado(EstadoEntrega nuevoEstado) {
+    public void cambiarEstado(EstadoEntrega nuevoEstado) {
         this.estado = nuevoEstado;
         this.fechaCambioEstado = LocalDateTime.now();
     }

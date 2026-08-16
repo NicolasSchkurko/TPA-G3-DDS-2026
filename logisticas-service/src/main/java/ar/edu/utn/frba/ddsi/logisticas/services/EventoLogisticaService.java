@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.evento.PayloadInicioRutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorEventos;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -23,16 +24,16 @@ public class EventoLogisticaService {
   // TODO: reemplazar por la URL real cuando exista un servicio de tracking/mapa.
   private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
-  private final RepositorioEventoLogistica repositorioEventos;
-  private final ObjectMapper objectMapper;
+    private final GestorEventos gestorEventos;
+    private final ObjectMapper objectMapper;
 
-  public EventoLogisticaService(RepositorioEventoLogistica repositorioEventos) {
-    this.repositorioEventos = repositorioEventos;
-    this.objectMapper = new ObjectMapper();
+  public EventoLogisticaService(GestorEventos gestorEventos) {
+      this.gestorEventos = gestorEventos;
+      this.objectMapper = new ObjectMapper();
   }
 
   public List<EventoLogistica> obtenerEventosNuevos(Long desdeId) {
-    return repositorioEventos.findByIdGreaterThanOrderByFechaAsc(desdeId);
+    return gestorEventos.buscarEventos(desdeId);
   }
 
   public void publicarInicioRuta(Ruta ruta) {
@@ -48,7 +49,7 @@ public class EventoLogisticaService {
         "INICIO_RUTA", ruta.getIdRuta().toString(), LocalDateTime.now(), null
     );
     evento.setPayloadJson(serializar(payload));
-    repositorioEventos.save(evento);
+    gestorEventos.guardarEvento(evento);
   }
 
   public void publicarEntregaConfirmada(ItemEntrega item, Ruta ruta) {
@@ -56,7 +57,7 @@ public class EventoLogisticaService {
         "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
     );
     evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-    repositorioEventos.save(evento);
+    gestorEventos.guardarEvento(evento);
   }
 
   // Adaptado para recibir la justificación separada y persistirla en el evento
@@ -65,14 +66,14 @@ public class EventoLogisticaService {
         "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
     );
     evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-    repositorioEventos.save(evento);
+    gestorEventos.guardarEvento(evento);
   }
 
   public void publicarReingresoDeposito(ItemEntrega item) {
     EventoLogistica evento = new EventoLogistica(
         "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
     );
-    repositorioEventos.save(evento);
+    gestorEventos.guardarEvento(evento);
   }
 
   private PayloadEntregaDTO payloadDatosEntrega(ItemEntrega item, Ruta ruta) {
@@ -82,7 +83,7 @@ public class EventoLogisticaService {
         momento != null ? momento.format(FORMATO_FECHA) : null,
         momento != null ? momento.format(FORMATO_HORA) : null,
         ruta.getCamionAsignado() != null ? ruta.getCamionAsignado().getPatente() : null,
-        nombreChofer(ruta)
+        this.nombreChofer(ruta)
     );
   }
 

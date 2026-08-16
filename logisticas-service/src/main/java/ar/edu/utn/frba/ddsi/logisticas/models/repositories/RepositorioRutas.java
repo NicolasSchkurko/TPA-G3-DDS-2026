@@ -43,10 +43,6 @@ public class RepositorioRutas {
         return ruta;
     }
 
-    public void saveAll(List<Ruta> listaRutas) {
-        rutas.addAll(listaRutas);
-    }
-
     public void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
         int posicion = rutas.indexOf(ruta);
         if (posicion != -1) {

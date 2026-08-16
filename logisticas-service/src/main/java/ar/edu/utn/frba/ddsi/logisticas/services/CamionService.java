@@ -3,8 +3,8 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,30 +12,28 @@ import java.util.stream.Collectors;
 
 @Service
 public class CamionService {
-  private final RepositorioCamiones repositorioCamiones;
-  private final RepositorioChoferes repositorioChoferes;
+  private final GestorCamiones gestorCamiones;
 
-  public CamionService(RepositorioCamiones repositorioCamiones, RepositorioChoferes repositorioChoferes) {
-    this.repositorioCamiones = repositorioCamiones;
-    this.repositorioChoferes = repositorioChoferes;
+  public CamionService(GestorCamiones gestorCamiones) {
+    this.gestorCamiones = gestorCamiones;
   }
 
   // --- MÉTODOS CRUD ---
   public List<CamionDTO> findAll() {
-    return repositorioCamiones.findAll().stream()
-                              .map(this::convertirADTO)
-                              .collect(Collectors.toList());
+    List<Camion> camiones = gestorCamiones.listarCamiones();
+    return camiones.stream()
+            .map(this::convertirADTO)
+            .collect(Collectors.toList());
   }
 
   public CamionDTO findById(String patente) {
-    Camion camion = repositorioCamiones.findById(patente)
-                                       .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+    Camion camion = gestorCamiones.buscarCamion(patente);
     return convertirADTO(camion);
   }
 
   public CamionDTO create(CamionDTO dto) {
-    Camion nuevoCamion = nuevoCamion(dto);
-    repositorioCamiones.save(nuevoCamion);
+    Camion nuevoCamion = gestorCamiones.nuevoCamion(dto);
+    gestorCamiones.guardarCamion(nuevoCamion);
     return convertirADTO(nuevoCamion);
   }
 
@@ -46,54 +44,31 @@ public class CamionService {
   }
 
   public CamionDTO update(String patente, CamionDTO dto) {
-    Camion camionExistente = repositorioCamiones.findById(patente)
-                                                .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-
-    Chofer nuevoChofer = dto.getIdChofer() != null ? repositorioChoferes.findById(dto.getIdChofer()) : null;
-
-    camionExistente.setChofer(nuevoChofer);
-    camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
-    camionExistente.setAltura(dto.getAltura());
-    camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
-
-    repositorioCamiones.save(camionExistente);
+    Camion camionExistente = gestorCamiones.actualizarCamion(patente, dto);
     return convertirADTO(camionExistente);
   }
 
   public void delete(String patente) {
-    if (repositorioCamiones.findById(patente).isEmpty()) {
-      throw new IllegalArgumentException("Camión no encontrado");
-    }
-    repositorioCamiones.deleteById(patente);
+    gestorCamiones.eliminarCamion(patente);
   }
 
   // --- MÉTODOS DE NEGOCIO (ESTADOS) ---
   public void marcarDisponible(String patente) {
-    Camion camion = repositorioCamiones.findById(patente)
-                                       .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+    Camion camion = gestorCamiones.buscarCamion(patente);
     camion.disponible();
-    repositorioCamiones.save(camion);
+    gestorCamiones.guardarCamion(camion);
   }
 
   public void marcarOcupado(String patente) {
-    Camion camion = repositorioCamiones.findById(patente)
-                                       .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+    Camion camion = gestorCamiones.buscarCamion(patente);
     camion.ocupado();
-    repositorioCamiones.save(camion);
+    gestorCamiones.guardarCamion(camion);
   }
 
   public void guardarCamiones(List<Camion> camiones){
     if (camiones != null && !camiones.isEmpty()) {
-      this.repositorioCamiones.addAll(camiones);
+      camiones.forEach(gestorCamiones::guardarCamion);
     }
-  }
-
-  // --- MAPPERS ---
-  public Camion nuevoCamion(CamionDTO dto){
-    if (dto == null) return null;
-    var chofer = dto.getIdChofer() != null ? repositorioChoferes.findById(dto.getIdChofer()) : null;
-    return new Camion(chofer, dto.getPatente(), dto.getCapacidadVolumen(),
-                      dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
   }
 
   public CamionDTO convertirADTO(Camion camion){

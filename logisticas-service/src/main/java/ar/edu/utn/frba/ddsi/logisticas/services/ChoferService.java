@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
@@ -11,71 +12,62 @@ import java.util.stream.Collectors;
 
 @Service
 public class ChoferService {
-  private final RepositorioChoferes repositorioChoferes;
+  private final GestorChoferes gestorChoferes;
 
-  public ChoferService(RepositorioChoferes repositorioChoferes) {
-    this.repositorioChoferes = repositorioChoferes;
+  public ChoferService(GestorChoferes gestorChoferes) {
+    this.gestorChoferes = gestorChoferes;
   }
 
   // --- MÉTODOS CRUD ---
   public List<ChoferDTO> findAll() {
-    return repositorioChoferes.findAll().stream()
-                              .map(this::convertirAChoferDTO)
-                              .collect(Collectors.toList());
+    List<Chofer> choferes = gestorChoferes.listarChoferes();
+    return choferes.stream()
+            .map(this::convertirAChoferDTO)
+            .collect(Collectors.toList());
   }
 
   public ChoferDTO findById(UUID id) {
-    Chofer chofer = repositorioChoferes.findById(id);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
+    Chofer chofer = gestorChoferes.buscarChofer(id);
     return convertirAChoferDTO(chofer);
   }
 
   public ChoferDTO create(ChoferDTO dto) {
-    Chofer nuevoChofer = convertirChoferDTO(dto);
-    repositorioChoferes.save(nuevoChofer);
+    Chofer nuevoChofer = gestorChoferes.nuevoChofer(dto);
+    gestorChoferes.guardarChofer(nuevoChofer);
     return convertirAChoferDTO(nuevoChofer);
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
-    Chofer choferExistente = repositorioChoferes.findById(id);
-    if (choferExistente == null) throw new IllegalArgumentException("Chofer no encontrado");
-
+    Chofer choferExistente = gestorChoferes.buscarChofer(id);
     choferExistente.setDisponible(dto.isDisponible());
-    repositorioChoferes.save(choferExistente);
+    gestorChoferes.guardarChofer(choferExistente);
     return convertirAChoferDTO(choferExistente);
   }
 
   public void delete(UUID id) {
-    if (repositorioChoferes.findById(id) == null) throw new IllegalArgumentException("Chofer no encontrado");
-    repositorioChoferes.deleteById(id);
+    gestorChoferes.eliminarChofer(id);
   }
 
   // --- MÉTODOS DE NEGOCIO (ESTADOS) ---
   public void marcarDisponible(UUID id) {
-    Chofer chofer = repositorioChoferes.findById(id);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
+    Chofer chofer = gestorChoferes.buscarChofer(id);
     chofer.disponible();
-    repositorioChoferes.save(chofer);
+    gestorChoferes.guardarChofer(chofer);
   }
 
   public void marcarOcupado(UUID id) {
-    Chofer chofer = repositorioChoferes.findById(id);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
+    Chofer chofer = gestorChoferes.buscarChofer(id);
     chofer.ocupado();
-    repositorioChoferes.save(chofer);
+    gestorChoferes.guardarChofer(chofer);
   }
 
   public void guardarChoferes(List<Chofer> choferes){
     if (choferes != null && !choferes.isEmpty()) {
-      this.repositorioChoferes.addAll(choferes);
+      choferes.forEach(gestorChoferes::guardarChofer);
     }
   }
 
   // --- MAPPERS ---
-  public Chofer convertirChoferDTO(ChoferDTO dto){
-    if (dto == null) return null;
-    return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
-  }
 
   public ChoferDTO convertirAChoferDTO(Chofer chofer){
     if (chofer == null) return null;

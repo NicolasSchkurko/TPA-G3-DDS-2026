@@ -2,16 +2,15 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -26,27 +25,25 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificadorDeRutasService {
 
-  private final ProveedorRutasExterno proveedorExterno;
-  private final RepositorioItemEntrega repositorioItemEntrega;
-  private final RepositorioCamiones repositorioCamiones;
-  private final RepositorioRutas repositorioRutas;
-  private final RepositorioChoferes repositorioChoferes;
+    private final GestorItemEntrega gestorItemEntrega;
+  private final GestorCamiones gestorCamiones;
+  private final GestorRutas gestorRutas;
+  private final GestorChoferes gestorChoferes;
   private final PlanificadorDeRutas planificadorDominio;
 
   @Autowired
   public PlanificadorDeRutasService(
       ProveedorRutasExterno proveedorExterno,
-      RepositorioItemEntrega repositorioItemEntrega,
-      RepositorioCamiones repositorioCamiones,
-      RepositorioRutas repositorioRutas,
-      RepositorioChoferes repositorioChoferes) {
-    this.proveedorExterno = proveedorExterno;
-    this.planificadorDominio = new PlanificadorDeRutas();
+      GestorItemEntrega gestorItemEntrega,
+      GestorCamiones gestorCamiones,
+      GestorRutas gestorRutas,
+      GestorChoferes gestorChoferes) {
+      this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
-    this.repositorioItemEntrega = repositorioItemEntrega;
-    this.repositorioCamiones = repositorioCamiones;
-    this.repositorioRutas = repositorioRutas;
-    this.repositorioChoferes = repositorioChoferes;
+    this.gestorItemEntrega = gestorItemEntrega;
+    this.gestorCamiones = gestorCamiones;
+    this.gestorRutas = gestorRutas;
+    this.gestorChoferes = gestorChoferes;
   }
 
   @Scheduled(cron = "0 0 2 * * ?")
@@ -57,8 +54,8 @@ public class PlanificadorDeRutasService {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = repositorioItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
-      camionesDisponibles = repositorioCamiones.findAll().stream()
+      itemsPendientes = gestorItemEntrega.buscarPendientes();
+      camionesDisponibles = gestorCamiones.listarCamiones().stream()
                                                .filter(Camion::getDisponible)
                                                .collect(Collectors.toList());
     } catch (Exception e) {
@@ -101,8 +98,8 @@ public class PlanificadorDeRutasService {
 
     // 3. Traer de la Base de Datos los camiones y los items necesarios
     try {
-      camionesDb = repositorioCamiones.findAll();
-      itemsDb = repositorioItemEntrega.findAllById(todosLosIdsItems);
+      camionesDb = gestorCamiones.listarCamiones();
+      itemsDb = gestorItemEntrega.buscarItems(todosLosIdsItems);
     } catch (Exception e) {
       throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
     }
@@ -113,7 +110,7 @@ public class PlanificadorDeRutasService {
     // 6. Guardar el resultado final en la BD
     try {
       rutasGeneradas.forEach(ruta -> ruta.setFechaProgramada(LocalDate.now().plusDays(1)));
-      repositorioRutas.saveAll(rutasGeneradas);
+      gestorRutas.guardarRutas(rutasGeneradas);
       System.out.println("Se guardaron exitosamente " + rutasGeneradas.size() + " rutas nuevas.");
     } catch (Exception e) {
       throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);
@@ -128,7 +125,7 @@ public class PlanificadorDeRutasService {
    */
   public List<Ruta> asignarChoferes(List<Ruta> rutas){
     List<Chofer> choferesDisponibles = new ArrayList<>(
-        repositorioChoferes.findAll()
+        gestorChoferes.listarChoferes()
                            .stream()
                            .filter(Chofer::isDisponible)
                            .toList()
@@ -146,11 +143,11 @@ public class PlanificadorDeRutasService {
           choferElegido.ocupado(); // Bloqueamos al chofer
 
           // Actualizamos estados
-          repositorioCamiones.save(camion);
-          repositorioChoferes.save(choferElegido);
+          gestorCamiones.guardarCamion(camion);
+          gestorChoferes.guardarChofer(choferElegido);
         }
 
-        repositorioRutas.save(ruta);
+        gestorRutas.guardarRuta(ruta);
         choferesDisponibles.remove(choferElegido);
       }
       return rutas;
@@ -165,11 +162,11 @@ public class PlanificadorDeRutasService {
           camion.ocupado();
           chofer.ocupado();
 
-          repositorioCamiones.save(camion);
-          repositorioChoferes.save(chofer);
+          gestorCamiones.guardarCamion(camion);
+          gestorChoferes.guardarChofer(chofer);
         }
 
-        repositorioRutas.save(rutaElegida);
+        gestorRutas.guardarRuta(rutaElegida);
 
         rutas.remove(rutaElegida);
         rutasAsignadas.add(rutaElegida);

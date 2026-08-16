@@ -33,6 +33,10 @@ public class CamionController {
   }
 
   @Operation(summary = "Obtener un camión por su patente")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "200", description = "Camion encontrado"),
+          @ApiResponse(responseCode = "404", description = "Camión no encontrado")
+  })
   @GetMapping("/{patente}")
   public ResponseEntity<?> obtenerPorPatente(@PathVariable String patente) {
     try {
@@ -50,13 +54,17 @@ public class CamionController {
   }
 
   @Operation(summary = "Registrar múltiples camiones")
-@PostMapping("/registrar")
+  @PostMapping("/registrar")
   public ResponseEntity<List<CamionDTO>> registrarCamiones(@RequestBody List<CamionDTO> camiones) {
   List<CamionDTO> nuevosCamiones = camionService.createMultiple(camiones);
   return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
 }
 
   @Operation(summary = "Actualizar un camión existente")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "200", description = "Camion actualizado"),
+          @ApiResponse(responseCode = "404", description = "Camión no encontrado")
+  })
   @PutMapping("/{patente}")
   public ResponseEntity<?> actualizarCamion(@PathVariable String patente, @RequestBody CamionDTO request) {
     try {
@@ -67,6 +75,10 @@ public class CamionController {
   }
 
   @Operation(summary = "Eliminar un camión")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "200", description = "Camion eliminado"),
+          @ApiResponse(responseCode = "404", description = "Camión no encontrado")
+  })
   @DeleteMapping("/{patente}")
   public ResponseEntity<?> eliminarCamion(@PathVariable String patente) {
     try {

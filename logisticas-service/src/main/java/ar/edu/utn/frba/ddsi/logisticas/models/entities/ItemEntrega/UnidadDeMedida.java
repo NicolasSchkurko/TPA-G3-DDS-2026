@@ -23,10 +23,6 @@ public class UnidadDeMedida {
         this.factorVolumenM3PorUnidad = factorVolumenM3PorUnidad;
     }
 
-    public String getNombre() {
-        return nombre;
-    }
-
     public double calcularPesoKg(Integer cantidad) {
         return cantidad * factorPesoKgPorUnidad;
     }

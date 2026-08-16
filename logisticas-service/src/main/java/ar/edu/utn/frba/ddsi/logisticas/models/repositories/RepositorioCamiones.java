@@ -40,10 +40,6 @@ public class RepositorioCamiones {
         return camion;
     }
 
-    public void addAll(List<Camion> camiones){
-        this.camiones.addAll(camiones);
-    }
-
     public void actualizarcarga(Camion camion){
         int posicion = camiones.indexOf(camion);
         if (posicion != -1) {
