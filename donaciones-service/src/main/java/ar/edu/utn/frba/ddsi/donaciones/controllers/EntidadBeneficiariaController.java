@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.RecepcionEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
@@ -183,28 +182,5 @@ public class EntidadBeneficiariaController {
             return ResponseEntity.notFound().build();
         }
     }
-
-    @Operation(
-            summary = "confirmar recepcion de entrega",
-            description = "permite confirmar una recepcion de una donacion que le fue asignada"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "recepcion confirmada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de confirmar la recepcion de la entrega")
-    })
-    @PatchMapping("/entregas/{idEntrega}")
-    public ResponseEntity<Void> confirmarRecepcionEntrega(
-            @PathVariable UUID idEntrega,
-            @RequestBody RecepcionEntregaDTO dto
-    ) {
-        try {
-            service.ingresarEstadoEntrega(idEntrega, dto);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            if (e.getMessage() != null && e.getMessage().contains("No se encontro la entrega")) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.badRequest().build();
-        }
-    }
+    
 }
