@@ -1,54 +1,56 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
+/**
+ * Repositorio en memoria para gestionar operaciones CRUD sobre objetos Administrador.
+ */
 public class RepositorioAdministradores {
-    //parece q no hay mas de 1 admin x ahora, esto queda x si acaso
-    private final List<Administrador> administradores = new ArrayList<>();
+    private List<Administrador> administradoresEnMemoria;
 
-    public List<Administrador> findAll() {
-        return new ArrayList<>(administradores);
+    public RepositorioAdministradores() {
+        this.administradoresEnMemoria = new ArrayList<>();
     }
 
-    public Optional<Administrador> findById(UUID id) {
-        return administradores.stream()
-                .filter(p -> p.getId().equals(id))
-                .findFirst();
-    }
-
-    public Administrador save(Administrador persona) {
-        // Al igual que en las otras entidades, borra si existe y lo vuelve a agregar actualizado
-        deleteById(persona.getId());
-        administradores.add(persona);
-        return persona;
-    }
-
-    public void deleteById(UUID id) {
-        administradores.removeIf(p -> p.getId().equals(id));
-    }
-
-    // Adaptamos tu método de búsqueda por nombre a la nueva estructura
-    public Optional<Administrador> findByNombreCompleto(String nombreBuscado) {
-        if (nombreBuscado == null || nombreBuscado.trim().isEmpty()) {
-            return Optional.empty();
+    public void guardar(Administrador administrador) {
+        if (administrador != null) {
+            // Aseguramos que tenga un ID si no se inicializó en su constructor
+            if (administrador.getId() == null) {
+                administrador.setId(UUID.randomUUID());
+            }
+            if (buscarPorId(administrador.getId()).isPresent()) {
+                throw new IllegalArgumentException("Ya existe un administrador con el ID: " + administrador.getId());
+            }
+            this.administradoresEnMemoria.add(administrador);
         }
+    }
 
-        String busqueda = nombreBuscado.trim();
-        return administradores.stream()
-                .filter(p -> {
-                    try {
-                        String nombrePersona = p.darNombre();
-                        return nombrePersona != null && nombrePersona.trim().equalsIgnoreCase(busqueda);
-                    } catch (Exception e) {
-                        return false;
-                    }
-                })
-                .findFirst();
+    public List<Administrador> obtenerTodos() {
+        return new ArrayList<>(this.administradoresEnMemoria);
+    }
+
+    public Optional<Administrador> buscarPorId(UUID id) {
+        return this.administradoresEnMemoria.stream()
+                                            .filter(a -> a.getId().equals(id))
+                                            .findFirst();
+    }
+
+    public void actualizar(UUID idOriginal, Administrador adminActualizado) {
+        Optional<Administrador> adminExistente = buscarPorId(idOriginal);
+        if (adminExistente.isPresent()) {
+            int index = this.administradoresEnMemoria.indexOf(adminExistente.get());
+            this.administradoresEnMemoria.set(index, adminActualizado);
+        } else {
+            throw new IllegalArgumentException("No se encontró el administrador a actualizar.");
+        }
+    }
+
+    public void eliminarPorId(UUID id) {
+        this.administradoresEnMemoria.removeIf(a -> a.getId().equals(id));
     }
 }
