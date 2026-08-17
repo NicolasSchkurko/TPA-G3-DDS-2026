@@ -23,6 +23,14 @@ public class RepositorioCategorias {
                 .orElse(null);
     }
 
+    public Categoria buscarPorPosicionSecuencia(int nivel){
+        if(categorias.isEmpty()) return null;
+
+        return categorias.stream()
+                .filter(categoria -> categoria.getPosicionSecuencia() == nivel)
+                .findFirst().orElse(null);
+    }
+
     // Metodo genérico para ordenar cualquier lista por el atributo que le indiquemos
     public <U extends Comparable<? super U>>
     List<Categoria> obtenerCategoriasOrdenadasPor
@@ -46,12 +54,6 @@ public class RepositorioCategorias {
         return categorias.stream()
                 .filter(c -> c.getPosicionSecuencia() >= nivel)
                 .toList();
-    }
-
-    public Optional<Categoria> obtenerSiguiente(int nivel) {
-        return categorias.stream()
-                .filter(c -> c.getPosicionSecuencia() == nivel + 1)
-                .findFirst();
     }
 
     //para modificacion de categorias

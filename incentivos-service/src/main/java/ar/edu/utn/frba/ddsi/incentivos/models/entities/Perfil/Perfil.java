@@ -30,21 +30,38 @@ public class Perfil {
         this.categoriaActual = null; //inicializar en gestorPerfiles
         this.insignias = new ArrayList<>();
         this.posicionRanking = new PosicionRanking(null);
-        this.misionActual = null; //se inicializa en personaService (gestorPerfiles) cuando se crea
+        this.misionActual = null; //se inicializa en gestorPerfiles
     }
 
     public void verificarProgresoMision(){
         misionActual.evaluarConstancia();
     }
 
-    public void progresarMision(ImpactoDonacion donacion){
+    public List<Boolean> progresarMision(ImpactoDonacion donacion){
+        List<Boolean> resultados = new ArrayList<>();
         misionActual.evaluarConstancia();
         misionActual.evaluarProgreso(donacion);
 
         if (misionActual.estaCompleta()) {
+            resultados.add(Boolean.TRUE); //aviso que se completo la mision
+            //x ende se suma insignia y avanza posicion ranking
             this.otorgarInsignia();
             this.sumarMisionCumplida();
+
+            Boolean resultado = this.progresarCategoria();
+            resultados.add(resultado);
         }
+        resultados.add(Boolean.FALSE);
+
+        return resultados;
+    }
+
+    private Boolean progresarCategoria(){
+        if (categoriaActual.esUltimaMision(misionActual)){
+            return Boolean.TRUE;
+        }
+        this.setMisionActual(categoriaActual.siguienteMision(misionActual));
+        return Boolean.FALSE;
     }
 
     private void otorgarInsignia() {
@@ -56,15 +73,5 @@ public class Perfil {
     private void sumarMisionCumplida(){
         Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
         posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
-    }
-
-    public Perfil clonar() {
-        Perfil copia = new Perfil(this.idUsuario, this.nombreUsuario);
-
-        copia.setCategoriaActual(this.categoriaActual);
-        copia.setInsignias(this.insignias);
-        copia.setMisionActual(this.misionActual);
-
-        return copia;
     }
 }

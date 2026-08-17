@@ -1,12 +1,10 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.ServicioNotificaciones;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.ServicioNotificaciones;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.NotificacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.MedioContactoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.MedioContactoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.Mensaje;
 import org.springframework.stereotype.Service;
-
-import java.util.Locale;
 
 /**
  * Obtiene el medio o los medios de contacto, hace las validaciones necesarias,

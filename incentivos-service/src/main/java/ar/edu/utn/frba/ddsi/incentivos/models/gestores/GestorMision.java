@@ -7,7 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionF
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.TipoOperacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.TipoOperacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 
 import java.time.temporal.ChronoUnit;

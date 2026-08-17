@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.MedioContactoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.MedioContactoDTO;
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.stereotype.Service;

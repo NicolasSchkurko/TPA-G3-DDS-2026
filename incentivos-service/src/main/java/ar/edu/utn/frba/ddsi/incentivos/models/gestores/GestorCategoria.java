@@ -99,4 +99,8 @@ public record GestorCategoria(RepositorioCategorias repositorio) {
 
         return repositorio.actualizar(categoriaActual);
     }
+
+    public Categoria categoriaCorrespondiente(Integer posicion){
+        return repositorio.buscarPorPosicionSecuencia(posicion);
+    }
 }

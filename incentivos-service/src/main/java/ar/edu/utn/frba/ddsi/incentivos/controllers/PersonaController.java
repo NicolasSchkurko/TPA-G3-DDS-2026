@@ -1,13 +1,14 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PersonaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,12 +36,11 @@ public class PersonaController {
     })
     @PostMapping
     public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
-        try {
-            PerfilDTO nuevo = personaService.crearPerfil(dto);
-            return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+        PerfilDTO nuevo = personaService.crearPerfil(dto);
+        if (nuevo == null) {
+            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(nuevo);
     }
 
     //https:localhost/perfiles/{idUsuario}
@@ -58,11 +58,10 @@ public class PersonaController {
                                                       @PathVariable UUID id,
                                                       @RequestBody ImpactoDonacionDTO dto) {
         //Recibe donacion, actualizar perfil y guardan en repo de donaciones
-        try {
-            PerfilDTO actualizado = personaService.actualizarPerfil(id, dto);
-            return ResponseEntity.ok(actualizado);
-        } catch (IllegalArgumentException e) {
+        PerfilDTO actualizado = personaService.actualizarPerfil(id, dto);
+        if (actualizado == null) {
             return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(actualizado);
     }
 }
