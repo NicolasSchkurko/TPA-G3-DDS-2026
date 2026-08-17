@@ -4,7 +4,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Algo
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 
 import java.util.Comparator;
 import java.util.List;

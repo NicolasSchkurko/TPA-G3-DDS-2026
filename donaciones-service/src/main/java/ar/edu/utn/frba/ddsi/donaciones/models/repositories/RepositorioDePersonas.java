@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -12,19 +12,19 @@ import java.util.UUID;
 public class RepositorioDePersonas {
 
     // Eliminamos el patrón Singleton estático para usar inyección de dependencias de Spring
-    private final List<PersonaDonante> personas = new ArrayList<>();
+    private final List<Donante> personas = new ArrayList<>();
 
-    public List<PersonaDonante> findAll() {
+    public List<Donante> findAll() {
         return new ArrayList<>(personas);
     }
 
-    public Optional<PersonaDonante> findById(UUID id) {
+    public Optional<Donante> findById(UUID id) {
         return personas.stream()
                        .filter(p -> p.getId().equals(id))
                        .findFirst();
     }
 
-    public PersonaDonante save(PersonaDonante persona) {
+    public Donante save(Donante persona) {
         // Al igual que en las otras entidades, borra si existe y lo vuelve a agregar actualizado
         deleteById(persona.getId());
         personas.add(persona);
@@ -36,7 +36,7 @@ public class RepositorioDePersonas {
     }
 
     // Adaptamos tu método de búsqueda por nombre a la nueva estructura
-    public Optional<PersonaDonante> findByNombreCompleto(String nombreBuscado) {
+    public Optional<Donante> findByNombreCompleto(String nombreBuscado) {
         if (nombreBuscado == null || nombreBuscado.trim().isEmpty()) {
             return Optional.empty();
         }

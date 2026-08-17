@@ -17,7 +17,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Don
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -85,11 +85,11 @@ public class DonacionService {
 
     public List<Donacion> procesarFormulario(UUID idDonante, List<BienResumenDTO> bienes, LocalDate fechaRealizacion) {
 
-        Optional<PersonaDonante> donanteOptional = repositorioDePersonas.findById(idDonante);
+        Optional<Donante> donanteOptional = repositorioDePersonas.findById(idDonante);
         if (donanteOptional.isEmpty()) {
             throw new NullPointerException("no se encontro persona con ese id");
         }
-        PersonaDonante donante = donanteOptional.get();
+        Donante donante = donanteOptional.get();
 
         List<Bien> bienesNormal = this.maptodto(bienes);
 

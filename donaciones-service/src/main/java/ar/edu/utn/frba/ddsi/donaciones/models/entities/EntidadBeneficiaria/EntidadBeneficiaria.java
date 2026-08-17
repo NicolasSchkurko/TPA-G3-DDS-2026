@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -8,7 +9,7 @@ import java.util.UUID;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,18 +18,14 @@ import lombok.Setter;
 @Setter
 public class EntidadBeneficiaria {
     private UUID id = UUID.randomUUID(); // Identificador único autogenerado
-    private String razonSocial;
     private Direccion direccion;
-    private Telefono nroTell;
     private List<Necesidad> necesidades;
-    private MediosDeContacto correosRepresentantes;
+    private Juridica personaJuridica;
 
-    public EntidadBeneficiaria(String razonSoc, Direccion dir, Telefono nroTell, MediosDeContacto correosRepres) {
-        this.razonSocial = razonSoc;
+    public EntidadBeneficiaria(Direccion dir, Telefono nroTell, Juridica personaJuridica) {
         this.direccion = dir;
-        this.nroTell = nroTell;
         this.necesidades = new ArrayList<>();
-        this.correosRepresentantes = correosRepres;
+        this.personaJuridica = personaJuridica;
     }
 
     public void agregarNecesidad(Necesidad necesidad) {
@@ -51,12 +48,5 @@ public class EntidadBeneficiaria {
                           .toList();
     }
 
-    public void confirmarRecepcion(Donacion donacion) {
-        // Lógica para confirmar la recepción
-    }
 
-    @Override
-    public String toString() {
-        return "EntidadBeneficiaria{id=" + id + ", razonSocial=" + razonSocial + ", direccion=" + direccion + ", telefono=" + nroTell + ", necesidades=" + necesidades + ", correosRepresentantes=" + correosRepresentantes + '}';
-    }
 }

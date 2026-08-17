@@ -1,23 +1,23 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class PersonaJuridica extends PersonaDonante {
+public class Juridica extends Persona {
   private String razonSocial;
   private String rubro;
   private TipoJuridico tipoJuridico;
   private String cuit;
   private List<Representante> representantes;
-  private String nombreDeUsuario;
 
-  public PersonaJuridica(
-      Direccion direccion,
+  public Juridica(
       String razonSocial,
       String rubro,
       TipoJuridico tipoJuridico,
@@ -25,23 +25,20 @@ public class PersonaJuridica extends PersonaDonante {
       List<Representante> representantes,
       String nombreDeUsuario
   ) {
-    super(direccion);
+    super(nombreDeUsuario);
     this.razonSocial = razonSocial;
     this.rubro = rubro;
     this.cuit = cuit;
     this.tipoJuridico = tipoJuridico;
     this.representantes = representantes;
-    this.nombreDeUsuario=nombreDeUsuario;
   }
 
   public String darNombre(){
     return this.getRazonSocial();
   }
+
   public void agregarRepresentantes(List<Representante> representantes){
       this.representantes.addAll(representantes);
   }
-  @Override
-  public String toString() {
-    return "PersonaJuridica{direccion=" + this.getDireccion() + ", razonSocial=" + razonSocial + ", rubro=" + rubro + ", cuit=" + cuit + ", tipoJuridico=" + tipoJuridico + ", representantes=" + representantes + '}';
-  }
+
 }

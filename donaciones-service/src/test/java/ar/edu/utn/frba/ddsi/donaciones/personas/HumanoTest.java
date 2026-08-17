@@ -1,10 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.personas;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Genero;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -21,12 +20,12 @@ public class HumanoTest {
     int edad = 27;
     int numeroDeDocumento = 1234567;
     Genero genero = Genero.OTRO;
-    Humano humano= new Humano(nombre,apellido,edad,numeroDeDocumento,genero);
-    assertEquals(nombre, humano.getNombre());
-    assertEquals(apellido, humano.getApellido());
-    assertEquals(edad, humano.getEdad());
-    assertEquals(numeroDeDocumento, humano.getNumeroDeDocumento());
-    assertEquals(genero, humano.getGenero());
+    Humana humana = new Humana(nombre, apellido, edad, numeroDeDocumento, genero);
+    assertEquals(nombre, humana.getNombre());
+    assertEquals(apellido, humana.getApellido());
+    assertEquals(edad, humana.getEdad());
+    assertEquals(numeroDeDocumento, humana.getNumeroDeDocumento());
+    assertEquals(genero, humana.getGenero());
   }
 
 }

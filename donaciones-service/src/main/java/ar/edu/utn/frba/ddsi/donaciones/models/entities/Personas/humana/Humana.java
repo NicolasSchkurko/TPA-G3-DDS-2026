@@ -1,21 +1,18 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Scanner;
-
 @Getter
 @Setter
-public class Humano {
+public class Humana {
   private String nombre;
   private String apellido;
   private int edad;
   private int numeroDeDocumento;
   Genero genero;
 
-  public Humano(
+  public Humana(
       String nombre,
       String apellido,
       int edad,
@@ -29,8 +26,4 @@ public class Humano {
     this.genero = genero;
   }
 
-  @Override
-  public String toString() {
-    return "Humano{nombre=" + nombre + ", apellido=" + apellido + ", edad=" + edad + ", numero de documento=" + numeroDeDocumento + ", genero=" + genero + '}';
-  }
 }

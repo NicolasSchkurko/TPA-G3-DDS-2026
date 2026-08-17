@@ -1,8 +1,8 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.donador;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,23 +13,20 @@ import java.util.List;
 
 @Getter
 @Setter
-public abstract class PersonaDonante {
+public abstract class Donante {
     private UUID id;
-    private MediosDeContacto mediosDeContacto;
     private List<Formulario> formularios;
     private Direccion direccion;
+    private Persona persona;
 
-    public PersonaDonante(Direccion direccion) {
+    public Donante(Direccion direccion, Persona persona ) {
         this.id = UUID.randomUUID();
-        this.mediosDeContacto = new MediosDeContacto();
         this.formularios = new ArrayList<>();
         this.direccion = direccion;
-
+        this.persona = persona;
     }
 
-    public void agregarMedioDeContacto(MedioDeContacto medioDeContacto) {
-        this.mediosDeContacto.agregarMedioDeContacto(medioDeContacto);
-    }
+
 
     public void agregarFormulario(Formulario formulario){
         this.formularios.add(formulario);

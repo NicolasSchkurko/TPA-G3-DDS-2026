@@ -13,12 +13,16 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
@@ -78,9 +82,9 @@ public class PersonaService {
 
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
       Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
-      Humano humano = new Humano(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
+      Humana humana = new Humana(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
 
-      PersonaHumana nuevaPersona = new PersonaHumana(humano, direccion, dto.getNombreAMostrar());
+      PersonaHumana nuevaPersona = new PersonaHumana(humana, direccion, dto.getNombreAMostrar());
       nuevaPersona.getMediosDeContacto().agregarMediosDeContacto(medios);
       nuevaPersona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
       IDDTO peticion = new IDDTO(
@@ -98,7 +102,7 @@ public class PersonaService {
 
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       TipoJuridico tipo = TipoJuridico.valueOf(dto.getTipoJuridico().toUpperCase());
-      PersonaJuridica nuevaPersona = new PersonaJuridica(
+      Juridica nuevaPersona = new Juridica(
           direccion, dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>(), dto.getNombreAMostrar()
       );
       nuevaPersona.agregarRepresentantes(RepresentanteDTOToObject.convertirEnObjeto(dto.getRepresentantes()));
@@ -141,8 +145,8 @@ public class PersonaService {
   }
 
   public PersonaDonanteDTO actualizarPersona(UUID id, PersonaDonanteDTO dto) {
-    PersonaDonante existente = repositorio.findById(id)
-                                          .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
+    Donante existente = repositorio.findById(id)
+                                   .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
 
     Direccion nuevaDireccion = mapearDireccionDesdeDTO(dto.getDireccion());
 
@@ -152,7 +156,7 @@ public class PersonaService {
       ph.getPersona().setEdad(dto.getEdad());
       ph.setDireccion(nuevaDireccion);
       // Actualizar otros campos según necesidad
-    } else if (existente instanceof PersonaJuridica pj && "JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
+    } else if (existente instanceof Juridica pj && "JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       pj.setRazonSocial(dto.getRazonSocial());
       pj.setCuit(dto.getCuit());
       pj.setDireccion(nuevaDireccion);
@@ -178,13 +182,13 @@ public class PersonaService {
         try (InputStream inputStream = new ByteArrayInputStream(fileBytes)) {
           // Instanciamos el conversor y el lector de forma temporal para esta única importación
           PersonaDonanteFilaConverter conversor = new PersonaDonanteFilaConverter(mapeosCsv);
-          LectorCSV<PersonaDonante> lectorTemporal = new LectorCSV<>(',', conversor);
+          LectorCSV<Donante> lectorTemporal = new LectorCSV<>(',', conversor);
 
           // El LectorCSV internamente hace los loggers (warnings) de las filas que fallan
-          List<PersonaDonante> donantesImportados = lectorTemporal.importar(inputStream);
+          List<Donante> donantesImportados = lectorTemporal.importar(inputStream);
 
           int guardados = 0;
-          for (PersonaDonante donante : donantesImportados) {
+          for (Donante donante : donantesImportados) {
             try {
               repositorio.save(donante);
               guardados++;
@@ -212,15 +216,15 @@ public class PersonaService {
   // --- GESTIÓN DE MEDIOS DE CONTACTO ---
 
   public List<MediosContactoDTO> obtenerMediosContacto(UUID id) {
-    PersonaDonante persona = repositorio.findById(id)
-                                        .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
+    Donante persona = repositorio.findById(id)
+                                 .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
 
     return mapMediosContactoToDto(persona.getMediosDeContacto());
   }
 
   public PersonaDonanteDTO agregarMedioContacto(UUID id, MediosContactoDTO dto) {
-    PersonaDonante persona = repositorio.findById(id)
-                                        .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
+    Donante persona = repositorio.findById(id)
+                                 .orElseThrow(() -> new IllegalArgumentException("No se encontró la persona con ID: " + id));
 
     MedioDeContacto nuevoMedio=pasarMediosDeContactoDTOAObjeto(dto);
 
@@ -231,13 +235,13 @@ public class PersonaService {
   // --- AUTOMATION ---
 
   public void revisarActividades(){
-    List<PersonaDonante> personas = repositorio.findAll();
-    for (PersonaDonante persona : personas) {
+    List<Donante> personas = repositorio.findAll();
+    for (Donante persona : personas) {
       revisarActividadPersona(persona);
     }
   }
 
-  private void revisarActividadPersona(PersonaDonante persona) {
+  private void revisarActividadPersona(Donante persona) {
     // Validamos que tenga formularios antes de chequear inactividad
     if (persona.getFormularios() != null && !persona.getFormularios().isEmpty()) {
       if (persona.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
@@ -251,7 +255,7 @@ public class PersonaService {
 
   // --- MAPPER ---
 
-  private PersonaDonanteDTO mapToDto(PersonaDonante entidad) {
+  private PersonaDonanteDTO mapToDto(Donante entidad) {
     if (entidad == null) {
       return null;
     }
@@ -277,7 +281,7 @@ public class PersonaService {
         responseDTO.setGenero(ph.getPersona().getGenero() != null ? ph.getPersona().getGenero().name() : null);
       }
       direccion = ph.getDireccion();
-    } else if (entidad instanceof PersonaJuridica pj) {
+    } else if (entidad instanceof Juridica pj) {
       responseDTO.setTipoPersona("JURIDICA");
       responseDTO.setRazonSocial(pj.getRazonSocial());
       responseDTO.setCuit(pj.getCuit());

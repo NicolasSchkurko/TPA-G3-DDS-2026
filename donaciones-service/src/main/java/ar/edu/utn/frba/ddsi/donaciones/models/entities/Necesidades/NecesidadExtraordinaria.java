@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import lombok.Getter;
