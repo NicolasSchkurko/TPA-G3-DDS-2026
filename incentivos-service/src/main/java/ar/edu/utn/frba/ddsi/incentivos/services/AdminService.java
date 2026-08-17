@@ -6,7 +6,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Can
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.ValoresDistintos;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
@@ -110,8 +111,23 @@ public class AdminService {
         return misionToDTO(mision);
     }
 
-    public MisionDTO actualizarMision(UUID idMision, MisionDTO mision){
+    public MisionDTO actualizarMision(UUID idMision, MisionDTO dto){
+        Mision mision = gestorMisiones.crearMision(dto.getNombreMision(),
+                dto.getInsigniaObjetivo(),
+                dto.getRegla().getConstancia().getCantidad(),
+                dto.getRegla().getConstancia().getUnidadTiempo(),
+                dto.getRegla().getAtributo(),
+                dto.getRegla().getOperacion().getTipoOperacion(),
+                dto.getRegla().getOperacion().getProgresoObjetivo(),
+                dto.getRegla().getOperacion().getCantidad(),
+                dto.getRegla().getOperacion().getValorEsperado()
+        );
 
+        mision.setIdMision(idMision);
+
+        Mision actualizada = gestorMisiones.actualizarMision(mision);
+
+        return actualizada != null? this.misionToDTO(actualizada) : null;
     }
 
     public CategoriaDTO categoriaToDTO(Categoria actualizada){

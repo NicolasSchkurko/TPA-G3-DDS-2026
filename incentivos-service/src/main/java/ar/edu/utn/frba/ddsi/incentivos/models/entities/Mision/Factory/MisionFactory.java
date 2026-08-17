@@ -2,9 +2,10 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import org.springframework.stereotype.Component;
-
-import java.util.function.Function;
 
 @Component
 public class MisionFactory {

@@ -22,9 +22,9 @@ public class RepositorioPerfiles {
         }
     }
 
-    public void actualizar(Perfil perfilModificado) {
+    public Perfil actualizar(Perfil perfilModificado) {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
-            return;
+            return null;
         }
 
         Perfil existente = this.buscarPorIDUsuario(perfilModificado.getIdUsuario());
@@ -51,6 +51,7 @@ public class RepositorioPerfiles {
                 perfiles.set(index, existente);
             }
         }
+        return existente;
     }
 
     public void eliminarPerfil(Perfil perfil) {

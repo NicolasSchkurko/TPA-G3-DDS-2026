@@ -1,11 +1,9 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.temporal.ChronoUnit;
-import java.util.function.Function;
 //chrono me permitiria utilizar mas periodos de tiempo
 //pero se tendria que cambiar de ImpactoDonacion y del servicio de donaciones
 //por ser LocalDate, asi que sera una limitacion del servicio

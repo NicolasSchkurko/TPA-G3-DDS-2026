@@ -6,16 +6,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class MisionesScheduler {
-    private final GestorPerfiles serv;
+    private final GestorPerfiles gestor;
 
-    public MisionesScheduler(GestorPerfiles serv) {
-        this.serv = serv;
+    public MisionesScheduler(GestorPerfiles gestor) {
+        this.gestor = gestor;
     }
 
     // 1 vez por dia se revisan los perfiles para actualizarles el
     // progreso en las misiones que requieren constancia
     @Scheduled(cron = "0 0 0 * * ?")
     public void actualizarMisiones() {
-        serv.verificarProgresos();
+        gestor.verificarProgresos();
     }
 }

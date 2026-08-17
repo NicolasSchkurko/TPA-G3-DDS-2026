@@ -97,6 +97,6 @@ public record GestorCategoria(RepositorioCategorias repositorio) {
             categoriaActual.setPosicionSecuencia(posicionNueva);
         }
 
-        return repositorio.actualizar(categoria);
+        return repositorio.actualizar(categoriaActual);
     }
 }

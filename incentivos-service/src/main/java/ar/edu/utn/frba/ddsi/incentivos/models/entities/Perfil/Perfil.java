@@ -38,6 +38,7 @@ public class Perfil {
     }
 
     public void progresarMision(ImpactoDonacion donacion){
+        misionActual.evaluarConstancia();
         misionActual.evaluarProgreso(donacion);
 
         if (misionActual.estaCompleta()) {

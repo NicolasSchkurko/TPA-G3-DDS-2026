@@ -25,7 +25,8 @@ public class RepositorioCategorias {
 
     // Metodo genérico para ordenar cualquier lista por el atributo que le indiquemos
     public <U extends Comparable<? super U>>
-    List<Categoria> obtenerCategoriasOrdenadasPor(Function<Categoria, U> keyExtractor) {
+    List<Categoria> obtenerCategoriasOrdenadasPor
+    (Function<Categoria, U> keyExtractor) {
         List<Categoria> listaOrdenada = new ArrayList<>(this.categorias);
         listaOrdenada.sort(Comparator.comparing(keyExtractor));
         return listaOrdenada;
