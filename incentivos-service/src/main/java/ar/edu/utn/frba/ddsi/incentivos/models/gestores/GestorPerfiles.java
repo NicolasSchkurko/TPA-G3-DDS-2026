@@ -1,13 +1,26 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.UltimaMisionCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
-public record GestorPerfiles(RepositorioPerfiles repositorio) {
+@Service
+public class GestorPerfiles {
+    private final RepositorioPerfiles repositorio;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public GestorPerfiles(RepositorioPerfiles repositorio, ApplicationEventPublisher eventPublisher) {
+        this.repositorio = repositorio;
+        this.eventPublisher = eventPublisher;
+    }
 
     public void verificarProgresos() {
         repositorio.listarTodos().stream()
@@ -15,37 +28,53 @@ public record GestorPerfiles(RepositorioPerfiles repositorio) {
                 .forEach(Perfil::verificarProgresoMision);
     }
 
-    public Perfil crearPerfil(Perfil nuevo){
-        if (repositorio.buscarPorIDUsuario(nuevo.getIdUsuario()) != null) {
-            return null;
-        }
-
+    public Perfil crearPerfil(Perfil nuevo) {
+        if (repositorio.buscarPorIDUsuario(nuevo.getIdUsuario()) != null) return null;
         repositorio.agregarPerfil(nuevo);
-
         return repositorio.buscarPorIDPerfil(nuevo.getIdPerfil());
     }
 
-    public List<Boolean> progresarPerfil(UUID idUsuario, ImpactoDonacion donacion){
+    public Perfil progresarPerfil(UUID idUsuario, ImpactoDonacion donacion) {
         Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
+        if (perfil == null) return null;
 
-        if (perfil == null) {
-            return null;
-        }
-
-        //este metodo actualiza mision, posRanking e insignias,
-        //avisa qué se actualizo y si hay que actualizar categoria
-        List<Boolean> resultados = perfil.progresarMision(donacion);
-
+        Mision misionAnterior = perfil.getMisionActual();
+        Categoria categoriaActual = perfil.getCategoriaActual();
+        boolean misionCompletada = perfil.progresarMision(donacion);
         repositorio.actualizar(perfil);
 
-        return resultados;
+        if (!misionCompletada) return perfil;
+
+        if (categoriaActual.esUltimaMision(misionAnterior)) {
+            eventPublisher.publishEvent(
+                    new UltimaMisionCategoria(categoriaActual.getIdCategoria(),
+                            perfil)
+            );
+        } else {
+            Mision misionNueva = categoriaActual.siguienteMision(misionAnterior);
+            perfil.setMisionActual(misionNueva);
+            repositorio.actualizar(perfil);
+            eventPublisher.publishEvent(
+                    new MisionCambiada(misionAnterior.getNombreMision(),
+                            misionAnterior.getInsigniaObjetivo().getNombre(),
+                            perfil.getNombreUsuario(),
+                            perfil.getMisionActual().getNombreMision()
+                    )
+            );
+        }
+
+        return perfil;
     }
 
-    public Perfil conseguirPerfil(UUID idUsuario){
+//    eventPublisher.publishEvent(new CategoriaCambiadaEvent(
+//            categoriaAnterior.getNombre(), perfil)
+//            );
+
+    public Perfil conseguirPerfil(UUID idUsuario) {
         return repositorio.buscarPorIDUsuario(idUsuario);
     }
 
-    public Perfil actualizarPerfil(Perfil perfil){
+    public Perfil actualizarPerfil(Perfil perfil) {
         return repositorio.actualizar(perfil);
     }
 }

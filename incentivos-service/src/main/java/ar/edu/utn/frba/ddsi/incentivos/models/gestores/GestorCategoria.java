@@ -1,16 +1,70 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.CategoriaCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.UltimaMisionCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * @param repositorio gestiona la secuencia de categorias existentes en el repositorio
- */
-public record GestorCategoria(RepositorioCategorias repositorio) {
+@Service
+public class GestorCategoria {
+    private final RepositorioCategorias repositorio;
+    private final GestorPerfiles gestorPerfiles;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public GestorCategoria(RepositorioCategorias repositorio,
+                           GestorPerfiles gestorPerfiles,
+                           ApplicationEventPublisher eventPublisher) {
+        this.repositorio = repositorio;
+        this.gestorPerfiles = gestorPerfiles;
+        this.eventPublisher = eventPublisher;
+    }
+
+    @EventListener
+    public void avanzarCategoria(UltimaMisionCategoria event) {
+        if (event.perfil() == null || event.perfil().getCategoriaActual() == null
+                || !event.perfil().getCategoriaActual().getIdCategoria()
+                .equals(event.idCategoriaCompletada())) {
+            return;
+        }
+
+        Categoria categoriaAnterior = event.perfil().getCategoriaActual();
+        Categoria categoriaSiguiente = categoriaCorrespondiente(categoriaAnterior.getPosicionSecuencia() + 1);
+        if (categoriaSiguiente == null || categoriaSiguiente.primeraMision() == null) {
+            return;
+        }
+
+        Mision misionAnterior = event.perfil().getMisionActual();
+        Mision misionNueva = categoriaSiguiente.primeraMision();
+        event.perfil().setCategoriaActual(categoriaSiguiente);
+        event.perfil().setMisionActual(misionNueva);
+        Perfil p = gestorPerfiles.actualizarPerfil(event.perfil());
+
+        eventPublisher.publishEvent(
+                new CategoriaCambiada(
+                        categoriaAnterior.getNombre(),
+                        categoriaSiguiente.getNombre(),
+                        p.getNombreUsuario()
+                )
+        );
+        eventPublisher.publishEvent(
+                new MisionCambiada(
+                        misionAnterior.getNombreMision(),
+                        misionAnterior.getInsigniaObjetivo().getNombre(),
+                        p.getNombreUsuario(),
+                        p.getMisionActual().getNombreMision()
+                )
+        );
+    }
 
     //init default, dsp el admin puede modificarlas
     public List<Categoria> inicializarCategoriasBase(){

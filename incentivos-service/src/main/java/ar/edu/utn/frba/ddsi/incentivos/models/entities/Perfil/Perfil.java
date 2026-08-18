@@ -37,31 +37,16 @@ public class Perfil {
         misionActual.evaluarConstancia();
     }
 
-    public List<Boolean> progresarMision(ImpactoDonacion donacion){
-        List<Boolean> resultados = new ArrayList<>();
+    public boolean progresarMision(ImpactoDonacion donacion){
         misionActual.evaluarConstancia();
         misionActual.evaluarProgreso(donacion);
 
         if (misionActual.estaCompleta()) {
-            resultados.add(Boolean.TRUE); //aviso que se completo la mision
-            //x ende se suma insignia y avanza posicion ranking
             this.otorgarInsignia();
             this.sumarMisionCumplida();
-
-            Boolean resultado = this.progresarCategoria();
-            resultados.add(resultado);
+            return true;
         }
-        resultados.add(Boolean.FALSE);
-
-        return resultados;
-    }
-
-    private Boolean progresarCategoria(){
-        if (categoriaActual.esUltimaMision(misionActual)){
-            return Boolean.TRUE;
-        }
-        this.setMisionActual(categoriaActual.siguienteMision(misionActual));
-        return Boolean.FALSE;
+        return false;
     }
 
     private void otorgarInsignia() {
