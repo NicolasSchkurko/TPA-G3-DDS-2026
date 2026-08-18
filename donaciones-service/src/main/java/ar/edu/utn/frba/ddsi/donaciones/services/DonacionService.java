@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
@@ -36,6 +37,7 @@ public class DonacionService {
   private final FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final GestorDonantes gestorDonantes;
+  private final GestorDonaciones gestorDonaciones;
 
   public DonacionService(RepositorioDonaciones repositorio,
                          RepositorioFormularios repositorioFormularios,
@@ -43,7 +45,8 @@ public class DonacionService {
                          GestorEntidadesBeneficiarias gestorEntidades,
                          FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion,
                          RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
-                         GestorDonantes gestorDonantes) {
+                         GestorDonantes gestorDonantes,
+                         GestorDonaciones gestorDonaciones) {
     this.repositorio = repositorio;
     this.repositorioFormularios = repositorioFormularios;
     this.incentivosClient = incentivosClient;
@@ -51,6 +54,7 @@ public class DonacionService {
     this.fabricaEstrategiasNotificacion = fabricaEstrategiasNotificacion;
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.gestorDonantes = gestorDonantes;
+    this.gestorDonaciones = gestorDonaciones;
   }
 
   public List<Donacion> obtenerTodas() {
@@ -86,12 +90,7 @@ public class DonacionService {
     List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
 
-    DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
-                                                       new AsignadorDonaciones());
-
-    donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
-    List<ResultadoMatchmaking> resultadosMatchmakings = donacionFacade.obtenerDonacionesPendientesDeAprobacion();
-    repositorioDeResultadosMatchmaking.guardarResultados(resultadosMatchmakings);
+    gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
   }
 
   public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
@@ -107,49 +106,7 @@ public class DonacionService {
   }
 
   public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
-    Optional<Donacion> donacionOpt = repositorio.findById(id);
-
-    if (donacionOpt.isPresent()) {
-      Estado e = null;
-
-      switch (nuevoEstado.toUpperCase()) {
-        case "EN_DEPOSITO":
-          e = Estado.EN_DEPOSITO;
-          break;
-        case "PENDIENTE_ASIGNACION":
-          e = Estado.PENDIENTE_ASIGNACION;
-          break;
-        case "ENTREGADO":
-          e = Estado.ENTREGADO;
-          break;
-        case "VENCIDO":
-          e = Estado.VENCIDO;
-          break;
-      }
-
-      Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(e, justificacion);
-      repositorio.save(donacion);
-
-      if (nuevoEstado.toUpperCase().equals("ASIGNADO")) {
-        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-        dto.setFechaEntrega(donacion.getFechaEntrega());
-        dto.setCantidadBienes(donacion.sumaCantidadBienes());
-        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
-        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-        dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
-        dto.setEstado(nuevoEstado);
-        incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
-
-        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
-            TipoEventoNotificacion.DONACION_ASIGNADA);
-        estrategia.ejecutar(donacion);
-      }
-
-      return donacion;
-    }
-
-    throw new RuntimeException("Donación no encontrada con ID: " + id);
+    return gestorDonaciones.cambiarEstado(id, nuevoEstado, justificacion);
   }
 
   public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
@@ -157,10 +114,10 @@ public class DonacionService {
   }
 
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
-    //Buscar resultado
+    //Buscar resultado y asignar
     ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
-                                                                                                                     "No hay resultado de matchmaking para la donación " + donacionId
-                                                                                                                 )
+                    "No hay resultado de matchmaking para la donación " + donacionId
+            )
     );
 
     if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
