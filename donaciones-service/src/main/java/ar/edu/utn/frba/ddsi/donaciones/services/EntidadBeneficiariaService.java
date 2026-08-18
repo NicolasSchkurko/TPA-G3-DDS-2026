@@ -71,7 +71,8 @@ public class EntidadBeneficiariaService {
             throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
         }
 
-        existente.setNroTell(entidadActualizada.getNroTell());
+        existente.getPersonaJuridica()
+                .setMediosDeContacto(entidadActualizada.getPersonaJuridica().getMediosDeContacto());
         existente.setDireccion(entidadActualizada.getDireccion());
 
         gestorEntidades.modificarEntidad(id, existente);

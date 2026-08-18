@@ -30,7 +30,7 @@ public class AdminService {
         }
 
         existente.setHumano(datosNuevos.getHumano());
-        existente.getHumano().setMedioDeContacto(datosNuevos.getMedioDeContacto());
+        existente.setMediosDeContacto(datosNuevos.getMediosDeContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 
         gestorAdministradores.modificarAdministrador(id, existente);
@@ -47,7 +47,7 @@ public class AdminService {
      */
     public List<MedioDeContacto> obtenerContactosAdministradores() {
         return gestorAdministradores.listarTodosLosAdministradores().stream()
-                                    .map(Administrador::getMedioDeContacto)
+                                    .map(Administrador::getContacto)
                                     .toList();
     }
 }

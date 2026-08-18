@@ -33,7 +33,7 @@ public class Juridica extends Persona {
     this.representantes = representantes;
   }
 
-  public String darNombre(){
+  public String getNombreDeUsuario() {
     return this.getRazonSocial();
   }
 
