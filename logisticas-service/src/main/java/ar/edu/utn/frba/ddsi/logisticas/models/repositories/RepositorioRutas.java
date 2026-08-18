@@ -50,6 +50,7 @@ public class RepositorioRutas {
             rutas.set(posicion, ruta);
         }
     }
+
     public Optional<Ruta> findByIdDonacion(UUID idDonacion) {
         return rutas.stream()
                     .filter(ruta -> ruta.obtenerTodosLosItems().stream()

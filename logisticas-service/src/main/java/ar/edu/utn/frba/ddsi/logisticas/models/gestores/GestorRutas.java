@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 
@@ -22,10 +24,16 @@ public class GestorRutas {
                 .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrado"));
     }
 
-    public void buscarRutaDeIdDonacion(UUID idDonacion){
-        repoRutas.findByIdDonacion(idDonacion)
+    public Ruta buscarRutaDeIdDonacion(UUID idDonacion){
+        return repoRutas.findByIdDonacion(idDonacion)
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente a la donación " + idDonacion));
+    }
+
+    public Ruta buscarRutaPorChofer(Chofer chofer){
+        return repoRutas.findByChofer(chofer)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró la ruta correspondiente al chofer " + chofer.getIdChofer()));
     }
 
     public Ruta guardarRuta(Ruta nuevaRuta){
@@ -42,6 +50,10 @@ public class GestorRutas {
         rutaExistente.setCamionAsignado(rutaActualizada.getCamionAsignado());
         rutaExistente.setParadas(rutaActualizada.getParadas());
         return guardarRuta(rutaExistente);
+    }
+
+    public void actualizarRutaEstado(Ruta rutaActual, EstadoRuta nuevoEstado){
+        repoRutas.actualizarEstado(rutaActual, nuevoEstado);
     }
 
     public void eliminarRuta(UUID idRuta){

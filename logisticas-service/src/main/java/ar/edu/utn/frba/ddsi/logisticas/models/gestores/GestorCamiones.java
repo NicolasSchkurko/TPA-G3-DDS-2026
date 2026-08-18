@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 
 import java.util.List;
+import java.util.UUID;
 
 public class GestorCamiones {
     private final RepositorioCamiones repoCamiones;
@@ -23,6 +24,11 @@ public class GestorCamiones {
 
     public Camion buscarCamion(String patente){
         return repoCamiones.findById(patente)
+                .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+    }
+
+    public Camion buscarCamionPorIdChofer(UUID idchofer){
+        return repoCamiones.findByChoferId(idchofer)
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
     }
 
@@ -52,8 +58,12 @@ public class GestorCamiones {
         return camionExistente;
     }
 
+    public void resetearCamion(Camion camion){
+        repoCamiones.resetearCarga(camion);
+    }
+
     public void eliminarCamion(String patente) {
-        Camion camion = this.buscarCamion(patente);
+        Camion camion = buscarCamion(patente);
         if(camion != null){
             repoCamiones.deleteById(patente);
         }

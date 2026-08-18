@@ -39,14 +39,6 @@ public class RepositorioItemEntrega {
         return item;
     }
 
-    public void actualizarEstado(ItemEntrega item, EstadoEntrega nuevoEstado){
-        int posicion = itemEntregas.indexOf(item);
-        if (posicion != -1) {
-            item.setEstado(nuevoEstado);
-            itemEntregas.set(posicion, item);
-        }
-    }
-
     public void deleteById(UUID idDonacion) {
         itemEntregas.removeIf(r -> r.getIdDonacion().equals(idDonacion));
     }

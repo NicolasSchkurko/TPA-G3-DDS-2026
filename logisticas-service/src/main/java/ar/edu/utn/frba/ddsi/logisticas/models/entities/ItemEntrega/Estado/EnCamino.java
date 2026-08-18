@@ -8,8 +8,6 @@ import lombok.Setter;
 @Setter
 
 public class EnCamino extends EstadoEntrega {
-    private String urlSeguimiento;
-
     public EnCamino(ItemEntrega item){
         this.item = item;
     }
@@ -17,6 +15,7 @@ public class EnCamino extends EstadoEntrega {
     @Override
     public void actualizar() {
         item.cambiarEstado(new Entregada(item));
+        gestorItems.guardarItem(item);
         item = null;
     }
 }

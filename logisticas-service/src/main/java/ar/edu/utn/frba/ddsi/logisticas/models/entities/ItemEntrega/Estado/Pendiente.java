@@ -16,7 +16,7 @@ public class Pendiente extends EstadoEntrega {
     @Override
     public void actualizar() {
         item.cambiarEstado(new EnCamino(item));
-        eventoService.publicarReingresoDeposito(item);
+        gestorItems.guardarItem(item);
         item = null;
     }
 }

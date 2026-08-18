@@ -17,7 +17,8 @@ public class Entregada extends EstadoEntrega {
     @Override
     public void actualizar() {
         item.cambiarEstado(new Entregada(item));
-        eventoService.publicarEntregaConfirmada(item, gestorRutas.buscarRuta((item.getIdDonacion())));
+        gestorItems.guardarItem(item);
+        eventoService.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion((item.getIdDonacion())));
         item = null;
     }
 }

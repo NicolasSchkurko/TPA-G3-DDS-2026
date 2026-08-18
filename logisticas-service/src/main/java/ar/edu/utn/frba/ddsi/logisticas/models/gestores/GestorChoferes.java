@@ -39,7 +39,7 @@ public class GestorChoferes {
     }
 
     public void eliminarChofer(UUID id){
-        Chofer chofer = this.buscarChofer(id);
+        Chofer chofer = buscarChofer(id);
         if(chofer != null){
             repoChoferes.deleteById(id);
         }

@@ -1,7 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Entregada;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
@@ -10,10 +11,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -61,28 +58,16 @@ public class RutaService {
   }
 
   // --- MÉTODOS DE NEGOCIO ---
-  public Ruta obtenerRutaDeChofer(Chofer chofer) {
-    if (chofer == null) return null;
-    return repositorioRutas.findByChofer(chofer).orElse(null);
-  }
-
-  public Camion obtenerCamionDeChofer(UUID idChofer) {
-    if (idChofer == null) return null;
-    return repositorioCamiones.findByChoferId(idChofer).orElse(null);
-  }
 
   public void iniciarRuta(UUID idChofer) {
-    Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
-
-    Ruta rutaActual = this.obtenerRutaDeChofer(chofer);
-    if (rutaActual == null) throw new IllegalStateException("El chofer no tiene ninguna ruta asignada");
-
-    repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
+    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
+    gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
 
     rutaActual.getParadas().forEach(parada ->
                                         parada.getItems().forEach(item -> {
-                                          repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.EN_TRASLADO);
+                                          if(item.getEstado() instanceof Pendiente){
+                                            item.getEstado().actualizar();
+                                          }
                                         })
     );
 
@@ -90,28 +75,27 @@ public class RutaService {
   }
 
   public void terminarRuta(UUID idChofer) {
-    Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
-
-    Ruta rutaActual = obtenerRutaDeChofer(chofer);
+    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
 
     if (rutaActual != null) {
-      repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.FINALIZADA);
+      gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.FINALIZADA);
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
-          if(item.getEstado() != EstadoEntrega.ENTREGADA){
-            repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.PENDIENTE);
+          if (item.getEstado() instanceof Entregada) {
+            item.setEstado(new Pendiente(item));
+            gestorItemEntrega.guardarItem(item);
+            eventoService.publicarReingresoDeposito(item);
           } else {
-            repositorioItemEntrega.deleteById(item.getIdDonacion());
+            gestorItemEntrega.eliminarItem(item.getIdDonacion());
           }
         }
       }
     }
 
-    Camion camion = obtenerCamionDeChofer(idChofer);
+    Camion camion = gestorCamiones.buscarCamionPorIdChofer(idChofer);
     if (camion != null) {
       camion.eliminarChofer();
-      repositorioCamiones.actualizarcarga(camion);
+      gestorCamiones.resetearCamion(camion);
     }
   }
 }

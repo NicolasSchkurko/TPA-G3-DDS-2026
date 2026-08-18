@@ -58,6 +58,7 @@ public class PlanificadorDeRutasService {
       camionesDisponibles = gestorCamiones.listarCamiones().stream()
                                                .filter(Camion::getDisponible)
                                                .collect(Collectors.toList());
+
     } catch (Exception e) {
       System.err.println("Error de lectura en la base de datos: " + e.getMessage());
       return;

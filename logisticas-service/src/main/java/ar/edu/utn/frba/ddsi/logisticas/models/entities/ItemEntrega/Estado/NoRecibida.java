@@ -16,6 +16,8 @@ public class NoRecibida extends EstadoEntrega {
     @Override
     public void actualizar() {
         item.cambiarEstado(new Pendiente(item));
+        gestorItems.guardarItem(item);
+        eventoService.publicarReingresoDeposito(item);
         item = null;
     }
 }
