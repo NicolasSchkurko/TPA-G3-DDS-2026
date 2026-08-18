@@ -12,7 +12,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.GestorNotificacionesEventos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
@@ -46,19 +45,13 @@ public class PersonaService {
   private final IncentivosClient incentivosClient;
 
   public PersonaService(GestorDonantes gestorDonantes,
-                        GestorNotificacionesEventos gestorNotificaciones,
-                        NotificacionesClient notificacionClient,
-                        IncentivosClient incentivosClient) {
-    this.gestorDonantes = gestorDonantes;
-  public PersonaService(RepositorioDePersonas repositorio,
                         NotificacionesClient notificacionClient,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
                         IncentivosClient incentivosClient) {
-    this.repositorio = repositorio;
+    this.gestorDonantes = gestorDonantes;
     this.notificacionClient = notificacionClient;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient=incentivosClient;
-    this.gestorNotificaciones = gestorNotificaciones;
   }
 
   // --- CRUD METHODS ---
