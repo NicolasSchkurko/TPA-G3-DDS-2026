@@ -42,8 +42,8 @@ public class LogisticaEventosConsumerService {
                                          FabricaEstrategiasNotificacion fabricaEstrategias,
                                          AdminService adminService) {
     this.repositorioDonaciones = repositorioDonaciones;
-      this.fabricaEstrategias = fabricaEstrategias;
-      this.adminService = adminService;
+    this.fabricaEstrategias = fabricaEstrategias;
+    this.adminService = adminService;
     this.objectMapper = new ObjectMapper();
     this.httpClient = HttpClient.newHttpClient();
   }
