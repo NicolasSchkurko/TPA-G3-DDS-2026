@@ -115,17 +115,6 @@ public class PersonaService {
       pj.setCuit(pjNuevos.getCuit());
     }
 
-//    if (existente instanceof Humana ph && datosNuevos instanceof Humana phNuevos) {
-//      ph.setNombre(phNuevos.getNombre());
-//      ph.setApellido(phNuevos.getApellido());
-//      ph.setEdad(phNuevos.getEdad());
-//    } else if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
-//      pj.setRazonSocial(pjNuevos.getRazonSocial());
-//      pj.setCuit(pjNuevos.getCuit());
-//    } else {
-//      throw new IllegalArgumentException("El tipo de persona no coincide con la entidad almacenada o es inválido.");
-//    }
-
     existente.setDireccion(existente.getDireccion());
 
     gestorDonantes.modificarDonante(id, existente);

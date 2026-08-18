@@ -30,20 +30,9 @@ import java.util.stream.Collectors;
 public class EntidadBeneficiariaService {
 
     private final GestorEntidadesBeneficiarias gestorEntidades;
-    private final RepositorioDonaciones repositorioDonaciones;
-    private final FabricaEstrategiasNotificacion fabricaEstrategias;
-    private final GestorAdministradores gestorAdministradores;
 
-
-    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades,
-                                      RepositorioDonaciones repositorioDonaciones,
-                                      FabricaEstrategiasNotificacion fabricaEstrategias,
-                                      GestorAdministradores gestorAdministradores) {
+    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades) {
         this.gestorEntidades = gestorEntidades;
-        this.repositorioDonaciones = repositorioDonaciones;
-        this.fabricaEstrategias = fabricaEstrategias;
-        this.gestorAdministradores = gestorAdministradores;
-
     }
 
     // --- OPERACIONES CRUD ENTIDADES ---

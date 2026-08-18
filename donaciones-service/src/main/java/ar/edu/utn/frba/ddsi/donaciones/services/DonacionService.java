@@ -1,14 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.mappers.DonacionMapper;
-import ar.edu.utn.frba.ddsi.donaciones.mappers.MatchmakingMapper;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
@@ -27,11 +22,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class DonacionService {
