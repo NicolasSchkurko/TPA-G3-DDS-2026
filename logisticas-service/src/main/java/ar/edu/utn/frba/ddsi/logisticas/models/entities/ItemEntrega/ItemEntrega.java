@@ -28,7 +28,7 @@ public class ItemEntrega {
         this.cantidad = cantidad;
         this.unidad = unidad;
         this.entidadDestino = entidadDestino;
-        this.estado = new Pendiente(this);
+        this.estado = new Pendiente();
         this.fechaCambioEstado = LocalDateTime.now();
     }
 
@@ -39,28 +39,6 @@ public class ItemEntrega {
 
     public Double getVolumenEstimadoM3() {
         return unidad.calcularVolumenM3(cantidad);
-    }
-
-    public void confirmarEntrega(String fotoComprobante) {
-        if (estado != EstadoEntrega.EN_TRASLADO) {
-            throw new IllegalStateException("Solo se puede confirmar entrega desde EN_TRASLADO, estado actual: " + estado);
-        }
-        this.fotoComprobante = fotoComprobante;
-        cambiarEstado(EstadoEntrega.ENTREGADA);
-    }
-
-    public void marcarNoRecibida() {
-        if (estado != EstadoEntrega.EN_TRASLADO) {
-            throw new IllegalStateException("Solo se puede marcar no recibida desde EN_TRASLADO, estado actual: " + estado);
-        }
-        cambiarEstado(EstadoEntrega.NO_RECIBIDA);
-    }
-
-    public void reingresarADeposito() {
-        if (estado != EstadoEntrega.NO_RECIBIDA) {
-            throw new IllegalStateException("Solo puede reingresar desde NO_RECIBIDA, estado actual: " + estado);
-        }
-        cambiarEstado(EstadoEntrega.PENDIENTE);
     }
 
     public void cambiarEstado(EstadoEntrega nuevoEstado) {

@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EnCamino;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Entregada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
@@ -66,7 +67,7 @@ public class RutaService {
     rutaActual.getParadas().forEach(parada ->
                                         parada.getItems().forEach(item -> {
                                           if(item.getEstado() instanceof Pendiente){
-                                            item.getEstado().actualizar();
+                                            item.cambiarEstado(new EnCamino());
                                           }
                                         })
     );
@@ -82,8 +83,6 @@ public class RutaService {
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
           if (item.getEstado() instanceof Entregada) {
-            item.setEstado(new Pendiente(item));
-            gestorItemEntrega.guardarItem(item);
             eventoService.publicarReingresoDeposito(item);
           } else {
             gestorItemEntrega.eliminarItem(item.getIdDonacion());

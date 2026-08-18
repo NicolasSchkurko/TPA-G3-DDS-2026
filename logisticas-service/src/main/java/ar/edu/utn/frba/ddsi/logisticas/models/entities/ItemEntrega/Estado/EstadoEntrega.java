@@ -11,17 +11,13 @@ import lombok.Setter;
 @Setter
 
 public abstract class EstadoEntrega {
-    public ItemEntrega item;
     public EventoLogisticaService eventoService;
     public GestorRutas gestorRutas;
     public GestorItemEntrega gestorItems;
 
-    public abstract void actualizar();
+    public abstract void actualizar(ItemEntrega item);
 
-    public void marcarNoRecibida(String justificacion){
-        item.cambiarEstado(new NoRecibida(item));
-        gestorItems.guardarItem(item);
+    public void marcarNoRecibida(ItemEntrega item, String justificacion){
         eventoService.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), justificacion);
-        item = null;
     }
 }

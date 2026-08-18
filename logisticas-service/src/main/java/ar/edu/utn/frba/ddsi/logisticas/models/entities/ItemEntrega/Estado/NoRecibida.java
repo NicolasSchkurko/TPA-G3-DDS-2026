@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.services.EventoLogisticaService;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,15 +11,8 @@ import lombok.Setter;
 
 public class NoRecibida extends EstadoEntrega {
 
-    public NoRecibida(ItemEntrega item){
-        this.item = item;
-    }
-
     @Override
-    public void actualizar() {
-        item.cambiarEstado(new Pendiente(item));
-        gestorItems.guardarItem(item);
+    public void actualizar(ItemEntrega item) {
         eventoService.publicarReingresoDeposito(item);
-        item = null;
     }
 }
