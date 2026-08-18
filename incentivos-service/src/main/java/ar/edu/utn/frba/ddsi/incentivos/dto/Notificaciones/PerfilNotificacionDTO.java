@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.dto;
+package ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones;
 
 import lombok.Getter;
 import lombok.Setter;

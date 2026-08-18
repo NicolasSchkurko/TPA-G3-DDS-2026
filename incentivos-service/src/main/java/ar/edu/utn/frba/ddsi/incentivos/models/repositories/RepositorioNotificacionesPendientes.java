@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 
 import java.util.ArrayList;
 import java.util.List;

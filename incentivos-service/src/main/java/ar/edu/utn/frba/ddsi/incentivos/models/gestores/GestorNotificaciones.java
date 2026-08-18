@@ -2,7 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.clients.NotificacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
