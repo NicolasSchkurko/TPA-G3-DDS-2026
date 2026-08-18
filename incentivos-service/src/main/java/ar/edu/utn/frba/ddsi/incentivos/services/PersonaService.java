@@ -3,7 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
@@ -42,11 +42,11 @@ public class PersonaService {
         Perfil p = gestorPerfiles.crearPerfil(nuevo);
 
         return new PerfilDTO(
-                nuevo.getNombreUsuario(),
-                nuevo.getCategoriaActual().getNombre(),
-                nuevo.getInsignias().stream().map(Insignia::getNombre).toList(),
-                nuevo.getMisionActual().getNombreMision(),
-                nuevo.getPosicionRanking().getPuesto()
+                p.getNombreUsuario(),
+                p.getCategoriaActual().getNombre(),
+                p.getInsignias().stream().map(Insignia::getNombre).toList(),
+                p.getMisionActual().getNombreMision(),
+                p.getPosicionRanking().getPuesto()
         );
     }
 

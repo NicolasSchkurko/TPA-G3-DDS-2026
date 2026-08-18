@@ -1,13 +1,16 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.MisionCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.events.UltimaMisionCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -47,8 +50,7 @@ public class GestorPerfiles {
 
         if (categoriaActual.esUltimaMision(misionAnterior)) {
             eventPublisher.publishEvent(
-                    new UltimaMisionCategoria(categoriaActual.getIdCategoria(),
-                            perfil)
+                    new UltimaMisionCategoria(categoriaActual.getIdCategoria(), perfil.getIdPerfil())
             );
         } else {
             Mision misionNueva = categoriaActual.siguienteMision(misionAnterior);
@@ -58,6 +60,7 @@ public class GestorPerfiles {
                     new MisionCambiada(misionAnterior.getNombreMision(),
                             misionAnterior.getInsigniaObjetivo().getNombre(),
                             perfil.getNombreUsuario(),
+                            perfil.getIdUsuario(),
                             perfil.getMisionActual().getNombreMision()
                     )
             );
@@ -66,15 +69,36 @@ public class GestorPerfiles {
         return perfil;
     }
 
-//    eventPublisher.publishEvent(new CategoriaCambiadaEvent(
-//            categoriaAnterior.getNombre(), perfil)
-//            );
+    @EventListener
+    public void actualizarPerfil(CategoriaCambiada event) {
+        if (event.categoriaNueva() == null) {
+            return;
+        }
 
-    public Perfil conseguirPerfil(UUID idUsuario) {
-        return repositorio.buscarPorIDUsuario(idUsuario);
-    }
+        Perfil perfil = repositorio.buscarPorIDPerfil(event.idPerfil());
 
-    public Perfil actualizarPerfil(Perfil perfil) {
-        return repositorio.actualizar(perfil);
+        Mision misionAnterior = perfil.getMisionActual();
+
+        perfil.setCategoriaActual(event.categoriaNueva());
+        perfil.setMisionActual(event.categoriaNueva().primeraMision());
+        repositorio.actualizar(perfil);
+
+        eventPublisher.publishEvent(
+                new MisionCambiada(misionAnterior.getNombreMision(),
+                        misionAnterior.getInsigniaObjetivo().getNombre(),
+                        perfil.getNombreUsuario(),
+                        perfil.getIdUsuario(),
+                        perfil.getMisionActual().getNombreMision()
+                )
+        );
+
+        eventPublisher.publishEvent(
+                new CategoriaNuevaPublicar(
+                        event.categoriaAnterior().getNombre(),
+                        perfil.getCategoriaActual().getNombre(),
+                        perfil.getNombreUsuario(),
+                        perfil.getIdUsuario()
+                )
+        );
     }
 }
