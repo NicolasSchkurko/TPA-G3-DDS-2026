@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienPerecedero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,13 +22,13 @@ import static org.mockito.Mockito.when;
 
 public class SegmentadorDonacionesTest {
 
-  private PersonaDonante donanteMock;
+  private Donante donanteMock;
   private SubcategoriaBien subCategoriaRopaMock;
   private SubcategoriaBien subCategoriaAlimentoMock;
 
   @BeforeEach
   void setUp() {
-    donanteMock = mock(PersonaDonante.class);
+    donanteMock = mock(Donante.class);
 
     subCategoriaRopaMock = mock(SubcategoriaBien.class);
     when(subCategoriaRopaMock.getNombre()).thenReturn("Ropa");

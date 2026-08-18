@@ -3,7 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Setter
 public class Donacion {
     private UUID id = UUID.randomUUID(); // Identificador único como UUID autogenerado
-    private PersonaDonante donante;
+    private Donante donante;
     private EntidadBeneficiaria entidad;
     private String descripcion;
     private List<Bien> bienes = new ArrayList<>();
@@ -32,8 +32,9 @@ public class Donacion {
     public Donacion() {
     }
 
-    public Donacion(PersonaDonante donante, EntidadBeneficiaria entidad, String descripcion,
-                    List<Bien> bienes, Estado estado, SubcategoriaBien subcategoria, LocalDate fechaEntrega){
+    public Donacion(
+        Donante donante, EntidadBeneficiaria entidad, String descripcion,
+        List<Bien> bienes, Estado estado, SubcategoriaBien subcategoria, LocalDate fechaEntrega){
         this.donante = donante;
         this.entidad = entidad;
         this.descripcion = descripcion;

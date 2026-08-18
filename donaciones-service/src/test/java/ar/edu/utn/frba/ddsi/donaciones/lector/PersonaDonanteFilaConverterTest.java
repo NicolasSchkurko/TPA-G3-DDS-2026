@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.lector;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter.CampoLogico;
@@ -53,7 +53,7 @@ public class PersonaDonanteFilaConverterTest {
         fila.put("Documento", "12.345.678");
         fila.put("Email", "juan@mail.com");
 
-        PersonaDonante donante = converter.convertir(fila);
+        Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
         assertTrue(donante instanceof PersonaHumana);
@@ -74,11 +74,11 @@ public class PersonaDonanteFilaConverterTest {
         fila.put("Documento", "30-12345678-9");
         fila.put("Teléfono", "+54 11 4444-4444");
 
-        PersonaDonante donante = converter.convertir(fila);
+        Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
-        assertTrue(donante instanceof PersonaJuridica);
-        PersonaJuridica juridica = (PersonaJuridica) donante;
+        assertTrue(donante instanceof Juridica);
+        Juridica juridica = (Juridica) donante;
         assertEquals("Arcos Plateados S.A.", juridica.getRazonSocial());
         assertEquals("30-12345678-9", juridica.getCuit());
     }
@@ -105,7 +105,7 @@ public class PersonaDonanteFilaConverterTest {
         fila.put("Documento", "SIN_DNI_VALIDO");
 
 
-        PersonaDonante donante = converter.convertir(fila);
+        Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
         assertTrue(donante instanceof PersonaHumana);

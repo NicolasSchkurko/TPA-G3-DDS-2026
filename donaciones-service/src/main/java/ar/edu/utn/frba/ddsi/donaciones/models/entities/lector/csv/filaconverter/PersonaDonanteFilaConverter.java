@@ -1,10 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Humano;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaJuridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * Conversor especializado en transformar una fila de CSV genérica en una PersonaDonante
  */
-public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante> {
+public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
 
   private static final Logger logger = Logger.getLogger(PersonaDonanteFilaConverter.class.getName());
 
@@ -65,7 +65,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    * @return
    */
   @Override
-  public PersonaDonante convertir(Map<String, String> fila) {
+  public Donante convertir(Map<String, String> fila) {
     System.out.println("DEBUG CONVERTIR: Claves en la fila: " + fila.keySet());
 
     String tipoPersona = obtenerPrimerValor(fila, CampoLogico.TIPO_PERSONA).orElse("").trim().toUpperCase();
@@ -75,7 +75,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
     String documento = obtenerPrimerValor(fila, CampoLogico.DOCUMENTO).orElse("");
     String nombreRazonSocial = obtenerValorConcatenado(fila, CampoLogico.NOMBRE_RAZON_SOCIAL);
 
-    PersonaDonante donante = instanciarDonante(tipoPersona, nombreRazonSocial, tipoDoc, documento);
+    Donante donante = instanciarDonante(tipoPersona, nombreRazonSocial, tipoDoc, documento);
     vincularMediosDeContacto(donante, fila);
 
     return donante;
@@ -91,7 +91,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    * @param documento
    * @return
    */
-  private PersonaDonante instanciarDonante(String tipoPersona, String nombreRazonSocial, String tipoDoc, String documento) {
+  private Donante instanciarDonante(String tipoPersona, String nombreRazonSocial, String tipoDoc, String documento) {
     switch (tipoPersona) {
       case "HUMANA":
         return crearPersonaHumana(nombreRazonSocial, tipoDoc, documento);
@@ -117,8 +117,8 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
 
     int numeroDocumentoParseado = limpiarYParsearDocumento(documento);
 
-    Humano humano = new Humano(nombre, apellido, 0, numeroDocumentoParseado, null);
-    return new PersonaHumana(humano, null, null);
+    Humana humana = new Humana(nombre, apellido, 0, numeroDocumentoParseado, null);
+    return new PersonaHumana(humana, null, null);
   }
 
   /**
@@ -129,8 +129,8 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    * @param documento
    * @return
    */
-  private PersonaJuridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
-    return new PersonaJuridica(null, razonSocial, null, null, documento, new ArrayList<>(), null);
+  private Juridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
+    return new Juridica(null, razonSocial, null, null, documento, new ArrayList<>(), null);
   }
 
   /**
@@ -139,7 +139,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<PersonaDonante
    * @param donante
    * @param fila
    */
-  private void vincularMediosDeContacto(PersonaDonante donante, Map<String, String> fila) {
+  private void vincularMediosDeContacto(Donante donante, Map<String, String> fila) {
     String email = obtenerPrimerValor(fila, CampoLogico.EMAIL).orElse("");
     String telefono = obtenerPrimerValor(fila, CampoLogico.TELEFONO).orElse("");
     String whatsapp = obtenerPrimerValor(fila, CampoLogico.WHATSAPP).orElse("");

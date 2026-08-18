@@ -1,13 +1,15 @@
 package ar.edu.utn.frba.ddsi.donaciones.personas;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Representante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
@@ -22,17 +24,17 @@ public class JuridicaTest {
         Ciudad ciudad = new Ciudad("Buenos Aires", new Provincia("Buenos Aires", new Pais("Argentina")));
         Direccion direccion = new Direccion("Rivadavia", "Corrientes", 1234, 2, "A", ciudad);
 
-        Humano humanoRep = new Humano("Maria", "Lopez", 40, 87654321, Genero.MUJER);
-        Representante representante = new Representante(humanoRep, true);
+        Humana humanaRep = new Humana("Maria", "Lopez", 40, 87654321, Genero.MUJER);
+        Representante representante = new Representante(humanaRep, true);
 
-        PersonaJuridica persona = new PersonaJuridica(
-                direccion,
-                "Fundacion Ayuda",
-                "ONGs",
-                TipoJuridico.ONG,
-                "20-12345678-9",
-                List.of(representante),
-                "la mejor fundacion"
+        Juridica persona = new Juridica(
+            direccion,
+            "Fundacion Ayuda",
+            "ONGs",
+            TipoJuridico.ONG,
+            "20-12345678-9",
+            List.of(representante),
+            "la mejor fundacion"
         );
 
 
@@ -48,11 +50,11 @@ public class JuridicaTest {
     @Test
     public void crearPersonaHumanaConTodosLosValores() {
         // Arrange
-        Humano humano = new Humano("Juan", "Perez", 30, 12345678, Genero.HOMBRE);
+        Humana humana = new Humana("Juan", "Perez", 30, 12345678, Genero.HOMBRE);
         Ciudad ciudad = new Ciudad("Buenos Aires", new Provincia("Buenos Aires", new Pais("Argentina")));
         Direccion direccion = new Direccion("Rivadavia", "Corrientes", 1234, 2, "A", ciudad);
 
-        PersonaHumana persona = new PersonaHumana(humano, direccion, "juan el mejorcito");
+        PersonaHumana persona = new PersonaHumana(humana, direccion, "juan el mejorcito");
 
 
         assertEquals("Juan", persona.getPersona().getNombre());
