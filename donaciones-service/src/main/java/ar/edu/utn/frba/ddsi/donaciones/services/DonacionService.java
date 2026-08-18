@@ -144,7 +144,7 @@ public class DonacionService {
         dto.setCantidadBienes(donacion.sumaCantidadBienes());
         dto.setSubCategoria(donacion.getSubcategoria().getNombre());
         dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-        dto.setEntidadBeneficiaria(donacion.getEntidad().getRazonSocial());
+        dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
         dto.setEstado(nuevoEstado);
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
 

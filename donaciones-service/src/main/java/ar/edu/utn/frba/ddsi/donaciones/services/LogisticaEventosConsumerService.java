@@ -133,8 +133,8 @@ public class LogisticaEventosConsumerService {
                   estrategiaViaje.ejecutar(
                           new NotificacionViajeDTO(
                                   payload.getUrlRuta(),
-                                  donacion.getDonante().getMediosDeContacto(),
-                                  donacion.getEntidad().getCorreosRepresentantes()
+                                  donacion.getDonante().getPersona().getMediosDeContacto(),
+                                  donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
                           ));
                 });
       }
@@ -164,8 +164,8 @@ public class LogisticaEventosConsumerService {
                       .ejecutar(
                               new NotificacionEntregaDTO(
                                       payload,
-                                      donacion.getDonante().getMediosDeContacto(),
-                                      donacion.getEntidad().getCorreosRepresentantes()
+                                      donacion.getDonante().getPersona().getMediosDeContacto(),
+                                      donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
                               ));
             });
   }
@@ -196,8 +196,8 @@ public class LogisticaEventosConsumerService {
                       .ejecutar(
                               new NotificacionEntregaFallidaDTO(
                                       payload,
-                                      donacion.getDonante().getMediosDeContacto(),
-                                      donacion.getEntidad().getCorreosRepresentantes(),
+                                      donacion.getDonante().getPersona().getMediosDeContacto(),
+                                      donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),
                                       adminService.obtenerContactosAdministradores()
                               ));
             });

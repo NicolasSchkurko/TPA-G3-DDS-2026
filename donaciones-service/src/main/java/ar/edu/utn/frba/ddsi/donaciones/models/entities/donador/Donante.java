@@ -13,7 +13,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public abstract class Donante {
+public class Donante {
     private UUID id;
     private List<Formulario> formularios;
     private Direccion direccion;
@@ -31,6 +31,4 @@ public abstract class Donante {
     public void agregarFormulario(Formulario formulario){
         this.formularios.add(formulario);
     }
-
-    public abstract String darNombre();
 }

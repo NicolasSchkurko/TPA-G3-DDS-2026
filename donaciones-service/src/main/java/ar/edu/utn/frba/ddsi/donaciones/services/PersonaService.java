@@ -49,31 +49,29 @@ public class PersonaService {
 
   // --- CRUD METHODS ---
 
-  public Donante crearPersona(Donante nuevaPersona) {
+  public Donante crearPersona(Donante nuevoDonante) {
 
     // Obtenemos el nombre de usuario directo desde la Persona del donante
-    String nombreUsuario = (nuevaPersona instanceof Humana) ?
-                           ((Humana) nuevaPersona).getPersona().getNombreDeUsuario() :
-                           ((Juridica) nuevaPersona).getNombreDeUsuario();
+    String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
 
     IDDTO peticion = new IDDTO(
-        nuevaPersona.getId(),
+        nuevoDonante.getId(),
         nombreUsuario
     );
     incentivosClient.peticionCrearPerfil(peticion);
 
-    if (nuevaPersona instanceof Juridica) {
+    if (nuevoDonante.getPersona() instanceof Juridica) {
       NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(
-          nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
-          nuevaPersona.getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
+          nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
+          nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
           "Gracias por registrarse en DonaTrack",
           "Nuevo Registro en DonaTrack"
       );
       notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
     }
 
-    gestorDonantes.registrarDonante(nuevaPersona);
-    return nuevaPersona;
+    gestorDonantes.registrarDonante(nuevoDonante);
+    return nuevoDonante;
   }
 
   public List<Donante> listarTodas() {
@@ -90,7 +88,7 @@ public class PersonaService {
 
   public Donante buscarPorNombre(String nombreBuscado) {
     return gestorDonantes.listarTodosLosDonantes().stream()
-                         .filter(d -> d.darNombre().equalsIgnoreCase(nombreBuscado))
+                         .filter(d -> d.getPersona().getNombreDeUsuario().equalsIgnoreCase(nombreBuscado))
                          .findFirst()
                          .orElse(null);
   }
@@ -101,18 +99,26 @@ public class PersonaService {
       throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
     }
 
-    if (existente instanceof Humana ph && datosNuevos instanceof Humana phNuevos) {
-      ph.getPersona().setNombre(phNuevos.getPersona().getNombre());
-      ph.getPersona().setApellido(phNuevos.getPersona().getApellido());
-      ph.getPersona().setEdad(phNuevos.getPersona().getEdad());
-      ph.setDireccion(phNuevos.getDireccion());
-    } else if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
+    existente.getPersona().setNombreDeUsuario(datosNuevos.getPersona().getNombreDeUsuario());
+    existente.getPersona().setMediosDeContacto(datosNuevos.getPersona().getMediosDeContacto());
+    existente.getPersona().setId(datosNuevos.getPersona().getId());
+    if(existente.getPersona() instanceof Juridica pj && datosNuevos.getPersona() instanceof Juridica pjNuevos) {
       pj.setRazonSocial(pjNuevos.getRazonSocial());
       pj.setCuit(pjNuevos.getCuit());
-      pj.setDireccion(pjNuevos.getDireccion());
-    } else {
-      throw new IllegalArgumentException("El tipo de persona no coincide con la entidad almacenada o es inválido.");
     }
+
+//    if (existente instanceof Humana ph && datosNuevos instanceof Humana phNuevos) {
+//      ph.setNombre(phNuevos.getNombre());
+//      ph.setApellido(phNuevos.getApellido());
+//      ph.setEdad(phNuevos.getEdad());
+//    } else if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
+//      pj.setRazonSocial(pjNuevos.getRazonSocial());
+//      pj.setCuit(pjNuevos.getCuit());
+//    } else {
+//      throw new IllegalArgumentException("El tipo de persona no coincide con la entidad almacenada o es inválido.");
+//    }
+
+    existente.setDireccion(existente.getDireccion());
 
     gestorDonantes.modificarDonante(id, existente);
     return existente;
@@ -166,23 +172,23 @@ public class PersonaService {
   // --- GESTIÓN DE MEDIOS DE CONTACTO ---
 
   public MediosDeContacto obtenerMediosContacto(UUID id) {
-    Donante persona = gestorDonantes.obtenerDonante(id);
-    if (persona == null) {
+    Donante donante = gestorDonantes.obtenerDonante(id);
+    if (donante == null) {
       throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
     }
 
-    return persona.getMediosDeContacto();
+    return donante.getPersona().getMediosDeContacto();
   }
 
   public Donante agregarMedioContacto(UUID id, MedioDeContacto nuevoMedio) {
-    Donante persona = gestorDonantes.obtenerDonante(id);
-    if (persona == null) {
+    Donante donante = gestorDonantes.obtenerDonante(id);
+    if (donante == null) {
       throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
     }
 
-    persona.agregarMedioDeContacto(nuevoMedio);
-    gestorDonantes.modificarDonante(id, persona);
-    return persona;
+    donante.getPersona().agregarMedioDeContacto(nuevoMedio);
+    gestorDonantes.modificarDonante(id, donante);
+    return donante;
   }
 
   // --- AUTOMATION ---
