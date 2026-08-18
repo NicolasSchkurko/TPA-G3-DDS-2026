@@ -109,6 +109,7 @@ public class PersonaService {
     existente.getPersona().setNombreDeUsuario(datosNuevos.getPersona().getNombreDeUsuario());
     existente.getPersona().setMediosDeContacto(datosNuevos.getPersona().getMediosDeContacto());
     existente.getPersona().setId(datosNuevos.getPersona().getId());
+
     if(existente.getPersona() instanceof Juridica pj && datosNuevos.getPersona() instanceof Juridica pjNuevos) {
       pj.setRazonSocial(pjNuevos.getRazonSocial());
       pj.setCuit(pjNuevos.getCuit());
