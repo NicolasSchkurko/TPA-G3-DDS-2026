@@ -1,9 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EnCamino;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Entregada;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
@@ -12,6 +10,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -64,14 +63,6 @@ public class RutaService {
     Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
     gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
 
-    rutaActual.getParadas().forEach(parada ->
-                                        parada.getItems().forEach(item -> {
-                                          if(item.getEstado() instanceof Pendiente){
-                                            item.cambiarEstado(new EnCamino());
-                                          }
-                                        })
-    );
-
     eventoService.publicarInicioRuta(rutaActual);
   }
 
@@ -82,7 +73,7 @@ public class RutaService {
       gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.FINALIZADA);
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
-          if (item.getEstado() instanceof Entregada) {
+          if (item.getEstado() == EstadoEntrega.ENTREGADA) {
             eventoService.publicarReingresoDeposito(item);
           } else {
             gestorItemEntrega.eliminarItem(item.getIdDonacion());

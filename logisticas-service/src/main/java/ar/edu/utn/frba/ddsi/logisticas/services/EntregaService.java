@@ -7,7 +7,6 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;

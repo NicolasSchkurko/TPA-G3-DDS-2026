@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EstadoEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,7 +26,7 @@ public class ItemEntrega {
         this.cantidad = cantidad;
         this.unidad = unidad;
         this.entidadDestino = entidadDestino;
-        this.estado = new Pendiente();
+        this.estado = EstadoEntrega.PENDIENTE;
         this.fechaCambioEstado = LocalDateTime.now();
     }
 
