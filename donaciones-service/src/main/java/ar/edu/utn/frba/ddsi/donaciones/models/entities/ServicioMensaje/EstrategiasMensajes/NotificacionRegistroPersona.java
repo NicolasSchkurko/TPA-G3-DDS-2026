@@ -33,7 +33,7 @@ public class NotificacionRegistroPersona extends EstrategiaMensaje {
         );
 
         servicioNotificaciones.enviarNotificacionAMedioPredeterminado(
-                persona.getMediosDeContacto(),
+                persona.getPersona().getMediosDeContacto(),
                 mensaje
         );
     }

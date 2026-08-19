@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionViajeDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
@@ -25,8 +25,8 @@ public class NotificacionViaje extends EstrategiaMensaje {
     @Override
     public void ejecutar(Object datos) {
 
-        NotificacionViajeDTO dto =
-                (NotificacionViajeDTO) datos;
+        NotificacionViajeDatos dto =
+                (NotificacionViajeDatos) datos;
 
         Mensaje mensaje = new Mensaje(
                 "Nueva Donación En Viaje",

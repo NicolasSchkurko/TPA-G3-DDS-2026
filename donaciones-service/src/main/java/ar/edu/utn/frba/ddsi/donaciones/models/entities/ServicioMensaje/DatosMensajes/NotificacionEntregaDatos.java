@@ -1,12 +1,11 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import lombok.Getter;
 
 @Getter
-public class NotificacionEntregaDTO {
+public class NotificacionEntregaDatos {
 
     private RutaEnProceso ruta;
 
@@ -16,7 +15,7 @@ public class NotificacionEntregaDTO {
 
     private MediosDeContacto mediosEntidad;
 
-    public NotificacionEntregaDTO(PayloadEntregaDTO datosEntrega, MediosDeContacto mediosDonante, MediosDeContacto mediosEntidad) {
+    public NotificacionEntregaDatos(PayloadEntregaDTO datosEntrega, MediosDeContacto mediosDonante, MediosDeContacto mediosEntidad) {
         this.datosEntrega = datosEntrega;
         this.mediosDonante = mediosDonante;
         this.mediosEntidad = mediosEntidad;

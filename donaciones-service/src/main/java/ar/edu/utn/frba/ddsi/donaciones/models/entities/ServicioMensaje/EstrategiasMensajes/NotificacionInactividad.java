@@ -32,13 +32,13 @@ public class NotificacionInactividad extends EstrategiaMensaje {
                 "Inactividad del perfil",
                 String.format(
                         "%s, ¡te extrañamos! Hace más de 20 días que no registras actividad. Tu ayuda es muy valiosa.",
-                        persona.darNombre()
+                        persona.getPersona().getNombreDeUsuario()
                 ),
                 TipoDeMensaje.ALERTA
         );
 
         servicioNotificaciones.enviarNotificacionAMedioPredeterminado(
-                persona.getMediosDeContacto(),
+                persona.getPersona().getMediosDeContacto(),
                 mensaje
         );
     }

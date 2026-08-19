@@ -3,9 +3,9 @@ package ar.edu.utn.frba.ddsi.donaciones.gestores;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionViajeDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaDatos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaFallidaDatos;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionViajeDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
@@ -77,7 +77,7 @@ public class GestorLogistica {
                             repositorioDonaciones.save(donacion);
 
                             estrategiaViaje.ejecutar(
-                                    new NotificacionViajeDTO(
+                                    new NotificacionViajeDatos(
                                             payload.getUrlRuta(),
                                             donacion.getDonante().getPersona().getMediosDeContacto(),
                                             donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
@@ -108,7 +108,7 @@ public class GestorLogistica {
                     fabricaEstrategias
                             .obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA)
                             .ejecutar(
-                                    new NotificacionEntregaDTO(
+                                    new NotificacionEntregaDatos(
                                             payload,
                                             donacion.getDonante().getPersona().getMediosDeContacto(),
                                             donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
@@ -140,7 +140,7 @@ public class GestorLogistica {
                     fabricaEstrategias
                             .obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA)
                             .ejecutar(
-                                    new NotificacionEntregaFallidaDTO(
+                                    new NotificacionEntregaFallidaDatos(
                                             payload,
                                             donacion.getDonante().getPersona().getMediosDeContacto(),
                                             donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),

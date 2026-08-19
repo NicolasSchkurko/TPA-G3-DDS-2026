@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaAdminDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaFallidaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaFallidaDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
@@ -23,8 +22,8 @@ public class NotificacionEntregaFallida extends EstrategiaMensaje {
     @Override
     public void ejecutar(Object datos) {
 
-        NotificacionEntregaFallidaDTO dto =
-                (NotificacionEntregaFallidaDTO) datos;
+        NotificacionEntregaFallidaDatos dto =
+                (NotificacionEntregaFallidaDatos) datos;
 
         Mensaje mensaje = new Mensaje(
                 "Entrega Fallida",

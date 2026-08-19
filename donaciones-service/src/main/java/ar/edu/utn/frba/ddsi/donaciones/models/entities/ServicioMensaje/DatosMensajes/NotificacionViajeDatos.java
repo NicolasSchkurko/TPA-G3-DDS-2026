@@ -1,10 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones;
+package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import lombok.Getter;
 
 @Getter
-public class NotificacionViajeDTO {
+public class NotificacionViajeDatos {
 
     private String urlRuta;
 
@@ -12,7 +12,7 @@ public class NotificacionViajeDTO {
 
     private MediosDeContacto contactoEntidad;
 
-    public NotificacionViajeDTO(String urlRuta, MediosDeContacto destinatarios, MediosDeContacto contactoEntidad) {
+    public NotificacionViajeDatos(String urlRuta, MediosDeContacto destinatarios, MediosDeContacto contactoEntidad) {
         this.urlRuta = urlRuta;
         this.contactoDonante = destinatarios;
         this.contactoEntidad = contactoEntidad;
