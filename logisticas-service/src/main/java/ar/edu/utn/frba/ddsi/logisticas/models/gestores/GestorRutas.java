@@ -37,12 +37,11 @@ public class GestorRutas {
     }
 
     public Ruta guardarRuta(Ruta nuevaRuta){
-        repoRutas.save(nuevaRuta);
-        return nuevaRuta;
+        return repoRutas.save(nuevaRuta);
     }
 
-    public void guardarRutas(List<Ruta> todosLosIdRutas){
-        todosLosIdRutas.forEach(this::guardarRuta);
+    public void guardarRutas(List<Ruta> rutas){
+        rutas.forEach(this::guardarRuta);
     }
 
     public Ruta actualizarRuta(UUID id, Ruta rutaActualizada){

@@ -38,9 +38,4 @@ public class ItemEntrega {
     public Double getVolumenEstimadoM3() {
         return unidad.calcularVolumenM3(cantidad);
     }
-
-    public void cambiarEstado(EstadoEntrega nuevoEstado) {
-        this.estado = nuevoEstado;
-        this.fechaCambioEstado = LocalDateTime.now();
-    }
 }

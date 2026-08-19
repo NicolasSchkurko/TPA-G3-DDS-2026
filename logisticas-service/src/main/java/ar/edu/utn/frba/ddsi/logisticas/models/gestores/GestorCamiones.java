@@ -11,11 +11,9 @@ import java.util.UUID;
 
 public class GestorCamiones {
     private final RepositorioCamiones repoCamiones;
-    private final GestorChoferes gestorChoferes;
 
-    public GestorCamiones(RepositorioCamiones repoCamiones, GestorChoferes gestorChoferes){
+    public GestorCamiones(RepositorioCamiones repoCamiones){
         this.repoCamiones = repoCamiones;
-        this.gestorChoferes = gestorChoferes;
     }
 
     public List<Camion> listarCamiones(){
@@ -37,27 +35,6 @@ public class GestorCamiones {
     }
 
     // --- MAPPERS ---
-    public Camion nuevoCamion(CamionDTO dto){
-        if (dto == null) return null;
-        var chofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
-        return new Camion(chofer, dto.getPatente(), dto.getCapacidadVolumen(),
-                dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
-    }
-
-    public Camion actualizarCamion(String patente, CamionDTO dto){
-        Camion camionExistente = this.buscarCamion(patente);
-
-        Chofer nuevoChofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
-
-        camionExistente.setChofer(nuevoChofer);
-        camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
-        camionExistente.setAltura(dto.getAltura());
-        camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
-
-        this.guardarCamion(camionExistente);
-        return camionExistente;
-    }
-
     public void resetearCamion(Camion camion){
         repoCamiones.resetearCarga(camion);
     }

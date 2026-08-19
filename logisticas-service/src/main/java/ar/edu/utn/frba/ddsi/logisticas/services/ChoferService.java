@@ -32,9 +32,14 @@ public class ChoferService {
   }
 
   public ChoferDTO create(ChoferDTO dto) {
-    Chofer nuevoChofer = gestorChoferes.nuevoChofer(dto);
+    Chofer nuevoChofer = convertirChoferDTO(dto);
     gestorChoferes.guardarChofer(nuevoChofer);
     return convertirAChoferDTO(nuevoChofer);
+  }
+
+  public Chofer convertirChoferDTO(ChoferDTO dto){
+    if (dto == null) return null;
+    return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {

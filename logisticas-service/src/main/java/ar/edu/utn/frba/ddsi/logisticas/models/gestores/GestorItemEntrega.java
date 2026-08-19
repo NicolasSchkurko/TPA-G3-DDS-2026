@@ -24,19 +24,8 @@ public class GestorItemEntrega {
         return item;
     }
 
-    public List<ItemEntrega> buscarItems(List<UUID> todosLosIdsItems){
-        return todosLosIdsItems.stream().map(this::buscarItem).toList();
-    }
-
-    public void eliminarItem(UUID id){
-        if (repoItemEntrega.findById(id) == null) {
-            throw new IllegalArgumentException("Entrega no encontrada");
-        }
-        repoItemEntrega.deleteById(id);
-    }
-
-    public void guardarItem(ItemEntrega item){
-        repoItemEntrega.save(item);
+    public List<ItemEntrega> buscarItems(List<UUID> idsItems){
+        return idsItems.stream().map(this::buscarItem).toList();
     }
 
     public List<ItemEntrega> buscarNoRecibidos(){
@@ -45,5 +34,16 @@ public class GestorItemEntrega {
 
     public List<ItemEntrega> buscarPendientes(){
         return repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+    }
+
+    public void guardarItem(ItemEntrega item){
+        repoItemEntrega.save(item);
+    }
+
+    public void eliminarItem(UUID id){
+        if (repoItemEntrega.findById(id) == null) {
+            throw new IllegalArgumentException("Entrega no encontrada");
+        }
+        repoItemEntrega.deleteById(id);
     }
 }

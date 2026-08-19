@@ -13,9 +13,11 @@ import java.util.stream.Collectors;
 @Service
 public class CamionService {
   private final GestorCamiones gestorCamiones;
+  private final GestorChoferes gestorChoferes;
 
-  public CamionService(GestorCamiones gestorCamiones) {
+  public CamionService(GestorCamiones gestorCamiones, GestorChoferes gestorChoferes) {
     this.gestorCamiones = gestorCamiones;
+    this.gestorChoferes = gestorChoferes;
   }
 
   // --- MÉTODOS CRUD ---
@@ -32,7 +34,7 @@ public class CamionService {
   }
 
   public CamionDTO create(CamionDTO dto) {
-    Camion nuevoCamion = gestorCamiones.nuevoCamion(dto);
+    Camion nuevoCamion = convertirCamionDTO(dto);
     gestorCamiones.guardarCamion(nuevoCamion);
     return convertirADTO(nuevoCamion);
   }
@@ -43,9 +45,30 @@ public class CamionService {
       .collect(Collectors.toList());
   }
 
+  public Camion convertirCamionDTO(CamionDTO dto){
+    if (dto == null) return null;
+    var chofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
+    return new Camion(chofer, dto.getPatente(), dto.getCapacidadVolumen(),
+            dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
+  }
+
   public CamionDTO update(String patente, CamionDTO dto) {
-    Camion camionExistente = gestorCamiones.actualizarCamion(patente, dto);
+    Camion camionExistente = actualizarCamion(patente, dto);
     return convertirADTO(camionExistente);
+  }
+
+  public Camion actualizarCamion(String patente, CamionDTO dto){
+    Camion camionExistente = gestorCamiones.buscarCamion(patente);
+
+    Chofer nuevoChofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
+
+    camionExistente.setChofer(nuevoChofer);
+    camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
+    camionExistente.setAltura(dto.getAltura());
+    camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
+
+    gestorCamiones.guardarCamion(camionExistente);
+    return camionExistente;
   }
 
   public void delete(String patente) {

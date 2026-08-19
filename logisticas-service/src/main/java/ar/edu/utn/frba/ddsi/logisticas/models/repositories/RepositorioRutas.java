@@ -24,6 +24,13 @@ public class RepositorioRutas {
                     .findFirst();
     }
 
+    public Optional<Ruta> findByIdDonacion(UUID idDonacion) {
+        return rutas.stream()
+                .filter(ruta -> ruta.obtenerTodosLosItems().stream()
+                        .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
+                .findFirst();
+    }
+
     public Optional<Ruta> findByChofer(Chofer chofer) {
         if (chofer == null) return Optional.empty();
         return rutas.stream()
@@ -48,13 +55,6 @@ public class RepositorioRutas {
             ruta.setEstado(nuevoEstado);
             rutas.set(posicion, ruta);
         }
-    }
-
-    public Optional<Ruta> findByIdDonacion(UUID idDonacion) {
-        return rutas.stream()
-                    .filter(ruta -> ruta.obtenerTodosLosItems().stream()
-                                        .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
-                    .findFirst();
     }
 
     public void deleteById(UUID id) {

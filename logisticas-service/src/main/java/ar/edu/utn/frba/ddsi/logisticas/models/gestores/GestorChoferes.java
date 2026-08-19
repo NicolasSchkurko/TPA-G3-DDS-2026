@@ -29,11 +29,6 @@ public class GestorChoferes {
         return chofer;
     }
 
-    public Chofer nuevoChofer(ChoferDTO dto){
-        if (dto == null) return null;
-        return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
-    }
-
     public void guardarChofer(Chofer chofer){
         repoChoferes.save(chofer);
     }
