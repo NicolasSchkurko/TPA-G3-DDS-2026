@@ -55,7 +55,7 @@ public class GestorDonantes {
     Donante donante = obtenerDonante(idDonante);
     if (donante != null) {
       donante.agregarFormulario(nuevoFormulario);
-      System.out.println("Formulario agregado con éxito al donante: " + donante.darNombre());
+      System.out.println("Formulario agregado con éxito al donante: " + donante.getPersona().getNombreDeUsuario());
     } else {
       System.err.println("No se pudo agregar formulario: Donante no encontrado.");
     }

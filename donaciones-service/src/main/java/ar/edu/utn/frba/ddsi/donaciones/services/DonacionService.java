@@ -1,25 +1,11 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
-import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.gestores.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -29,40 +15,30 @@ import java.util.UUID;
 
 @Service
 public class DonacionService {
-
-  private final RepositorioDonaciones repositorio;
-  private final RepositorioFormularios repositorioFormularios;
   private final GestorEntidadesBeneficiarias gestorEntidades;
-  private final IncentivosClient incentivosClient;
-  private final FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
-  private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final GestorDonantes gestorDonantes;
   private final GestorDonaciones gestorDonaciones;
+  private final GestorFormulario gestorFormulario;
+  private final GestorMatchmaking gestorMatchmaking;
 
-  public DonacionService(RepositorioDonaciones repositorio,
-                         RepositorioFormularios repositorioFormularios,
-                         IncentivosClient incentivosClient,
-                         GestorEntidadesBeneficiarias gestorEntidades,
-                         FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion,
-                         RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
+  public DonacionService(GestorEntidadesBeneficiarias gestorEntidades,
                          GestorDonantes gestorDonantes,
-                         GestorDonaciones gestorDonaciones) {
-    this.repositorio = repositorio;
-    this.repositorioFormularios = repositorioFormularios;
-    this.incentivosClient = incentivosClient;
+                         GestorDonaciones gestorDonaciones,
+                         GestorFormulario gestorFormulario,
+                         GestorMatchmaking gestorMatchmaking) {
     this.gestorEntidades = gestorEntidades;
-    this.fabricaEstrategiasNotificacion = fabricaEstrategiasNotificacion;
-    this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.gestorDonantes = gestorDonantes;
     this.gestorDonaciones = gestorDonaciones;
+    this.gestorFormulario = gestorFormulario;
+      this.gestorMatchmaking = gestorMatchmaking;
   }
 
   public List<Donacion> obtenerTodas() {
-    return repositorio.findAll();
+    return gestorDonaciones.obtenerTodasLasDonaciones();
   }
 
   public Optional<Donacion> obtenerPorId(UUID id) {
-    return repositorio.findById(id);
+    return gestorDonaciones.obtenerDonacionPorId(id);
   }
 
   public List<Donacion> procesarFormulario(UUID idDonante, List<Bien> bienesNormal, LocalDate fechaRealizacion) {
@@ -72,37 +48,24 @@ public class DonacionService {
       throw new NullPointerException("No se encontró persona con ese ID");
     }
 
-    Formulario formulario = new Formulario(donante, bienesNormal, fechaRealizacion);
-    repositorioFormularios.save(formulario);
-
-    DonacionFacade donacionFacade = new DonacionFacade(
-        new SegmentadorDonaciones(),
-        new AsignadorDonaciones()
-    );
-
-    List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
-    repositorio.saveFormulario(donacionesProcesadas);
+    List<Donacion> donacionesProcesadas = gestorFormulario.procesarFormulario(donante, bienesNormal, fechaRealizacion);
 
     return donacionesProcesadas;
   }
 
   public void asignarDonaciones() {
-    List<Donacion> donacionesNoAsignadas = repositorio.findPendient();
+    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientes();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
 
     gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
   }
 
   public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
-    Optional<Donacion> existente = repositorio.findById(id);
-    if (existente.isPresent()) {
-      return repositorio.actualizar(existente.get().getId(), actualizacion);
-    }
-    throw new RuntimeException("Donación no encontrada con ID: " + id);
+    return gestorDonaciones.actualizarDonacion(id, actualizacion);
   }
 
   public void eliminarDonacion(UUID id) {
-    repositorio.deleteById(id);
+    gestorDonaciones.eliminarDonacion(id);
   }
 
   public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
@@ -110,35 +73,15 @@ public class DonacionService {
   }
 
   public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
-    return repositorioDeResultadosMatchmaking.findAll();
+    return gestorMatchmaking.obtenerTodosLosResultadosMatchmaking();
   }
 
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
     //Buscar resultado y asignar
-    ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
-                    "No hay resultado de matchmaking para la donación " + donacionId
-            )
-    );
-
-    if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
-      throw new IllegalArgumentException("Posición de propuesta inválida");
-    }
-
-    PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
-
-    Donacion donacion = resultado.getDonacion();
-
-    if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
-      throw new IllegalStateException("La donación ya está asignada");
-    }
-
-    AsignadorDonaciones.asignarDonacionAPropuesta(donacion, propuesta);
-    repositorio.actualizar(donacionId, donacion);
+    Donacion donacion = gestorMatchmaking.asignarPropuesta(donacionId, posicion);
 
     // Uso del Gestor de Entidades para actualizar la entidad si es necesario
     gestorEntidades.modificarEntidad(donacion.getEntidad().getId(), donacion.getEntidad());
-
-    repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
   }
 
 }

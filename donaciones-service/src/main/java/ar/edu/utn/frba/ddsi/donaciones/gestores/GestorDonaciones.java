@@ -27,6 +27,18 @@ public class GestorDonaciones {
     private IncentivosClient incentivosClient;
     private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
 
+    public List<Donacion> obtenerTodasLasDonaciones() {
+        return repositorioDonaciones.findAll();
+    }
+
+    public Optional<Donacion> obtenerDonacionPorId(UUID id) {
+        return repositorioDonaciones.findById(id);
+    }
+
+    public void eliminarDonacion(UUID id) {
+        repositorioDonaciones.deleteById(id);
+    }
+
     public List<Donacion> listarPendientes() {
         return repositorioDonaciones.findPendient();
     }
@@ -74,6 +86,14 @@ public class GestorDonaciones {
             return donacion;
         }
 
+        throw new RuntimeException("Donación no encontrada con ID: " + id);
+    }
+
+    public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
+        Optional<Donacion> existente = repositorioDonaciones.findById(id);
+        if (existente.isPresent()) {
+            return repositorioDonaciones.actualizar(existente.get().getId(), actualizacion);
+        }
         throw new RuntimeException("Donación no encontrada con ID: " + id);
     }
 
