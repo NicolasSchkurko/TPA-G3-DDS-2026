@@ -14,16 +14,16 @@ import java.util.UUID;
 
 @Service
 public class PersonaService {
-    private final GestorImpacto gestorImpacto;
+    private final GestorActividad gestorActividad;
     private final GestorPerfiles gestorPerfiles;
     private final GestorCategoria gestorCategorias;
 
-    public PersonaService(GestorImpacto gestorImpacto,
+    public PersonaService(GestorActividad gestorImpacto,
                           GestorPerfiles gestorPerfiles,
                           GestorCategoria gestorCategorias) {
         this.gestorPerfiles = gestorPerfiles;
         this.gestorCategorias = gestorCategorias;
-        this.gestorImpacto = gestorImpacto;
+        this.gestorActividad = gestorImpacto;
     }
 
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
@@ -59,7 +59,7 @@ public class PersonaService {
         Perfil p = gestorPerfiles.progresarPerfil(idUsuario, donacion);
         if (p == null) return null;
 
-        gestorImpacto.guardarDonacion(donacion);
+        gestorActividad.guardarDonacion(p.getIdPerfil(), donacion);
 
         return new PerfilDTO(
                 p.getNombreUsuario(),

@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.HistorialActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -27,19 +27,20 @@ public class PerfilService {
         this.rankings = rankings;
     }
 
-    public MetricasActividad obtenerMetricasDonante(UUID idUsuario){
+    public ActividadMensual obtenerMetricasDonante(UUID idUsuario){
         List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
 
         YearMonth mesActual = YearMonth.now();
         YearMonth mesAnterior = mesActual.minusMonths(1);
 
-        ActividadMensual actividadActual = new ActividadMensual(mesActual, historial);
-        ActividadMensual actividadAnterior = new ActividadMensual(mesAnterior, historial);
+        HistorialActividad actividadActual = new HistorialActividad(mesActual, historial);
+        HistorialActividad actividadAnterior = new HistorialActividad(mesAnterior, historial);
 
-        return new MetricasActividad(actividadActual, actividadAnterior);
+        return new ActividadMensual(actividadActual, actividadAnterior);
     }
 
-    public List<ActividadMensual> obtenerEvolucionHistorica(UUID idUsuario){
+    public ActividadMesDTO obtenerEvolucionHistorica(UUID idUsuario){
+        //obtener una lista de la actividad por mes
         List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
 
         return historial.stream()
@@ -47,7 +48,7 @@ public class PerfilService {
                 .map(d -> YearMonth.from(d.getFechaEntrega()))
                 .distinct()
                 .sorted() // Ordenados cronológicamente
-                .map(periodo -> new ActividadMensual(periodo, historial))
+                .map(periodo -> new HistorialActividad(periodo, historial))
                 .toList();
     }
 
@@ -75,13 +76,13 @@ public class PerfilService {
         return convertirMisionPerfilADTO(mision);
     }
 
-    public MetricasActividadDTO convertirMetricaADTO(MetricasActividad metrica){
+    public MetricasActividadDTO convertirMetricaADTO(ActividadMensual metrica){
         return new MetricasActividadDTO(metrica.getPeriodo(),
                 metrica.getVariacionPorcentualDonaciones(),
                 metrica.getVariacionPorcentualOrganizaciones());
     }
 
-    public ActividadMensualDTO convertirActividadADTO(ActividadMensual actividad){
+    public ActividadMensualDTO convertirActividadADTO(HistorialActividad actividad){
         return new ActividadMensualDTO( actividad.getPeriodo(),
                 actividad.getCantidadDonaciones(),
                 actividad.getOrganizacionesAyudadas());

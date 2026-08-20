@@ -4,18 +4,17 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.YearMonth;
+import java.util.List;
 
 @Getter
 @Setter
 
 public class ActividadMensualDTO {
     private YearMonth periodo;
-    private Integer cantidadDonaciones;
-    private Integer organizacionesAyudadas;
+    private List<MetricasActividadDTO> metricas;
 
-    public ActividadMensualDTO(YearMonth periodo, Integer cantidadDonaciones, Integer organizacionesAyudadas){
+    public ActividadMensualDTO(YearMonth periodo, List<MetricasActividadDTO> metricas){
         this.periodo = periodo;
-        this.cantidadDonaciones = cantidadDonaciones;
-        this.organizacionesAyudadas = organizacionesAyudadas;
+        this.metricas = metricas;
     }
 }
