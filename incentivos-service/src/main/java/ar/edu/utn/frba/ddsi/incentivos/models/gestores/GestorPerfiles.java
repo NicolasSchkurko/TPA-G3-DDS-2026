@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
@@ -13,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.time.YearMonth;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,6 +30,18 @@ public class GestorPerfiles {
         repositorio.listarTodos().stream()
                 .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)
                 .forEach(Perfil::verificarProgresoMision);
+    }
+
+    public Mision obtenerMisionPerfil(UUID idUsuario){
+        Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
+
+        return perfil.getMisionActual();
+    }
+
+    public List<Insignia> obtenerInsigniasPerfil(UUID idUsuario){
+        Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
+
+        return perfil.getInsignias();
     }
 
     public Perfil crearPerfil(Perfil nuevo) {
@@ -50,7 +63,10 @@ public class GestorPerfiles {
 
         if (categoriaActual.esUltimaMision(misionAnterior)) {
             eventPublisher.publishEvent(
-                    new UltimaMisionCategoria(categoriaActual.getIdCategoria(), perfil.getIdPerfil())
+                    new UltimaMisionCategoria(
+                            categoriaActual.getIdCategoria(),
+                            perfil.getIdPerfil()
+                    )
             );
         } else {
             Mision misionNueva = categoriaActual.siguienteMision(misionAnterior);
@@ -67,6 +83,36 @@ public class GestorPerfiles {
         }
 
         return perfil;
+    }
+
+    public void generarRankingMensual(YearMonth periodo){
+        // lista de perfiles con su cantidad de misiones en el periodo
+        List<Perfil> candidatos = repositorio.listarTodos().stream()
+                // solo consideramos perfiles con >0 misiones en el periodo
+                .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
+                        && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
+                // ordenamos desc por misiones cumplidas
+                .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
+                        p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
+                .toList();
+
+        eventPublisher.publishEvent(
+                new GenerarRanking(
+                        periodo,
+                        candidatos
+                )
+        );
+    }
+
+    @EventListener
+    public void actualizarPosicionesRanking(ResultadosRanking event){
+        List<Ranking> posiciones = event.posiciones();
+
+        for(Ranking pos : posiciones){
+            Perfil p = repositorio.buscarPorIDPerfil(pos.getIdPerfil());
+            p.setPosicionRanking(pos.getPosicionRanking());
+            repositorio.actualizar(p);
+        }
     }
 
     @EventListener

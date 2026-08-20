@@ -3,10 +3,14 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.*;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @Component
 public class OperacionFactory {
-    public Operacion conseguirOperacion(TipoOperacion tipo, Integer progresoObjetivo,
+    public Operacion conseguirOperacion(String tipoOperacion, Integer progresoObjetivo,
                                         Integer cantidad, Object valor){
+        TipoOperacion tipo = TipoOperacion.valueOf(tipoOperacion.toUpperCase(Locale.ROOT));
+
         return switch (tipo) {
             case COINCIDENCIAS ->
                     new CantidadCoincidencias(progresoObjetivo, valor);

@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 
 public class Ranking {
-    private PosicionRanking  posicionRanking;
+    private PosicionRanking posicionRanking;
     private UUID idUsuario;
     private UUID idPerfil;
     private String nombreUsuario;

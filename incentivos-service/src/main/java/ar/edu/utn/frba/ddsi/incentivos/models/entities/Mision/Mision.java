@@ -16,16 +16,19 @@ public class Mision {
     private UUID idMision; // id interno
     private List<ImpactoDonacion> donacionesExitosas;
     private String nombreMision;
+    private String descripcion;
     private Insignia insigniaObjetivo;
     private Integer progreso;
     private Regla reglaDeProgreso;
 
     public Mision(String nombre,
+                  String descripcion,
                   String nombreInsignia,
                   Regla regla) {
         this.idMision = UUID.randomUUID();
         this.donacionesExitosas = new ArrayList<>();
         this.nombreMision = nombre;
+        this.descripcion = descripcion;
         this.insigniaObjetivo = new Insignia(nombreInsignia, nombre);
         this.progreso = 0;
         this.reglaDeProgreso = regla;

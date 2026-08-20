@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.dto;
+package ar.edu.utn.frba.ddsi.incentivos.dto.Perfil;
 
 import java.time.YearMonth;
 
