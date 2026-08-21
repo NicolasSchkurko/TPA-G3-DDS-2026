@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorDeRutasService;
+import ar.edu.utn.frba.ddsi.logisticas.Scheduler.PlanificadorDeRutasScheduler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -24,10 +24,10 @@ import java.util.List;
 @Tag(name = "Planificador de Rutas", description = "API para la interacción con el proveedor externo de planificación de rutas logísticas")
 public class PlanificadorDeRutasController {
 
-  private final PlanificadorDeRutasService planificadorService;
+  private final PlanificadorDeRutasScheduler planificadorService;
 
   @Autowired
-  public PlanificadorDeRutasController(PlanificadorDeRutasService planificadorService) {
+  public PlanificadorDeRutasController(PlanificadorDeRutasScheduler planificadorService) {
     this.planificadorService = planificadorService;
   }
 

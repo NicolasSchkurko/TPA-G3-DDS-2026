@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.services;
+package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class PlanificadorDeRutasService {
+public class PlanificadorDeRutasScheduler {
 
     private final GestorItemEntrega gestorItemEntrega;
   private final GestorCamiones gestorCamiones;
@@ -32,7 +32,7 @@ public class PlanificadorDeRutasService {
   private final PlanificadorDeRutas planificadorDominio;
 
   @Autowired
-  public PlanificadorDeRutasService(
+  public PlanificadorDeRutasScheduler(
       ProveedorRutasExterno proveedorExterno,
       GestorItemEntrega gestorItemEntrega,
       GestorCamiones gestorCamiones,
