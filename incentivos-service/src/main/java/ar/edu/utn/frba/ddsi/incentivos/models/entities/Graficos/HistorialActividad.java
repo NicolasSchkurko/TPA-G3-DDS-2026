@@ -4,11 +4,9 @@ import java.time.YearMonth;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -51,13 +49,13 @@ public class HistorialActividad {
     }
 
     /** Compara el total del atributo entre dos meses. */
-    public Metricas calcularMetricasMes(
+    public Metricas calcularMetricasDeterminada(
             Function<ImpactoDonacion, Integer> keyExtractor,
             YearMonth mes1, YearMonth mes2){
         Objects.requireNonNull(keyExtractor, "El atributo numerico es obligatorio");
         Objects.requireNonNull(mes1, "El primer mes es obligatorio");
         Objects.requireNonNull(mes2, "El segundo mes es obligatorio");
-        return new Metricas(mes1, Metricas.calcularVariacion(totalDelMes(mes1, keyExtractor), totalDelMes(mes2, keyExtractor)));
+        return new Metricas(mes1, mes2, Metricas.calcularVariacion(totalDelMes(mes1, keyExtractor), totalDelMes(mes2, keyExtractor)));
     }
 
     /** Devuelve la variacion de cada mes respecto del mes anterior registrado. */
@@ -68,7 +66,7 @@ public class HistorialActividad {
         for (int i = 1; i < actividadPorMes.size(); i++) {
             YearMonth actual = actividadPorMes.get(i).getPeriodo();
             YearMonth anterior = actividadPorMes.get(i - 1).getPeriodo();
-            metricas.add(calcularMetricasMes(keyExtractor, actual, anterior));
+            metricas.add(calcularMetricasDeterminada(keyExtractor, actual, anterior));
         }
         return metricas;
     }
@@ -92,10 +90,10 @@ public class HistorialActividad {
     }
 
     public int cantidadEntidadesBeneficiadas() {
-        Set<String> entidades = actividadPorMes.stream()
+        List<String> entidades = actividadPorMes.stream()
                 .map(ActividadMensual::entidadesBeneficiadas)
-                .flatMap(Set::stream)
-                .collect(Collectors.toCollection(HashSet::new));
+                .flatMap(List::stream)
+                .toList();
         return entidades.size();
     }
 

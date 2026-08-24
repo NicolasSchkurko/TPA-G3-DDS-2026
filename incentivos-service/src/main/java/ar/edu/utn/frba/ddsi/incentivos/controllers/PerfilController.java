@@ -37,14 +37,14 @@ public class PerfilController {
             @ApiResponse(responseCode = "200", description = "Métricas obtenidas con éxito"),
             @ApiResponse(responseCode = "404", description = "Perfil no encontrado o sin actividad")
     })
-    @GetMapping("/{id}/comparativa")
-    public ResponseEntity<MetricasActividadDTO> obtenerMetricasPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
-                                                                      @PathVariable UUID id) {
-        MetricasActividadDTO metrica = service.obtenerMetricasDonante(id);
-        if (metrica == null) {
+    @GetMapping("/{id}/comparativas/{idPerfil}")
+    public ResponseEntity<MetricasHistoricasDTO> obtenerMetricas(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
+                                                                      @PathVariable UUID idUsuario, @PathVariable UUID idPerfil) {
+        MetricasHistoricasDTO metricas = service.obtenerMetricasDonante(idUsuario, idPerfil);
+        if (metricas == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(metrica);
+        return ResponseEntity.ok(metricas);
     }
 
     @Operation(
@@ -55,14 +55,14 @@ public class PerfilController {
             @ApiResponse(responseCode = "200", description = "Historial mensual obtenido con éxito"),
             @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
-    @GetMapping("/{id}/metricas")
-    public ResponseEntity<ActividadMesDTO> obtenerActividadPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
-                                                                            @PathVariable UUID id){
-        ActividadMesDTO metricas = service.obtenerEvolucionHistorica(id);
-        if (metricas == null) {
+    @GetMapping("/{id}/actividadPerfil/{idPerfil}")
+    public ResponseEntity<ActividadDTO> obtenerActividadPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
+                                                                            @PathVariable UUID idUsuario, @PathVariable UUID idPerfil){
+        ActividadDTO dto = service.obtenerEvolucionHistorica(idUsuario, idPerfil);
+        if (dto == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(metricas);
+        return ResponseEntity.ok(dto);
     }
 
     @Operation(

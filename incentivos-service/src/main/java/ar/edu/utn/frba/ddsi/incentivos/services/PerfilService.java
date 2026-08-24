@@ -1,16 +1,17 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.HistorialActividad;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
@@ -20,36 +21,52 @@ import org.springframework.stereotype.Service;
 public class PerfilService {
     private final GestorPerfiles perfiles;
     private final GestorRanking rankings;
+    private final GestorActividad actividad;
 
     public PerfilService(GestorPerfiles perfiles,
-                         GestorRanking rankings) {
+                         GestorRanking rankings,
+                         GestorActividad actividad) {
         this.perfiles = perfiles;
         this.rankings = rankings;
+        this.actividad = actividad;
     }
 
-    public ActividadMensual obtenerMetricasDonante(UUID idUsuario){
-        List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
+    public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
+        //% de variacion de donaciones x mes
+        List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
 
-        YearMonth mesActual = YearMonth.now();
-        YearMonth mesAnterior = mesActual.minusMonths(1);
-
-        HistorialActividad actividadActual = new HistorialActividad(mesActual, historial);
-        HistorialActividad actividadAnterior = new HistorialActividad(mesAnterior, historial);
-
-        return new ActividadMensual(actividadActual, actividadAnterior);
+        return new MetricasHistoricasDTO(
+                metricasHistoricas.stream()
+                .map(this::convertirMetricaADTO).toList()
+        );
     }
 
-    public ActividadMesDTO obtenerEvolucionHistorica(UUID idUsuario){
-        //obtener una lista de la actividad por mes
-        List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
+    public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
+        Integer donacionesTotales = actividad.donacionesTotales(idPerfil);
+        Integer cantidadOrgsAyudadas = actividad.contidadOrganizacionesAyudadas(idPerfil);
+        //obtener cantidad de donaciones y organizaciones ayudadas x mes
+        Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(idPerfil);
+        Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(idPerfil);
 
-        return historial.stream()
-                .filter(d -> d.getFechaEntrega() != null && "ENTREGADA".equalsIgnoreCase(d.getEstado()))
-                .map(d -> YearMonth.from(d.getFechaEntrega()))
-                .distinct()
-                .sorted() // Ordenados cronológicamente
-                .map(periodo -> new HistorialActividad(periodo, historial))
+        TreeSet<YearMonth> meses = new TreeSet<>(donacionesXMes.keySet());
+        meses.addAll(orgsAyudadasXMes.keySet());
+
+        List<RegistroMensualDTO> actividadPerfil = meses.stream()
+                .map(mes -> new RegistroMensualDTO(
+                            mes,
+                            donacionesXMes.getOrDefault(mes, 0),
+                            orgsAyudadasXMes.getOrDefault(mes, 0)
+                        )
+                )
                 .toList();
+
+
+
+        return new ActividadDTO(
+                actividadPerfil,
+                donacionesTotales,
+                cantidadOrgsAyudadas
+        );
     }
 
     public RankingMesDTO obtenerRanking(UUID idRanking) {
@@ -76,16 +93,11 @@ public class PerfilService {
         return convertirMisionPerfilADTO(mision);
     }
 
-    public MetricasActividadDTO convertirMetricaADTO(ActividadMensual metrica){
-        return new MetricasActividadDTO(metrica.getPeriodo(),
-                metrica.getVariacionPorcentualDonaciones(),
-                metrica.getVariacionPorcentualOrganizaciones());
-    }
-
-    public ActividadMensualDTO convertirActividadADTO(HistorialActividad actividad){
-        return new ActividadMensualDTO( actividad.getPeriodo(),
-                actividad.getCantidadDonaciones(),
-                actividad.getOrganizacionesAyudadas());
+    public MetricaDTO convertirMetricaADTO(Metricas metrica){
+        return new MetricaDTO(
+                metrica.getInicio(),
+                metrica.getFin(),
+                metrica.getVariacionPorcentual());
     }
 
     public MisionPerfilDTO convertirMisionPerfilADTO(Mision mision) {

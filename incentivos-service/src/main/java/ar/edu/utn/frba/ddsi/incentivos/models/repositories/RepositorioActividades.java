@@ -41,8 +41,8 @@ public class RepositorioActividades {
                 .orElse(null);
     }
 
-    public ImpactoDonacion buscarDonacionPorIDs(UUID idUsuario, UUID idDonacion) {
-        HistorialActividad actividad = buscarPorIdPerfil(idUsuario);
+    public ImpactoDonacion buscarDonacionPorIDs(UUID idPerfil, UUID idDonacion) {
+        HistorialActividad actividad = buscarPorIdPerfil(idPerfil);
         if (idDonacion == null || actividad == null) {
             return null;
         }

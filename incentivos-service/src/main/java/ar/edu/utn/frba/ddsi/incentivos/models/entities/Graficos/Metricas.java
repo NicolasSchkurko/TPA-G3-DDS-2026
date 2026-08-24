@@ -6,11 +6,13 @@ import lombok.Getter;
 
 @Getter
 public class Metricas {
-    private YearMonth periodo;
+    private YearMonth inicio;
+    private YearMonth fin;
     private Double variacionPorcentual;
 
-    public Metricas(YearMonth periodo, Double variacionPorcentual) {
-        this.periodo = periodo;
+    public Metricas(YearMonth inicio, YearMonth fin, Double variacionPorcentual) {
+        this.inicio = inicio;
+        this.fin = fin;
         this.variacionPorcentual = variacionPorcentual;
     }
 
