@@ -43,7 +43,7 @@ public class PerfilService {
 
     public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
         Integer donacionesTotales = actividad.donacionesTotales(idPerfil);
-        Integer cantidadOrgsAyudadas = actividad.contidadOrganizacionesAyudadas(idPerfil);
+        Integer cantidadOrgsAyudadas = actividad.cantidadOrganizacionesAyudadas(idPerfil);
         //obtener cantidad de donaciones y organizaciones ayudadas x mes
         Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(idPerfil);
         Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(idPerfil);

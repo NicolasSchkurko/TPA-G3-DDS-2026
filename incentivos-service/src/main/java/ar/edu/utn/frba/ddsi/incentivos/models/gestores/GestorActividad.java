@@ -40,7 +40,7 @@ public record GestorActividad(RepositorioActividades repositorio) {
         return actividad.cantidadDonacionesTotales();
     }
 
-    public Integer contidadOrganizacionesAyudadas(UUID idPerfil){
+    public Integer cantidadOrganizacionesAyudadas(UUID idPerfil){
         HistorialActividad actividad = repositorio.buscarPorIdPerfil(idPerfil);
         return actividad.cantidadEntidadesBeneficiadas();
     }
