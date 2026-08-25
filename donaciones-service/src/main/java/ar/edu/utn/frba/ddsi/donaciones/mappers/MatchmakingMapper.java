@@ -23,7 +23,7 @@ public class MatchmakingMapper {
 
         // Donación
         dto.setDonacion(
-                donacionMapper.donaciontoDTO(resultado.getDonacion())
+                donacionMapper.donacionToDTO(resultado.getDonacion())
         );
 
         // Propuestas

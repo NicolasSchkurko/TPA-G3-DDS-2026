@@ -12,8 +12,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +53,7 @@ public class DonacionController {
     }
 
     List<DonacionDTO> dto = donacionesSegmentadas.stream()
-                                                 .map(donacionMapper::donaciontoDTO)
+                                                 .map(donacionMapper::donacionToDTO)
                                                  .toList();
 
     return ResponseEntity.ok(dto);
@@ -65,7 +63,7 @@ public class DonacionController {
   @GetMapping
   public ResponseEntity<List<DonacionDTO>> obtenerDonaciones() {
     List<DonacionDTO> donaciones = donacionService.obtenerTodas().stream()
-                                                  .map(donacionMapper::donaciontoDTO)
+                                                  .map(donacionMapper::donacionToDTO)
                                                   .collect(Collectors.toList());
     return ResponseEntity.ok(donaciones);
   }
@@ -74,7 +72,7 @@ public class DonacionController {
   @GetMapping("/{id}")
   public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
     Optional<Donacion> donacion = donacionService.obtenerPorId(id);
-    return donacion.map(d -> ResponseEntity.ok(donacionMapper.donaciontoDTO(d)))
+    return donacion.map(d -> ResponseEntity.ok(donacionMapper.donacionToDTO(d)))
                    .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
@@ -85,7 +83,7 @@ public class DonacionController {
       // Requiere que donacionService actualice la entidad basada en un DTO o que el controlador la mapee antes.
       // Para simplificar manteniendo la estructura de mapeo previa:
       Donacion actualizada = donacionService.actualizarDonacion(id, donacionMapper.dtoToDonacion(dto));
-      return ResponseEntity.ok(donacionMapper.donaciontoDTO(actualizada));
+      return ResponseEntity.ok(donacionMapper.donacionToDTO(actualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }
@@ -107,7 +105,7 @@ public class DonacionController {
           cambioEstadoDTO.getNuevoEstado(),
           cambioEstadoDTO.getJustificacion()
       );
-      return ResponseEntity.ok(donacionMapper.donaciontoDTO(donacionActualizada));
+      return ResponseEntity.ok(donacionMapper.donacionToDTO(donacionActualizada));
     } catch (RuntimeException e) {
       return ResponseEntity.notFound().build();
     }

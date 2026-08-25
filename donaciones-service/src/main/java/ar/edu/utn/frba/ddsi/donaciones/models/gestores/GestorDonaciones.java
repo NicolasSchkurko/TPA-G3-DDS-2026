@@ -30,23 +30,23 @@ public class GestorDonaciones {
     private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
 
     public List<Donacion> obtenerTodasLasDonaciones() {
-        return repositorioDonaciones.findAll();
+        return repositorioDonaciones.obtenerTodos();
     }
 
     public Optional<Donacion> obtenerDonacionPorId(UUID id) {
-        return repositorioDonaciones.findById(id);
+        return repositorioDonaciones.obtenerPorId(id);
     }
 
     public void eliminarDonacion(UUID id) {
-        repositorioDonaciones.deleteById(id);
+        repositorioDonaciones.eliminarPorId(id);
     }
 
     public List<Donacion> listarPendientes() {
-        return repositorioDonaciones.findPendient();
+        return repositorioDonaciones.buscarEntregaPendiente();
     }
 
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
-        Optional<Donacion> donacionOpt = repositorioDonaciones.findById(id);
+        Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(id);
 
         if (donacionOpt.isPresent()) {
             Estado e = null;
@@ -68,7 +68,7 @@ public class GestorDonaciones {
 
             Donacion donacion = donacionOpt.get();
             donacion.actualizarEstado(e, justificacion);
-            repositorioDonaciones.save(donacion);
+            repositorioDonaciones.guardar(donacion);
 
             if (nuevoEstado.toUpperCase().equals("ASIGNADO")) {
                 IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
@@ -92,9 +92,9 @@ public class GestorDonaciones {
     }
 
     public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
-        Optional<Donacion> existente = repositorioDonaciones.findById(id);
+        Optional<Donacion> existente = repositorioDonaciones.obtenerPorId(id);
         if (existente.isPresent()) {
-            return repositorioDonaciones.actualizar(existente.get().getId(), actualizacion);
+            return repositorioDonaciones.actualizar(existente.get().getId(), actualizacion).get();
         }
         throw new RuntimeException("Donación no encontrada con ID: " + id);
     }

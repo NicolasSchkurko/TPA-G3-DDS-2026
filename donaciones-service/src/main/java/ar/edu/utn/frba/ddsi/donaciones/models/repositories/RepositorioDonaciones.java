@@ -44,11 +44,13 @@ public class RepositorioDonaciones {
         donaciones.add(donacion);
     }
 
-    public void actualizar(UUID idOriginal, Donacion donacionActualizada) {
+    public Optional<Donacion> actualizar(UUID idOriginal, Donacion donacionActualizada) {
         Optional<Donacion> donacionExistente = obtenerPorId(idOriginal);
         if (donacionExistente.isPresent()) {
             int index = this.donaciones.indexOf(donacionExistente.get());
             this.donaciones.set(index, donacionActualizada);
+
+            return donacionExistente;
         } else {
             throw new IllegalArgumentException("No se encontró la donación a actualizar.");
         }
