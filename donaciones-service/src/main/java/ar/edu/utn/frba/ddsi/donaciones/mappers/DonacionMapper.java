@@ -1,12 +1,16 @@
 package ar.edu.utn.frba.ddsi.donaciones.mappers;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -14,7 +18,7 @@ import java.util.ArrayList;
 @Component
 public class DonacionMapper {
 
-    public DonacionDTO donaciontoDTO(Donacion donacion) {
+    public DonacionDTO donacionToDTO(Donacion donacion) {
         if (donacion == null) {
             return null;
         }
@@ -60,5 +64,48 @@ public class DonacionMapper {
             dto.setPlazoEnDias(recurrente.getPlazoEnDias());
         }
         return dto;
+    }
+
+    public Donacion dtoToDonacion(DonacionDTO donacionDTO) {
+        Donacion donacion = new Donacion();
+
+        donacion.setDescripcion(donacionDTO.getDescripcion());
+        donacion.setBienes(donacionDTO.getBienes().stream().map(this::dtoToBien).toList());
+
+        return donacion;
+    }
+
+    private Bien dtoToBien(BienResumenDTO bienDTO) {
+
+        String descripcion = bienDTO.getDescripcion();
+        CategoriaBien categoriaBien = new CategoriaBien(bienDTO.getCategoria());
+        SubcategoriaBien subcategoriaBien = new SubcategoriaBien(bienDTO.getSubcategoria(), categoriaBien);
+        Integer cantidad = bienDTO.getCantidad();
+        String foto = bienDTO.getUrlFoto();
+        UnidadDeMedida unidadDeMedida = switch (bienDTO.getUnidadDeMedida().toLowerCase()) {
+            case "kilogramos", "kilos", "kg" -> UnidadDeMedida.KILOGRAMOS;
+            case "litros", "lt" -> UnidadDeMedida.LITROS;
+            default -> null;
+        };
+
+        return switch (bienDTO.getTipoBien().toLowerCase()) {
+            case "con estado", "conestado" -> new BienConEstado(
+                    descripcion,
+                    subcategoriaBien,
+                    foto,
+                    cantidad,
+                    unidadDeMedida,
+                    bienDTO.getUsado()
+            );
+            case "perecedero" -> new BienPerecedero(
+                    descripcion,
+                    subcategoriaBien,
+                    foto,
+                    cantidad,
+                    unidadDeMedida,
+                    bienDTO.getFechaVencimiento()
+            );
+            default -> null;
+        };
     }
 }

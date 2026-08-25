@@ -12,6 +12,7 @@ public class BienResumenDTO {
   private String categoria;
   private Integer cantidad;
   private String unidadDeMedida;
+  private String urlFoto;
   private String tipoBien; // "CON_ESTADO" o "PERECEDERO"
   private Boolean usado; // solo para BienConEstado
   private LocalDate fechaVencimiento; // solo para BienPerecedero
