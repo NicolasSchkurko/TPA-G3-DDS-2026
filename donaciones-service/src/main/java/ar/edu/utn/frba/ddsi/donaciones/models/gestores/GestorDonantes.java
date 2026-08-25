@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.gestores;
+package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;

@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 

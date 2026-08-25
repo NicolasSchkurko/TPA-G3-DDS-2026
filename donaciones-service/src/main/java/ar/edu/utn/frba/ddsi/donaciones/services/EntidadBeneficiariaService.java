@@ -1,30 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class EntidadBeneficiariaService {

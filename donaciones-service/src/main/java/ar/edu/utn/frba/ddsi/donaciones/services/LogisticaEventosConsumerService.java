@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.gestores.GestorLogistica;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorLogistica;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
