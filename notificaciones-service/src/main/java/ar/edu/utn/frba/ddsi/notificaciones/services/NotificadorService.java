@@ -10,16 +10,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class NotificadorService {
 
-    private final MedioDeEnvioFactory factory;
-    private final RepositorioNotificaciones repositorioNotificaciones;
     private final GestorNotificaciones gestorNotificaciones;
 
     @Autowired
-    public NotificadorService(MedioDeEnvioFactory factory,
-                              RepositorioNotificaciones repositorioNotificaciones,
-                              GestorNotificaciones gestorNotificaciones) {
-        this.factory = factory;
-        this.repositorioNotificaciones= repositorioNotificaciones;
+    public NotificadorService(GestorNotificaciones gestorNotificaciones) {
         this.gestorNotificaciones = gestorNotificaciones;
     }
 
