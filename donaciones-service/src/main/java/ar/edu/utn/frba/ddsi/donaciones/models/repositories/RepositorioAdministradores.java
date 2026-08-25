@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Repositorio en memoria para gestionar operaciones CRUD sobre objetos Administrador.
  */
+
 public class RepositorioAdministradores {
     private List<Administrador> administradoresEnMemoria;
 
