@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.notificaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.dto.SolicitudNotificacionDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.mappers.NotificacionMapper;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
 import io.swagger.v3.oas.annotations.Operation;

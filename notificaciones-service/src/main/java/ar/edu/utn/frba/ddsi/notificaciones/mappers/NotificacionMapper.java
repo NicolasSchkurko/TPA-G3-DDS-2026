@@ -1,8 +1,10 @@
-package ar.edu.utn.frba.ddsi.notificaciones.controllers;
+package ar.edu.utn.frba.ddsi.notificaciones.mappers;
 
 import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import org.springframework.stereotype.Component;
 
+@Component
 public class NotificacionMapper {
     public NotificacionDTO notificacionDTO(Notificacion notificacion) {
         NotificacionDTO notificacionDTO = new NotificacionDTO();
