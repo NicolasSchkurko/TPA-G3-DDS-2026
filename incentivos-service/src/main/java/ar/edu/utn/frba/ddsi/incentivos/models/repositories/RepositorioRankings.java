@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public class RepositorioRankings {
@@ -13,10 +14,6 @@ public class RepositorioRankings {
 
     public RepositorioRankings() {
         this.rankings = new ArrayList<>();
-    }
-
-    public RankingMensual obtenerRankingActual() {
-        return rankings.getFirst();
     }
 
     public void guardar(RankingMensual nuevoRanking) {
@@ -33,6 +30,16 @@ public class RepositorioRankings {
         }
         return this.rankings.stream()
                 .filter(r -> r.getPeriodo().equals(periodo))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public RankingMensual buscarPorId(UUID idRanking){
+        if(idRanking == null){
+            return null;
+        }
+        return rankings.stream()
+                .filter(r -> idRanking.equals(r.getIdRanking()))
                 .findFirst()
                 .orElse(null);
     }

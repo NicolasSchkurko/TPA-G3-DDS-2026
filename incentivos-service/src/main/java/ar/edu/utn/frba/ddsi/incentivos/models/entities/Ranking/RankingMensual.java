@@ -7,16 +7,19 @@ import lombok.Setter;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
 @AllArgsConstructor
 public class RankingMensual {
+    private UUID idRanking;
     private YearMonth periodo;
     private List<Ranking> posiciones;
 
-    public RankingMensual(YearMonth periodo) {
+    public RankingMensual(YearMonth periodo, List<Ranking> posiciones) {
+        this.idRanking = UUID.randomUUID();
         this.periodo = periodo;
-        this.posiciones = new ArrayList<>();
+        this.posiciones = posiciones;
     }
 }

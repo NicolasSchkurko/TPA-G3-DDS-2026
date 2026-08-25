@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
@@ -92,15 +93,26 @@ public class AdminService {
     }
 
     public MisionDTO crearMision(MisionDTO nuevaMision){
+        ReglaDTO reglaDTO = nuevaMision.getRegla();
+        ConstanciaDTO constanciaDTO = reglaDTO.getConstancia();
+        OperacionDTO operacionDTO = reglaDTO.getOperacion();
+        String atributo = reglaDTO.getAtributo();
+
         Mision m = gestorMisiones.crearMision(nuevaMision.getNombreMision(),
+                nuevaMision.getDescripcion(),
                 nuevaMision.getInsigniaObjetivo(),
-                nuevaMision.getRegla().getConstancia().getCantidad(),
-                nuevaMision.getRegla().getConstancia().getUnidadTiempo(),
-                nuevaMision.getRegla().getAtributo(),
-                nuevaMision.getRegla().getOperacion().getTipoOperacion(),
-                nuevaMision.getRegla().getOperacion().getProgresoObjetivo(),
-                nuevaMision.getRegla().getOperacion().getCantidad(),
-                nuevaMision.getRegla().getOperacion().getValorEsperado());
+                gestorMisiones.conseguirConstancia(
+                        constanciaDTO.getCantidad(),
+                        constanciaDTO.getUnidadTiempo()
+                ),
+                atributo,
+                gestorMisiones.conseguirOperacion(
+                        operacionDTO.getTipoOperacion(),
+                        operacionDTO.getProgresoObjetivo(),
+                        operacionDTO.getCantidad(),
+                        operacionDTO.getValorEsperado()
+                )
+        );
 
         return misionToDTO(m);
     }
@@ -111,15 +123,25 @@ public class AdminService {
     }
 
     public MisionDTO actualizarMision(UUID idMision, MisionDTO dto){
+        ReglaDTO reglaDTO = dto.getRegla();
+        ConstanciaDTO constanciaDTO = reglaDTO.getConstancia();
+        OperacionDTO operacionDTO = reglaDTO.getOperacion();
+        String atributo = reglaDTO.getAtributo();
+
         Mision mision = gestorMisiones.crearMision(dto.getNombreMision(),
+                dto.getDescripcion(),
                 dto.getInsigniaObjetivo(),
-                dto.getRegla().getConstancia().getCantidad(),
-                dto.getRegla().getConstancia().getUnidadTiempo(),
-                dto.getRegla().getAtributo(),
-                dto.getRegla().getOperacion().getTipoOperacion(),
-                dto.getRegla().getOperacion().getProgresoObjetivo(),
-                dto.getRegla().getOperacion().getCantidad(),
-                dto.getRegla().getOperacion().getValorEsperado()
+                gestorMisiones.conseguirConstancia(
+                        constanciaDTO.getCantidad(),
+                        constanciaDTO.getUnidadTiempo()
+                ),
+                atributo,
+                gestorMisiones.conseguirOperacion(
+                        operacionDTO.getTipoOperacion(),
+                        operacionDTO.getProgresoObjetivo(),
+                        operacionDTO.getCantidad(),
+                        operacionDTO.getValorEsperado()
+                )
         );
 
         mision.setIdMision(idMision);
@@ -155,6 +177,7 @@ public class AdminService {
 
         return new MisionDTO(
                 mision.getNombreMision(),
+                mision.getDescripcion(),
                 mision.getInsigniaObjetivo().getNombre(),
                 constancia,
                 mision.getReglaDeProgreso().getAtributo().name(),

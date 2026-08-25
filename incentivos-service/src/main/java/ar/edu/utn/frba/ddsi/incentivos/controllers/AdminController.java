@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.SecuenciaCategoriasDTO;

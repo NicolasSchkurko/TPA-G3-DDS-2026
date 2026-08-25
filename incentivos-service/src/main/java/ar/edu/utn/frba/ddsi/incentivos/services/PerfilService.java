@@ -1,118 +1,127 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.*;
-import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioImpactos;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 import java.util.UUID;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PerfilService {
-    private final RepositorioImpactos repositorioDonaciones;
-    private final RepositorioPerfiles repositorioPerfiles;
-    private final RepositorioRankings repositorioRankings;
+    private final GestorPerfiles perfiles;
+    private final GestorRanking rankings;
+    private final GestorActividad actividad;
 
-    public PerfilService(RepositorioImpactos repositorio,
-                         RepositorioPerfiles perfiles,
-                         RepositorioRankings rankings) {
-        this.repositorioDonaciones = repositorio;
-        this.repositorioPerfiles = perfiles;
-        this.repositorioRankings = rankings;
+    public PerfilService(GestorPerfiles perfiles,
+                         GestorRanking rankings,
+                         GestorActividad actividad) {
+        this.perfiles = perfiles;
+        this.rankings = rankings;
+        this.actividad = actividad;
     }
 
-    public void verificarProgresos(){
-        repositorioPerfiles.listarTodos()
-                .forEach(Perfil::verificarProgresoMision);
+    public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
+        //% de variacion de donaciones x mes
+        List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
+
+        return new MetricasHistoricasDTO(
+                metricasHistoricas.stream()
+                .map(this::convertirMetricaADTO).toList()
+        );
     }
 
-    public MetricasActividad obtenerMetricasDonante(UUID idUsuario){
-        List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
+    public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
+        Integer donacionesTotales = actividad.donacionesTotales(idPerfil);
+        Integer cantidadOrgsAyudadas = actividad.cantidadOrganizacionesAyudadas(idPerfil);
+        //obtener cantidad de donaciones y organizaciones ayudadas x mes
+        Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(idPerfil);
+        Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(idPerfil);
 
-        YearMonth mesActual = YearMonth.now();
-        YearMonth mesAnterior = mesActual.minusMonths(1);
+        TreeSet<YearMonth> meses = new TreeSet<>(donacionesXMes.keySet());
+        meses.addAll(orgsAyudadasXMes.keySet());
 
-        ActividadMensual actividadActual = new ActividadMensual(mesActual, historial);
-        ActividadMensual actividadAnterior = new ActividadMensual(mesAnterior, historial);
-
-        return new MetricasActividad(actividadActual, actividadAnterior);
-    }
-
-    public List<ActividadMensual> obtenerEvolucionHistorica(UUID idUsuario){
-        List<ImpactoDonacion> historial = repositorioDonaciones.buscarDonacionesPorIDUsuario(idUsuario);
-
-        return historial.stream()
-                .filter(d -> d.getFechaEntrega() != null && "ENTREGADA".equalsIgnoreCase(d.getEstado()))
-                .map(d -> YearMonth.from(d.getFechaEntrega()))
-                .distinct()
-                .sorted() // Ordenados cronológicamente
-                .map(periodo -> new ActividadMensual(periodo, historial))
+        List<RegistroMensualDTO> actividadPerfil = meses.stream()
+                .map(mes -> new RegistroMensualDTO(
+                            mes,
+                            donacionesXMes.getOrDefault(mes, 0),
+                            orgsAyudadasXMes.getOrDefault(mes, 0)
+                        )
+                )
                 .toList();
+
+
+
+        return new ActividadDTO(
+                actividadPerfil,
+                donacionesTotales,
+                cantidadOrgsAyudadas
+        );
     }
 
-    public RankingMensual obtenerRankingDelMes(YearMonth periodo) {
-        return repositorioRankings.buscarPorPeriodo(periodo);
+    public RankingMesDTO obtenerRanking(UUID idRanking) {
+        RankingMensual rank = rankings.obtenerRanking(idRanking);
+
+        return new RankingMesDTO(
+                rank.getPosiciones().stream()
+                                .map(this::convertirRankingADTO).toList(),
+                rank.getPeriodo());
     }
 
-    public List<Ranking> obtenerTop3DelMes(YearMonth periodo) {
-        RankingMensual ranking = repositorioRankings.buscarPorPeriodo(periodo);
-        if (ranking == null || ranking.getPosiciones() == null) {
-            return List.of();
-        }
+    public RankingMesDTO obtenerTop3Ranking(UUID idRanking) {
+        RankingMensual top3 = rankings.obtenerTop3(idRanking);
 
-        return ranking.getPosiciones().stream()
-                .limit(3) // Nos quedamos solo con los 3 primeros elementos de la lista ya ordenada
-                .toList();
+        return new RankingMesDTO(
+                top3.getPosiciones().stream()
+                        .map(this::convertirRankingADTO).toList(),
+                top3.getPeriodo());
     }
 
-    public Mision obtenerMisionPorID(UUID idUsuario) {
-        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
+    public MisionPerfilDTO obtenerMisionPorID(UUID idUsuario) {
+        Mision mision = perfiles.obtenerMisionPerfil(idUsuario);
 
-        return perfil.getMisionActual();
+        return convertirMisionPerfilADTO(mision);
     }
 
-    public MetricasActividadDTO convertirMetricaADTO(MetricasActividad metrica){
-        return new MetricasActividadDTO(metrica.getPeriodo(),
-                metrica.getVariacionPorcentualDonaciones(),
-                metrica.getVariacionPorcentualOrganizaciones());
+    public MetricaDTO convertirMetricaADTO(Metricas metrica){
+        return new MetricaDTO(
+                metrica.getInicio(),
+                metrica.getFin(),
+                metrica.getVariacionPorcentual());
     }
 
-    public ActividadMensualDTO convertirActividadADTO(ActividadMensual actividad){
-        return new ActividadMensualDTO( actividad.getPeriodo(),
-                actividad.getCantidadDonaciones(),
-                actividad.getOrganizacionesAyudadas());
+    public MisionPerfilDTO convertirMisionPerfilADTO(Mision mision) {
+        return new MisionPerfilDTO(
+                        mision.getNombreMision(),
+                        mision.getDescripcion(),
+                        mision.getInsigniaObjetivo().getNombre()
+                );
     }
 
-    public MisionDTO convertirMisionADTO(Mision mision) {
-        return new MisionDTO(mision.getNombreMision(),
-                             mision.getProgresoActual(),
-                             mision.getProgresoObjetivo());
-    }
+    public ListaInsigniasDTO obtenerInsigniasPorID(UUID idUsuario) {
+        List<Insignia> insignias = perfiles.obtenerInsigniasPerfil(idUsuario);
 
-    public List<Insignia> obtenerInsigniasPorID(UUID idUsuario) {
-        Perfil perfil = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
+        List<InsigniaDTO> dto = insignias.stream().map(this::convertirInsigniaADTO).toList();
 
-        return perfil.getInsignias();
+        return new ListaInsigniasDTO(dto);
     }
 
     public InsigniaDTO convertirInsigniaADTO(Insignia insignia) {
         return new InsigniaDTO( insignia.getNombre(),
                                 insignia.getDescripcion(),
                                 insignia.getUrlImagen(),
-                                insignia.getFechaObtencion());
+                                insignia.getFechaObtencion()
+        );
     }
 
     public RankingDTO convertirRankingADTO(Ranking ranking) {

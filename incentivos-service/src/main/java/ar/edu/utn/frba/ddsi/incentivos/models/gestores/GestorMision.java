@@ -3,65 +3,64 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.TipoOperacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
  * @param repositorio gestiona las misiones existentes en el repositorio
  */
 public record GestorMision(RepositorioMisiones repositorio,
-                           MisionFactory misionFactory,
-                           OperacionFactory operacionFactory) {
+                           MisionFactory misionFactory) {
 
     //init default, dsp el admin puede modificarlas
     public void inicializarMisionesBase() {
         repositorio.agregarMision( misionFactory.crearMision(
                 "Racha",
+                "realizar 1 donación durante 3 meses consecutivos",
                 "Usuario Constante",
-                new ReglaConstancia(1, ChronoUnit.MONTHS),
-                AtributoImpacto.ESTADO,
-                operacionFactory.conseguirOperacion(TipoOperacion.COINCIDENCIAS,1, null,
+                misionFactory.crearConstancia(3, "months"),
+                misionFactory.crearAtributoImpacto("estado"),
+                misionFactory.crearOperacion("COINCIDENCIAS",1, null,
                         "ENTREGADA")
                 )
             );
 
         repositorio.agregarMision( misionFactory.crearMision(
                         "Completitud",
+                "realizar 5 donaciones de 3 categorías distintas",
                 "Usuario Variado",
                         null,
-                        AtributoImpacto.CATEGORIA,
-                        operacionFactory.conseguirOperacion(TipoOperacion.VALORES_DISTINTOS,5,
-                                3, null)
+                misionFactory.crearAtributoImpacto("categoria"),
+                misionFactory.crearOperacion("VALORES_DISTINTOS",5, 3,
+                        null)
                 )
         );
 
         repositorio.agregarMision( misionFactory.crearMision(
                         "Habil Donador",
+                "1 donación que supere 3 cantidad de bienes",
                 "Usuario Generoso",
                         null,
-                        AtributoImpacto.CANTIDAD_BIENES,
-                        operacionFactory.conseguirOperacion(TipoOperacion.SUPERA_CANTIDAD, 1,
-                                3, null)
+                misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
+                misionFactory.crearOperacion("SUPERA_CANTIDAD",1, 3,
+                        null)
                 )
         );
 
         repositorio.agregarMision( misionFactory.crearMision(
                         "Donaciones Exitosas",
+                "Lograr 3 donaciones que sean recibidas exitosamente por una entidad beneficiaria.",
                 "Usuario Exitoso",
                         null,
-                        AtributoImpacto.ESTADO,
-                        operacionFactory.conseguirOperacion(TipoOperacion.COINCIDENCIAS,3, null,
-                                "ENTREGADA")
+                misionFactory.crearAtributoImpacto("ESTADO"),
+                misionFactory.crearOperacion("COINCIDENCIAS",3, null,
+                        "ENTREGADA")
                 )
         );
     }
@@ -81,22 +80,25 @@ public record GestorMision(RepositorioMisiones repositorio,
         return misiones;
     }
 
-    public Mision crearMision(String nomMision, String nomInsignia,
-                              Integer cantidadTiempo, String unidadTiempo,
-                              String atributo, String tipoOperacion,
-                              Integer progresoObjetivo, Integer cantidad, String valor){
-        ReglaConstancia constancia = new ReglaConstancia(cantidadTiempo,
-                ChronoUnit.valueOf(unidadTiempo.trim().toUpperCase(Locale.ROOT)));
+    public Operacion conseguirOperacion(String tipoOperacion,
+                                        Integer progresoObjetivo,
+                                        Integer cantidad, String valor){
+        return misionFactory.crearOperacion(tipoOperacion, progresoObjetivo, cantidad, valor);
+    }
 
-        AtributoImpacto atributoImpacto = AtributoImpacto.valueOf(atributo.trim().toUpperCase(Locale.ROOT));
+    public ReglaConstancia conseguirConstancia(Integer cantidadTiempo, String unidadTiempo){
+        return misionFactory.crearConstancia(cantidadTiempo, unidadTiempo);
+    }
 
-        TipoOperacion tipo = TipoOperacion.valueOf(tipoOperacion.trim().toUpperCase(Locale.ROOT));
-
-        Operacion operacion = operacionFactory.conseguirOperacion(tipo, progresoObjetivo, cantidad, valor);
+    public Mision crearMision(String nomMision, String descripcion, String nomInsignia,
+                              ReglaConstancia constancia, String atributo,
+                              Operacion operacion){
+        AtributoImpacto atributoImpacto = misionFactory.crearAtributoImpacto(atributo);
 
         Mision mision = misionFactory.crearMision(
-                nomMision, nomInsignia,
-                constancia, atributoImpacto,
+                nomMision, descripcion, nomInsignia,
+                constancia,
+                atributoImpacto,
                 operacion
         );
         repositorio.agregarMision(mision);
