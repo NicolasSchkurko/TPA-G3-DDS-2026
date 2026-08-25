@@ -12,25 +12,55 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormulario
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class GestorFormulario {
     private RepositorioDonaciones repositorioDonaciones;
     private RepositorioFormularios repositorioFormularios;
 
+    // Constructor para inyección de dependencias
+    public GestorFormulario(RepositorioDonaciones repositorioDonaciones, RepositorioFormularios repositorioFormularios) {
+        this.repositorioDonaciones = repositorioDonaciones;
+        this.repositorioFormularios = repositorioFormularios;
+    }
+
+    // --- Lógica de Negocio ---
     public List<Donacion> procesarFormulario(Donante donante, List<Bien> bienesNormal, LocalDate fechaRealizacion) {
 
         Formulario formulario = new Formulario(donante, bienesNormal, fechaRealizacion);
-        repositorioFormularios.save(formulario);
+        repositorioFormularios.guardar(formulario);
 
         DonacionFacade donacionFacade = new DonacionFacade(
-                new SegmentadorDonaciones(),
-                new AsignadorDonaciones()
+            new SegmentadorDonaciones(),
+            new AsignadorDonaciones()
         );
 
         List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
-        repositorioDonaciones.saveFormulario(donacionesProcesadas);
+        repositorioDonaciones.guardarDonaciones(donacionesProcesadas);
 
         return donacionesProcesadas;
+    }
+
+    // --- Métodos CRUD para Formulario ---
+
+    // Create (adicional al procesarFormulario si se necesita guardar de forma aislada)
+    public void guardarFormulario(Formulario formulario) {
+        repositorioFormularios.guardar(formulario);
+    }
+
+    // Read
+    public List<Formulario> obtenerTodosLosFormularios() {
+        return repositorioFormularios.obtenerTodos();
+    }
+
+    public Optional<Formulario> obtenerFormularioPorId(UUID id) {
+        return repositorioFormularios.buscarPorId(id); // o obtenerPorId según tu RepositorioFormularios
+    }
+
+
+    // Delete
+    public void eliminarFormulario(UUID id) {
+        repositorioFormularios.eliminarPorId(id);
     }
 }
