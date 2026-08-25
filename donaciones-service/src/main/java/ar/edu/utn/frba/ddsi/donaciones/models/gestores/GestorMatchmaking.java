@@ -7,10 +7,12 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
 public class GestorMatchmaking {
     private RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private RepositorioDonaciones repositorioDonaciones;
