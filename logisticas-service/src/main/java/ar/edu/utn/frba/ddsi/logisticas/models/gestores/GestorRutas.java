@@ -35,7 +35,6 @@ public class GestorRutas {
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente al chofer " + chofer.getIdChofer()));
     }
-
     public Ruta guardarRuta(Ruta nuevaRuta){
         return repoRutas.save(nuevaRuta);
     }
@@ -44,6 +43,11 @@ public class GestorRutas {
         rutas.forEach(this::guardarRuta);
     }
 
+    public void actualizarRutaEstado(Ruta rutaActual, EstadoRuta nuevoEstado){
+        repoRutas.actualizarEstado(rutaActual, nuevoEstado);
+    }
+
+    /*
     public Ruta actualizarRuta(UUID id, Ruta rutaActualizada){
         Ruta rutaExistente = buscarRuta(id);
         rutaExistente.setCamionAsignado(rutaActualizada.getCamionAsignado());
@@ -51,12 +55,9 @@ public class GestorRutas {
         return guardarRuta(rutaExistente);
     }
 
-    public void actualizarRutaEstado(Ruta rutaActual, EstadoRuta nuevoEstado){
-        repoRutas.actualizarEstado(rutaActual, nuevoEstado);
-    }
-
     public void eliminarRuta(UUID idRuta){
         buscarRuta(idRuta);
         repoRutas.deleteById(idRuta);
     }
+     */
 }
