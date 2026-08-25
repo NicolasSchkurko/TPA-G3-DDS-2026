@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.donaciones.sheduler;
+package ar.edu.utn.frba.ddsi.donaciones.models.sheduler;
 
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import org.springframework.scheduling.annotation.Scheduled;
