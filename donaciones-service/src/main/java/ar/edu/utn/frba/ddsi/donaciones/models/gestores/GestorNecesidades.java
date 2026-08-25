@@ -2,10 +2,13 @@ package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioNecesidades;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 public class GestorNecesidades {
 
   private RepositorioNecesidades repositorio;

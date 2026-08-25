@@ -3,12 +3,16 @@ package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonantes;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Gestor (Servicio) para manejar la lógica de negocio relacionada con los Donantes.
  */
+
+@Service
 public class GestorDonantes {
 
   private RepositorioDonantes repositorio;

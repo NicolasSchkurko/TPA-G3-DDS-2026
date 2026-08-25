@@ -9,12 +9,14 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.Seg
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 public class GestorFormulario {
     private RepositorioDonaciones repositorioDonaciones;
     private RepositorioFormularios repositorioFormularios;

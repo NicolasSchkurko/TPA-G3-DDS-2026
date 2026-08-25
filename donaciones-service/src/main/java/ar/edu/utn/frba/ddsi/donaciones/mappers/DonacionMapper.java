@@ -21,8 +21,8 @@ public class DonacionMapper {
 
         DonacionDTO dto = new DonacionDTO();
 
-        dto.setDonanteName(donacion.getDonante() != null ? donacion.getDonante().darNombre() : "Desconocido");
-        dto.setEntidadBeneficiaria(donacion.getEntidad() != null ? donacion.getEntidad().getRazonSocial() : "No asignada");
+        dto.setDonanteName(donacion.getDonante() != null ? donacion.getDonante().getPersona().getNombreDeUsuario() : "Desconocido");
+        dto.setEntidadBeneficiaria(donacion.getEntidad() != null ? donacion.getEntidad().getPersonaJuridica().getRazonSocial() : "No asignada");
 
         dto.setDescripcion(donacion.getDescripcion());
         dto.setEstado(donacion.getEstado() != null ? donacion.getEstado().name() : "N/A");
@@ -40,8 +40,10 @@ public class DonacionMapper {
     public EntidadBeneficiariaDTO entidadtoDTO(EntidadBeneficiaria entidad) {
         EntidadBeneficiariaDTO dto = new EntidadBeneficiariaDTO();
         // Si a futuro añades id a EntidadBeneficiariaDTO, deberías setearlo aquí (dto.setId(entidad.getId());)
-        dto.setRazonSocial(entidad.getRazonSocial());
-        dto.setTelefono(entidad.getNroTell() != null ? entidad.getNroTell().getNumeroDeTelefono() : null);
+        dto.setRazonSocial(entidad.getPersonaJuridica().getRazonSocial());
+        dto.setTelefono(
+                entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor() != null ?
+                        entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor() : null);
         return dto;
     }
 

@@ -15,11 +15,13 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEs
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 public class GestorDonaciones {
     private RepositorioDonaciones repositorioDonaciones;
     private RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
