@@ -1,12 +1,13 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ChoferDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,11 +20,11 @@ public class ChoferService {
   }
 
   // --- MÉTODOS CRUD ---
-  public List<ChoferDTO> findAll() {
+  public ChoferesDTO findAll() {
     List<Chofer> choferes = gestorChoferes.listarChoferes();
-    return choferes.stream()
+    return new ChoferesDTO(choferes.stream()
             .map(this::convertirAChoferDTO)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()));
   }
 
   public ChoferDTO findById(UUID id) {
@@ -37,7 +38,7 @@ public class ChoferService {
     return convertirAChoferDTO(nuevoChofer);
   }
 
-  public Chofer convertirChoferDTO(ChoferDTO dto){
+  private Chofer convertirChoferDTO(ChoferDTO dto){
     if (dto == null) return null;
     return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
   }
@@ -53,28 +54,20 @@ public class ChoferService {
     gestorChoferes.eliminarChofer(id);
   }
 
-  // --- MÉTODOS DE NEGOCIO (ESTADOS) ---
-  public void marcarDisponible(UUID id) {
-    Chofer chofer = gestorChoferes.buscarChofer(id);
-    chofer.disponible();
-    gestorChoferes.guardarChofer(chofer);
-  }
-
-  public void marcarOcupado(UUID id) {
-    Chofer chofer = gestorChoferes.buscarChofer(id);
-    chofer.ocupado();
-    gestorChoferes.guardarChofer(chofer);
-  }
-
-  public void guardarChoferes(List<Chofer> choferes){
-    if (choferes != null && !choferes.isEmpty()) {
-      choferes.forEach(gestorChoferes::guardarChofer);
+  public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
+    Boolean disponible = body.get("disponible");
+    if (disponible != null && disponible) {
+      gestorChoferes.marcarDisponible(id);
+      return "Chofer marcado como disponible.";
+    } else {
+      gestorChoferes.marcarOcupado(id);
+      return "Chofer marcado como ocupado.";
     }
   }
 
   // --- MAPPERS ---
 
-  public ChoferDTO convertirAChoferDTO(Chofer chofer){
+  private ChoferDTO convertirAChoferDTO(Chofer chofer){
     if (chofer == null) return null;
     ChoferDTO dto = new ChoferDTO();
     dto.setIdChofer(chofer.getIdChofer());

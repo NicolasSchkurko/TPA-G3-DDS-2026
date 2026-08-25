@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.dto;
+package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -10,6 +10,6 @@ import java.util.UUID;
 @Setter
 public class EntregaDTO {
     private List<UUID> idsDonaciones;
-    private List<BienDTO> donacionResumen; //peso de cada bien
+    private BienesDTO donacionResumen; //peso de cada bien
     private DireccionDTO entidadBeneficiaria; //quiza solo direccion
 }

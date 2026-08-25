@@ -1,8 +1,5 @@
-package ar.edu.utn.frba.ddsi.logisticas.dto;
+package ar.edu.utn.frba.ddsi.logisticas.dto.chofer;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
-
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;

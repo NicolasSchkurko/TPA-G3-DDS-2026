@@ -1,13 +1,16 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,11 +24,11 @@ public class CamionService {
   }
 
   // --- MÉTODOS CRUD ---
-  public List<CamionDTO> findAll() {
+  public CamionesDTO findAll() {
     List<Camion> camiones = gestorCamiones.listarCamiones();
-    return camiones.stream()
+    return new CamionesDTO(camiones.stream()
             .map(this::convertirADTO)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()));
   }
 
   public CamionDTO findById(String patente) {
@@ -39,10 +42,9 @@ public class CamionService {
     return convertirADTO(nuevoCamion);
   }
 
-  public List<CamionDTO> createMultiple(List<CamionDTO> dtos) {
-  return dtos.stream()
-      .map(this::create)
-      .collect(Collectors.toList());
+  public CamionesDTO createMultiple(CamionesDTO dtos) {
+    return new CamionesDTO(dtos.getCamiones().stream()
+            .map(this::create).toList());
   }
 
   public Camion convertirCamionDTO(CamionDTO dto){
@@ -53,48 +55,27 @@ public class CamionService {
   }
 
   public CamionDTO update(String patente, CamionDTO dto) {
-    Camion camionExistente = actualizarCamion(patente, dto);
-    return convertirADTO(camionExistente);
-  }
-
-  public Camion actualizarCamion(String patente, CamionDTO dto){
-    Camion camionExistente = gestorCamiones.buscarCamion(patente);
-
     Chofer nuevoChofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
-
-    camionExistente.setChofer(nuevoChofer);
-    camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
-    camionExistente.setAltura(dto.getAltura());
-    camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
-
-    gestorCamiones.guardarCamion(camionExistente);
-    return camionExistente;
+    Camion camionExistente = gestorCamiones.actualizarCamion(patente, dto, nuevoChofer);
+    return convertirADTO(camionExistente);
   }
 
   public void delete(String patente) {
     gestorCamiones.eliminarCamion(patente);
   }
 
-  // --- MÉTODOS DE NEGOCIO (ESTADOS) ---
-  public void marcarDisponible(String patente) {
-    Camion camion = gestorCamiones.buscarCamion(patente);
-    camion.disponible();
-    gestorCamiones.guardarCamion(camion);
-  }
-
-  public void marcarOcupado(String patente) {
-    Camion camion = gestorCamiones.buscarCamion(patente);
-    camion.ocupado();
-    gestorCamiones.guardarCamion(camion);
-  }
-
-  public void guardarCamiones(List<Camion> camiones){
-    if (camiones != null && !camiones.isEmpty()) {
-      camiones.forEach(gestorCamiones::guardarCamion);
+  public String cambiarDisponibilidad(String patente, Map<String, Boolean> body){
+    Boolean disponible = body.get("disponible");
+    if (disponible != null && disponible) {
+      gestorCamiones.marcarDisponible(patente);
+      return "Camión marcado como disponible.";
+    } else {
+      gestorCamiones.marcarOcupado(patente);
+      return "Camión marcado como ocupado.";
     }
   }
 
-  public CamionDTO convertirADTO(Camion camion){
+  private CamionDTO convertirADTO(Camion camion){
     if (camion == null) return null;
     CamionDTO dto = new CamionDTO();
     if (camion.getChofer() != null) {

@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.Scheduler.PlanificadorDeRutasScheduler;
+import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorRutasService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -24,10 +25,13 @@ import java.util.List;
 @Tag(name = "Planificador de Rutas", description = "API para la interacción con el proveedor externo de planificación de rutas logísticas")
 public class PlanificadorDeRutasController {
 
-  private final PlanificadorDeRutasScheduler planificadorService;
+  private final PlanificadorDeRutasScheduler planificadorScheduler;
+  private final PlanificadorRutasService planificadorService;
 
   @Autowired
-  public PlanificadorDeRutasController(PlanificadorDeRutasScheduler planificadorService) {
+  public PlanificadorDeRutasController(PlanificadorDeRutasScheduler planificadorScheduler,
+                                       PlanificadorRutasService planificadorService) {
+    this.planificadorScheduler = planificadorScheduler;
     this.planificadorService = planificadorService;
   }
 
@@ -84,7 +88,7 @@ public class PlanificadorDeRutasController {
   @PostMapping("/planificar-manual")
   public ResponseEntity<String> forzarPlanificacionManual() {
     try {
-      planificadorService.iniciarPlanificacionAutomatica();
+      planificadorScheduler.iniciarPlanificacionAutomatica();
       return ResponseEntity.ok("Proceso de planificación disparado. Aguardando respuesta del proveedor externo...");
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al disparar la planificación.");

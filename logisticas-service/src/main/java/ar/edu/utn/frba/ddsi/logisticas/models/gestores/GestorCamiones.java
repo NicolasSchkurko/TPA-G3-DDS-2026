@@ -1,10 +1,9 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +33,18 @@ public class GestorCamiones {
         repoCamiones.save(camion);
     }
 
+    public Camion actualizarCamion(String patente, CamionDTO dto, Chofer nuevoChofer) {
+        Camion camionExistente = buscarCamion(patente);
+
+        camionExistente.setChofer(nuevoChofer);
+        camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
+        camionExistente.setAltura(dto.getAltura());
+        camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
+
+        guardarCamion(camionExistente);
+        return camionExistente;
+    }
+
     // --- MAPPERS ---
     public void resetearCamion(Camion camion){
         repoCamiones.resetearCarga(camion);
@@ -44,5 +55,17 @@ public class GestorCamiones {
         if(camion != null){
             repoCamiones.deleteById(patente);
         }
+    }
+
+    public void marcarDisponible(String patente) {
+        Camion camion = buscarCamion(patente);
+        camion.disponible();
+        guardarCamion(camion);
+    }
+
+    public void marcarOcupado(String patente) {
+        Camion camion = buscarCamion(patente);
+        camion.ocupado();
+        guardarCamion(camion);
     }
 }

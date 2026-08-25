@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.dto;
+package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
 import lombok.Getter;
 import lombok.Setter;

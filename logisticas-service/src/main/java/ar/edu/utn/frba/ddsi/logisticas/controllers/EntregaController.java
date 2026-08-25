@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ActualizacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -77,7 +77,7 @@ public class EntregaController {
         @ApiResponse(responseCode = "201", description = "Ítems creados y registrados en depósito.")
     })
     @PostMapping
-    public ResponseEntity<String> crearDestinos(@RequestBody PeticionEntregaDTO request) {
+    public ResponseEntity<String> crearItems(@RequestBody PeticionEntregaDTO request) {
         try {
             entregaService.procesarPeticion(request);
             return ResponseEntity.status(HttpStatus.CREATED).body("Ítems de entrega agregados al depósito correctamente.");

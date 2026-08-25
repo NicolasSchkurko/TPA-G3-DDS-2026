@@ -1,10 +1,10 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ActualizacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.BienDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.DireccionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.EntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
@@ -48,7 +48,7 @@ public class EntregaService {
 
     List<EntregaDTO> entregas = request.getEntregas();
     for (EntregaDTO entregaActual : entregas) {
-      List<BienDTO> bienes = entregaActual.getDonacionResumen();
+      List<BienDTO> bienes = entregaActual.getDonacionResumen().getBienes();
       if (bienes == null) continue;
 
       for (int j = 0; j < bienes.size(); j++) {

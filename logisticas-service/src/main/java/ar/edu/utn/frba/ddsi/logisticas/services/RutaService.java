@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.RutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
@@ -46,6 +45,7 @@ public class RutaService {
     return gestorRutas.buscarRuta(idRuta);
   }
 
+  /*
   public Ruta create(Ruta ruta) {
       return gestorRutas.guardarRuta(ruta);
     }
@@ -57,6 +57,7 @@ public class RutaService {
   public void delete(UUID idRuta) {
     gestorRutas.eliminarRuta(idRuta);
   }
+   */
 
   // --- MÉTODOS DE NEGOCIO ---
 

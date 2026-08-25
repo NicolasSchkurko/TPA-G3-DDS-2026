@@ -1,6 +1,7 @@
-package ar.edu.utn.frba.ddsi.logisticas.dto;
+package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
 import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 

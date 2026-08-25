@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.RutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.services.RutaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,7 +41,7 @@ public class RutaController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
-
+  /*
   @Operation(summary = "Crear una ruta manual", description = "Usualmente generadas por el servicio planificador.")
   @PostMapping
   public ResponseEntity<Ruta> crearRuta(@RequestBody Ruta request) {
@@ -69,6 +68,7 @@ public class RutaController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
+  */
 
   // --- OPERACIONES DE NEGOCIO ---
 

@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ChoferDTO;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 
@@ -38,5 +36,17 @@ public class GestorChoferes {
         if(chofer != null){
             repoChoferes.deleteById(id);
         }
+    }
+
+    public void marcarDisponible(UUID id) {
+        Chofer chofer = buscarChofer(id);
+        chofer.disponible();
+        guardarChofer(chofer);
+    }
+
+    public void marcarOcupado(UUID id) {
+        Chofer chofer = buscarChofer(id);
+        chofer.ocupado();
+        guardarChofer(chofer);
     }
 }

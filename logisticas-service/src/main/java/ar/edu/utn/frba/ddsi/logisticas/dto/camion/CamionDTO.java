@@ -1,6 +1,5 @@
-package ar.edu.utn.frba.ddsi.logisticas.dto;
+package ar.edu.utn.frba.ddsi.logisticas.dto.camion;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
