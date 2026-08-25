@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.exceptions;
 
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilNotificacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import lombok.Getter;
 
 @Getter

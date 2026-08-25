@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
@@ -30,21 +30,23 @@ public class Perfil {
         this.categoriaActual = null; //inicializar en gestorPerfiles
         this.insignias = new ArrayList<>();
         this.posicionRanking = new PosicionRanking(null);
-        this.misionActual = null; //se inicializa en personaService (gestorPerfiles) cuando se crea
+        this.misionActual = null; //se inicializa en gestorPerfiles
     }
 
     public void verificarProgresoMision(){
         misionActual.evaluarConstancia();
     }
 
-    public void progresarMision(ImpactoDonacion donacion){
+    public boolean progresarMision(ImpactoDonacion donacion){
         misionActual.evaluarConstancia();
         misionActual.evaluarProgreso(donacion);
 
         if (misionActual.estaCompleta()) {
             this.otorgarInsignia();
             this.sumarMisionCumplida();
+            return true;
         }
+        return false;
     }
 
     private void otorgarInsignia() {
@@ -56,15 +58,5 @@ public class Perfil {
     private void sumarMisionCumplida(){
         Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
         posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
-    }
-
-    public Perfil clonar() {
-        Perfil copia = new Perfil(this.idUsuario, this.nombreUsuario);
-
-        copia.setCategoriaActual(this.categoriaActual);
-        copia.setInsignias(this.insignias);
-        copia.setMisionActual(this.misionActual);
-
-        return copia;
     }
 }

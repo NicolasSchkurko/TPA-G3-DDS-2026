@@ -1,12 +1,18 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 
 import java.util.List;
 
 public class GestorEventos {
-    private RepositorioEventoLogistica repoEventos;
+    private final RepositorioEventoLogistica repoEventos;
+
+    public GestorEventos(RepositorioEventoLogistica repoEventos){
+        this.repoEventos = repoEventos;
+    }
+
 
     public List<EventoLogistica> buscarEventos(Long desdeId) {
         return repoEventos.findByIdGreaterThanOrderByFechaAsc(desdeId);

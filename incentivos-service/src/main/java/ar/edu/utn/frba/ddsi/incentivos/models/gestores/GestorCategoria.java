@@ -1,16 +1,48 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * @param repositorio gestiona la secuencia de categorias existentes en el repositorio
- */
-public record GestorCategoria(RepositorioCategorias repositorio) {
+@Service
+public class GestorCategoria {
+    private final RepositorioCategorias repositorio;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public GestorCategoria(RepositorioCategorias repositorio,
+                           ApplicationEventPublisher eventPublisher) {
+        this.repositorio = repositorio;
+        this.eventPublisher = eventPublisher;
+    }
+
+    @EventListener
+    public void avanzarCategoria(UltimaMisionCategoria event) {
+        if (event.idCategoriaCompletada() == null) {
+            return;
+        }
+
+        Categoria categoriaAnterior = repositorio.buscarPorId(event.idCategoriaCompletada());
+        Categoria categoriaSiguiente = categoriaCorrespondiente(categoriaAnterior.getPosicionSecuencia() + 1);
+        if (categoriaSiguiente == null || categoriaSiguiente.primeraMision() == null) {
+            return;
+        }
+
+        eventPublisher.publishEvent(
+                new CategoriaCambiada(
+                        categoriaAnterior,
+                        categoriaSiguiente,
+                        event.idPerfil()
+                )
+        );
+    }
 
     //init default, dsp el admin puede modificarlas
     public List<Categoria> inicializarCategoriasBase(){
@@ -98,5 +130,9 @@ public record GestorCategoria(RepositorioCategorias repositorio) {
         }
 
         return repositorio.actualizar(categoriaActual);
+    }
+
+    public Categoria categoriaCorrespondiente(Integer posicion){
+        return repositorio.buscarPorPosicionSecuencia(posicion);
     }
 }

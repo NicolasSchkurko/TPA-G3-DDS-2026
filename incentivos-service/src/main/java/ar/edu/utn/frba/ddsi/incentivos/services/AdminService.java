@@ -6,7 +6,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Can
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.ValoresDistintos;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;

@@ -1,13 +1,13 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.TipoOperacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.TipoOperacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 
 import java.time.temporal.ChronoUnit;

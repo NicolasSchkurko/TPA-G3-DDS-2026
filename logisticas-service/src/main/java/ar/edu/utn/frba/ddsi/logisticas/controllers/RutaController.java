@@ -41,11 +41,11 @@ public class RutaController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
-
+  /*
   @Operation(summary = "Crear una ruta manual", description = "Usualmente generadas por el servicio planificador.")
   @PostMapping
-  public ResponseEntity<Ruta> crearRuta(@RequestBody Ruta ruta) {
-    return new ResponseEntity<>(rutaService.create(ruta), HttpStatus.CREATED);
+  public ResponseEntity<Ruta> crearRuta(@RequestBody Ruta request) {
+    return new ResponseEntity<>(rutaService.create(request), HttpStatus.CREATED);
   }
 
   @Operation(summary = "Actualizar datos de una ruta")
@@ -68,6 +68,7 @@ public class RutaController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
+  */
 
   // --- OPERACIONES DE NEGOCIO ---
 

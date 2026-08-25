@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import lombok.Getter;

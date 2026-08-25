@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.EstadoEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import org.springframework.stereotype.Repository;
 
@@ -23,9 +23,9 @@ public class RepositorioItemEntrega {
                            .orElse(null);
     }
 
-    public List<ItemEntrega> findByEstado(Class<? extends EstadoEntrega> estado) {
+    public List<ItemEntrega> findByEstado(EstadoEntrega estado) {
         return itemEntregas.stream()
-                .filter(r -> estado.isInstance(r.getEstado()))
+                .filter(r -> estado.equals(r.getEstado()))
                 .toList();
     }
 
@@ -37,14 +37,6 @@ public class RepositorioItemEntrega {
             itemEntregas.add(item);
         }
         return item;
-    }
-
-    public void actualizarEstado(ItemEntrega item, EstadoEntrega nuevoEstado){
-        int posicion = itemEntregas.indexOf(item);
-        if (posicion != -1) {
-            item.setEstado(nuevoEstado);
-            itemEntregas.set(posicion, item);
-        }
     }
 
     public void deleteById(UUID idDonacion) {

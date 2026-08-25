@@ -5,12 +5,12 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.ActividadMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.MetricasActividad;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignias.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioImpactos;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 
 import java.time.YearMonth;
@@ -22,11 +22,11 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class PerfilService {
-    private final RepositorioDonaciones repositorioDonaciones;
+    private final RepositorioImpactos repositorioDonaciones;
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioRankings repositorioRankings;
 
-    public PerfilService(RepositorioDonaciones repositorio,
+    public PerfilService(RepositorioImpactos repositorio,
                          RepositorioPerfiles perfiles,
                          RepositorioRankings rankings) {
         this.repositorioDonaciones = repositorio;

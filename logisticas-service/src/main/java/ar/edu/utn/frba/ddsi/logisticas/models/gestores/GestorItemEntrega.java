@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.NoRecibida;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.Pendiente;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 
@@ -25,8 +24,20 @@ public class GestorItemEntrega {
         return item;
     }
 
-    public List<ItemEntrega> buscarItems(List<UUID> todosLosIdsItems){
-        return todosLosIdsItems.stream().map(this::buscarItem).toList();
+    public List<ItemEntrega> buscarItems(List<UUID> idsItems){
+        return idsItems.stream().map(this::buscarItem).toList();
+    }
+
+    public List<ItemEntrega> buscarNoRecibidos(){
+        return repoItemEntrega.findByEstado(EstadoEntrega.NO_RECIBIDA);
+    }
+
+    public List<ItemEntrega> buscarPendientes(){
+        return repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+    }
+
+    public void guardarItem(ItemEntrega item){
+        repoItemEntrega.save(item);
     }
 
     public void eliminarItem(UUID id){
@@ -34,17 +45,5 @@ public class GestorItemEntrega {
             throw new IllegalArgumentException("Entrega no encontrada");
         }
         repoItemEntrega.deleteById(id);
-    }
-
-    public void guardarItem(ItemEntrega item){
-        repoItemEntrega.save(item);
-    }
-
-    public List<ItemEntrega> buscarNoRecibidos(){
-        return repoItemEntrega.findByEstado(NoRecibida.class);
-    }
-
-    public List<ItemEntrega> buscarPendientes(){
-        return repoItemEntrega.findByEstado(Pendiente.class);
     }
 }

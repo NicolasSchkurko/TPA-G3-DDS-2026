@@ -42,7 +42,7 @@ public class RankingService {
         for (Perfil perfil : candidatos) {
             indice++;
             Integer misiones = perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo();
-            if (misionesPrevias != null && misiones.equals(misionesPrevias)) {
+            if (misiones.equals(misionesPrevias)) {
                 perfil.getPosicionRanking().setPuesto(puestoActual);
             } else {
                 puestoActual = indice;

@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.MedioContactoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.MedioContactoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.stereotype.Service;
@@ -19,10 +20,15 @@ public class DonacionClient {
         this.restTemplate = restTemplate;
     }
 
-    public MedioContactoDTO obtenerContactoPersona(UUID idUsuario) {
-        return restTemplate.getForObject(
+    public MedioContacto obtenerContactoPersona(UUID idUsuario) {
+        MedioContactoDTO dto = restTemplate.getForObject(
                 donacionesUrl + idUsuario,
                 MedioContactoDTO.class
+        );
+
+        return new MedioContacto(
+                dto.getMedioDeContacto(),
+                dto.getDireccionContacto()
         );
     }
 }
