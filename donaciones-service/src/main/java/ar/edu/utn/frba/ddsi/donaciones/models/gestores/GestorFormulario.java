@@ -18,12 +18,12 @@ import java.util.UUID;
 
 @Service
 public class GestorFormulario {
-    private RepositorioDonaciones repositorioDonaciones;
+
     private RepositorioFormularios repositorioFormularios;
 
     // Constructor para inyección de dependencias
-    public GestorFormulario(RepositorioDonaciones repositorioDonaciones, RepositorioFormularios repositorioFormularios) {
-        this.repositorioDonaciones = repositorioDonaciones;
+    public GestorFormulario(RepositorioFormularios repositorioFormularios) {
+       // this.repositorioDonaciones = repositorioDonaciones;
         this.repositorioFormularios = repositorioFormularios;
     }
 
@@ -39,7 +39,6 @@ public class GestorFormulario {
         );
 
         List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
-        repositorioDonaciones.guardarDonaciones(donacionesProcesadas);
 
         return donacionesProcesadas;
     }

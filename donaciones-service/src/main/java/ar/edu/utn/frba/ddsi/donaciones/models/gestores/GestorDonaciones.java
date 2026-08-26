@@ -108,4 +108,7 @@ public class GestorDonaciones {
         repositorioDeResultadosMatchmaking.guardarResultados(resultadosMatchmakings);
     }
 
+    public void guardarDonaciones(List<Donacion> donaciones){
+        repositorioDonaciones.guardarDonaciones(donaciones);
+    }
 }
