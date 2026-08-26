@@ -10,8 +10,9 @@ import java.util.List;
 
 public interface RepresentanteDTOToObject {
     static Representante convertirEnObjeto(RepresentanteDTO representanteDTO) {
-        Humana humana = new Humana(representanteDTO.getNombre(), representanteDTO.getApellido(), representanteDTO.getEdad(), representanteDTO.getNumeroDeDocumento(),
-                                   Genero.valueOf(representanteDTO.getGenero()));
+        Humana humana = new Humana(representanteDTO.getNombre(), representanteDTO.getApellido(),
+                representanteDTO.getEdad(), representanteDTO.getNumeroDeDocumento(),
+                                   Genero.valueOf(representanteDTO.getGenero()), representanteDTO.getNombre());
 
         Representante representante = new Representante(humana, true);
         return representante;

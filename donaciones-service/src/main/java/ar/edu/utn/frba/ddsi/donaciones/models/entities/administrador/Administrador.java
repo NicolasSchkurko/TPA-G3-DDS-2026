@@ -14,10 +14,16 @@ import lombok.Setter;
 public class Administrador {
     private UUID id;
     private Humana humano;
-    private MediosDeContacto mediosDeContacto;
+    private MedioDeContacto medioDeContacto;
     private String nombreAMostrar;
 
+    public Administrador (UUID id,Humana humano,MedioDeContacto medioDeContacto,String nombreAMostrar){
+        this.id=id;
+        this.humano=humano;
+        this.medioDeContacto=medioDeContacto;
+        this.nombreAMostrar = nombreAMostrar;
+    }
     public MedioDeContacto getContacto() {
-        return mediosDeContacto.getMedioDeContactoPredeterminado();
+        return medioDeContacto;
     }
 }

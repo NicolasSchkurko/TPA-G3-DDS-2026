@@ -13,7 +13,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridic
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.PersonaHumana;
+
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
@@ -167,24 +167,21 @@ public class PersonaController {
 
     if ("HUMANA".equalsIgnoreCase(dto.getTipoPersona())) {
       Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
-      Humana humana = new Humana(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
-      PersonaHumana nuevaPersona = new PersonaHumana(humana, direccion, dto.getNombreAMostrar());
-      // Genera su nombre de usuario como requiere la peticion
-      nuevaPersona.getPersona().setNombreDeUsuario(dto.getNombreDeUsuario());
-      nuevaPersona.getMediosDeContacto().agregarMediosDeContacto(medios);
-      nuevaPersona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
+      Humana humana = new Humana(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero, dto.getNombreAMostrar());
+      Donante nuevaPersona = new Donante(direccion,humana);
+      nuevaPersona.getPersona().getMediosDeContacto().agregarMediosDeContacto(medios);
+      nuevaPersona.getPersona().getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
       return nuevaPersona;
     } else if ("JURIDICA".equalsIgnoreCase(dto.getTipoPersona())) {
       TipoJuridico tipo = TipoJuridico.valueOf(dto.getTipoJuridico().toUpperCase());
       Juridica nuevaPersona = new Juridica(
           dto.getRazonSocial(), dto.getRubro(), tipo, dto.getCuit(), new ArrayList<>(), dto.getNombreAMostrar()
       );
-      nuevaPersona.setNombreDeUsuario(dto.getNombreDeUsuario());
-      nuevaPersona.setDireccion(direccion);
-      nuevaPersona.agregarRepresentantes(RepresentanteDTOToObject.convertirEnObjeto(dto.getRepresentantes()));
       nuevaPersona.getMediosDeContacto().agregarMediosDeContacto(medios);
       nuevaPersona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
-      return nuevaPersona;
+      Donante nuevoDonante = new Donante(direccion, nuevaPersona);
+      ((Juridica) nuevoDonante.getPersona()).agregarRepresentantes(RepresentanteDTOToObject.convertirEnObjeto(dto.getRepresentantes()));
+      return nuevoDonante;
     } else {
       throw new IllegalArgumentException("Tipo de persona inválido");
     }
@@ -194,30 +191,28 @@ public class PersonaController {
     if (entidad == null) return null;
     PersonaDonanteDTO responseDTO = new PersonaDonanteDTO();
     responseDTO.setId(entidad.getId());
-    try { responseDTO.setNombreAMostrar(entidad.darNombre()); }
+    try { responseDTO.setNombreAMostrar(entidad.getPersona().getNombreDeUsuario()); }
     catch (Exception e) { responseDTO.setNombreAMostrar(null); }
 
     Direccion direccion = null;
-    if (entidad instanceof PersonaHumana ph) {
+    if (entidad.getPersona() instanceof Humana ph) {
       responseDTO.setTipoPersona("HUMANA");
-      if (ph.getPersona() != null) {
-        responseDTO.setNombre(ph.getPersona().getNombre());
-        responseDTO.setApellido(ph.getPersona().getApellido());
-        responseDTO.setEdad(ph.getPersona().getEdad());
-        responseDTO.setNumeroDeDocumento(ph.getPersona().getNumeroDeDocumento());
-        responseDTO.setGenero(ph.getPersona().getGenero() != null ? ph.getPersona().getGenero().name() : null);
-      }
-      direccion = ph.getDireccion();
-    } else if (entidad instanceof Juridica pj) {
+      responseDTO.setNombre(ph.getNombre());
+      responseDTO.setApellido(ph.getApellido());
+      responseDTO.setEdad(ph.getEdad());
+      responseDTO.setNumeroDeDocumento(ph.getNumeroDeDocumento());
+      responseDTO.setGenero(ph.getGenero() != null ? ph.getGenero().name() : null);
+
+    } else if (entidad.getPersona() instanceof Juridica pj) {
       responseDTO.setTipoPersona("JURIDICA");
       responseDTO.setRazonSocial(pj.getRazonSocial());
       responseDTO.setCuit(pj.getCuit());
       responseDTO.setRubro(pj.getRubro());
       responseDTO.setTipoJuridico(pj.getTipoJuridico() != null ? pj.getTipoJuridico().name() : null);
-      direccion = pj.getDireccion();
     } else {
       responseDTO.setTipoPersona("DESCONOCIDO");
     }
+    direccion = entidad.getDireccion();
 
     if (direccion != null) {
       DireccionDTO dirDto = new DireccionDTO();
@@ -238,7 +233,7 @@ public class PersonaController {
       responseDTO.setDireccion(dirDto);
     }
 
-    responseDTO.setMediosDeContacto(mapMediosContactoToDto(entidad.getMediosDeContacto()));
+    responseDTO.setMediosDeContacto(mapMediosContactoToDto(entidad.getPersona().getMediosDeContacto()));
     return responseDTO;
   }
 

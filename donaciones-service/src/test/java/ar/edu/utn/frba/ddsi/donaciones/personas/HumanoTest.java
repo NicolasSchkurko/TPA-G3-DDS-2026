@@ -20,7 +20,7 @@ public class HumanoTest {
     int edad = 27;
     int numeroDeDocumento = 1234567;
     Genero genero = Genero.OTRO;
-    Humana humana = new Humana(nombre, apellido, edad, numeroDeDocumento, genero);
+    Humana humana = new Humana(nombre, apellido, edad, numeroDeDocumento, genero, nombre);
     assertEquals(nombre, humana.getNombre());
     assertEquals(apellido, humana.getApellido());
     assertEquals(edad, humana.getEdad());

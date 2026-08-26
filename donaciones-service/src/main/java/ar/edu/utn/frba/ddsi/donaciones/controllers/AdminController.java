@@ -57,8 +57,9 @@ public class AdminController {
         Genero genero = Genero.valueOf(dto.getGenero().toUpperCase());
         MedioDeContacto contacto = crearMedioDeContacto(dto.getMedioDeContacto().getTipo(), dto.getMedioDeContacto().getValor());
 
-        Humana humano = new Humana(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero);
-        return new Administrador(dto.getNombreAMostrar(), humano, contacto);
+        Humana humano = new Humana(dto.getNombre(), dto.getApellido(), dto.getEdad(), dto.getNumeroDeDocumento(), genero, dto.getNombre());
+
+        return new Administrador(dto.getId(), humano, contacto,dto.getNombreAMostrar());
     }
 
     private AdminDTO mapearADto(Administrador admin) {
@@ -98,4 +99,5 @@ public class AdminController {
             default -> throw new IllegalArgumentException("Tipo de medio de contacto no soportado. Use EMAIL, TELEFONO o WHATSAPP.");
         };
     }
+
 }

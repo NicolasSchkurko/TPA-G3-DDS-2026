@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
@@ -110,15 +109,15 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
    * @param documento
    * @return
    */
-  private PersonaHumana crearPersonaHumana(String nombreCompleto, String tipoDoc, String documento) {
+  private Donante crearPersonaHumana(String nombreCompleto, String tipoDoc, String documento) {
     String[] nombreYApellido = separarNombreYApellido(nombreCompleto);
     String nombre = nombreYApellido[0];
     String apellido = nombreYApellido[1];
 
     int numeroDocumentoParseado = limpiarYParsearDocumento(documento);
 
-    Humana humana = new Humana(nombre, apellido, 0, numeroDocumentoParseado, null);
-    return new PersonaHumana(humana, null, null);
+    Humana humana = new Humana(nombre, apellido, 0, numeroDocumentoParseado, null, nombre);
+    return new Donante(null,humana);
   }
 
   /**
@@ -129,8 +128,9 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
    * @param documento
    * @return
    */
-  private Juridica crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
-    return new Juridica(null, razonSocial, null, null, documento, new ArrayList<>(), null);
+  private Donante crearPersonaJuridica(String razonSocial, String tipoDoc, String documento) {
+    Juridica nuevaPersona= new Juridica(razonSocial, null, null, documento, new ArrayList<>(), null);
+    return new Donante(null, nuevaPersona);
   }
 
   /**
@@ -162,7 +162,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
       medios.agregarMedioDeContacto(new Whatsapp(whatsapp));
     }
 
-    donante.setMediosDeContacto(medios);
+    donante.getPersona().setMediosDeContacto(medios);
   }
 
   // --- Métodos Utilitarios Internos ---

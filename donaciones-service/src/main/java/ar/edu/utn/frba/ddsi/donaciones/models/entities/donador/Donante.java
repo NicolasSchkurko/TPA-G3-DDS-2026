@@ -17,6 +17,8 @@ public class Donante {
     private UUID id;
     private List<Formulario> formularios;
     private Direccion direccion;
+    @Getter
+    @Setter
     private Persona persona;
 
     public Donante(Direccion direccion, Persona persona ) {
