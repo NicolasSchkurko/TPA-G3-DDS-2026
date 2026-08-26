@@ -58,15 +58,15 @@ public class PersonaService {
     );
     incentivosClient.peticionCrearPerfil(peticion);
 
-    if (nuevoDonante.getPersona() instanceof Juridica) {
-      NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(
+
+    NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(
           nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
           nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
           "Gracias por registrarse en DonaTrack",
           "Nuevo Registro en DonaTrack"
-      );
-      notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
-    }
+    );
+    notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
+
 
     gestorDonantes.registrarDonante(nuevoDonante);
     return nuevoDonante;
