@@ -61,7 +61,8 @@ public class DonacionService {
     List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientes();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
 
-    gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
+    List<ResultadoMatchmaking> resultados = gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
+    GestorMatchmaking.guardarResultados(resultadosMatchmakings);
   }
 
   public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {

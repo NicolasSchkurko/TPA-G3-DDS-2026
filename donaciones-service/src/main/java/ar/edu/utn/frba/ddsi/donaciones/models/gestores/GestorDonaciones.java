@@ -13,7 +13,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.Seg
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +23,6 @@ import java.util.UUID;
 @Service
 public class GestorDonaciones {
     private RepositorioDonaciones repositorioDonaciones;
-    private RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private DonacionFacade donacionFacade;
     private IncentivosClient incentivosClient;
     private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
@@ -48,47 +46,19 @@ public class GestorDonaciones {
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
         Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(id);
 
-        if (donacionOpt.isPresent()) {
-            Estado e = null;
-
-            switch (nuevoEstado.toUpperCase()) {
-                case "EN_DEPOSITO":
-                    e = Estado.EN_DEPOSITO;
-                    break;
-                case "PENDIENTE_ASIGNACION":
-                    e = Estado.PENDIENTE_ASIGNACION;
-                    break;
-                case "ENTREGADO":
-                    e = Estado.ENTREGADO;
-                    break;
-                case "VENCIDO":
-                    e = Estado.VENCIDO;
-                    break;
-            }
-
-            Donacion donacion = donacionOpt.get();
-            donacion.actualizarEstado(e, justificacion);
-            repositorioDonaciones.guardar(donacion);
-
-            if (nuevoEstado.toUpperCase().equals("ASIGNADO")) {
-                IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-                dto.setFechaEntrega(donacion.getFechaEntrega());
-                dto.setCantidadBienes(donacion.sumaCantidadBienes());
-                dto.setSubCategoria(donacion.getSubcategoria().getNombre());
-                dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-                dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
-                dto.setEstado(nuevoEstado);
-                incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
-
-                EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
-                        TipoEventoNotificacion.DONACION_ASIGNADA);
-                estrategia.ejecutar(donacion);
-            }
-
-            return donacion;
+        if (donacionOpt.isEmpty()) {
+            throw new RuntimeException("Donación no encontrada con ID: " + id);
         }
 
-        throw new RuntimeException("Donación no encontrada con ID: " + id);
+        Estado estado = parseEstado(nuevoEstado);
+
+        Donacion donacion = donacionOpt.get();
+        donacion.actualizarEstado(estado, justificacion);
+        repositorioDonaciones.guardar(donacion);
+
+        procesarAccionesPostCambioEstado(donacion, estado, nuevoEstado);
+
+        return donacion;
     }
 
     public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
@@ -99,13 +69,53 @@ public class GestorDonaciones {
         throw new RuntimeException("Donación no encontrada con ID: " + id);
     }
 
-    public void asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
+    public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
         DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
                 new AsignadorDonaciones());
 
         donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
-        List<ResultadoMatchmaking> resultadosMatchmakings = donacionFacade.obtenerDonacionesPendientesDeAprobacion();
-        repositorioDeResultadosMatchmaking.guardarResultados(resultadosMatchmakings);
+        return donacionFacade.obtenerDonacionesPendientesDeAprobacion();
     }
 
+    private Estado parseEstado(String nuevoEstado) {
+        if (nuevoEstado == null) {
+            throw new IllegalArgumentException("El nuevo estado no puede ser nulo");
+        }
+
+        switch (nuevoEstado.trim().toUpperCase()) {
+            case "EN_DEPOSITO":
+                return Estado.EN_DEPOSITO;
+            case "PENDIENTE_ASIGNACION":
+                return Estado.PENDIENTE_ASIGNACION;
+            case "ENTREGADO":
+                return Estado.ENTREGADO;
+            case "VENCIDO":
+                return Estado.VENCIDO;
+            case "ASIGNADO":
+                // Si tu enum tiene ASIGNADO, devuelve Estado.ASIGNADO; si no, quita esta línea.
+                return Estado.ASIGNADO;
+            default:
+                throw new IllegalArgumentException("Estado desconocido: " + nuevoEstado);
+        }
+    }
+
+    private void procesarAccionesPostCambioEstado(Donacion donacion, Estado estado, String nuevoEstado) {
+        boolean esAsignado = "ASIGNADO".equalsIgnoreCase(nuevoEstado) || estado == Estado.ASIGNADO;
+        if (!esAsignado) return;
+
+        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
+        dto.setFechaEntrega(donacion.getFechaEntrega());
+        dto.setCantidadBienes(donacion.sumaCantidadBienes());
+        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
+        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
+        dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
+        dto.setEstado(nuevoEstado);
+
+        // Nota: asumo que `incentivosClient` está correctamente inyectado en la clase
+        incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
+
+        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
+            TipoEventoNotificacion.DONACION_ASIGNADA);
+        estrategia.ejecutar(donacion);
+    }
 }
