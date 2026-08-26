@@ -1,12 +1,10 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
@@ -30,8 +28,9 @@ public class EntregaService {
     }
 
   // --- MÉTODOS CRUD BÁSICOS ---
-  public List<ItemEntrega> findAll() {
-    return gestorItemEntrega.listarItems();
+  public BienesDTO findAll() {
+      List<ItemEntrega> items = gestorItemEntrega.listarItems();
+      return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
   public ItemEntrega findById(UUID id) {
@@ -59,7 +58,7 @@ public class EntregaService {
         UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
 
         ItemEntrega nuevoItem = new ItemEntrega(
-            entregaActual.getIdsDonaciones().get(j),
+            entregaActual.getDonacionResumen().getIdsDonaciones().get(j),
             bien.getCantidad(),
             unidadDominio,
             new Entidad(entregaActual.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad)
@@ -127,8 +126,17 @@ public class EntregaService {
    * o replanificación). El control de quién puede llamar a este endpoint
    * es responsabilidad del front/capa de autorización, no de este servicio.
    */
-  public List<ItemEntrega> obtenerEntregasNoRecibidas() {
-    return gestorItemEntrega.buscarNoRecibidos();
+  public BienesDTO obtenerEntregasNoRecibidas() {
+    List<ItemEntrega> items = gestorItemEntrega.buscarNoRecibidos();
+    return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
+  }
+
+  private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
+    return items.stream().map(this::convertirAItemDTO).toList();
+  }
+
+  private BienDTO convertirAItemDTO(ItemEntrega item){
+    return new BienDTO(item.getCantidad(), item.getUnidad().toString(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
   }
 
   private Direccion convertirDireccionDTO(DireccionDTO dto) {
@@ -138,5 +146,17 @@ public class EntregaService {
         dto.getPiso(), dto.getDepartamento(), dto.getCiudad(),
         dto.getProvincia(), dto.getPais()
     );
+  }
+
+  private DireccionDTO convertirADireccionDTO(Entidad entidad){
+    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+  }
+
+  private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+    return eventos.stream().map(this::convertirAEventoDTO).toList();
+  }
+
+  private EventoDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoDTO(evento.getId(), evento.getTipoEvento(), evento.getFecha(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

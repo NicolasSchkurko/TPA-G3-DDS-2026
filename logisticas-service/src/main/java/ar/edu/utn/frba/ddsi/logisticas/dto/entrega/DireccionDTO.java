@@ -17,4 +17,24 @@ public class DireccionDTO {
     private String ciudad;
     private String provincia;
     private String pais;
+
+    public DireccionDTO(UUID idEntidad,
+                        String calleUno,
+                        String calleDos,
+                        Integer altura,
+                        Integer piso,
+                        String departamento,
+                        String ciudad,
+                        String provincia,
+                        String pais){
+        this.idEntidad = idEntidad;
+        this.calleUno = calleUno;
+        this.calleDos = calleDos;
+        this.altura = altura;
+        this.piso = piso;
+        this.departamento = departamento;
+        this.ciudad = ciudad;
+        this.provincia = provincia;
+        this.pais = pais;
+    }
 }

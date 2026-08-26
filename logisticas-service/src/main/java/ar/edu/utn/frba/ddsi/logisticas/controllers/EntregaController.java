@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,8 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,13 +28,13 @@ public class EntregaController {
 
     @Operation(summary = "Listar todos los ítems de entrega del depósito")
     @GetMapping
-    public ResponseEntity<List<ItemEntrega>> obtenerTodas() {
+    public ResponseEntity<BienesDTO> obtenerTodas() {
         return ResponseEntity.ok(entregaService.findAll());
     }
 
     @Operation(summary = "Listar ítems de entrega NO_RECIBIDA pendientes de revisión")
     @GetMapping("/no-recibidas")
-    public ResponseEntity<List<ItemEntrega>> obtenerNoRecibidas() {
+    public ResponseEntity<BienesDTO> obtenerNoRecibidas() {
         return ResponseEntity.ok(entregaService.obtenerEntregasNoRecibidas());
     }
 

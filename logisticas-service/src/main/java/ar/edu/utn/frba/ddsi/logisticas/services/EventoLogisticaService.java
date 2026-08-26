@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventosDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.PayloadInicioRutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
@@ -35,8 +37,8 @@ public class EventoLogisticaService {
       this.objectMapper = new ObjectMapper();
   }
 
-  public List<EventoLogistica> obtenerEventosNuevos(Long desdeId) {
-    return gestorEventos.buscarEventos(desdeId);
+  public EventosDTO obtenerEventosNuevos(Long desdeId) {
+    return new EventosDTO(convertirEventosADTO(gestorEventos.buscarEventos(desdeId)));
   }
 
   public void publicarInicioRuta(Ruta ruta) {
@@ -117,5 +119,13 @@ public class EventoLogisticaService {
     } catch (Exception e) {
       throw new IllegalStateException("Error serializando payload de evento de logística: " + e.getMessage(), e);
     }
+  }
+
+  private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+    return eventos.stream().map(this::convertirAEventoDTO).toList();
+  }
+
+  private EventoDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoDTO(evento.getId(), evento.getTipoEvento(), evento.getFecha(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

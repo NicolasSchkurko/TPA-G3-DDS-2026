@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventosDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EventoLogisticaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/logistica/eventos")
@@ -36,11 +34,9 @@ public class EventoLogisticaController {
       @ApiResponse(responseCode = "200", description = "Lista de eventos recuperada con éxito")
   })
   @GetMapping
-  public ResponseEntity<List<EventoLogistica>> obtenerEventos(
+  public ResponseEntity<EventosDTO> obtenerEventos(
       @Parameter(description = "ID del último evento que el cliente ya procesó. Se devolverán los eventos con ID estrictamente mayor a este valor.", example = "15")
       @RequestParam(defaultValue = "0") Long desdeId) {
-
-    List<EventoLogistica> eventos = eventoService.obtenerEventosNuevos(desdeId);
-    return ResponseEntity.ok(eventos);
+    return ResponseEntity.ok(eventoService.obtenerEventosNuevos(desdeId));
   }
 }
