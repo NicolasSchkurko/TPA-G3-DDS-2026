@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorEventos;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,12 @@ public class EntregaService {
 
   private final GestorItemEntrega gestorItemEntrega;
   private final GestorRutas gestorRutas;
-  private final EventoLogisticaService eventoService;
+  private final GestorEventos gestorEventos;
 
-    public EntregaService(GestorItemEntrega gestorItemEntrega,  EventoLogisticaService eventoService, GestorRutas gestorRutas) {
+    public EntregaService(GestorItemEntrega gestorItemEntrega,  GestorEventos gestorEventos, GestorRutas gestorRutas) {
       this.gestorItemEntrega = gestorItemEntrega;
       this.gestorRutas = gestorRutas;
-      this.eventoService = eventoService;
+      this.gestorEventos = gestorEventos;
     }
 
   // --- MÉTODOS CRUD BÁSICOS ---
@@ -94,24 +95,25 @@ public class EntregaService {
     }
 
     switch (request.getEstado().toUpperCase()) {
+      //TODO pasar a metodo que exista la foto y la justificacion
       case "ENTREGADA":
         if (request.getFotoUrl() == null || request.getFotoUrl().trim().isEmpty()) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        eventoService.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getFotoUrl());
+        gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getFotoUrl()));
         break;
 
       case "NO_RECIBIDA":
         if (request.getJustificacion() == null || request.getJustificacion().trim().isEmpty()) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        eventoService.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getJustificacion());
+        gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getJustificacion()));
         break;
 
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-        eventoService.publicarReingresoDeposito(item);
+        gestorItemEntrega.guardarItem(gestorEventos.publicarReingresoDeposito(item));
         break;
 
       default:
