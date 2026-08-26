@@ -1,8 +1,9 @@
 package ar.edu.utn.frba.ddsi.notificaciones.controllers;
 
-
-
+import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.dto.SolicitudNotificacionDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.mappers.NotificacionMapper;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -12,13 +13,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/notificaciones")
 @Tag(name = "Servicio de Notificaciones", description = "Endpoints para la recepción, encolamiento y despacho de alertas del sistema (Mails, Mensajería, etc.).")
 public class NotificadorController {
     private final NotificadorService notificadorService;
-    public NotificadorController(NotificadorService notificadorService) {
+    private final NotificacionMapper NotificacionMapper;
+
+    public NotificadorController(NotificadorService notificadorService, NotificacionMapper notificacionMapper) {
         this.notificadorService = notificadorService;
+        NotificacionMapper = notificacionMapper;
     }
 
     // Ruta para crear: POST /notificaciones
@@ -41,5 +48,12 @@ public class NotificadorController {
         }
     }
 
+    @Operation(summary = "Ver notificacion por id")
+    @GetMapping("/{id}")
+    public ResponseEntity<NotificacionDTO> obtenerNotificacion(@PathVariable UUID id) {
+        Optional<Notificacion> notificacion = NotificadorService.obtenerPorId(id);
+        return notificacion.map(d -> ResponseEntity.ok(NotificacionMapper.notificacionDTO(d)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 
 }

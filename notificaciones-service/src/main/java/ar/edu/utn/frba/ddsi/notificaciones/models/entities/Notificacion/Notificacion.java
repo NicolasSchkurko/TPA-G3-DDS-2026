@@ -6,16 +6,22 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class Notificacion {
+    @Setter
+    @Getter
+    private UUID id = UUID.randomUUID();
     @Setter
     @Getter
     private Mensaje mensaje;
     @Setter
     @Getter
     private String direccionDeContacto;
+    @Getter
     @Setter
     private LocalDateTime fechaCreacion;
+    @Getter
     @Setter
     private LocalDateTime fechaEnvio;
     @Setter

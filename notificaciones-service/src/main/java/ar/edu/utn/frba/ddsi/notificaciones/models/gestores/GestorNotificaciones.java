@@ -6,12 +6,22 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeE
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
+import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
 public class GestorNotificaciones {
-    private RepositorioNotificaciones repositorioNotificaciones;
-    private MedioDeEnvioFactory factory;
+    private final RepositorioNotificaciones repositorioNotificaciones;
+    private final MedioDeEnvioFactory factory;
 
-    public void enviarSolicitudDeNotificacion(String tipoDeMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo){
+  public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory) {
+    this.repositorioNotificaciones = repositorioNotificaciones;
+    this.factory = factory; //No se donde se asigna
+  }
+
+  public void enviarSolicitudDeNotificacion(String tipoDeMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo){
 
         Notificacion notificacion = crearNotificacion(direccionDeContacto, asunto, cuerpo);
         enviarNotificacion(tipoDeMedioDeContacto,direccionDeContacto, notificacion);
@@ -42,5 +52,9 @@ public class GestorNotificaciones {
             notificacion.marcarFallida();
             throw new ErrorAlEnviarNotificacion("Ocurrio un problema inesperado al enviar la notificacion", ex);
         }
+    }
+
+    public Optional<Notificacion> obtenerNotificacionPorId(UUID id) {
+        return repositorioNotificaciones.findById(id);
     }
 }
