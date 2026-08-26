@@ -15,7 +15,6 @@ import java.util.UUID;
 @Service
 public class GestorMatchmaking {
     private RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
-    private RepositorioDonaciones repositorioDonaciones;
 
     public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
         return repositorioDeResultadosMatchmaking.findAll();
@@ -44,5 +43,8 @@ public class GestorMatchmaking {
         repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
 
         return donacion;
+    }
+    public void guardarResultados(List<ResultadoMatchmaking> resultados){
+        repositorioDeResultadosMatchmaking.guardarResultados(resultados);
     }
 }

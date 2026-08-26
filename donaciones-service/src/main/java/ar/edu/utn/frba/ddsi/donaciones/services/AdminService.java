@@ -30,7 +30,7 @@ public class AdminService {
         }
 
         existente.setHumano(datosNuevos.getHumano());
-        existente.setMediosDeContacto(datosNuevos.getMediosDeContacto());
+        existente.setMedioDeContacto(datosNuevos.getMedioDeContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 
         gestorAdministradores.modificarAdministrador(id, existente);

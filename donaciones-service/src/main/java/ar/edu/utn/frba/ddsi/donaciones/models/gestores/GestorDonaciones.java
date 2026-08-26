@@ -39,8 +39,8 @@ public class GestorDonaciones {
         repositorioDonaciones.eliminarPorId(id);
     }
 
-    public List<Donacion> listarPendientes() {
-        return repositorioDonaciones.buscarEntregaPendiente();
+    public List<Donacion> listarPendientesDeAsignacion() {
+        return repositorioDonaciones.buscarDonacionesSinAsignar();
     }
 
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {

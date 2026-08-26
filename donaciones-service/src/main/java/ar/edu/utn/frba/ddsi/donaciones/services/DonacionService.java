@@ -58,11 +58,11 @@ public class DonacionService {
   }
 
   public void asignarDonaciones() {
-    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientes();
+    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientesDeAsignacion();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
 
     List<ResultadoMatchmaking> resultados = gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
-    GestorMatchmaking.guardarResultados(resultadosMatchmakings);
+    gestorMatchmaking.guardarResultados(resultados);
   }
 
   public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {

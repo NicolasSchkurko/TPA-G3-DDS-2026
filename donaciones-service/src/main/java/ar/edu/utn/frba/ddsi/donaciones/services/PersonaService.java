@@ -92,24 +92,8 @@ public class PersonaService {
   }
 
   public Donante actualizarPersona(UUID id, Donante datosNuevos) {
-    Donante existente = gestorDonantes.obtenerDonante(id);
-    if (existente == null) {
-      throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
-    }
-
-    existente.getPersona().setNombreDeUsuario(datosNuevos.getPersona().getNombreDeUsuario());
-    existente.getPersona().setMediosDeContacto(datosNuevos.getPersona().getMediosDeContacto());
-    existente.getPersona().setId(datosNuevos.getPersona().getId());
-
-    if(existente.getPersona() instanceof Juridica pj && datosNuevos.getPersona() instanceof Juridica pjNuevos) {
-      pj.setRazonSocial(pjNuevos.getRazonSocial());
-      pj.setCuit(pjNuevos.getCuit());
-    }
-
-    existente.setDireccion(existente.getDireccion());
-
-    gestorDonantes.modificarDonante(id, existente);
-    return existente;
+    gestorDonantes.modificarDonante(id, datosNuevos);
+    return datosNuevos;
   }
 
   public void eliminarPersona(UUID id) {
