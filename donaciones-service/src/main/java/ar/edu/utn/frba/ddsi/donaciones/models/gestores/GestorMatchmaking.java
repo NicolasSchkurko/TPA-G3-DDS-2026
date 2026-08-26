@@ -40,7 +40,7 @@ public class GestorMatchmaking {
         }
 
         AsignadorDonaciones.asignarDonacionAPropuesta(donacion, propuesta);
-        repositorioDonaciones.actualizar(donacionId, donacion);
+
         repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
 
         return donacion;

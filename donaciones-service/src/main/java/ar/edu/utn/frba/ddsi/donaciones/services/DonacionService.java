@@ -84,7 +84,8 @@ public class DonacionService {
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
     //Buscar resultado y asignar
     Donacion donacion = gestorMatchmaking.asignarPropuesta(donacionId, posicion);
-
+    
+    gestorDonaciones.actualizarDonacion(donacionId, donacion);
     // Uso del Gestor de Entidades para actualizar la entidad si es necesario
     gestorEntidades.modificarEntidad(donacion.getEntidad().getId(), donacion.getEntidad());
   }
