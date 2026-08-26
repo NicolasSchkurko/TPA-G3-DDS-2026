@@ -118,4 +118,8 @@ public class GestorDonaciones {
             TipoEventoNotificacion.DONACION_ASIGNADA);
         estrategia.ejecutar(donacion);
     }
+    public void guardarDonaciones(List<Donacion> donaciones){
+        repositorioDonaciones.guardarDonaciones(donaciones);
+    }
+
 }

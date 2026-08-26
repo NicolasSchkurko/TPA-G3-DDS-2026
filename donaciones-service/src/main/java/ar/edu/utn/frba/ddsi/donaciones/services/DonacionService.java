@@ -53,7 +53,7 @@ public class DonacionService {
     }
 
     List<Donacion> donacionesProcesadas = gestorFormulario.procesarFormulario(donante, bienesNormal, fechaRealizacion);
-
+    gestorDonaciones.guardarDonaciones(donacionesProcesadas);
     return donacionesProcesadas;
   }
 
