@@ -26,7 +26,7 @@ public abstract class Bien {
         this.unidadUtilizada = unidadUtilizada;
     }
 
-    public Optional<String> getUrlFoto() {
+    public String getUrlFoto() {
         return Optional.ofNullable(this.urlFoto);
     }
 }

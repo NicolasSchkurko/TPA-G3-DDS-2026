@@ -41,35 +41,6 @@ public class RutaController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
-  /*
-  @Operation(summary = "Crear una ruta manual", description = "Usualmente generadas por el servicio planificador.")
-  @PostMapping
-  public ResponseEntity<Ruta> crearRuta(@RequestBody Ruta request) {
-    return new ResponseEntity<>(rutaService.create(request), HttpStatus.CREATED);
-  }
-
-  @Operation(summary = "Actualizar datos de una ruta")
-  @PutMapping("/{id}")
-  public ResponseEntity<?> actualizarRuta(@PathVariable UUID id, @RequestBody Ruta ruta) {
-    try {
-      return ResponseEntity.ok(rutaService.update(id, ruta));
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
-  }
-
-  @Operation(summary = "Eliminar una ruta")
-  @DeleteMapping("/{id}")
-  public ResponseEntity<?> eliminarRuta(@PathVariable UUID id) {
-    try {
-      rutaService.delete(id);
-      return ResponseEntity.noContent().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
-  }
-  */
-
   // --- OPERACIONES DE NEGOCIO ---
 
   @Operation(summary = "El chofer informa el inicio de su ruta",
