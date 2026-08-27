@@ -2,10 +2,12 @@ package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
 
+@Component
 public class GestorChoferes {
     private final RepositorioChoferes repoChoferes;
 

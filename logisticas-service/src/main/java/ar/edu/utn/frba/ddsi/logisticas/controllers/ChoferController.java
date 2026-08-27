@@ -54,6 +54,13 @@ public class ChoferController {
         return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Registrar múltiples choferes")
+    @PostMapping("/registrar")
+    public ResponseEntity<ChoferesDTO> registrarChoferes(@RequestBody ChoferesDTO choferes) {
+        ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
+        return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
+    }
+
     @Operation(summary = "Actualizar datos de un chofer")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chofer actualizado"),

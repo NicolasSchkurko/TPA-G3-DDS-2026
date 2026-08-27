@@ -4,10 +4,12 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
 
+@Component
 public class GestorCamiones {
     private final RepositorioCamiones repoCamiones;
 

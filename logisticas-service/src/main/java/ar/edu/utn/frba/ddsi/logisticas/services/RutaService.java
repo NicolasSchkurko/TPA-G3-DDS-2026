@@ -6,10 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
 import org.springframework.stereotype.Service;
 
@@ -22,18 +19,18 @@ public class RutaService {
   private final GestorChoferes gestorChoferes;
   private final GestorItemEntrega gestorItemEntrega;
   private final GestorCamiones gestorCamiones;
-  private final EventoLogisticaService eventoService;
+  private final GestorEventos gestorEventos;
 
   public RutaService(GestorRutas gestorRutas,
                      GestorChoferes gestorChoferes,
                      GestorItemEntrega gestorItemEntrega,
                      GestorCamiones gestorCamiones,
-                     EventoLogisticaService eventoService) {
+                     GestorEventos gestorEventos) {
     this.gestorRutas = gestorRutas;
     this.gestorChoferes = gestorChoferes;
     this.gestorItemEntrega = gestorItemEntrega;
     this.gestorCamiones = gestorCamiones;
-    this.eventoService = eventoService;
+    this.gestorEventos = gestorEventos;
   }
 
   // --- MÉTODOS CRUD ---
@@ -64,8 +61,10 @@ public class RutaService {
   public void iniciarRuta(UUID idChofer) {
     Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
     gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
-
-    eventoService.publicarInicioRuta(rutaActual);
+    List<Parada> paradas = gestorEventos.publicarInicioRuta(rutaActual).getParadas();
+    for(Parada parada : paradas) {
+        parada.getItems().forEach(gestorItemEntrega::guardarItem);
+    }
   }
 
   public void terminarRuta(UUID idChofer) {
@@ -76,7 +75,7 @@ public class RutaService {
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
           if (item.getEstado() == EstadoEntrega.ENTREGADA) {
-            eventoService.publicarReingresoDeposito(item);
+            gestorEventos.publicarReingresoDeposito(item);
           } else {
             gestorItemEntrega.eliminarItem(item.getIdDonacion());
           }

@@ -11,6 +11,9 @@ import lombok.Setter;
 public class ChoferesDTO {
     private List<ChoferDTO> choferes;
 
+    public ChoferesDTO() {
+    }
+
     public ChoferesDTO(List<ChoferDTO> choferes){
         this.choferes = choferes;
     }

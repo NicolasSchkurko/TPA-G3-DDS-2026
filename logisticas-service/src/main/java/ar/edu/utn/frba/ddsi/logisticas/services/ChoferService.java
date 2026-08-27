@@ -38,13 +38,14 @@ public class ChoferService {
     return convertirAChoferDTO(nuevoChofer);
   }
 
-  private Chofer convertirChoferDTO(ChoferDTO dto){
-    if (dto == null) return null;
-    return new Chofer(dto.getIdChofer(), dto.getNombre(), dto.isDisponible());
+  public ChoferesDTO createMultiple(ChoferesDTO dtos) {
+    return new ChoferesDTO(dtos.getChoferes().stream()
+            .map(this::create).toList());
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
     Chofer choferExistente = gestorChoferes.buscarChofer(id);
+    choferExistente.setNombre(dto.getNombre());
     choferExistente.setDisponible(dto.isDisponible());
     gestorChoferes.guardarChofer(choferExistente);
     return convertirAChoferDTO(choferExistente);
@@ -71,7 +72,13 @@ public class ChoferService {
     if (chofer == null) return null;
     ChoferDTO dto = new ChoferDTO();
     dto.setIdChofer(chofer.getIdChofer());
+    dto.setNombre(chofer.getNombre());
     dto.setDisponible(chofer.isDisponible());
     return dto;
+  }
+
+  private Chofer convertirChoferDTO(ChoferDTO dto){
+    if (dto == null) return null;
+    return new Chofer(UUID.randomUUID(), dto.getNombre(), dto.isDisponible());
   }
 }
