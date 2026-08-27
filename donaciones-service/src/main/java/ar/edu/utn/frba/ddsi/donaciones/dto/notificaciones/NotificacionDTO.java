@@ -1,13 +1,11 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones;
 
 import java.util.Locale;
-
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-
 public class NotificacionDTO {
   private String medioDeContacto;
   private String direccionDeContacto;

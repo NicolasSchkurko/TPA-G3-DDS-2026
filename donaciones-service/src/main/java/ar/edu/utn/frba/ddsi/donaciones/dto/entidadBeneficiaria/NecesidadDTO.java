@@ -14,6 +14,7 @@ public class NecesidadDTO {
     private Integer cantidadObjetivo;
     private String nombreSubcategoria;
     private String nombreCategoria;
+
     // Solo para RECURRENTE
     private Integer plazoEnDias;
 }

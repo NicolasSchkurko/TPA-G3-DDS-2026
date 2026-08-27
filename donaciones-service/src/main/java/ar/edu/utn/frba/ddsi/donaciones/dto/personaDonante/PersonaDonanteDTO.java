@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,6 +31,7 @@ public class PersonaDonanteDTO {
   private String cuit;
   private String tipoJuridico; // "ONG", "EMPRESA", etc.
   private MediosContactoDTO medioPredeterminado;
+
   // DTOs anidados
   private DireccionDTO direccion;
   private List<MediosContactoDTO> mediosDeContacto;

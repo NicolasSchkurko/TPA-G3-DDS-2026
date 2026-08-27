@@ -11,17 +11,15 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Gestor (Servicio) para manejar la lógica de negocio relacionada con Entidades Beneficiarias.
+ * Gestor (Servicio) para manejar la lógica de negocio relacionada con Entidades Beneficiarias de forma aislada.
  */
 @Service
 public class GestorEntidadesBeneficiarias {
 
   private final RepositorioEntidadesBeneficiarias repositorio;
-  private final GestorPersonas gestorPersonas;
 
-  public GestorEntidadesBeneficiarias(GestorPersonas gestorPersonas) {
+  public GestorEntidadesBeneficiarias() {
     this.repositorio = new RepositorioEntidadesBeneficiarias();
-    this.gestorPersonas = gestorPersonas;
   }
 
   public void registrarEntidad(EntidadBeneficiaria nuevaEntidad) {
@@ -46,13 +44,6 @@ public class GestorEntidadesBeneficiarias {
     if (existente == null) {
       throw new IllegalArgumentException("No se encontró la entidad con ID: " + idOriginal);
     }
-
-    // Delegamos la actualización de la Persona Juridica al GestorPersonas
-    if (existente.getPersonaJuridica() != null && datosNuevos.getPersonaJuridica() != null) {
-      gestorPersonas.modificarPersona(existente.getPersonaJuridica().getId(), datosNuevos.getPersonaJuridica());
-    }
-
-    // Actualizamos atributos propios de la entidad
     existente.setDireccion(datosNuevos.getDireccion());
 
     try {
@@ -74,7 +65,7 @@ public class GestorEntidadesBeneficiarias {
     EntidadBeneficiaria entidad = obtenerEntidad(idEntidad);
     if (entidad != null) {
       entidad.agregarNecesidad(nuevaNecesidad);
-      repositorio.actualizar(idEntidad, entidad); // Faltaba persistir la actualización
+      repositorio.actualizar(idEntidad, entidad);
       System.out.println("Necesidad agregada a la entidad: " + idEntidad);
     } else {
       throw new IllegalArgumentException("No se pudo agregar necesidad: Entidad no encontrada.");
@@ -91,13 +82,10 @@ public class GestorEntidadesBeneficiarias {
                                  .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
 
     entidad.eliminarNecesidad(necesidad);
-    repositorio.actualizar(idEntidad, entidad); // Persistimos el cambio en el repo
-    System.out.println("Necesidad eliminada de la entidad con éxito.");
+    repositorio.actualizar(idEntidad, entidad);
+    System.out.println("Necesidad desvinculada de la entidad con éxito.");
   }
 
-  /**
-   * Obtiene una lista unificada de todas las donaciones asociadas a las necesidades de la entidad.
-   */
   public List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
     EntidadBeneficiaria entidad = obtenerEntidad(idEntidad);
     if (entidad != null) {

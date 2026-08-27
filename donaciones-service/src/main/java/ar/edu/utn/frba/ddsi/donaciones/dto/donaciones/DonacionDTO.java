@@ -22,7 +22,7 @@ public class DonacionDTO {
 
   // Metadata de la donación
   private String descripcion;
-  private String estado; // Enum Estado convertido a String
+  private String estado;
   private String subcategoriaName;
   private String categoriaBienName;
   private LocalDate fechaEntrega;

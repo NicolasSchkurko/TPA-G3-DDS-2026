@@ -7,7 +7,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Don
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
 import org.springframework.stereotype.Service;
 
@@ -19,48 +18,52 @@ import java.util.UUID;
 @Service
 public class GestorFormulario {
 
-    private RepositorioFormularios repositorioFormularios;
+    private final RepositorioFormularios repositorioFormularios;
 
     // Constructor para inyección de dependencias
     public GestorFormulario(RepositorioFormularios repositorioFormularios) {
-
         this.repositorioFormularios = repositorioFormularios;
     }
 
     // --- Lógica de Negocio ---
-    public List<Donacion> procesarFormulario(Donante donante, List<Bien> bienesNormal, LocalDate fechaRealizacion) {
 
+    /**
+     * Solo crea y persiste el formulario original con sus bienes.
+     */
+    public Formulario crearFormulario(Donante donante, List<Bien> bienesNormal, LocalDate fechaRealizacion) {
         Formulario formulario = new Formulario(donante, bienesNormal, fechaRealizacion);
         repositorioFormularios.guardar(formulario);
+        return formulario;
+    }
 
+    /**
+     * Toma un formulario ya creado y ejecuta la segmentación a través de la Fachada.
+     * Devuelve las Donaciones segmentadas pero NO altera el formulario original.
+     */
+    public List<Donacion> procesarFormulario(Formulario formulario) {
         DonacionFacade donacionFacade = new DonacionFacade(
             new SegmentadorDonaciones(),
             new AsignadorDonaciones()
         );
 
-        List<Donacion> donacionesProcesadas = donacionFacade.crearDonaciones(formulario); //ejecuto segmentacion
-
-        return donacionesProcesadas;
+        // Ejecutamos la segmentación y devolvemos el resultado
+        return donacionFacade.crearDonaciones(formulario);
     }
 
     // --- Métodos CRUD para Formulario ---
 
-    // Create (adicional al procesarFormulario si se necesita guardar de forma aislada)
     public void guardarFormulario(Formulario formulario) {
         repositorioFormularios.guardar(formulario);
     }
 
-    // Read
     public List<Formulario> obtenerTodosLosFormularios() {
         return repositorioFormularios.obtenerTodos();
     }
 
     public Optional<Formulario> obtenerFormularioPorId(UUID id) {
-        return repositorioFormularios.buscarPorId(id); // o obtenerPorId según tu RepositorioFormularios
+        return repositorioFormularios.buscarPorId(id);
     }
 
-
-    // Delete
     public void eliminarFormulario(UUID id) {
         repositorioFormularios.eliminarPorId(id);
     }

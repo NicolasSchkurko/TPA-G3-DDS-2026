@@ -13,8 +13,8 @@ public class ResultadoMatchmakingDTO {
     private DonacionDTO donacion;
 
     // Lista unificada de propuestas con sus respectivos metadatos de algoritmos
-    private  List<PropuestaAsignacionDTO> propuestasOrdenadas;
+    private List<PropuestaAsignacionDTO> propuestasOrdenadas;
 
     // Flag para la Interfaz de Usuario
-    private  boolean huboCoincidenciaTotal;
+    private boolean huboCoincidenciaTotal;
 }

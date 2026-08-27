@@ -7,7 +7,6 @@ import java.time.LocalDate;
 
 @Getter
 @Setter
-
 public class IncentivosDonacionDTO {
     private LocalDate fechaEntrega;
     private Integer cantidadBienes;

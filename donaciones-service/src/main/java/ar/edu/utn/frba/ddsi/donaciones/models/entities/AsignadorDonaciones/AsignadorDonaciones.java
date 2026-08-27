@@ -29,16 +29,6 @@ public class AsignadorDonaciones {
         this.donacionesPendientesDeAprobacion = new ArrayList<>();
     }
 
-    public void agregarAlgoritmo(AlgoritmoAsignacion algoritmo) {
-        if (algoritmo != null && !this.algoritmos.contains(algoritmo)) {
-            this.algoritmos.add(algoritmo);
-        }
-    }
-
-    public void removerAlgoritmo(AlgoritmoAsignacion algoritmo) {
-        this.algoritmos.remove(algoritmo);
-    }
-
     public List<AlgoritmoAsignacion> getAlgoritmos() {
         return Collections.unmodifiableList(algoritmos);
     }

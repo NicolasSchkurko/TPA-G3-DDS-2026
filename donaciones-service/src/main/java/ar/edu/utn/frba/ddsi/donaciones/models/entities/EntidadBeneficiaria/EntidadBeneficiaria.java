@@ -22,7 +22,7 @@ public class EntidadBeneficiaria {
     private List<Necesidad> necesidades;
     private Juridica personaJuridica;
 
-    public EntidadBeneficiaria(Direccion dir, Telefono nroTell, Juridica personaJuridica) {
+    public EntidadBeneficiaria(Direccion dir, Juridica personaJuridica) {
         this.direccion = dir;
         this.necesidades = new ArrayList<>();
         this.personaJuridica = personaJuridica;
