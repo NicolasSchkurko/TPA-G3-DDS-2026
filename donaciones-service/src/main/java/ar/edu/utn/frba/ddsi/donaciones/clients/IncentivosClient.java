@@ -9,7 +9,6 @@ import org.springframework.web.client.RestTemplate;
 import java.util.UUID;
 
 @Service
-
 public class IncentivosClient {
 
     @Value("${servicio.incentivos.url}")
@@ -18,23 +17,22 @@ public class IncentivosClient {
     private final RestTemplate restTemplate;
 
     public IncentivosClient(RestTemplate restTemplate) {
-      this.restTemplate = restTemplate;
+        this.restTemplate = restTemplate;
     }
 
     public void peticionCrearPerfil(IDDTO dto) {
-      restTemplate.postForEntity(
-          incentivosUrl,
-          dto,
-          void.class
-      );
+        try {
+            restTemplate.postForEntity(incentivosUrl, dto, Void.class);
+        } catch (Exception e) {
+            System.err.println("Fallo al crear perfil en incentivos: " + e.getMessage());
+        }
     }
 
     public void notificarDonacionAsignada(UUID idUsuario, IncentivosDonacionDTO dto) {
-        restTemplate.postForEntity(
-                incentivosUrl + idUsuario,
-                dto,
-                void.class
-        );
+        try {
+            restTemplate.postForEntity(incentivosUrl + idUsuario, dto, Void.class);
+        } catch (Exception e) {
+            System.err.println("Fallo al notificar donación asignada a incentivos: " + e.getMessage());
+        }
     }
 }
-

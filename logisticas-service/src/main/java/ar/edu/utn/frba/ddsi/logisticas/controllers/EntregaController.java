@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/entregas")
+@RequestMapping("/entregas")
 @Tag(name = "Entregas", description = "API CRUD y gestión de trazabilidad de los paquetes a entregar")
 public class EntregaController {
 

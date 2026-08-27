@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/choferes")
+@RequestMapping("/choferes")
 @Tag(name = "Choferes", description = "API CRUD y gestión de estados operativos de los Choferes")
 public class ChoferController {
 

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/rutas")
+@RequestMapping("/rutas")
 @Tag(name = "Rutas", description = "API para el control CRUD y el ciclo de vida de las Rutas de reparto")
 public class RutaController {
 
