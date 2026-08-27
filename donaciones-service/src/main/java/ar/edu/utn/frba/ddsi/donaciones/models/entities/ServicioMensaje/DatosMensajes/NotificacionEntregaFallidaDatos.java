@@ -3,13 +3,14 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMen
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
+import java.util.UUID;
 import lombok.Getter;
 
 import java.util.List;
 
 @Getter
 public class NotificacionEntregaFallidaDatos {
-    private RutaEnProceso ruta;
+    private UUID ruta;
     private PayloadEntregaDTO datosEntrega;
     private MediosDeContacto contactoDonante;
     private MediosDeContacto contactoEntidad;

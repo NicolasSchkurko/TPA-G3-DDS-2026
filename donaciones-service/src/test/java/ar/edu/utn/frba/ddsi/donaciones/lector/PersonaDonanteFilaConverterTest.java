@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.lector;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaHumana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter.CampoLogico;
@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 
 public class PersonaDonanteFilaConverterTest {
 
@@ -44,7 +43,7 @@ public class PersonaDonanteFilaConverterTest {
     }
 
     @Test
-    @DisplayName("Debe instanciar una PersonaHumana separando nombre, apellido y parseando el DNI limpio")
+    @DisplayName("Debe instanciar una Humana separando nombre, apellido y parseando el DNI limpio")
     void convertir_CreaPersonaHumanaCorrectamente() {
         Map<String, String> fila = new HashMap<>();
         fila.put("TipoPersona", "HUMANA");
@@ -56,17 +55,17 @@ public class PersonaDonanteFilaConverterTest {
         Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
-        assertTrue(donante instanceof PersonaHumana);
+        assertNotNull(donante.getPersona());
+        assertTrue(donante.getPersona() instanceof Humana);
 
-        PersonaHumana humana = (PersonaHumana) donante;
-        assertNotNull(humana.getPersona());
-        assertEquals("Juan Alberto", humana.getPersona().getNombre());
-        assertEquals("Pérez", humana.getPersona().getApellido());
-        assertEquals(12345678, humana.getPersona().getNumeroDeDocumento());
+        Humana humana = (Humana) donante.getPersona();
+        assertEquals("Juan Alberto", humana.getNombre());
+        assertEquals("Pérez", humana.getApellido());
+        assertEquals(12345678, humana.getNumeroDeDocumento());
     }
 
     @Test
-    @DisplayName("Debe instanciar una PersonaJuridica cuando el tipo es JURIDICA")
+    @DisplayName("Debe instanciar una Juridica cuando el tipo es JURIDICA")
     void convertir_CreaPersonaJuridicaCorrectamente() {
         Map<String, String> fila = new HashMap<>();
         fila.put("TipoPersona", "JURIDICA");
@@ -77,8 +76,10 @@ public class PersonaDonanteFilaConverterTest {
         Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
-        assertTrue(donante instanceof Juridica);
-        Juridica juridica = (Juridica) donante;
+        assertNotNull(donante.getPersona());
+        assertTrue(donante.getPersona() instanceof Juridica);
+
+        Juridica juridica = (Juridica) donante.getPersona();
         assertEquals("Arcos Plateados S.A.", juridica.getRazonSocial());
         assertEquals("30-12345678-9", juridica.getCuit());
     }
@@ -104,12 +105,13 @@ public class PersonaDonanteFilaConverterTest {
         fila.put("Nombre", "Ana Gómez");
         fila.put("Documento", "SIN_DNI_VALIDO");
 
-
         Donante donante = converter.convertir(fila);
 
         assertNotNull(donante);
-        assertTrue(donante instanceof PersonaHumana);
-        assertEquals(0, ((PersonaHumana) donante).getPersona().getNumeroDeDocumento(), "Al fallar el parseo debe quedar en 0");
-    }
+        assertNotNull(donante.getPersona());
+        assertTrue(donante.getPersona() instanceof Humana);
 
+        assertEquals(0, ((Humana) donante.getPersona()).getNumeroDeDocumento(),
+                "Al fallar el parseo debe quedar en 0");
+    }
 }
