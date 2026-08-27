@@ -68,7 +68,7 @@ public class DonacionService {
   }
 
   public void ejecutarMatchmakingADemanda() {
-    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientesDeAsignacion();
+    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
     List<ResultadoMatchmaking> resultados = gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
     gestorMatchmaking.guardarResultados(resultados);

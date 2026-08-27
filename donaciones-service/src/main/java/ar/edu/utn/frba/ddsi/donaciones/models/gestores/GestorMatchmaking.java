@@ -16,6 +16,9 @@ import java.util.UUID;
 public class GestorMatchmaking {
     private RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
 
+    public GestorMatchmaking(RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking){
+        this.repositorioDeResultadosMatchmaking=repositorioDeResultadosMatchmaking;
+    }
     public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
         return repositorioDeResultadosMatchmaking.findAll();
     }
