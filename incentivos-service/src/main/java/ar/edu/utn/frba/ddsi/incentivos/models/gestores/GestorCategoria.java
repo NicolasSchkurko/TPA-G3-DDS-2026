@@ -133,6 +133,7 @@ public class GestorCategoria {
     }
 
     public Categoria categoriaCorrespondiente(Integer posicion){
+        inicializarCategoriasBase();
         return repositorio.buscarPorPosicionSecuencia(posicion);
     }
 }

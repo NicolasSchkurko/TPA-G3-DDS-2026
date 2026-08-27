@@ -33,13 +33,31 @@ public class PerfilService {
         this.actividad = actividad;
     }
 
-    public PerfilDTO buscarPorId(UUID idUsuario){
+    /**
+     * Busca el perfil usando el identificador del usuario (el identificador
+     * que llega desde donaciones-service), no el identificador interno del
+     * perfil.
+     */
+    public PerfilDTO buscarPorIdUsuario(UUID idUsuario){
         Perfil p = perfiles.obtenerPerfil(idUsuario);
-        return new PerfilDTO(p.getNombreUsuario(),
-                p.getCategoriaActual().getNombre(),
-                p.getInsignias().stream().map(Insignia::getNombre).toList(),
-                p.getMisionActual().getNombreMision(),
-                p.getPosicionRanking().getPuesto());
+        if (p == null) {
+            return null;
+        }
+
+        return new PerfilDTO(
+                p.getNombreUsuario(),
+                p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
+                p.getInsignias() == null ? List.of() : p.getInsignias().stream().map(Insignia::getNombre).toList(),
+                p.getMisionActual() == null ? null : p.getMisionActual().getNombreMision(),
+                p.getPosicionRanking() == null ? null : p.getPosicionRanking().getPuesto());
+    }
+
+    /**
+     * Alias de compatibilidad para los consumidores que ya utilizaban este
+     * método con el nombre anterior.
+     */
+    public PerfilDTO buscarPorId(UUID idUsuario){
+        return buscarPorIdUsuario(idUsuario);
     }
 
     public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){

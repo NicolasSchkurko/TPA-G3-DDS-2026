@@ -50,11 +50,23 @@ public class PerfilController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PerfilDTO> obtenerPerfilPorId(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.buscarPorId(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return obtenerPerfilPorIdUsuario(id);
+    }
+
+    @Operation(
+            summary = "Obtener perfil por id de usuario",
+            description = "Busca el perfil asociado al UUID del usuario de donaciones-service."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil obtenido con éxito"),
+            @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
+    })
+    @GetMapping("/usuario/{idUsuario}")
+    public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
+            @Parameter(description = "UUID del usuario asociado al perfil", required = true)
+            @PathVariable("idUsuario") UUID idUsuario) {
+        PerfilDTO perfil = service.buscarPorIdUsuario(idUsuario);
+        return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
     }
 
     @Operation(
