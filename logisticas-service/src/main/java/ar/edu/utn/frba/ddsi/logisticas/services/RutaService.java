@@ -21,6 +21,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -95,6 +96,9 @@ public class RutaService {
       Chofer chofer = rutaActual.getCamionAsignado().getChofer();
       chofer.disponible();
       gestorChoferes.guardarChofer(chofer);
+      Camion camion = rutaActual.getCamionAsignado();
+      camion.disponible();
+      gestorCamiones.guardarCamion(camion);
     }
 
     Camion camion = gestorCamiones.buscarCamionPorIdChofer(idChofer);
@@ -151,7 +155,7 @@ public class RutaService {
     if(eventos != null){
       return eventos.stream().map(this::convertirAEventoDTO).toList();
     }
-    return List.of();
+    return new ArrayList<>();
   }
 
   private EventoDTO convertirAEventoDTO(EventoLogistica evento){

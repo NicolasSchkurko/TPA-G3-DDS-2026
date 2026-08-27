@@ -56,6 +56,7 @@ public class GestorEventos {
                 "INICIO_RUTA", ruta.getIdRuta().toString(), LocalDateTime.now(), null
         );
         evento.setPayloadJson(serializar(payload));
+        ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
         guardarEvento(evento);
         return ruta;
     }
@@ -68,6 +69,7 @@ public class GestorEventos {
                     "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
             );
             evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+            item.getEventos().add(evento);
             guardarEvento(evento);
         }
         return item;
@@ -80,6 +82,7 @@ public class GestorEventos {
                 "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
         );
         evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+        item.getEventos().add(evento);
         guardarEvento(evento);
         return item;
     }
@@ -89,6 +92,7 @@ public class GestorEventos {
         EventoLogistica evento = new EventoLogistica(
                 "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
         );
+        item.getEventos().add(evento);
         guardarEvento(evento);
         return item;
     }
