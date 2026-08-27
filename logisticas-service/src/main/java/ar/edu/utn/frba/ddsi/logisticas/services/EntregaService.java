@@ -12,6 +12,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -163,7 +164,7 @@ public class EntregaService {
     if(eventos != null){
       return eventos.stream().map(this::convertirAEventoDTO).toList();
     }
-    return List.of();
+    return new ArrayList<>();
   }
 
   private EventoDTO convertirAEventoDTO(EventoLogistica evento){

@@ -17,7 +17,7 @@ public class EventoLogisticaService {
   }
 
   public EventosDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventosDTO(convertirEventosADTO(gestorEventos.buscarEventos(desdeId)));
+    return new EventosDTO(convertirEventosADTO(gestorEventos.buscarEventos(desdeId - 1)));
   }
 
   private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){

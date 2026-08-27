@@ -42,6 +42,7 @@ public class GestorCamiones {
         camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
         camionExistente.setAltura(dto.getAltura());
         camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
+        camionExistente.setDisponible(dto.getDisponible());
 
         guardarCamion(camionExistente);
         return camionExistente;

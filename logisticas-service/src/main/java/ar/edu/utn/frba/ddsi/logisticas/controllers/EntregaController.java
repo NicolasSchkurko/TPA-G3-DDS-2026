@@ -24,6 +24,34 @@ public class EntregaController {
         this.entregaService = entregaService;
     }
 
+    // --- CRUD ---
+
+    @Operation(summary = "Listar todos los ítems de entrega del depósito")
+    @GetMapping
+    public ResponseEntity<BienesDTO> obtenerTodas() {
+        return ResponseEntity.ok(entregaService.findAll());
+    }
+
+    @Operation(summary = "Listar ítems de entrega NO_RECIBIDA pendientes de revisión")
+    @GetMapping("/no-recibidas")
+    public ResponseEntity<BienesDTO> obtenerNoRecibidas() {
+        return ResponseEntity.ok(entregaService.obtenerEntregasNoRecibidas());
+    }
+
+    @Operation(summary = "Obtener detalle de un ítem de entrega por su ID de Donación")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Item encontrado"),
+            @ApiResponse(responseCode = "404", description = "Item no encontrado")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(entregaService.findById(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     // --- OPERACIONES DE NEGOCIO ---
 
     @Operation(summary = "Registrar nuevas entregas a distribuir",
@@ -59,34 +87,6 @@ public class EntregaController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno: " + e.getMessage());
-        }
-    }
-
-    // --- CRUD ---
-
-    @Operation(summary = "Listar todos los ítems de entrega del depósito")
-    @GetMapping
-    public ResponseEntity<BienesDTO> obtenerTodas() {
-        return ResponseEntity.ok(entregaService.findAll());
-    }
-
-    @Operation(summary = "Listar ítems de entrega NO_RECIBIDA pendientes de revisión")
-    @GetMapping("/no-recibidas")
-    public ResponseEntity<BienesDTO> obtenerNoRecibidas() {
-        return ResponseEntity.ok(entregaService.obtenerEntregasNoRecibidas());
-    }
-
-    @Operation(summary = "Obtener detalle de un ítem de entrega por su ID de Donación")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Item encontrado"),
-            @ApiResponse(responseCode = "404", description = "Item no encontrado")
-    })
-    @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(entregaService.findById(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
