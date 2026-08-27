@@ -20,7 +20,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
-import ar.edu.utn.frba.ddsi.donaciones.services.PersonaService;
+import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,21 +35,21 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/personas")
-public class PersonaController {
+@RequestMapping("/personas") //legacy, deberiamos cmabiarlo a donantes
+public class DonanteController {
 
-  private final PersonaService personaService;
+  private final DonanteService DonanteService;
 
-  public PersonaController(PersonaService personaService) {
-    this.personaService = personaService;
+  public DonanteController(DonanteService DonanteService) {
+    this.DonanteService = DonanteService;
   }
 
   // CREATE (C)
   @PostMapping
-  public ResponseEntity<?> registrarPersona(@RequestBody PersonaDonanteDTO dto) {
+  public ResponseEntity<?> registrarDonante(@RequestBody PersonaDonanteDTO dto) {
     try {
       Donante dominio = mapearADominio(dto);
-      Donante personaCreada = personaService.crearPersona(dominio);
+      Donante personaCreada = DonanteService.crearPersona(dominio);
       return new ResponseEntity<>(mapToDto(personaCreada), HttpStatus.CREATED);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
@@ -59,7 +59,7 @@ public class PersonaController {
   // READ (R) - Obtener todas
   @GetMapping
   public ResponseEntity<List<PersonaDonanteDTO>> obtenerTodas() {
-    List<PersonaDonanteDTO> result = personaService.listarTodas().stream()
+    List<PersonaDonanteDTO> result = DonanteService.listarTodas().stream()
                                                    .map(this::mapToDto)
                                                    .collect(Collectors.toList());
     return ResponseEntity.ok(result);
@@ -67,9 +67,9 @@ public class PersonaController {
 
   // READ (R) - Búsqueda por ID
   @GetMapping("/{id}")
-  public ResponseEntity<PersonaDonanteDTO> obtenerPersonaPorId(@PathVariable UUID id) {
+  public ResponseEntity<PersonaDonanteDTO> obtenerDonantePorId(@PathVariable UUID id) {
     try {
-      return ResponseEntity.ok(mapToDto(personaService.buscarPorId(id)));
+      return ResponseEntity.ok(mapToDto(DonanteService.buscarPorId(id)));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
     }
@@ -77,8 +77,8 @@ public class PersonaController {
 
   // READ (R) - Búsqueda por nombre mediante QueryParam
   @GetMapping("/buscar")
-  public ResponseEntity<PersonaDonanteDTO> buscarPersonaPorNombre(@RequestParam String nombre) {
-    Donante resultado = personaService.buscarPorNombre(nombre);
+  public ResponseEntity<PersonaDonanteDTO> buscarDonantePorNombre(@RequestParam String nombre) {
+    Donante resultado = DonanteService.buscarPorNombre(nombre);
     if (resultado == null) {
       return ResponseEntity.notFound().build();
     }
@@ -87,10 +87,10 @@ public class PersonaController {
 
   // UPDATE (U)
   @PutMapping("/{id}")
-  public ResponseEntity<?> actualizarPersona(@PathVariable UUID id, @RequestBody PersonaDonanteDTO dto) {
+  public ResponseEntity<?> actualizarDonante(@PathVariable UUID id, @RequestBody PersonaDonanteDTO dto) {
     try {
       Donante dominio = mapearADominio(dto);
-      Donante actualizada = personaService.actualizarPersona(id, dominio);
+      Donante actualizada = DonanteService.actualizarPersona(id, dominio);
       return ResponseEntity.ok(mapToDto(actualizada));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
@@ -99,13 +99,13 @@ public class PersonaController {
 
   // DELETE (D)
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> eliminarPersona(@PathVariable UUID id) {
-    personaService.eliminarPersona(id);
+  public ResponseEntity<Void> eliminarDonante(@PathVariable UUID id) {
+    DonanteService.eliminarPersona(id);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/importar")
-  public ResponseEntity<String> importarPersonasCSV(
+  public ResponseEntity<String> importarDonanteCSV(
       @RequestPart("file") MultipartFile file,
       @RequestParam("mapeos") String mapeosDtoJson) {
     try {
@@ -117,7 +117,7 @@ public class PersonaController {
           mapeosDtoJson,
           new TypeReference<List<MapeoCSV>>() {}
       );
-      String mensaje = personaService.importarDonantes(file, mapeosDominio);
+      String mensaje = DonanteService.importarDonantes(file, mapeosDominio);
       return ResponseEntity.status(HttpStatus.ACCEPTED).body(mensaje);
     } catch (RuntimeException | JsonProcessingException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
@@ -128,7 +128,7 @@ public class PersonaController {
   @GetMapping("/{id}/medios-contacto")
   public ResponseEntity<List<MediosContactoDTO>> obtenerMediosContacto(@PathVariable UUID id) {
     try {
-      return ResponseEntity.ok(mapMediosContactoToDto(personaService.obtenerMediosContacto(id)));
+      return ResponseEntity.ok(mapMediosContactoToDto(DonanteService.obtenerMediosContacto(id)));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
     }
@@ -138,7 +138,7 @@ public class PersonaController {
   public ResponseEntity<?> agregarMedioContacto(@PathVariable UUID id, @RequestBody MediosContactoDTO dto) {
     try {
       MedioDeContacto nuevoMedio = pasarMediosDeContactoDTOAObjeto(dto);
-      Donante actualizada = personaService.agregarMedioContacto(id, nuevoMedio);
+      Donante actualizada = DonanteService.agregarMedioContacto(id, nuevoMedio);
       return new ResponseEntity<>(mapToDto(actualizada), HttpStatus.CREATED);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().body(e.getMessage());

@@ -38,17 +38,8 @@ public class EntidadBeneficiariaService {
     }
 
     public EntidadBeneficiaria actualizarEntidad(UUID id, EntidadBeneficiaria entidadActualizada) {
-        EntidadBeneficiaria existente = gestorEntidades.obtenerEntidad(id);
-        if (existente == null) {
-            throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
-        }
-
-        existente.getPersonaJuridica()
-                .setMediosDeContacto(entidadActualizada.getPersonaJuridica().getMediosDeContacto());
-        existente.setDireccion(entidadActualizada.getDireccion());
-
-        gestorEntidades.modificarEntidad(id, existente);
-        return existente;
+        // Toda la lógica de negocio se movió al gestor
+        return gestorEntidades.modificarEntidad(id, entidadActualizada);
     }
 
     public void eliminarEntidad(UUID id) {
@@ -58,11 +49,7 @@ public class EntidadBeneficiariaService {
     // --- OPERACIONES CRUD NECESIDADES ---
 
     public List<Necesidad> obtenerNecesidades(UUID idEntidad) {
-        EntidadBeneficiaria entidad = gestorEntidades.obtenerEntidad(idEntidad);
-        if (entidad == null) {
-            throw new IllegalArgumentException("No se encontró la entidad");
-        }
-
+        EntidadBeneficiaria entidad = obtenerEntidadPorId(idEntidad);
         return entidad.getNecesidades();
     }
 
@@ -72,16 +59,8 @@ public class EntidadBeneficiariaService {
     }
 
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
-        EntidadBeneficiaria entidad = gestorEntidades.obtenerEntidad(idEntidad);
-        if (entidad == null) {
-            throw new IllegalArgumentException("No se encontró la entidad");
-        }
-
-        Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
-                                     .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad"));
-
-        entidad.eliminarNecesidad(necesidad);
-        gestorEntidades.modificarEntidad(idEntidad, entidad);
+        // La búsqueda, eliminación y persistencia ahora la hace el gestor
+        gestorEntidades.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
     }
 
     // --- OTROS MÉTODOS ---

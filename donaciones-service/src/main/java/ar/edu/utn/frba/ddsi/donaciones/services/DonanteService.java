@@ -5,9 +5,9 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -27,22 +27,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-public class PersonaService {
+public class DonanteService {
 
-  // Inyección de dependencias en lugar de llamar al getInstance()
+  // Inyección de dependencias
   private final GestorDonantes gestorDonantes;
+  private final GestorPersonas gestorPersonas;
   private final NotificacionesClient notificacionClient;
-  private final FabricaEstrategiasNotificacion  fabricaEstrategias;
+  private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
 
-  public PersonaService(GestorDonantes gestorDonantes,
+  public DonanteService(GestorDonantes gestorDonantes,
+                        GestorPersonas gestorPersonas,
                         NotificacionesClient notificacionClient,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
                         IncentivosClient incentivosClient) {
     this.gestorDonantes = gestorDonantes;
+    this.gestorPersonas = gestorPersonas;
     this.notificacionClient = notificacionClient;
     this.fabricaEstrategias = fabricaEstrategias;
-    this.incentivosClient=incentivosClient;
+    this.incentivosClient = incentivosClient;
   }
 
   // --- CRUD METHODS ---
@@ -58,15 +61,13 @@ public class PersonaService {
     );
     incentivosClient.peticionCrearPerfil(peticion);
 
-
     NotificacionDTO notificacionCreacionUsuario = new NotificacionDTO(
-          nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
-          nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
-          "Gracias por registrarse en DonaTrack",
-          "Nuevo Registro en DonaTrack"
+        nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getTipo().toLowerCase(),
+        nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor(),
+        "Gracias por registrarse en DonaTrack",
+        "Nuevo Registro en DonaTrack"
     );
     notificacionClient.enviarNotificacion(notificacionCreacionUsuario);
-
 
     gestorDonantes.registrarDonante(nuevoDonante);
     return nuevoDonante;
@@ -92,8 +93,9 @@ public class PersonaService {
   }
 
   public Donante actualizarPersona(UUID id, Donante datosNuevos) {
-    gestorDonantes.modificarDonante(id, datosNuevos);
-    return datosNuevos;
+    // La responsabilidad de validar y extraer los atributos fue movida
+    // a los gestores GestorDonantes y GestorPersonas
+    return gestorDonantes.modificarDonante(id, datosNuevos);
   }
 
   public void eliminarPersona(UUID id) {
@@ -144,22 +146,14 @@ public class PersonaService {
   // --- GESTIÓN DE MEDIOS DE CONTACTO ---
 
   public MediosDeContacto obtenerMediosContacto(UUID id) {
-    Donante donante = gestorDonantes.obtenerDonante(id);
-    if (donante == null) {
-      throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
-    }
-
+    Donante donante = buscarPorId(id);
     return donante.getPersona().getMediosDeContacto();
   }
 
   public Donante agregarMedioContacto(UUID id, MedioDeContacto nuevoMedio) {
-    Donante donante = gestorDonantes.obtenerDonante(id);
-    if (donante == null) {
-      throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
-    }
-
-    donante.getPersona().agregarMedioDeContacto(nuevoMedio);
-    gestorDonantes.modificarDonante(id, donante);
+    Donante donante = buscarPorId(id);
+    // Delegamos directo al gestor de personas quien sabe lidiar con esto
+    gestorPersonas.agregarMedioDeContactoAPersona(donante.getPersona().getId(), nuevoMedio);
     return donante;
   }
 

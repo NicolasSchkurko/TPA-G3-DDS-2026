@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioPersonas;
 import org.springframework.stereotype.Service;
 
@@ -11,11 +12,10 @@ import java.util.UUID;
 /**
  * Gestor (Servicio) para manejar la lógica de negocio relacionada con las Personas.
  */
-
 @Service
 public class GestorPersonas {
 
-  private RepositorioPersonas repositorio;
+  private final RepositorioPersonas repositorio;
 
   public GestorPersonas() {
     // Inicializamos el repo en memoria. En un futuro esto se puede inyectar.
@@ -50,11 +50,26 @@ public class GestorPersonas {
   }
 
   /**
-   * Actualiza los datos de una persona existente.
+   * Actualiza los datos de una persona existente. Ahora con lógica centralizada.
    */
   public void modificarPersona(UUID idOriginal, Persona datosNuevos) {
+    Persona existente = obtenerPersona(idOriginal);
+    if (existente == null) {
+      throw new IllegalArgumentException("No se encontró la persona con ID: " + idOriginal);
+    }
+
+    existente.setNombreDeUsuario(datosNuevos.getNombreDeUsuario());
+    existente.setMediosDeContacto(datosNuevos.getMediosDeContacto());
+    existente.setId(datosNuevos.getId()); // Se actualiza por si es necesario, basado en el diseño original
+
+    // Lógica propia de dominio extraída del Controller/Service
+    if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
+      pj.setRazonSocial(pjNuevos.getRazonSocial());
+      pj.setCuit(pjNuevos.getCuit());
+    }
+
     try {
-      repositorio.actualizar(idOriginal, datosNuevos);
+      repositorio.actualizar(idOriginal, existente);
       System.out.println("Persona actualizada con éxito.");
     } catch (IllegalArgumentException e) {
       System.err.println("Error al modificar: " + e.getMessage());
@@ -69,12 +84,13 @@ public class GestorPersonas {
     if (persona != null) {
       try {
         persona.agregarMedioDeContacto(nuevoMedio);
+        repositorio.actualizar(idPersona, persona);
         System.out.println("Medio de contacto agregado exitosamente a la persona: " + idPersona);
       } catch (IllegalStateException e) {
         System.err.println("Error al agregar medio de contacto: " + e.getMessage());
       }
     } else {
-      System.err.println("No se pudo agregar el medio de contacto: Persona no encontrada.");
+      throw new IllegalArgumentException("No se pudo agregar el medio de contacto: Persona no encontrada.");
     }
   }
 
