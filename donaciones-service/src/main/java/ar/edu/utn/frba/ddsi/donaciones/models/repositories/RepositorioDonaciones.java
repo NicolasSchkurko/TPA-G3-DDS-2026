@@ -19,34 +19,34 @@ public class RepositorioDonaciones {
     }
 
     public Optional<Donacion> obtenerPorId(UUID id) {
-        return donaciones.stream()
+        return this.donaciones.stream()
                          .filter(d -> d.getId().equals(id))
                          .findFirst();
     }
 
     public List<Donacion> buscarDonacionesEnDeposito() {
-        return donaciones.stream()
+        return this.donaciones.stream()
                          .filter(d -> d.getEstado() == Estado.EN_DEPOSITO)
                          .toList();
     }
 
     public List<Donacion> buscarDonacionesSinAsignar(){
-        return donaciones.stream()
+        return this.donaciones.stream()
                 .filter(d -> d.getEstado() == Estado.PENDIENTE_ASIGNACION)
                 .toList();
     }
     public List<Donacion> buscarEntregaPendiente() {
-        return donaciones.stream()
+        return this.donaciones.stream()
                          .filter(d -> d.getEstado() == Estado.ASIGNADO)
                          .toList();
     }
 
     public void guardarDonaciones(List<Donacion> donacionesFormulario) {
-        donaciones.addAll(donacionesFormulario);
+        this.donaciones.addAll(donacionesFormulario);
     }
 
     public void guardar(Donacion donacion) {
-        donaciones.add(donacion);
+        this.donaciones.add(donacion);
     }
 
     public Optional<Donacion> actualizar(UUID idOriginal, Donacion donacionActualizada) {

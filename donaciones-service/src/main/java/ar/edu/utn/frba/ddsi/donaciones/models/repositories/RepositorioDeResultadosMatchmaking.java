@@ -15,15 +15,15 @@ public class RepositorioDeResultadosMatchmaking {
         return new ArrayList<>(resultadosMatchmakings);
     }
     public void guardarResultados(List<ResultadoMatchmaking> resultados){
-        resultadosMatchmakings.addAll(resultados);
+        this.resultadosMatchmakings.addAll(resultados);
     }
 
     public void eliminarResultado(ResultadoMatchmaking resultadoAEliminar){
-        resultadosMatchmakings.remove(resultadoAEliminar);
+        this.resultadosMatchmakings.remove(resultadoAEliminar);
     }
 
     public Optional<ResultadoMatchmaking> findByDonacionId(UUID donacionId){
-       return resultadosMatchmakings.stream()
+       return this.resultadosMatchmakings.stream()
                 .filter(p -> p.getDonacion().getId().equals(donacionId))
                 .findFirst();
     }
