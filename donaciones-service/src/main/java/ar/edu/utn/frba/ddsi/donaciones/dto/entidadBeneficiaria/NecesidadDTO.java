@@ -8,6 +8,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecu
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 public class NecesidadDTO {
@@ -17,7 +19,7 @@ public class NecesidadDTO {
     private String nombreSubcategoria;
     private String nombreCategoria;
     private Integer plazoEnDias;
-
+    private UUID id;
     public Necesidad toDomain() {
         CategoriaBien cat = new CategoriaBien(this.nombreCategoria != null ? this.nombreCategoria : "General");
         SubcategoriaBien sub = new SubcategoriaBien(this.nombreSubcategoria != null ? this.nombreSubcategoria : "General", cat);
@@ -38,6 +40,7 @@ public class NecesidadDTO {
             dto.setNombreSubcategoria(necesidad.getSubcategoria().getNombre());
             if (necesidad.getSubcategoria().getCategoria() != null) dto.setNombreCategoria(necesidad.getSubcategoria().getCategoria().getNombre());
         }
+        dto.setId(necesidad.getId());
         dto.setTipoNecesidad(necesidad instanceof NecesidadRecurrente ? "RECURRENTE" : "EXTRAORDINARIA");
         if (necesidad instanceof NecesidadRecurrente recurrente) dto.setPlazoEnDias(recurrente.getPlazoEnDias());
         return dto;
