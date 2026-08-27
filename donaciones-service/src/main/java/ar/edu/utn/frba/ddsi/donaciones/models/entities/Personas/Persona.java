@@ -9,14 +9,12 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class Persona {
+public abstract class Persona {
     private UUID id;
     private MediosDeContacto mediosDeContacto;
-    private String nombreDeUsuario;
 
-    public Persona(String nombreDeUsuario) {
+    public Persona() {
         this.id = UUID.randomUUID(); // Generamos un UUID automáticamente al crear la persona
-        this.nombreDeUsuario = nombreDeUsuario;
         this.mediosDeContacto = new MediosDeContacto();
     }
 
@@ -26,4 +24,7 @@ public class Persona {
         }
         this.mediosDeContacto.agregarMedioDeContacto(medioDeContacto);
     }
+    public String getNombreDeUsuario(){
+      return "";
+    };
 }

@@ -26,7 +26,7 @@ public class AdminDTO {
         Genero gen = (this.genero != null) ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;
         MedioDeContacto contacto = (this.medioDeContacto != null) ? this.medioDeContacto.toDomain() : null;
         if (contacto == null) throw new IllegalArgumentException("El administrador debe tener un medio de contacto asignado.");
-        Humana humano = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen, this.nombreAMostrar);
+        Humana humano = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen);
         return new Administrador(humano, contacto, this.nombreAMostrar);
     }
 

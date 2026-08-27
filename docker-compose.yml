@@ -29,7 +29,7 @@ services:
       SERVER_PORT: 8084
       NOTIFICACIONES_URL:  http://notificaciones-service:8083/api/notificaciones
       INCENTIVOS_URL: http://incentivos-service:8082/api/perfiles
-      LOGISTICAS_URL: http://logisticas-service:8085
+      LOGISTICAS_URL: http://logisticas-service:8085/api/
 
   logisticas-service:
     image: logisticas-service:latest

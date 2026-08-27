@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class PersonaDonanteDTO {
   private UUID id;
   private String tipoPersona;
-  private String nombreAMostrar;
   private String nombre;
   private String apellido;
   private int edad;
@@ -71,7 +70,6 @@ public class PersonaDonanteDTO {
     }
 
     Persona persona = entidad.getPersona();
-    dto.setNombreAMostrar(persona.getNombreDeUsuario());
 
     if (persona.getMediosDeContacto() != null) {
       List<MedioDeContacto> lista = persona.getMediosDeContacto().getListaMediosDeContacto();
@@ -109,7 +107,7 @@ public class PersonaDonanteDTO {
 
     if ("HUMANA".equals(tipo)) {
       Genero genero = this.generoValido() ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;
-      return new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, genero, this.nombreAMostrar);
+      return new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, genero);
     }
 
     if ("JURIDICA".equals(tipo)) {
@@ -117,7 +115,7 @@ public class PersonaDonanteDTO {
           ? TipoJuridico.valueOf(this.tipoJuridico.toUpperCase())
           : TipoJuridico.ONG;
 
-      return new Juridica(this.razonSocial, this.rubro, tipoJuridico, this.cuit, new ArrayList<>(), this.nombreAMostrar);
+      return new Juridica(this.razonSocial, this.rubro, tipoJuridico, this.cuit, new ArrayList<>());
     }
 
     throw new IllegalArgumentException("Tipo de persona inválido: " + this.tipoPersona);

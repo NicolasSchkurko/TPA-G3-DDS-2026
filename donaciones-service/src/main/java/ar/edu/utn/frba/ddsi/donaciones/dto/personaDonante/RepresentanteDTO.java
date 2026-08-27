@@ -16,11 +16,11 @@ public class RepresentanteDTO {
   private int edad;
   private String genero;
 
-  public Representante toDomain() {
+public Representante toDomain() {
     Genero gen = (this.genero != null) ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;
-    Humana humana = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen, this.nombre);
+    Humana humana = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen);
     return new Representante(humana, this.activo);
-  }
+}
 
   public static RepresentanteDTO from(Representante rep) {
     if (rep == null) return null;
