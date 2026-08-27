@@ -69,6 +69,15 @@ public class GestorDonaciones {
         throw new RuntimeException("Donación no encontrada con ID: " + id);
     }
 
+    public void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {
+        try {
+            repositorioDonaciones.asignarEntidad(donacionId, entidad);
+            System.out.println("Entidad asignada con éxito a la donación: " + donacionId);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error al asignar entidad: " + e.getMessage());
+        }
+    }
+
     public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
         DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
                 new AsignadorDonaciones());

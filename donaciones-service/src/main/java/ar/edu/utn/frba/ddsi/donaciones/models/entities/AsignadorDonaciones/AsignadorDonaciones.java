@@ -5,11 +5,13 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -23,10 +25,16 @@ public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;
     private final List<ResultadoMatchmaking> donacionesPendientesDeAprobacion;
+    private GestorMatchmaking gestorMatchmaking;
+    private GestorDonaciones gestorDonaciones;
+    private GestorNecesidades gestorNecesidades;
 
-    public AsignadorDonaciones() {
+    public AsignadorDonaciones(RepositorioDeResultadosMatchmaking resultadosMatchmakings, GestorDonaciones gestorDonaciones, GestorNecesidades gestorNecesidades) {
         this.algoritmos = new ArrayList<>();
         this.donacionesPendientesDeAprobacion = new ArrayList<>();
+        this.gestorMatchmaking = gestorMatchmaking;
+        this.gestorDonaciones = gestorDonaciones;
+        this.gestorNecesidades = gestorNecesidades;
     }
 
     public List<AlgoritmoAsignacion> getAlgoritmos() {
@@ -177,22 +185,29 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
         }
     }
 
-    public static void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
-        donacion.setEntidad(propuesta.getEntidad());
-        donacion.setEstado(Estado.ASIGNADO);
+    //Tambien delegue las resposabilidades a los gestores y repos
+    public void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
+        //donacion.setEntidad(propuesta.getEntidad());
+        gestorDonaciones.asignarEntidad(donacion.getId(), propuesta.getEntidad());
+        //donacion.setEstado(Estado.ASIGNADO);
+        gestorDonaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+
         registrarDonacionEnNecesidad(donacion, propuesta.getNecesidad());
     }
 
-    private static void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
-        necesidad.registrarDonacionAsignada(donacion);
+    //Aca cambie que el gestor de necesidades se encargue de cargarle la donacion
+    private void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
+        gestorNecesidades.agregarDonacionANecesidad(necesidad.getId(), donacion);
     }
 
+    //cambie que el gestor se encargue de cambiar el estado y que el repo guarde los resultados
     private void registrarDonacionPendienteDeAprobacion(
         Donacion donacion,
         List<PropuestaAsignacion> resultadoFinal,
         boolean huboCoincidenciaTotal) {
 
-        donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
+        //donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
+        gestorDonaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
 
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
             donacion,
@@ -200,7 +215,7 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
             huboCoincidenciaTotal
         );
 
-        donacionesPendientesDeAprobacion.add(resultado);
+        gestorMatchmaking.guardarResultado(resultado);
     }
 
     public void limpiarDonacionesPendientesDeAprobacion(){

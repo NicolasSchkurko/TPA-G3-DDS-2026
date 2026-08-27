@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,13 @@ public class RepositorioNecesidades {
     return this.NecesidadesEnMemoria.stream()
                                .filter(a -> a.getId().equals(id))
                                .findFirst();
+  }
+
+  public void agregarDonacion(UUID necesidadId, Donacion donacion) {
+    Necesidad necesidad = buscarPorId(necesidadId)
+            .orElseThrow(() -> new IllegalArgumentException("No se encontró la Necesidad con ID: " + necesidadId));
+
+    necesidad.registrarDonacionAsignada(donacion);
   }
 
   public void actualizar(UUID idOriginal, Necesidad NecesidadActualizado) {

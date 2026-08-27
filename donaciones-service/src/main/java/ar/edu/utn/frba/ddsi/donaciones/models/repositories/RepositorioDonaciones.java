@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -59,6 +60,13 @@ public class RepositorioDonaciones {
         } else {
             throw new IllegalArgumentException("No se encontró la donación a actualizar.");
         }
+    }
+
+    public void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {
+        Donacion donacion = obtenerPorId(donacionId)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró la donación con ID: " + donacionId));
+
+        donacion.setEntidad(entidad);
     }
 
     public void eliminarPorId(UUID id) {
