@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Representante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
@@ -39,84 +40,150 @@ public class PersonaDonanteDTO {
   private List<RepresentanteDTO> representantes;
 
   public Donante toDomain() {
-    Direccion dir = (this.direccion != null) ? this.direccion.toDomain() : null;
-    List<MedioDeContacto> medios = new ArrayList<>();
-    MedioDeContacto medioPred = null;
+    Direccion dir = this.direccion != null ? this.direccion.toDomain() : null;
 
-    if (this.mediosDeContacto != null) {
-      for (MediosContactoDTO medioDTO : this.mediosDeContacto) {
-        MedioDeContacto m = medioDTO.toDomain();
-        if (m != null) {
-          medios.add(m);
-          if (medioPred == null) medioPred = m;
-          if (this.medioPredeterminado != null && m.getTipo().equalsIgnoreCase(this.medioPredeterminado.getTipo()) && m.getValor().equalsIgnoreCase(this.medioPredeterminado.getValor())) {
-            medioPred = m;
-          }
-        }
-      }
+    Persona persona = crearPersonaDesdeTipo();
+    List<MedioDeContacto> medios = mapearMedios();
+    MedioDeContacto medioPredeterminado = resolverMedioPredeterminado(medios);
+
+    persona.getMediosDeContacto().agregarMediosDeContacto(medios);
+    persona.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPredeterminado);
+
+    if (persona instanceof Juridica juridica && this.representantes != null) {
+      List<Representante> representantes = this.representantes.stream()
+          .map(RepresentanteDTO::toDomain)
+          .collect(Collectors.toList());
+      juridica.agregarRepresentantes(representantes);
     }
-    if (medioPred == null && !medios.isEmpty()) medioPred = medios.get(0);
-    else if (medioPred == null) throw new IllegalArgumentException("Se requiere un medio de contacto.");
 
-    String tipoPer = (this.tipoPersona != null) ? this.tipoPersona.toUpperCase() : "HUMANA";
-
-    if ("HUMANA".equals(tipoPer)) {
-      Genero gen = (this.genero != null) ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;
-      Humana humana = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen, this.nombreAMostrar);
-      Donante donante = new Donante(dir, humana);
-      donante.getPersona().getMediosDeContacto().agregarMediosDeContacto(medios);
-      donante.getPersona().getMediosDeContacto().setMedioDeContactoPredeterminado(medioPred);
-      return donante;
-    } else if ("JURIDICA".equals(tipoPer)) {
-      TipoJuridico tj = (this.tipoJuridico != null) ? TipoJuridico.valueOf(this.tipoJuridico.toUpperCase()) : TipoJuridico.ONG;
-      Juridica juridica = new Juridica(this.razonSocial, this.rubro, tj, this.cuit, new ArrayList<>(), this.nombreAMostrar);
-      juridica.getMediosDeContacto().agregarMediosDeContacto(medios);
-      juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(medioPred);
-      Donante donante = new Donante(dir, juridica);
-
-      if (this.representantes != null) {
-        List<Representante> reps = this.representantes.stream().map(RepresentanteDTO::toDomain).collect(Collectors.toList());
-        ((Juridica) donante.getPersona()).agregarRepresentantes(reps);
-      }
-      return donante;
-    }
-    throw new IllegalArgumentException("Tipo de persona inválido");
+    return new Donante(dir, persona);
   }
 
   public static PersonaDonanteDTO from(Donante entidad) {
     if (entidad == null) return null;
+
     PersonaDonanteDTO dto = new PersonaDonanteDTO();
     dto.setId(entidad.getId());
+    dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
 
-    if (entidad.getPersona() != null) {
-      dto.setNombreAMostrar(entidad.getPersona().getNombreDeUsuario());
-      if (entidad.getPersona().getMediosDeContacto() != null) {
-        if(entidad.getPersona().getMediosDeContacto().getListaMediosDeContacto() != null) {
-          dto.setMediosDeContacto(entidad.getPersona().getMediosDeContacto().getListaMediosDeContacto().stream().map(MediosContactoDTO::from).collect(Collectors.toList()));
-        }
-        MedioDeContacto pred = entidad.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado();
-        if (pred != null) dto.setMedioPredeterminado(MediosContactoDTO.from(pred));
+    if (entidad.getPersona() == null) {
+      return dto;
+    }
+
+    Persona persona = entidad.getPersona();
+    dto.setNombreAMostrar(persona.getNombreDeUsuario());
+
+    if (persona.getMediosDeContacto() != null) {
+      List<MedioDeContacto> lista = persona.getMediosDeContacto().getListaMediosDeContacto();
+      if (lista != null) {
+        dto.setMediosDeContacto(
+            lista.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(MediosContactoDTO::from)
+                .collect(Collectors.toList())
+        );
       }
 
-      if (entidad.getPersona() instanceof Humana ph) {
-        dto.setTipoPersona("HUMANA");
-        dto.setNombre(ph.getNombre());
-        dto.setApellido(ph.getApellido());
-        dto.setEdad(ph.getEdad());
-        dto.setNumeroDeDocumento(ph.getNumeroDeDocumento());
-        dto.setGenero(ph.getGenero() != null ? ph.getGenero().name() : null);
-      } else if (entidad.getPersona() instanceof Juridica pj) {
-        dto.setTipoPersona("JURIDICA");
-        dto.setRazonSocial(pj.getRazonSocial());
-        dto.setCuit(pj.getCuit());
-        dto.setRubro(pj.getRubro());
-        dto.setTipoJuridico(pj.getTipoJuridico() != null ? pj.getTipoJuridico().name() : null);
-        if (pj.getRepresentantes() != null) dto.setRepresentantes(pj.getRepresentantes().stream().map(RepresentanteDTO::from).collect(Collectors.toList()));
-      } else {
-        dto.setTipoPersona("DESCONOCIDO");
+      MedioDeContacto predeterminado = persona.getMediosDeContacto().getMedioDeContactoPredeterminado();
+      if (predeterminado != null) {
+        dto.setMedioPredeterminado(MediosContactoDTO.from(predeterminado));
       }
     }
-    dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
+
+    if (persona instanceof Humana humana) {
+      mapearHumana(dto, humana);
+      return dto;
+    }
+
+    if (persona instanceof Juridica juridica) {
+      mapearJuridica(dto, juridica);
+      return dto;
+    }
+
+    dto.setTipoPersona("DESCONOCIDO");
     return dto;
+  }
+
+  private Persona crearPersonaDesdeTipo() {
+    String tipo = this.tipoPersona != null ? this.tipoPersona.toUpperCase() : "HUMANA";
+
+    if ("HUMANA".equals(tipo)) {
+      Genero genero = this.generoValido() ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;
+      return new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, genero, this.nombreAMostrar);
+    }
+
+    if ("JURIDICA".equals(tipo)) {
+      TipoJuridico tipoJuridico = this.tipoJuridicoValido()
+          ? TipoJuridico.valueOf(this.tipoJuridico.toUpperCase())
+          : TipoJuridico.ONG;
+
+      return new Juridica(this.razonSocial, this.rubro, tipoJuridico, this.cuit, new ArrayList<>(), this.nombreAMostrar);
+    }
+
+    throw new IllegalArgumentException("Tipo de persona inválido: " + this.tipoPersona);
+  }
+
+  private List<MedioDeContacto> mapearMedios() {
+    List<MedioDeContacto> medios = new ArrayList<>();
+    if (this.mediosDeContacto == null) return medios;
+
+    for (MediosContactoDTO dto : this.mediosDeContacto) {
+      MedioDeContacto medio = dto.toDomain();
+      if (medio != null) {
+        medios.add(medio);
+      }
+    }
+    return medios;
+  }
+
+  private MedioDeContacto resolverMedioPredeterminado(List<MedioDeContacto> medios) {
+    if (medios.isEmpty()) return null;
+
+    if (this.medioPredeterminado == null) {
+      return medios.get(0);
+    }
+
+    for (MedioDeContacto medio : medios) {
+      if (medio.getTipo().equalsIgnoreCase(this.medioPredeterminado.getTipo())
+          && medio.getValor().equalsIgnoreCase(this.medioPredeterminado.getValor())) {
+        return medio;
+      }
+    }
+
+    return medios.get(0);
+  }
+
+  private boolean generoValido() {
+    return this.genero != null && !this.genero.isBlank();
+  }
+
+  private boolean tipoJuridicoValido() {
+    return this.tipoJuridico != null && !this.tipoJuridico.isBlank();
+  }
+
+  private static void mapearHumana(PersonaDonanteDTO dto, Humana humana) {
+    dto.setTipoPersona("HUMANA");
+    dto.setNombre(humana.getNombre());
+    dto.setApellido(humana.getApellido());
+    dto.setEdad(humana.getEdad());
+    dto.setNumeroDeDocumento(humana.getNumeroDeDocumento());
+    dto.setGenero(humana.getGenero() != null ? humana.getGenero().name() : null);
+  }
+
+  private static void mapearJuridica(PersonaDonanteDTO dto, Juridica juridica) {
+    dto.setTipoPersona("JURIDICA");
+    dto.setRazonSocial(juridica.getRazonSocial());
+    dto.setRubro(juridica.getRubro());
+    dto.setCuit(juridica.getCuit());
+    dto.setTipoJuridico(juridica.getTipoJuridico() != null ? juridica.getTipoJuridico().name() : null);
+
+    if (juridica.getRepresentantes() != null) {
+      dto.setRepresentantes(
+          juridica.getRepresentantes().stream()
+              .filter(java.util.Objects::nonNull)
+              .map(RepresentanteDTO::from)
+              .collect(Collectors.toList())
+      );
+    }
   }
 }

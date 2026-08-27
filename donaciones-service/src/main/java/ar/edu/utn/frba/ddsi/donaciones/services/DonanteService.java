@@ -50,10 +50,10 @@ public class DonanteService {
     Donante nuevoDonante = dto.toDomain();
 
     if (nuevoDonante.getPersona() != null) {
-      String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
-      incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario));
+      //String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
+      // incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario));
 
-      if (nuevoDonante.getPersona().getMediosDeContacto() != null && nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado() != null) {
+      /*if (nuevoDonante.getPersona().getMediosDeContacto() != null && nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado() != null) {
         MedioDeContacto predeterminado = nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado();
         NotificacionDTO notificacion = new NotificacionDTO(
             predeterminado.getTipo().toLowerCase(), predeterminado.getValor(),
@@ -61,6 +61,8 @@ public class DonanteService {
         );
         notificacionClient.enviarNotificacion(notificacion);
       }
+      *
+       */
       gestorPersonas.registrarPersona(nuevoDonante.getPersona());
     }
     gestorDonantes.registrarDonante(nuevoDonante);
