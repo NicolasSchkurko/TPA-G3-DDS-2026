@@ -91,7 +91,13 @@ public class PlanificadorDeRutasController {
       planificadorScheduler.iniciarPlanificacionAutomatica();
       return ResponseEntity.ok("Proceso de planificación disparado. Aguardando respuesta del proveedor externo...");
     } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al disparar la planificación.");
+      System.err.println("=================================");
+      System.err.println("ERROR EN LA SIMULACIÓN");
+      System.err.println("Tipo: " + e.getClass().getName());
+      System.err.println("Mensaje: " + e.getMessage());
+      e.printStackTrace();
+      System.err.println("=================================");
+      return null;
     }
   }
 }

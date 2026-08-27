@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutasDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.RutaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -9,8 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,7 +26,7 @@ public class RutaController {
 
   @Operation(summary = "Listar todas las rutas generadas")
   @GetMapping
-  public ResponseEntity<List<Ruta>> obtenerTodas() {
+  public ResponseEntity<RutasDTO> obtenerTodas() {
     return ResponseEntity.ok(rutaService.findAll());
   }
 
@@ -38,9 +36,10 @@ public class RutaController {
     try {
       return ResponseEntity.ok(rutaService.findById(id));
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No se encontro la ruta");
     }
   }
+
   /*
   @Operation(summary = "Crear una ruta manual", description = "Usualmente generadas por el servicio planificador.")
   @PostMapping
