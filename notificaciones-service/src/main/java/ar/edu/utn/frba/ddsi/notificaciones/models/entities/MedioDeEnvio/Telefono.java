@@ -5,7 +5,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import org.springframework.stereotype.Component;
 
-@Component("Telefono")
+@Component("telefono")
 public class Telefono extends MedioDeEnvio {
 
     public Telefono(NotificacionGateway gateway) {

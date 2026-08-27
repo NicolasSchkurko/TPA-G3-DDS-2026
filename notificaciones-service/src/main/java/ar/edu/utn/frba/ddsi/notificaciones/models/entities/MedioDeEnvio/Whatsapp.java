@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import org.springframework.stereotype.Component;
 
-@Component("Whatsapp")
+@Component("whatsapp")
 public class Whatsapp extends MedioDeEnvio {
 
     public Whatsapp(NotificacionGateway gateway) {
