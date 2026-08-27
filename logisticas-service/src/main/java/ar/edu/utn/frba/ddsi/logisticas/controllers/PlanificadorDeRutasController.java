@@ -21,7 +21,7 @@ import java.util.List;
  * Controlador REST que expone los endpoints requeridos para el Servicio de Logística.
  */
 @RestController
-@RequestMapping("/api/logistica/rutas")
+@RequestMapping("/api/PlanificacionRutas")
 @Tag(name = "Planificador de Rutas", description = "API para la interacción con el proveedor externo de planificación de rutas logísticas")
 public class PlanificadorDeRutasController {
 

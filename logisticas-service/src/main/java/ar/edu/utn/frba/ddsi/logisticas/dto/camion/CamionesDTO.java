@@ -10,6 +10,9 @@ import lombok.Setter;
 public class CamionesDTO {
     private List<CamionDTO> camiones;
 
+    public CamionesDTO() {
+    }
+
     public CamionesDTO(List<CamionDTO> camiones){
         this.camiones = camiones;
     }

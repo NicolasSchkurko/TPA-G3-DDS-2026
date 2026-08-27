@@ -95,16 +95,15 @@ public class EntregaService {
     }
 
     switch (request.getEstado().toUpperCase()) {
-      //TODO pasar a metodo que exista la foto y la justificacion
       case "ENTREGADA":
-        if (request.getFotoUrl() == null || request.getFotoUrl().trim().isEmpty()) {
+        if(comprobarExistencia(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
         gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getFotoUrl()));
         break;
 
       case "NO_RECIBIDA":
-        if (request.getJustificacion() == null || request.getJustificacion().trim().isEmpty()) {
+        if(comprobarExistencia(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
         gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getJustificacion()));
@@ -128,17 +127,23 @@ public class EntregaService {
    * o replanificación). El control de quién puede llamar a este endpoint
    * es responsabilidad del front/capa de autorización, no de este servicio.
    */
+
+  private boolean comprobarExistencia(String elemento){
+    return (elemento == null || elemento.trim().isEmpty());
+  }
+
   public BienesDTO obtenerEntregasNoRecibidas() {
     List<ItemEntrega> items = gestorItemEntrega.buscarNoRecibidos();
     return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
   private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
-    return items.stream().map(this::convertirAItemDTO).toList();
+    return items.stream().map(this::convertirABienDTO).toList();
   }
 
-  private BienDTO convertirAItemDTO(ItemEntrega item){
-    return new BienDTO(item.getCantidad(), item.getUnidad().toString(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
+  //TODO Arreglar eventos
+  private BienDTO convertirABienDTO(ItemEntrega item){
+    return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
   }
 
   private Direccion convertirDireccionDTO(DireccionDTO dto) {
@@ -155,7 +160,10 @@ public class EntregaService {
   }
 
   private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){
-    return eventos.stream().map(this::convertirAEventoDTO).toList();
+    if(eventos != null){
+      return eventos.stream().map(this::convertirAEventoDTO).toList();
+    }
+    return List.of();
   }
 
   private EventoDTO convertirAEventoDTO(EventoLogistica evento){

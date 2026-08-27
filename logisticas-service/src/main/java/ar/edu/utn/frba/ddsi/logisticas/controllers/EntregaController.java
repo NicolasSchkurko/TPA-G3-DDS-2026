@@ -24,6 +24,44 @@ public class EntregaController {
         this.entregaService = entregaService;
     }
 
+    // --- OPERACIONES DE NEGOCIO ---
+
+    @Operation(summary = "Registrar nuevas entregas a distribuir",
+            description = "Recibe el payload desde el módulo de donaciones y crea los ítems pendientes.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Ítems creados y registrados en depósito.")
+    })
+    @PostMapping
+    public ResponseEntity<String> crearItems(@RequestBody PeticionEntregaDTO request) {
+        try {
+            entregaService.procesarPeticion(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Ítems de entrega agregados al depósito correctamente.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al procesar la petición: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Trazabilidad: Actualizar estado de una entrega (Recepción, Rechazo, Reingreso)",
+            description = "Permite confirmar (requiere URL de foto), rechazar (requiere justificación) " +
+                    "o reingresar a depósito una entrega NO_RECIBIDA tras revisión (estado PENDIENTE).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente."),
+            @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria.")
+    })
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<String> actualizarEstadoEntrega(
+            @PathVariable UUID id,
+            @RequestBody ActualizacionEntregaDTO request) {
+        try {
+            entregaService.actualizarEstado(id, request);
+            return ResponseEntity.ok("Estado de la entrega actualizado correctamente a: " + request.getEstado());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno: " + e.getMessage());
+        }
+    }
+
     // --- CRUD ---
 
     @Operation(summary = "Listar todos los ítems de entrega del depósito")
@@ -64,44 +102,6 @@ public class EntregaController {
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
-    }
-
-    // --- OPERACIONES DE NEGOCIO ---
-
-    @Operation(summary = "Registrar nuevas entregas a distribuir",
-        description = "Recibe el payload desde el módulo de donaciones y crea los ítems pendientes.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Ítems creados y registrados en depósito.")
-    })
-    @PostMapping
-    public ResponseEntity<String> crearItems(@RequestBody PeticionEntregaDTO request) {
-        try {
-            entregaService.procesarPeticion(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Ítems de entrega agregados al depósito correctamente.");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al procesar la petición: " + e.getMessage());
-        }
-    }
-
-    @Operation(summary = "Trazabilidad: Actualizar estado de una entrega (Recepción, Rechazo, Reingreso)",
-        description = "Permite confirmar (requiere URL de foto), rechazar (requiere justificación) " +
-            "o reingresar a depósito una entrega NO_RECIBIDA tras revisión (estado PENDIENTE).")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente."),
-        @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria.")
-    })
-    @PatchMapping("/{id}/estado")
-    public ResponseEntity<String> actualizarEstadoEntrega(
-        @PathVariable UUID id,
-        @RequestBody ActualizacionEntregaDTO request) {
-        try {
-            entregaService.actualizarEstado(id, request);
-            return ResponseEntity.ok("Estado de la entrega actualizado correctamente a: " + request.getEstado());
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno: " + e.getMessage());
         }
     }
 }
