@@ -1,9 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
@@ -29,6 +31,15 @@ public class PerfilService {
         this.perfiles = perfiles;
         this.rankings = rankings;
         this.actividad = actividad;
+    }
+
+    public PerfilDTO buscarPorId(UUID idUsuario){
+        Perfil p = perfiles.obtenerPerfil(idUsuario);
+        return new PerfilDTO(p.getNombreUsuario(),
+                p.getCategoriaActual().getNombre(),
+                p.getInsignias().stream().map(Insignia::getNombre).toList(),
+                p.getMisionActual().getNombreMision(),
+                p.getPosicionRanking().getPuesto());
     }
 
     public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){

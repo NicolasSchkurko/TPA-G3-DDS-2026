@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,6 +46,15 @@ public class PerfilController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(metricas);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PerfilDTO> obtenerPerfilPorId(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(service.buscarPorId(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @Operation(
