@@ -30,11 +30,18 @@ public class RepositorioDonaciones {
                          .toList();
     }
 
-    public List<Donacion> buscarDonacionesSinAsignar(){
+    public List<Donacion> buscarDonacionesPendientesDeAsignar(){
         return donaciones.stream()
                 .filter(d -> d.getEstado() == Estado.PENDIENTE_ASIGNACION)
                 .toList();
     }
+
+    public List<Donacion> buscarDonacionesSinAsignar(){
+        return donaciones.stream()
+                .filter(d -> d.getEstado() == Estado.EN_DEPOSITO)
+                .toList();
+    }
+
     public List<Donacion> buscarEntregaPendiente() {
         return donaciones.stream()
                          .filter(d -> d.getEstado() == Estado.ASIGNADO)
