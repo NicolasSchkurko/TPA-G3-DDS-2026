@@ -21,6 +21,7 @@ public class GestorCategoria {
                            ApplicationEventPublisher eventPublisher) {
         this.repositorio = repositorio;
         this.eventPublisher = eventPublisher;
+        this.inicializarCategoriasBase();
     }
 
     @EventListener

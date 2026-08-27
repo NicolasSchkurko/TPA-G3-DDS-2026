@@ -22,17 +22,16 @@ public class Juridica extends Persona {
       String rubro,
       TipoJuridico tipoJuridico,
       String cuit,
-      List<Representante> representantes,
-      String nombreDeUsuario
+      List<Representante> representantes
   ) {
-    super(nombreDeUsuario);
+    super();
     this.razonSocial = razonSocial;
     this.rubro = rubro;
     this.cuit = cuit;
     this.tipoJuridico = tipoJuridico;
     this.representantes = representantes;
   }
-
+  @Override
   public String getNombreDeUsuario() {
     return this.getRazonSocial();
   }

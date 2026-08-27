@@ -18,7 +18,7 @@ public class HumanoTest {
     int numeroDeDocumento = 1234567;
     Genero genero = Genero.OTRO;
 
-    Humana humana = new Humana(nombre, apellido, edad, numeroDeDocumento, genero, nombre);
+    Humana humana = new Humana(nombre, apellido, edad, numeroDeDocumento, genero);
 
     assertEquals(nombre, humana.getNombre());
     assertEquals(apellido, humana.getApellido());

@@ -16,7 +16,7 @@ public class JuridicaTest {
 
     @Test
     public void crearPersonaJuridicaConTodosLosValores() {
-        Humana humanaRep = new Humana("Maria", "Lopez", 40, 87654321, Genero.MUJER, "maria");
+        Humana humanaRep = new Humana("Maria", "Lopez", 40, 87654321, Genero.MUJER);
         Representante representante = new Representante(humanaRep, true);
 
         Juridica persona = new Juridica(
@@ -24,8 +24,7 @@ public class JuridicaTest {
                 "ONGs",
                 TipoJuridico.ONG,
                 "20-12345678-9",
-                List.of(representante),
-                "la mejor fundacion"
+                List.of(representante)
         );
 
         assertEquals("Fundacion Ayuda", persona.getRazonSocial());
@@ -39,13 +38,12 @@ public class JuridicaTest {
 
     @Test
     public void crearPersonaHumanaConTodosLosValores() {
-        Humana humana = new Humana("Juan", "Perez", 30, 12345678, Genero.HOMBRE, "juan");
+        Humana humana = new Humana("Juan", "Perez", 30, 12345678, Genero.HOMBRE);
 
         assertEquals("Juan", humana.getNombre());
         assertEquals("Perez", humana.getApellido());
         assertEquals(30, humana.getEdad());
         assertEquals(12345678, humana.getNumeroDeDocumento());
         assertEquals(Genero.HOMBRE, humana.getGenero());
-        assertEquals("juan", humana.getNombreDeUsuario());
     }
 }

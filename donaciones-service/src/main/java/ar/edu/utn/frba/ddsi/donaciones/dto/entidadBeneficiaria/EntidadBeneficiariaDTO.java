@@ -23,8 +23,7 @@ public class EntidadBeneficiariaDTO {
         if (this.razonSocial != null || this.telefono != null) {
             juridica = new Juridica(
                 this.razonSocial != null ? this.razonSocial : "ONG Sin Nombre",
-                "ONG", TipoJuridico.ONG, "00-00000000-0", new ArrayList<>(),
-                this.razonSocial != null ? this.razonSocial : "ONG Sin Nombre"
+                "ONG", TipoJuridico.ONG, "00-00000000-0", new ArrayList<>()
             );
             if (this.telefono != null && !this.telefono.isEmpty()) {
                 Telefono tel = new Telefono(this.telefono);

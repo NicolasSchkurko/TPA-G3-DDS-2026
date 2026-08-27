@@ -58,7 +58,6 @@ public class GestorPersonas {
       throw new IllegalArgumentException("No se encontró la persona con ID: " + idOriginal);
     }
 
-    existente.setNombreDeUsuario(datosNuevos.getNombreDeUsuario());
     existente.setMediosDeContacto(datosNuevos.getMediosDeContacto());
     existente.setId(datosNuevos.getId()); // Se actualiza por si es necesario, basado en el diseño original
 

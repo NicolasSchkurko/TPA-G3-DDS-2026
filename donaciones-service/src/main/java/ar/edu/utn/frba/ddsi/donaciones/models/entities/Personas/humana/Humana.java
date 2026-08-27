@@ -18,15 +18,18 @@ public class Humana extends Persona {
       String apellido,
       int edad,
       int numeroDeDocumento,
-      Genero genero,
-      String nombreDeUsuario
+      Genero genero
   ) {
-    super(nombreDeUsuario);
+    super();
     this.nombre = nombre;
     this.apellido = apellido;
     this.edad = edad;
     this.numeroDeDocumento = numeroDeDocumento;
     this.genero = genero;
+  }
+  @Override
+  public String getNombreDeUsuario(){
+    return  nombre + " "+ apellido;
   }
 
 }

@@ -83,9 +83,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
                 apellido,
                 0,
                 numeroDocumento,
-                null,
-                null
-        );
+                null);
 
         return new Donante(null, persona);
     }
@@ -96,9 +94,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
                 null,
                 null,
                 documento,
-                new ArrayList<>(),
-                null
-        );
+                new ArrayList<>());
 
         return new Donante(null, persona);
     }
