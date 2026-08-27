@@ -27,7 +27,7 @@ public abstract class Bien {
     }
 
     public String getUrlFoto() {
-        return Optional.ofNullable(this.urlFoto);
+        return this.urlFoto;
     }
 }
 
