@@ -56,10 +56,10 @@ public class PerfilController {
             @ApiResponse(responseCode = "200", description = "Perfil obtenido con éxito"),
             @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
     })
-    @GetMapping("/usuario/{idUsuario}")
+    @GetMapping("{idUsuario}/perfil")
     public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
-            @Parameter(description = "UUID del usuario asociado al perfil", required = true)
-            @PathVariable("idUsuario") UUID idUsuario) {
+            @Parameter(description = "UUID del usuario asociado al perfil")
+            @PathVariable UUID idUsuario) {
         PerfilDTO perfil = service.buscarPorIdUsuario(idUsuario);
         return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
     }
