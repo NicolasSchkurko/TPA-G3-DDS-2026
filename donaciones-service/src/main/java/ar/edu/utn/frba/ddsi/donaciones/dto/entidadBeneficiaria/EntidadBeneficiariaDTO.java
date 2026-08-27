@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -16,7 +17,7 @@ public class EntidadBeneficiariaDTO {
     private String razonSocial;
     private String telefono;
     private DireccionDTO direccion;
-
+    private UUID id;
     public EntidadBeneficiaria toDomain() {
         Juridica juridica = null;
         if (this.razonSocial != null || this.telefono != null) {
@@ -43,6 +44,7 @@ public class EntidadBeneficiariaDTO {
                 dto.setTelefono(entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor());
             }
         }
+        dto.setId(entidad.getId());
         dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
         return dto;
     }
