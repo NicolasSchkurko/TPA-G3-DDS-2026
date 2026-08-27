@@ -48,11 +48,6 @@ public class PerfilController {
         return ResponseEntity.ok(metricas);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PerfilDTO> obtenerPerfilPorId(@PathVariable UUID id) {
-        return obtenerPerfilPorIdUsuario(id);
-    }
-
     @Operation(
             summary = "Obtener perfil por id de usuario",
             description = "Busca el perfil asociado al UUID del usuario de donaciones-service."

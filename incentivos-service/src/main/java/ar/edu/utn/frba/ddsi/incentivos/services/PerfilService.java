@@ -52,14 +52,6 @@ public class PerfilService {
                 p.getPosicionRanking() == null ? null : p.getPosicionRanking().getPuesto());
     }
 
-    /**
-     * Alias de compatibilidad para los consumidores que ya utilizaban este
-     * método con el nombre anterior.
-     */
-    public PerfilDTO buscarPorId(UUID idUsuario){
-        return buscarPorIdUsuario(idUsuario);
-    }
-
     public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
         //% de variacion de donaciones x mes
         List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
