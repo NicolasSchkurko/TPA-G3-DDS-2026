@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,6 +25,20 @@ public class AdminController {
             return new ResponseEntity<>(adminCreado, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<AdminDTO>> obtenerTodos() {
+        return ResponseEntity.ok(service.getAdmins());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(service.getAdminPorId(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

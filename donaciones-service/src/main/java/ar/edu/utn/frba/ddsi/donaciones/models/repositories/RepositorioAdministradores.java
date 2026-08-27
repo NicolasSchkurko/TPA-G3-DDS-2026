@@ -6,25 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
 /**
  * Repositorio en memoria para gestionar operaciones CRUD sobre objetos Administrador.
  */
 
+@Repository
 public class RepositorioAdministradores {
-    private List<Administrador> administradoresEnMemoria;
+    private final List<Administrador> administradoresEnMemoria = new ArrayList<>();
 
-    public RepositorioAdministradores() {
-        this.administradoresEnMemoria = new ArrayList<>();
-    }
+    public RepositorioAdministradores() {}
 
     public void guardar(Administrador administrador) {
         if (administrador != null) {
-            // Aseguramos que tenga un ID si no se inicializó en su constructor
-            if (administrador.getId() == null) {
-                administrador.setId(UUID.randomUUID());
-            }
             if (buscarPorId(administrador.getId()).isPresent()) {
                 throw new IllegalArgumentException("Ya existe un administrador con el ID: " + administrador.getId());
             }

@@ -19,6 +19,20 @@ public class AdminService {
         this.gestorAdministradores = gestorAdministradores;
     }
 
+    public List<AdminDTO> getAdmins() {
+        return gestorAdministradores.listarTodosLosAdministradores().stream()
+                .map(AdminDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    public AdminDTO getAdminPorId(UUID id) {
+        Administrador admin = gestorAdministradores.obtenerAdministrador(id);
+        if (admin == null) {
+            throw new IllegalArgumentException("No se encontró el administrador con ID: " + id);
+        }
+        return AdminDTO.from(admin);
+    }
+
     public AdminDTO crearAdministrador(AdminDTO dto) {
         Administrador nuevoAdmin = dto.toDomain();
         gestorAdministradores.registrarAdministrador(nuevoAdmin);
@@ -42,9 +56,4 @@ public class AdminService {
         gestorAdministradores.darDeBajaAdministrador(id);
     }
 
-    public List<MedioDeContacto> obtenerContactosAdministradores() {
-        return gestorAdministradores.listarTodosLosAdministradores().stream()
-                                    .map(Administrador::getContacto)
-                                    .collect(Collectors.toList());
-    }
 }

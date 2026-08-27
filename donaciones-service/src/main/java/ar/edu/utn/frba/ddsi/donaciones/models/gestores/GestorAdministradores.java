@@ -14,8 +14,8 @@ public class GestorAdministradores {
 
   private RepositorioAdministradores repositorio;
 
-  public GestorAdministradores() {
-    this.repositorio = new RepositorioAdministradores();
+  public GestorAdministradores(RepositorioAdministradores repositorio) {
+    this.repositorio = repositorio;
   }
 
   public void registrarAdministrador(Administrador nuevoAdmin) {
@@ -28,7 +28,7 @@ public class GestorAdministradores {
   }
 
   public Administrador obtenerAdministrador(UUID id) {
-    return repositorio.buscarPorId(id).orElse(null);
+    return repositorio.buscarPorId(id).orElseThrow(() -> new IllegalArgumentException("No se encontró el administrador con ID: " + id));
   }
 
   public List<Administrador> listarTodosLosAdministradores() {
