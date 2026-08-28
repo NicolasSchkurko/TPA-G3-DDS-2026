@@ -89,13 +89,13 @@ public class GestorDonaciones {
         }
     }
 
-    public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
-        DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
-                new AsignadorDonaciones());
-
-        donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
-        return donacionFacade.obtenerDonacionesPendientesDeAprobacion();
-    }
+//    public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
+//        DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
+//                new AsignadorDonaciones());
+//
+//        donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
+//        return donacionFacade.obtenerDonacionesPendientesDeAprobacion();
+//    }
 
     private Estado parseEstado(String nuevoEstado) {
         if (nuevoEstado == null) {

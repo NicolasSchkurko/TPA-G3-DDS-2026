@@ -41,6 +41,7 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
 
                 // Filtro 1: Descartamos inmediatamente si no es compatible
                 if (!necesidad.esCompatibleCon(donacion)) {
+                    System.out.println("donacion no compatible con necesidad");
                     continue;
                 }
 
