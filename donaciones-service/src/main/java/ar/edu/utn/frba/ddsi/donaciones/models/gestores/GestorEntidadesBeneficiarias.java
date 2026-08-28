@@ -31,10 +31,6 @@ public class GestorEntidadesBeneficiarias {
     }
   }
 
-  public EntidadBeneficiaria obtenerEntidad(UUID id) {
-    return repositorio.buscarPorId(id).orElse(null);
-  }
-
   public List<EntidadBeneficiaria> listarTodasLasEntidades() {
     return repositorio.obtenerTodas();
   }
@@ -54,11 +50,6 @@ public class GestorEntidadesBeneficiarias {
     }
 
     return existente;
-  }
-
-  public void darDeBajaEntidad(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Entidad beneficiaria dada de baja (si existía).");
   }
 
   public void agregarNecesidadAEntidad(UUID idEntidad, Necesidad nuevaNecesidad) {
@@ -86,13 +77,7 @@ public class GestorEntidadesBeneficiarias {
     System.out.println("Necesidad desvinculada de la entidad con éxito.");
   }
 
-  public List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
-    EntidadBeneficiaria entidad = obtenerEntidad(idEntidad);
-    if (entidad != null) {
-      return entidad.verDonaciones();
-    } else {
-      System.err.println("Entidad no encontrada.");
-      return new ArrayList<>();
-    }
+  private EntidadBeneficiaria obtenerEntidad(UUID id) {
+    return repositorio.buscarPorId(id).orElse(null);
   }
 }

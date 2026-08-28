@@ -26,15 +26,6 @@ public class GestorBienes {
     }
   }
 
-  public Optional<Bien> obtenerBienPorId(UUID id) {
-    return Optional.ofNullable(repositorio.buscarPorId(id)
-                                          .orElse(null));
-  }
-
-  public List<Bien> obtenerTodosLosBienes() {
-    return repositorio.obtenerTodos();
-  }
-
   public void actualizarBien(UUID idOriginal, Bien datosNuevos) {
     try {
       repositorio.actualizar(idOriginal, datosNuevos);
@@ -42,11 +33,6 @@ public class GestorBienes {
     } catch (IllegalArgumentException e) {
       System.err.println("Error al modificar administrador: " + e.getMessage());
     }
-  }
-
-  public void eliminarBien(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Administrador dado de baja (si existía).");
   }
 }
 

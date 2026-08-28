@@ -69,12 +69,4 @@ public class GestorMatchmaking {
         );
         repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
     }
-
-    public void guardarResultados(List<ResultadoMatchmaking> resultados){
-        repositorioDeResultadosMatchmaking.guardarResultados(resultados);
-    }
-
-    public void guardarResultado(ResultadoMatchmaking resultado){
-        repositorioDeResultadosMatchmaking.guardar(resultado);
-    }
 }

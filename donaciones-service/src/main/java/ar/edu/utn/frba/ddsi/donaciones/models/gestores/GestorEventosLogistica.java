@@ -21,14 +21,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
-public class GestorLogistica {
+public class GestorEventosLogistica {
   private final RepositorioDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final ObjectMapper objectMapper;
 
-  public GestorLogistica(RepositorioDonaciones repositorioDonaciones,
-                         FabricaEstrategiasNotificacion fabricaEstrategias,
-                         ObjectMapper objectMapper) {
+  public GestorEventosLogistica(RepositorioDonaciones repositorioDonaciones,
+                                FabricaEstrategiasNotificacion fabricaEstrategias,
+                                ObjectMapper objectMapper) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.fabricaEstrategias = fabricaEstrategias;
     this.objectMapper = objectMapper;

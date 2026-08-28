@@ -48,22 +48,4 @@ public class GestorFormulario {
         // Ejecutamos la segmentación y devolvemos el resultado
         return donacionFacade.crearDonaciones(formulario);
     }
-
-    // --- Métodos CRUD para Formulario ---
-
-    public void guardarFormulario(Formulario formulario) {
-        repositorioFormularios.guardar(formulario);
-    }
-
-    public List<Formulario> obtenerTodosLosFormularios() {
-        return repositorioFormularios.obtenerTodos();
-    }
-
-    public Optional<Formulario> obtenerFormularioPorId(UUID id) {
-        return repositorioFormularios.buscarPorId(id);
-    }
-
-    public void eliminarFormulario(UUID id) {
-        repositorioFormularios.eliminarPorId(id);
-    }
 }

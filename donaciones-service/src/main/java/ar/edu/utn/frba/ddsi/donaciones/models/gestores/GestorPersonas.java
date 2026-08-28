@@ -92,12 +92,4 @@ public class GestorPersonas {
       throw new IllegalArgumentException("No se pudo agregar el medio de contacto: Persona no encontrada.");
     }
   }
-
-  /**
-   * Elimina una persona del sistema.
-   */
-  public void darDeBajaPersona(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Persona dada de baja (si existía).");
-  }
 }

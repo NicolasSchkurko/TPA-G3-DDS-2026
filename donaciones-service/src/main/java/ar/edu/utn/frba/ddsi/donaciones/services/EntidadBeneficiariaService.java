@@ -3,13 +3,17 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioNecesidades;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -20,19 +24,23 @@ public class EntidadBeneficiariaService {
     private final GestorEntidadesBeneficiarias gestorEntidades;
     private final GestorPersonas gestorPersonas;
     private final GestorNecesidades gestorNecesidades;
+    private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
+    private final RepositorioNecesidades repositorioNecesidades;
 
-    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades, GestorPersonas gestorPersonas, GestorNecesidades gestorNecesidades) {
+    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades, GestorPersonas gestorPersonas, GestorNecesidades gestorNecesidades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades) {
         this.gestorEntidades = gestorEntidades;
         this.gestorPersonas = gestorPersonas;
         this.gestorNecesidades = gestorNecesidades;
+        this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
+        this.repositorioNecesidades = repositorioNecesidades;
     }
 
     public List<EntidadBeneficiariaDTO> obtenerTodas() {
-        return gestorEntidades.listarTodasLasEntidades().stream().map(EntidadBeneficiariaDTO::from).collect(Collectors.toList());
+        return repositorioEntidadesBeneficiarias.obtenerTodas().stream().map(EntidadBeneficiariaDTO::from).collect(Collectors.toList());
     }
 
     public EntidadBeneficiariaDTO obtenerEntidadPorId(UUID id) {
-        EntidadBeneficiaria entidad = gestorEntidades.obtenerEntidad(id);
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
         if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
         return EntidadBeneficiariaDTO.from(entidad);
     }
@@ -46,7 +54,7 @@ public class EntidadBeneficiariaService {
 
     public EntidadBeneficiariaDTO actualizarEntidad(UUID id, EntidadBeneficiariaDTO dto) {
         EntidadBeneficiaria entidadActualizada = dto.toDomain();
-        EntidadBeneficiaria existente = gestorEntidades.obtenerEntidad(id);
+        EntidadBeneficiaria existente = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
         if (existente == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
 
         if (existente.getPersonaJuridica() != null && entidadActualizada.getPersonaJuridica() != null) {
@@ -56,11 +64,12 @@ public class EntidadBeneficiariaService {
     }
 
     public void eliminarEntidad(UUID id) {
-        gestorEntidades.darDeBajaEntidad(id);
+        repositorioEntidadesBeneficiarias.eliminarPorId(id);
+        System.out.println("Entidad beneficiaria dada de baja (si existía).");
     }
 
     public List<NecesidadDTO> obtenerNecesidades(UUID idEntidad) {
-        EntidadBeneficiaria entidad = gestorEntidades.obtenerEntidad(idEntidad);
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
         if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
         return entidad.getNecesidades().stream().map(NecesidadDTO::from).collect(Collectors.toList());
     }
@@ -74,10 +83,21 @@ public class EntidadBeneficiariaService {
 
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
         gestorEntidades.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
-        gestorNecesidades.eliminarNecesidad(idNecesidad);
+        repositorioNecesidades.eliminarPorId(idNecesidad);
+        System.out.println("Administrador dado de baja (si existía).");
     }
 
     public List<DonacionDTO> obtenerDonaciones(UUID idEntidad) {
-        return gestorEntidades.obtenerDonacionesDeEntidad(idEntidad).stream().map(DonacionDTO::from).collect(Collectors.toList());
+        return obtenerDonacionesDeEntidad(idEntidad).stream().map(DonacionDTO::from).collect(Collectors.toList());
+    }
+
+    private List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+        if (entidad != null) {
+            return entidad.verDonaciones();
+        } else {
+            System.err.println("Entidad no encontrada.");
+            return new ArrayList<>();
+        }
     }
 }

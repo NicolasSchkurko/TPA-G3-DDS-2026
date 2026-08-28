@@ -15,9 +15,11 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.For
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,37 +28,52 @@ public class DonacionService {
   private final GestorEntidadesBeneficiarias gestorEntidades;
   private final GestorDonantes gestorDonantes;
   private final GestorDonaciones gestorDonaciones;
+  private final GestorAsignaciones gestorAsignaciones;
   private final GestorFormulario gestorFormulario;
   private final GestorMatchmaking gestorMatchmaking;
-  private final GestorBienes gestorBienes;
   private final NotificacionesClient notificacionesClient;
   private final GestorNecesidades gestorNecesidades;
+  private final RepositorioDonaciones repositorioDonaciones;
+  private final RepositorioBienes repositorioBienes;
+  private final RepositorioDonantes repositorioDonantes;
+  private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
+  private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
+  private final GestorBienes gestorBienes;
 
   public DonacionService(GestorEntidadesBeneficiarias gestorEntidades, GestorDonantes gestorDonantes,
-                         GestorDonaciones gestorDonaciones, GestorFormulario gestorFormulario,
-                         GestorMatchmaking gestorMatchmaking, GestorBienes gestorBienes,
-                         NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades) {
+                         GestorDonaciones gestorDonaciones, GestorAsignaciones gestorAsignaciones,
+                         GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
+                         NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades,
+                         RepositorioDonaciones repositorioDonaciones, RepositorioBienes repositorioBienes,
+                         RepositorioDonantes repositorioDonantes, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
+                         RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, GestorBienes gestorBienes) {
     this.gestorEntidades = gestorEntidades;
     this.gestorDonantes = gestorDonantes;
     this.gestorDonaciones = gestorDonaciones;
+    this.gestorAsignaciones = gestorAsignaciones;
     this.gestorFormulario = gestorFormulario;
     this.gestorMatchmaking = gestorMatchmaking;
-    this.gestorBienes = gestorBienes;
     this.notificacionesClient = notificacionesClient;
     this.gestorNecesidades=gestorNecesidades;
+    this.repositorioDonaciones = repositorioDonaciones;
+    this.repositorioBienes = repositorioBienes;
+    this.repositorioDonantes = repositorioDonantes;
+    this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
+    this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
+    this.gestorBienes = gestorBienes;
   }
 
   public List<DonacionDTO> obtenerTodas() {
-    return gestorDonaciones.obtenerTodasLasDonaciones().stream()
+    return repositorioDonaciones.obtenerTodos().stream()
                            .map(DonacionDTO::from).collect(Collectors.toList());
   }
 
   public DonacionDTO obtenerPorId(UUID id) {
-    return DonacionDTO.from(gestorDonaciones.obtenerDonacionPorId(id).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación")));
+    return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación")));
   }
 
   public List<DonacionDTO> procesarFormulario(FormularioRequestDTO request) {
-    Donante donante = gestorDonantes.obtenerDonante(request.getIdDonante());
+    Donante donante = repositorioDonantes.buscarPorId(request.getIdDonante()).orElse(null);
     if (donante == null) throw new NullPointerException("No se encontró persona con ese ID");
 
     List<Bien> bienesNormal = request.getBienes() != null ? request.getBienes().stream().map(BienResumenDTO::toDomain).collect(Collectors.toList()) : List.of();
@@ -65,7 +82,7 @@ public class DonacionService {
     Formulario formularioGenerado = gestorFormulario.crearFormulario(donante, bienesNormal, request.getFechaRealizacion());
     List<Donacion> donacionesProcesadas = gestorFormulario.procesarFormulario(formularioGenerado);
 
-    gestorDonaciones.guardarDonaciones(donacionesProcesadas);
+    repositorioDonaciones.guardarDonaciones(donacionesProcesadas);
     gestorDonantes.agregarFormularioADonante(donante.getId(), formularioGenerado);
 
     return donacionesProcesadas.stream().map(DonacionDTO::from).collect(Collectors.toList());
@@ -73,17 +90,21 @@ public class DonacionService {
 
   public void ejecutarMatchmakingADemanda() {
     AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones);
-    List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
-    List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
+    List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();
+    List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas();
     asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
   }
 
   public DonacionDTO actualizarDonacion(UUID id, DonacionDTO dto) {
-    return DonacionDTO.from(gestorDonaciones.actualizarDonacion(id, dto.toDomain()));
+    Optional<Donacion> existente = repositorioDonaciones.obtenerPorId(id);
+    if (existente.isPresent()) {
+      return DonacionDTO.from(repositorioDonaciones.actualizar(existente.get().getId(), dto.toDomain()).get());
+    }
+    throw new RuntimeException("Donación no encontrada con ID: " + id);
   }
 
   public void eliminarDonacion(UUID id) {
-    gestorDonaciones.eliminarDonacion(id);
+    repositorioDonaciones.eliminarPorId(id);
   }
 
   public DonacionDTO cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
@@ -95,17 +116,17 @@ public class DonacionService {
   }
 
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
-    return gestorMatchmaking.obtenerTodosLosResultadosMatchmaking().stream()
+    return repositorioDeResultadosMatchmaking.findAll().stream()
                             .map(ResultadoMatchmakingDTO::from).collect(Collectors.toList());
   }
 
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
     PropuestaAsignacion propuestaAsignacion = gestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion(donacionId, posicion);
-    Donacion donacion = gestorDonaciones.obtenerDonacionPorId(donacionId).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación"));
-    gestorDonaciones.asignarEntidad(donacion.getId(), propuestaAsignacion.getEntidad());
+    Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación"));
+    gestorAsignaciones.asignarEntidad(donacion.getId(), propuestaAsignacion.getEntidad());
     gestorDonaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
     gestorNecesidades.agregarDonacionANecesidad(propuestaAsignacion.getNecesidad().getId(), donacion);
-    gestorMatchmaking.eliminarResultado(donacionId);
+    eliminarResultadoMatchmaking(donacionId);
     notificarAsignacion(donacion);
   }
 
@@ -129,5 +150,13 @@ public class DonacionService {
         notificacionesClient.enviarNotificacion(notifDonante);
       }
     } catch (Exception e) { System.err.println("Error al enviar notificaciones asíncronas: " + e.getMessage()); }
+  }
+
+  private void eliminarResultadoMatchmaking(UUID donacionId){
+    ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
+                    "No hay resultado de matchmaking para la donación " + donacionId
+            )
+    );
+    repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
   }
 }

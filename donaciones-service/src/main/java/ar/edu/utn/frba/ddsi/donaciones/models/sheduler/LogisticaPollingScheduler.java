@@ -5,7 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorLogistica;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Component
 public class LogisticaPollingScheduler {
 
-    private final GestorLogistica gestorLogistica;
+    private final GestorEventosLogistica gestorLogistica;
     private final GestorAdministradores gestorAdministradores;
     private final RestTemplate restTemplate;
 
@@ -28,7 +28,7 @@ public class LogisticaPollingScheduler {
 
     private Long ultimoIdProcesado = 0L;
 
-    public LogisticaPollingScheduler(GestorLogistica gestorLogistica, GestorAdministradores gestorAdministradores, RestTemplate restTemplate) {
+    public LogisticaPollingScheduler(GestorEventosLogistica gestorLogistica, GestorAdministradores gestorAdministradores, RestTemplate restTemplate) {
         this.gestorLogistica = gestorLogistica;
         this.gestorAdministradores = gestorAdministradores;
         this.restTemplate = restTemplate;

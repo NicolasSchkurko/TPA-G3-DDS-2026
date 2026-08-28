@@ -18,34 +18,8 @@ public class GestorAdministradores {
     this.repositorio = repositorio;
   }
 
-  public void registrarAdministrador(Administrador nuevoAdmin) {
-    try {
-      repositorio.guardar(nuevoAdmin);
-      System.out.println("Administrador registrado con éxito con ID: " + nuevoAdmin.getId());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar administrador: " + e.getMessage());
-    }
-  }
-
-  public Administrador obtenerAdministrador(UUID id) {
-    return repositorio.buscarPorId(id).orElseThrow(() -> new IllegalArgumentException("No se encontró el administrador con ID: " + id));
-  }
-
   public List<Administrador> listarTodosLosAdministradores() {
     return repositorio.obtenerTodos();
   }
 
-  public void modificarAdministrador(UUID idOriginal, Administrador datosNuevos) {
-    try {
-      repositorio.actualizar(idOriginal, datosNuevos);
-      System.out.println("Administrador actualizado con éxito.");
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al modificar administrador: " + e.getMessage());
-    }
-  }
-
-  public void darDeBajaAdministrador(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Administrador dado de baja (si existía).");
-  }
 }

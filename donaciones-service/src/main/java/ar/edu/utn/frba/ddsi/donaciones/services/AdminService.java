@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,20 +12,20 @@ import java.util.stream.Collectors;
 @Service
 public class AdminService {
 
-    private final GestorAdministradores gestorAdministradores;
+    private final RepositorioAdministradores repositorioAdministradores;
 
-    public AdminService(GestorAdministradores gestorAdministradores) {
-        this.gestorAdministradores = gestorAdministradores;
+    public AdminService(RepositorioAdministradores repositorioAdministradores) {
+        this.repositorioAdministradores = repositorioAdministradores;
     }
 
     public List<AdminDTO> getAdmins() {
-        return gestorAdministradores.listarTodosLosAdministradores().stream()
+        return repositorioAdministradores.obtenerTodos().stream()
                 .map(AdminDTO::from)
                 .collect(Collectors.toList());
     }
 
     public AdminDTO getAdminPorId(UUID id) {
-        Administrador admin = gestorAdministradores.obtenerAdministrador(id);
+        Administrador admin = repositorioAdministradores.buscarPorId(id).get();
         if (admin == null) {
             throw new IllegalArgumentException("No se encontró el administrador con ID: " + id);
         }
@@ -35,12 +34,17 @@ public class AdminService {
 
     public AdminDTO crearAdministrador(AdminDTO dto) {
         Administrador nuevoAdmin = dto.toDomain();
-        gestorAdministradores.registrarAdministrador(nuevoAdmin);
+        try {
+            repositorioAdministradores.guardar(nuevoAdmin);
+            System.out.println("Administrador registrado con éxito con ID: " + nuevoAdmin.getId());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error al registrar administrador: " + e.getMessage());
+        }
         return AdminDTO.from(nuevoAdmin);
     }
 
     public AdminDTO actualizarAdmin(UUID id, AdminDTO dto) {
-        Administrador existente = gestorAdministradores.obtenerAdministrador(id);
+        Administrador existente = repositorioAdministradores.buscarPorId(id).get();
         if (existente == null) throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
 
         Administrador datosNuevos = dto.toDomain();
@@ -48,12 +52,18 @@ public class AdminService {
         existente.setMedioDeContacto(datosNuevos.getContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 
-        gestorAdministradores.modificarAdministrador(id, existente);
+        try {
+            repositorioAdministradores.actualizar(id, datosNuevos);
+            System.out.println("Administrador actualizado con éxito.");
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error al modificar administrador: " + e.getMessage());
+        }
         return AdminDTO.from(existente);
     }
 
     public void eliminarAdmin(UUID id) {
-        gestorAdministradores.darDeBajaAdministrador(id);
+        repositorioAdministradores.eliminarPorId(id);
+        System.out.println("Administrador dado de baja (si existía).");
     }
 
 }
