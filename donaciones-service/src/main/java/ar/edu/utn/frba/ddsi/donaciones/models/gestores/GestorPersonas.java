@@ -35,14 +35,6 @@ public class GestorPersonas {
   }
 
   /**
-   * Obtiene una persona por su ID.
-   */
-  public Persona obtenerPersona(UUID id) {
-    return repositorio.buscarPorId(id)
-                      .orElse(null); // Retorna null si no se encuentra
-  }
-
-  /**
    * Obtiene la lista completa de personas.
    */
   public List<Persona> listarTodasLasPersonas() {
@@ -91,5 +83,13 @@ public class GestorPersonas {
     } else {
       throw new IllegalArgumentException("No se pudo agregar el medio de contacto: Persona no encontrada.");
     }
+  }
+
+  /**
+   * Obtiene una persona por su ID.
+   */
+  private Persona obtenerPersona(UUID id) {
+    return repositorio.buscarPorId(id)
+            .orElse(null); // Retorna null si no se encuentra
   }
 }

@@ -19,9 +19,7 @@ public class GestorMatchmaking {
     public GestorMatchmaking(RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking){
         this.repositorioDeResultadosMatchmaking=repositorioDeResultadosMatchmaking;
     }
-    public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
-        return repositorioDeResultadosMatchmaking.findAll();
-    }
+
     /*
     public Donacion asignarPropuesta(UUID donacionId, Integer posicion) {
         ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
