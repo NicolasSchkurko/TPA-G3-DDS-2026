@@ -30,7 +30,7 @@ public class IncentivosClient {
 
     public void notificarDonacionAsignada(UUID idUsuario, IncentivosDonacionDTO dto) {
         try {
-            restTemplate.postForEntity(incentivosUrl + idUsuario, dto, Void.class);
+            restTemplate.postForEntity(incentivosUrl +"/"+ idUsuario, dto, Void.class);
         } catch (Exception e) {
             System.err.println("Fallo al notificar donación asignada a incentivos: " + e.getMessage());
         }
