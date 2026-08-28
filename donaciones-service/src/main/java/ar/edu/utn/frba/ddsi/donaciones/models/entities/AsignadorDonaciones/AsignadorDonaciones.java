@@ -77,28 +77,7 @@ public class AsignadorDonaciones {
         registrarDonacionPendienteDeAprobacion(donacion, resultadoFinal, huboCoincidenciaTotal);
     }
 
-    /*
-    public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignacion propuestaElegida) {
-        if (resultado == null || propuestaElegida == null) {
-            throw new IllegalArgumentException("Resultado y propuesta no pueden ser nulos.");
-        }
 
-        Donacion donacion = resultado.getDonacion();
-
-        if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
-            throw new IllegalStateException("La donación no está en estado pendiente.");
-        }
-
-        // Validar que la propuesta pertenece a este resultado
-        if (!resultado.getPropuestasOrdenadas().contains(propuestaElegida)) {
-            throw new IllegalArgumentException("La propuesta elegida no pertenece a este matching.");
-        }
-
-        asignarDonacionAPropuesta(donacion, propuestaElegida);
-    }
-
-
-     */
     // --------------------------------------------------
     // Métodos privados
     // --------------------------------------------------

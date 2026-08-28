@@ -41,7 +41,7 @@ public class LogisticaPollingScheduler {
         try {
             // Limpiamos la URL y armamos el endpoint de forma segura
             String baseUrl = logisticasUrl.endsWith("/") ? logisticasUrl.substring(0, logisticasUrl.length() - 1) : logisticasUrl;
-            String urlCompleta = baseUrl + "/api/eventos?desdeId=" + ultimoIdProcesado;
+            String urlCompleta = baseUrl + "/eventos?desdeId=" + ultimoIdProcesado; //El /api ya se le asigna en el docker compose
 
             // FIX: Ahora pedimos el objeto envoltorio (EventoLogisticaResponseDTO) en lugar de una Lista genérica
             ResponseEntity<EventoLogisticaResponseDTO> response = restTemplate.exchange(

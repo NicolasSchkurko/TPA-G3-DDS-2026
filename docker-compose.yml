@@ -7,7 +7,7 @@ services:
       - "8083:8083"
     environment:
       SERVER_PORT: 8083
-      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
+      N8N_URL: http://host.docker.internal:5678/webhook-test/notificaciones
 
   incentivos-service:
     image: incentivos-service:latest
@@ -18,7 +18,7 @@ services:
       SERVER_PORT: 8082
       DONACIONES_URL: http://donaciones-service:8084/api/personas
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api/notificaciones
-      N8N_URL: http://host.docker.internal:5678/webhook/lo-que-corresponda
+      N8N_URL: http://host.docker.internal:5678/webhook-test/incentivos
 
   donaciones-service:
     image: donaciones-service:latest
