@@ -42,8 +42,7 @@ public class GestorFormulario {
      */
     public List<Donacion> procesarFormulario(Formulario formulario) {
         DonacionFacade donacionFacade = new DonacionFacade(
-            new SegmentadorDonaciones(),
-            new AsignadorDonaciones()
+            new SegmentadorDonaciones(), null
         );
 
         // Ejecutamos la segmentación y devolvemos el resultado

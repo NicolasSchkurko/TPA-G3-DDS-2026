@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.sheduler;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -26,10 +27,9 @@ public class AsignacionScheduler {
 
     @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
     public void ejecutarAsignacion() {
-        List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarPendientesDeAsignacion();
+        AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones);
+        List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
         List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
-
-        List<ResultadoMatchmaking> resultados = gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
-        gestorMatchmaking.guardarResultados(resultados);
+        asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
     }
 }

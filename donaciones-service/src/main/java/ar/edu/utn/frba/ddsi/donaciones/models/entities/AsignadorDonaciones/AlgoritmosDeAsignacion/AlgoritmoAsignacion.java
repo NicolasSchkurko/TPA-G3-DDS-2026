@@ -45,7 +45,7 @@ public interface AlgoritmoAsignacion {
             propuesta.setPosicion(top10.size() + 1);
             ranking.add(0, propuesta);
         }
-
         return ranking;
+
     }
 }

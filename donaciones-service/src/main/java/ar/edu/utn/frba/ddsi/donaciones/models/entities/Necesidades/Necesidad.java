@@ -39,6 +39,6 @@ public abstract class Necesidad {
     public abstract boolean estaSatisfecha();
 
     public boolean esCompatibleCon(Donacion donacion) {
-        return !this.estaSatisfecha() && this.subcategoria.equals(donacion.getSubcategoria());
+        return !this.estaSatisfecha() && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
     }
 }

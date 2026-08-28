@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DonacionDTO {
+  private UUID id;
   private String donanteName;
   private String entidadBeneficiaria;
   private String descripcion;
@@ -28,6 +30,7 @@ public class DonacionDTO {
 
   public Donacion toDomain() {
     Donacion donacion = new Donacion();
+    if (this.id != null) donacion.setId(this.id);
     donacion.setDescripcion(this.descripcion);
     if (this.bienes != null) {
       donacion.setBienes(this.bienes.stream().map(BienResumenDTO::toDomain).collect(Collectors.toList()));
@@ -38,6 +41,7 @@ public class DonacionDTO {
   public static DonacionDTO from(Donacion donacion) {
     if (donacion == null) return null;
     DonacionDTO dto = new DonacionDTO();
+    dto.setId(donacion.getId());
     dto.setDonanteName((donacion.getDonante() != null && donacion.getDonante().getPersona() != null) ? donacion.getDonante().getPersona().getNombreDeUsuario() : "Desconocido");
     dto.setEntidadBeneficiaria((donacion.getEntidad() != null && donacion.getEntidad().getPersonaJuridica() != null) ? donacion.getEntidad().getPersonaJuridica().getRazonSocial() : "No asignada");
     dto.setDescripcion(donacion.getDescripcion());
@@ -46,7 +50,13 @@ public class DonacionDTO {
     dto.setCategoriaBienName((donacion.getSubcategoria() != null && donacion.getSubcategoria().getCategoria() != null) ? donacion.getSubcategoria().getCategoria().getNombre() : "N/A");
     dto.setFechaEntrega(donacion.getFechaEntrega());
     dto.setCantidadTotalBienes(donacion.sumaCantidadBienes());
-    dto.setBienes(new ArrayList<>());
+
+    if (donacion.getBienes() != null) {
+      dto.setBienes(donacion.getBienes().stream().map(BienResumenDTO::from).collect(Collectors.toList()));
+    } else {
+      dto.setBienes(new ArrayList<>());
+    }
+
     return dto;
   }
 }

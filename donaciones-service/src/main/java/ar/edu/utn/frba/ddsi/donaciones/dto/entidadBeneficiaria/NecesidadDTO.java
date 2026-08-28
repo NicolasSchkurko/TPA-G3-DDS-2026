@@ -5,10 +5,14 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -20,15 +24,25 @@ public class NecesidadDTO {
     private String nombreCategoria;
     private Integer plazoEnDias;
     private UUID id;
+    private List<DonacionDTO> donaciones;
+
     public Necesidad toDomain() {
         CategoriaBien cat = new CategoriaBien(this.nombreCategoria != null ? this.nombreCategoria : "General");
         SubcategoriaBien sub = new SubcategoriaBien(this.nombreSubcategoria != null ? this.nombreSubcategoria : "General", cat);
         String tipo = this.tipoNecesidad != null ? this.tipoNecesidad.toUpperCase() : "RECURRENTE";
 
+        Necesidad necesidad;
         if ("EXTRAORDINARIA".equals(tipo)) {
-            return new NecesidadExtraordinaria(sub, this.descripcion, this.cantidadObjetivo);
+            necesidad = new NecesidadExtraordinaria(sub, this.descripcion, this.cantidadObjetivo);
+        } else {
+            necesidad = new NecesidadRecurrente(sub, this.descripcion, this.cantidadObjetivo, this.plazoEnDias != null ? this.plazoEnDias : 30);
         }
-        return new NecesidadRecurrente(sub, this.descripcion, this.cantidadObjetivo, this.plazoEnDias != null ? this.plazoEnDias : 30);
+
+        if (this.id != null) {
+            necesidad.setId(this.id);
+        }
+
+        return necesidad;
     }
 
     public static NecesidadDTO from(Necesidad necesidad) {
@@ -43,6 +57,15 @@ public class NecesidadDTO {
         dto.setId(necesidad.getId());
         dto.setTipoNecesidad(necesidad instanceof NecesidadRecurrente ? "RECURRENTE" : "EXTRAORDINARIA");
         if (necesidad instanceof NecesidadRecurrente recurrente) dto.setPlazoEnDias(recurrente.getPlazoEnDias());
+
+        if (necesidad.getDonaciones() != null) {
+            dto.setDonaciones(necesidad.getDonaciones().stream()
+                    .map(DonacionDTO::from)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setDonaciones(new ArrayList<>());
+        }
+
         return dto;
     }
 }

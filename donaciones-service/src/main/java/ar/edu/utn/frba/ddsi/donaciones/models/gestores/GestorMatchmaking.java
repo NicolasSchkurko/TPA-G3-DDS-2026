@@ -22,7 +22,7 @@ public class GestorMatchmaking {
     public List<ResultadoMatchmaking> obtenerTodosLosResultadosMatchmaking() {
         return repositorioDeResultadosMatchmaking.findAll();
     }
-
+    /*
     public Donacion asignarPropuesta(UUID donacionId, Integer posicion) {
         ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
                         "No hay resultado de matchmaking para la donación " + donacionId
@@ -41,12 +41,35 @@ public class GestorMatchmaking {
             throw new IllegalStateException("La donación ya está asignada");
         }
 
-        AsignadorDonaciones.asignarDonacionAPropuesta(donacion, propuesta);
-
         repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
 
         return donacion;
     }
+    */
+
+
+    public PropuestaAsignacion obtenerPropuestaSeleccionadaParaDonacion(UUID donacionId, Integer posicion){
+        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
+                        "No hay resultado de matchmaking para la donación " + donacionId
+                )
+        );
+
+        if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
+            throw new IllegalArgumentException("Posición de propuesta inválida");
+        }
+
+        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
+        return  propuesta;
+    }
+
+    public void eliminarResultado(UUID donacionId){
+        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
+                        "No hay resultado de matchmaking para la donación " + donacionId
+                )
+        );
+        repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
+    }
+
     public void guardarResultados(List<ResultadoMatchmaking> resultados){
         repositorioDeResultadosMatchmaking.guardarResultados(resultados);
     }

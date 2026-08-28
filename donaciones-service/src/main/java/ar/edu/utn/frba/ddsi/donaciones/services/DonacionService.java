@@ -6,6 +6,8 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
@@ -28,11 +30,12 @@ public class DonacionService {
   private final GestorMatchmaking gestorMatchmaking;
   private final GestorBienes gestorBienes;
   private final NotificacionesClient notificacionesClient;
+  private final GestorNecesidades gestorNecesidades;
 
   public DonacionService(GestorEntidadesBeneficiarias gestorEntidades, GestorDonantes gestorDonantes,
                          GestorDonaciones gestorDonaciones, GestorFormulario gestorFormulario,
                          GestorMatchmaking gestorMatchmaking, GestorBienes gestorBienes,
-                         NotificacionesClient notificacionesClient) {
+                         NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades) {
     this.gestorEntidades = gestorEntidades;
     this.gestorDonantes = gestorDonantes;
     this.gestorDonaciones = gestorDonaciones;
@@ -40,6 +43,7 @@ public class DonacionService {
     this.gestorMatchmaking = gestorMatchmaking;
     this.gestorBienes = gestorBienes;
     this.notificacionesClient = notificacionesClient;
+    this.gestorNecesidades=gestorNecesidades;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -68,10 +72,10 @@ public class DonacionService {
   }
 
   public void ejecutarMatchmakingADemanda() {
+    AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones);
     List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
     List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
-    List<ResultadoMatchmaking> resultados = gestorDonaciones.asignarDonaciones(donacionesNoAsignadas, entidades);
-    gestorMatchmaking.guardarResultados(resultados);
+    asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
   }
 
   public DonacionDTO actualizarDonacion(UUID id, DonacionDTO dto) {
@@ -96,9 +100,12 @@ public class DonacionService {
   }
 
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
-    Donacion donacion = gestorMatchmaking.asignarPropuesta(donacionId, posicion);
-    gestorDonaciones.actualizarDonacion(donacionId, donacion);
-    gestorEntidades.modificarEntidad(donacion.getEntidad().getId(), donacion.getEntidad());
+    PropuestaAsignacion propuestaAsignacion = gestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion(donacionId, posicion);
+    Donacion donacion = gestorDonaciones.obtenerDonacionPorId(donacionId).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación"));
+    gestorDonaciones.asignarEntidad(donacion.getId(), propuestaAsignacion.getEntidad());
+    gestorDonaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+    gestorNecesidades.agregarDonacionANecesidad(propuestaAsignacion.getNecesidad().getId(), donacion);
+    gestorMatchmaking.eliminarResultado(donacionId);
     notificarAsignacion(donacion);
   }
 

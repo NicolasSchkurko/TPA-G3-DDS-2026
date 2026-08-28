@@ -39,9 +39,5 @@ public class DonacionFacade {
         asignador.ejecutarMatchmakingBatch(donacionesNoAsignadas, entidades);
     }
 
-    public List<ResultadoMatchmaking> obtenerDonacionesPendientesDeAprobacion(){
-        List<ResultadoMatchmaking> resultados= asignador.getDonacionesPendientesDeAprobacion();
-        asignador.limpiarDonacionesPendientesDeAprobacion();
-        return resultados;
-    }
+
 }
