@@ -29,8 +29,8 @@ public class AsignadorDonaciones {
     private GestorMatchmaking gestorMatchmaking;
     private GestorDonaciones gestorDonaciones;
 
-    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking1) {
-        this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking1;
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
+        this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
         this.gestorDonaciones = gestorDonaciones;
