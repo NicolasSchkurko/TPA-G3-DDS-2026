@@ -10,12 +10,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/camiones")
+@RequestMapping("/camiones")
 @Tag(name = "Camiones", description = "API CRUD y operaciones de negocio para la gestión de Camiones")
 public class CamionController {
 
@@ -76,7 +74,7 @@ public class CamionController {
 
   @Operation(summary = "Eliminar un camión")
   @ApiResponses(value = {
-          @ApiResponse(responseCode = "200", description = "Camion eliminado"),
+          @ApiResponse(responseCode = "204", description = "Camion eliminado"),
           @ApiResponse(responseCode = "404", description = "Camión no encontrado")
   })
   @DeleteMapping("/{patente}")

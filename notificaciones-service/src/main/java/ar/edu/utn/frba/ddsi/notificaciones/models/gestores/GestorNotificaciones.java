@@ -50,7 +50,11 @@ public class GestorNotificaciones {
         } catch (IllegalArgumentException ex) {
 
             notificacion.marcarFallida();
-            throw new ErrorAlEnviarNotificacion("Ocurrio un problema inesperado al enviar la notificacion", ex);
+
+            if (ex.getMessage() != null) {
+                throw new IllegalArgumentException("Ocurrió un problema inesperado al enviar la notificación: " + ex.getMessage(), ex);
+            }
+            throw new IllegalArgumentException("Ocurrio un problema inesperado al enviar la notificacion", ex);
         }
     }
 

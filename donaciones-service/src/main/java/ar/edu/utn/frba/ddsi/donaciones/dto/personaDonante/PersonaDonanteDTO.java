@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class PersonaDonanteDTO {
   private UUID id;
   private String tipoPersona;
-  private String nombreAMostrar;
   private String nombre;
   private String apellido;
   private int edad;

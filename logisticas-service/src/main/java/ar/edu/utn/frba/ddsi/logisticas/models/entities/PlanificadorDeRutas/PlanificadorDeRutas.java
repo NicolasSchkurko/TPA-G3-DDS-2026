@@ -5,6 +5,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import lombok.Setter;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -12,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Setter
+@Component
 public class PlanificadorDeRutas {
 
   private static final int TAMANO_LOTE_MAXIMO = 100;
@@ -19,11 +23,7 @@ public class PlanificadorDeRutas {
   // Se inyecta la dependencia del proveedor externo (puede ser un mock/simulador para el TP)
   private ProveedorRutasExterno proveedorExterno;
 
-  public void setProveedorExterno(ProveedorRutasExterno proveedorExterno) {
-    this.proveedorExterno = proveedorExterno;
-  }
-
-  /**
+    /**
    * Toma las donaciones pendientes y las envía al proveedor externo en lotes.
    */
   public void iniciarPlanificacion(List<ItemEntrega> itemsPendientes, List<Camion> camionesDisponibles) {

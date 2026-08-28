@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/choferes")
+@RequestMapping("/choferes")
 @Tag(name = "Choferes", description = "API CRUD y gestión de estados operativos de los Choferes")
 public class ChoferController {
 
@@ -52,6 +52,13 @@ public class ChoferController {
     public ResponseEntity<ChoferDTO> crearChofer(@RequestBody ChoferDTO request) {
         ChoferDTO nuevo = choferService.create(request);
         return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Registrar múltiples choferes")
+    @PostMapping("/registrar")
+    public ResponseEntity<ChoferesDTO> registrarChoferes(@RequestBody ChoferesDTO choferes) {
+        ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
+        return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Actualizar datos de un chofer")

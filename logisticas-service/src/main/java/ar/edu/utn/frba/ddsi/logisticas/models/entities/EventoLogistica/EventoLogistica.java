@@ -35,6 +35,4 @@ public class EventoLogistica {
     this.payloadJson = payloadJson;
     this.fecha = LocalDateTime.now();
   }
-
-  public EventoLogistica() {}
 }

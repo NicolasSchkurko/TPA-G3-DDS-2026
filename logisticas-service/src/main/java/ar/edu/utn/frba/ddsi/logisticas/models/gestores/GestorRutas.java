@@ -4,10 +4,12 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
 
+@Component
 public class GestorRutas {
     private final RepositorioRutas repoRutas;
 
@@ -35,8 +37,8 @@ public class GestorRutas {
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente al chofer " + chofer.getIdChofer()));
     }
-    public Ruta guardarRuta(Ruta nuevaRuta){
-        return repoRutas.save(nuevaRuta);
+    public void guardarRuta(Ruta nuevaRuta){
+        repoRutas.save(nuevaRuta);
     }
 
     public void guardarRutas(List<Ruta> rutas){

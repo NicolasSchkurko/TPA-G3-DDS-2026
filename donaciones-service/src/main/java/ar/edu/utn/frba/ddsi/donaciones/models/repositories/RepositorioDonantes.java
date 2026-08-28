@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
 /**
  * Repositorio en memoria para gestionar operaciones CRUD sobre objetos Donante.
  * Almacena instancias concretas de clases que hereden de la clase abstracta Donante.
  */
+@Repository
 public class RepositorioDonantes {
   private List<Donante> donantesEnMemoria;
 

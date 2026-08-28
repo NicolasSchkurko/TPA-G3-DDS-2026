@@ -17,7 +17,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class EntidadBeneficiaria {
-    private UUID id = UUID.randomUUID(); // Identificador único autogenerado
+    private UUID id; // Identificador único autogenerado
     private Direccion direccion;
     private List<Necesidad> necesidades;
     private Juridica personaJuridica;
@@ -26,6 +26,7 @@ public class EntidadBeneficiaria {
         this.direccion = dir;
         this.necesidades = new ArrayList<>();
         this.personaJuridica = personaJuridica;
+        this.id = UUID.randomUUID();
     }
 
     public void agregarNecesidad(Necesidad necesidad) {

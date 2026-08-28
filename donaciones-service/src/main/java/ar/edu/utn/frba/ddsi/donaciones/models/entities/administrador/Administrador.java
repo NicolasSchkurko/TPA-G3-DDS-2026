@@ -12,13 +12,12 @@ import lombok.Setter;
 @Setter
 
 public class Administrador {
-    private UUID id;
+    private UUID id = UUID.randomUUID();
     private Humana humano;
     private MedioDeContacto medioDeContacto;
     private String nombreAMostrar;
 
-    public Administrador (UUID id,Humana humano,MedioDeContacto medioDeContacto,String nombreAMostrar){
-        this.id=id;
+    public Administrador (Humana humano,MedioDeContacto medioDeContacto,String nombreAMostrar){
         this.humano=humano;
         this.medioDeContacto=medioDeContacto;
         this.nombreAMostrar = nombreAMostrar;

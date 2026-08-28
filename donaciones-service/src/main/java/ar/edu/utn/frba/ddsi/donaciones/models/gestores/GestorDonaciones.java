@@ -23,9 +23,15 @@ import java.util.UUID;
 @Service
 public class GestorDonaciones {
     private RepositorioDonaciones repositorioDonaciones;
-    private DonacionFacade donacionFacade;
     private IncentivosClient incentivosClient;
     private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
+
+    public GestorDonaciones(RepositorioDonaciones repositorioDonaciones, IncentivosClient incentivosClient,
+                            FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion){
+        this.repositorioDonaciones=repositorioDonaciones;
+        this.incentivosClient=incentivosClient;
+        this.fabricaEstrategiasNotificacion=fabricaEstrategiasNotificacion;
+    }
 
     public List<Donacion> obtenerTodasLasDonaciones() {
         return repositorioDonaciones.obtenerTodos();
@@ -40,8 +46,13 @@ public class GestorDonaciones {
     }
 
     public List<Donacion> listarPendientesDeAsignacion() {
+        return repositorioDonaciones.buscarDonacionesPendientesDeAsignar();
+    }
+
+    public List<Donacion> listarSinAsignacion() {
         return repositorioDonaciones.buscarDonacionesSinAsignar();
     }
+
 
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
         Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(id);

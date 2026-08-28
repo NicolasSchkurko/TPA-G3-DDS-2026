@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
 /**
  * Repositorio en memoria para gestionar operaciones CRUD sobre Entidades Beneficiarias.
  */
+@Repository
 public class RepositorioEntidadesBeneficiarias {
     private List<EntidadBeneficiaria> entidadesEnMemoria;
 

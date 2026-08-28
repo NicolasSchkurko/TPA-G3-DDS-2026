@@ -11,11 +11,13 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Service
 public class PlanificadorRutasService {
     private final GestorRutas gestorRutas;
     private final GestorChoferes gestorChoferes;

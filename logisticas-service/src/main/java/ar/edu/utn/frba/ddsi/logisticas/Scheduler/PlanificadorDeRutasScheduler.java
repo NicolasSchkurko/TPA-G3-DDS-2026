@@ -1,21 +1,16 @@
 package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 

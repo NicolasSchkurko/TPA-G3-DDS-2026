@@ -51,9 +51,9 @@ public class NotificadorController {
     @Operation(summary = "Ver notificacion por id")
     @GetMapping("/{id}")
     public ResponseEntity<NotificacionDTO> obtenerNotificacion(@PathVariable UUID id) {
-        Optional<Notificacion> notificacion = NotificadorService.obtenerPorId(id);
-        return notificacion.map(d -> ResponseEntity.ok(NotificacionMapper.notificacionDTO(d)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Optional<Notificacion> notificacion = notificadorService.obtenerPorId(id);
+        return notificacion
+            .map(d -> ResponseEntity.ok(NotificacionMapper.notificacionDTO(d)))
+            .orElseGet(() -> ResponseEntity.notFound().build());
     }
-
 }

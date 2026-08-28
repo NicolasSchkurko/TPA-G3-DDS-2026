@@ -8,7 +8,6 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 public class NotificacionClient {
-//cliente para consumir el servicio de notificaciones cuando actualicemosPerfil y se identifique necesidad de notificar
     @Value("${servicio.notificaciones.url}")
     private String notificacionesUrl;
 

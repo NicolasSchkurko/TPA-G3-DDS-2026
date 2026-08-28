@@ -6,7 +6,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -49,8 +48,7 @@ public class CamionService {
 
   public Camion convertirCamionDTO(CamionDTO dto){
     if (dto == null) return null;
-    var chofer = dto.getIdChofer() != null ? gestorChoferes.buscarChofer(dto.getIdChofer()) : null;
-    return new Camion(chofer, dto.getPatente(), dto.getCapacidadVolumen(),
+    return new Camion(dto.getPatente(), dto.getCapacidadVolumen(),
             dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
   }
 

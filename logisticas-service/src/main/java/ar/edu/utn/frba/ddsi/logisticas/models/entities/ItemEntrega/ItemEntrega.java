@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +29,7 @@ public class ItemEntrega {
         this.entidadDestino = entidadDestino;
         this.estado = EstadoEntrega.PENDIENTE;
         this.fechaCambioEstado = LocalDateTime.now();
+        this.eventos = new ArrayList<>();
     }
 
     // Peso y volumen no se guardan, se calculan siempre a partir de cantidad+unidad.

@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.UUID;
 /**
  * @param repositorio gestiona las misiones existentes en el repositorio
  */
+@Service
 public record GestorMision(RepositorioMisiones repositorio,
                            MisionFactory misionFactory) {
 

@@ -1,8 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -16,12 +18,19 @@ import java.util.UUID;
 public class GestorCategoria {
     private final RepositorioCategorias repositorio;
     private final ApplicationEventPublisher eventPublisher;
+    private final MisionFactory misionFactory;
 
     public GestorCategoria(RepositorioCategorias repositorio,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           MisionFactory misionFactory) {
         this.repositorio = repositorio;
         this.eventPublisher = eventPublisher;
+        this.misionFactory = misionFactory;
+        this.inicializarCategoriasBase();
     }
+
+
+
 
     @EventListener
     public void avanzarCategoria(UltimaMisionCategoria event) {
@@ -45,13 +54,27 @@ public class GestorCategoria {
     }
 
     //init default, dsp el admin puede modificarlas
-    public List<Categoria> inicializarCategoriasBase(){
-        repositorio.agregarCategoria(new Categoria("Colaborador", 1, new ArrayList<>()) );
-        repositorio.agregarCategoria(new Categoria("Sostenedor", 2, new ArrayList<>()) );
-        repositorio.agregarCategoria(new Categoria("Transformador", 3, new ArrayList<>()) );
+    public List<Categoria> inicializarCategoriasBase() {
+        Categoria colaborador = new Categoria("Colaborador", 1, new ArrayList<>());
+
+        colaborador.getMisiones().add(
+            misionFactory.crearMision(
+                "Primera donación",
+                "Realiza tu primera donación para empezar a colaborar.",
+                "Primer paso",
+                null,
+                AtributoImpacto.ESTADO,
+                misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
+            )
+        );
+
+        repositorio.agregarCategoria(colaborador);
+        repositorio.agregarCategoria(new Categoria("Sostenedor", 2, new ArrayList<>()));
+        repositorio.agregarCategoria(new Categoria("Transformador", 3, new ArrayList<>()));
 
         return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
     }
+
 
     public List<Categoria> crearCategoria(Categoria nueva) {
         repositorio.obtenerDesdeNivel(nueva.getPosicionSecuencia())
