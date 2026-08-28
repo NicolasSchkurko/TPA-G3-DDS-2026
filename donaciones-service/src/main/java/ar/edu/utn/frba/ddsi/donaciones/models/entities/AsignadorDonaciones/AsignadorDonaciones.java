@@ -31,7 +31,8 @@ public class AsignadorDonaciones {
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
         this.gestorDonaciones = gestorDonaciones;
-        this.gestorNecesidades = gestorNecesidades;
+        algoritmos.add(new CompatibilidadSemantica());
+        algoritmos.add(new SubAtendidos());
     }
 
     public List<AlgoritmoAsignacion> getAlgoritmos() {
