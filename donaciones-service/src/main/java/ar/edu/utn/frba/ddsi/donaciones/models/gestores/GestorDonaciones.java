@@ -33,26 +33,9 @@ public class GestorDonaciones {
         this.fabricaEstrategiasNotificacion=fabricaEstrategiasNotificacion;
     }
 
-    public List<Donacion> obtenerTodasLasDonaciones() {
-        return repositorioDonaciones.obtenerTodos();
-    }
-
-    public Optional<Donacion> obtenerDonacionPorId(UUID id) {
-        return repositorioDonaciones.obtenerPorId(id);
-    }
-
-    public void eliminarDonacion(UUID id) {
-        repositorioDonaciones.eliminarPorId(id);
-    }
-
-    public List<Donacion> listarPendientesDeAsignacion() {
-        return repositorioDonaciones.buscarDonacionesPendientesDeAsignar();
-    }
-
     public List<Donacion> listarSinAsignacion() {
         return repositorioDonaciones.buscarDonacionesSinAsignar();
     }
-
 
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
         Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(id);
