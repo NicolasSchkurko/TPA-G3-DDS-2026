@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;
@@ -15,9 +15,9 @@ public class BienDTO {
     private LocalDateTime fechaCambioEstado;
     private String fotoComprobante;
     private DireccionDTO entidadDestino;
-    private List<EventoDTO> eventos;
+    private List<EventoLogisticaDTO> eventos;
 
-    public BienDTO(Integer cantidad, String unidadDeMedida, String estado, LocalDateTime fechaCambioEstado, String fotoComprobante, DireccionDTO entidadDestino, List<EventoDTO> eventos){
+    public BienDTO(Integer cantidad, String unidadDeMedida, String estado, LocalDateTime fechaCambioEstado, String fotoComprobante, DireccionDTO entidadDestino, List<EventoLogisticaDTO> eventos){
         this.cantidad = cantidad;
         this.unidadDeMedida = unidadDeMedida;
         this.estado = estado;

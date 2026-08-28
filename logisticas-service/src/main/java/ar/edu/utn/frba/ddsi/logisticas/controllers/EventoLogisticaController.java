@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventosDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EventoLogisticaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,7 +34,7 @@ public class EventoLogisticaController {
       @ApiResponse(responseCode = "200", description = "Lista de eventos recuperada con éxito")
   })
   @GetMapping
-  public ResponseEntity<EventosDTO> obtenerEventos(
+  public ResponseEntity<EventoLogisticaResponseDTO> obtenerEventos(
       @Parameter(description = "ID del último evento que el cliente ya procesó. Se devolverán los eventos con ID estrictamente mayor a este valor.", example = "15")
       @RequestParam(defaultValue = "0") Long desdeId) {
     return ResponseEntity.ok(eventoService.obtenerEventosNuevos(desdeId));

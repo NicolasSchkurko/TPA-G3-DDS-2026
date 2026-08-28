@@ -6,10 +6,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class EventosDTO {
-    private List<EventoDTO> eventos;
+public class EventoLogisticaResponseDTO {
+    private List<EventoLogisticaDTO> eventos;
 
-    public EventosDTO(List<EventoDTO> eventos){
+    public EventoLogisticaResponseDTO(List<EventoLogisticaDTO> eventos){
         this.eventos = eventos;
     }
 }

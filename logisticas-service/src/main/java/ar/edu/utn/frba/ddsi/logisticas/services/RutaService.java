@@ -4,7 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.ParadaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutasDTO;
@@ -151,15 +151,15 @@ public class RutaService {
     return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
   }
 
-  private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
     if(eventos != null){
       return eventos.stream().map(this::convertirAEventoDTO).toList();
     }
     return new ArrayList<>();
   }
 
-  private EventoDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoDTO(evento.getId(), evento.getTipoEvento(), evento.getFecha(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 
   private List<UUID> obtenerIdDonaciones(List<ItemEntrega> items){

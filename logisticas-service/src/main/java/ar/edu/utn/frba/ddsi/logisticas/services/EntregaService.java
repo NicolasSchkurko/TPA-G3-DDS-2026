@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
@@ -160,14 +160,14 @@ public class EntregaService {
     return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
   }
 
-  private List<EventoDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
     if(eventos != null){
       return eventos.stream().map(this::convertirAEventoDTO).toList();
     }
     return new ArrayList<>();
   }
 
-  private EventoDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoDTO(evento.getId(), evento.getTipoEvento(), evento.getFecha(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

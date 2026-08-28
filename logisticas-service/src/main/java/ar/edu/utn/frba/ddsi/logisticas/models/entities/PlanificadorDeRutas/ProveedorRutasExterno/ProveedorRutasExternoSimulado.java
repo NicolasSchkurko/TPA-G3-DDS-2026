@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
 
-  private final String URL_CALLBACK_LOCAL = "http://localhost:8082/api/PlanificacionRutas/callback";
+  private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
 
