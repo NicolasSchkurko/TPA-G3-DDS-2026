@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Entid
 
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 
 
 import java.util.*;
@@ -24,10 +25,12 @@ import java.util.stream.Collectors;
 public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;
+    private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private GestorMatchmaking gestorMatchmaking;
     private GestorDonaciones gestorDonaciones;
 
-    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones) {
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking1) {
+        this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking1;
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
         this.gestorDonaciones = gestorDonaciones;
@@ -164,6 +167,6 @@ public class AsignadorDonaciones {
                 huboCoincidenciaTotal
         );
 
-        gestorMatchmaking.guardarResultado(resultado);
+        repositorioDeResultadosMatchmaking.guardar(resultado);
     }
 }

@@ -29,14 +29,6 @@ public class GestorDonantes {
     }
   }
 
-  public Donante obtenerDonante(UUID id) {
-    return repositorio.buscarPorId(id).orElse(null);
-  }
-
-  public List<Donante> listarTodosLosDonantes() {
-    return repositorio.obtenerTodos();
-  }
-
   public Donante modificarDonante(UUID idOriginal, Donante datosNuevos) {
     Donante existente = obtenerDonante(idOriginal);
     if (existente == null) {
@@ -55,11 +47,6 @@ public class GestorDonantes {
     return existente;
   }
 
-  public void darDeBajaDonante(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Donante dado de baja (si existía).");
-  }
-
   public void agregarFormularioADonante(UUID idDonante, Formulario nuevoFormulario) {
     Donante donante = obtenerDonante(idDonante);
     if (donante != null) {
@@ -69,5 +56,9 @@ public class GestorDonantes {
     } else {
       System.err.println("No se pudo agregar formulario: Donante no encontrado.");
     }
+  }
+
+  private Donante obtenerDonante(UUID id) {
+    return repositorio.buscarPorId(id).orElse(null);
   }
 }

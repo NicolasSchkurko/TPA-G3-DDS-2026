@@ -27,15 +27,6 @@ public class GestorNecesidades {
     }
   }
 
-  public Optional<Necesidad> obtenerNecesidadPorId(UUID id) {
-    return Optional.ofNullable(repositorio.buscarPorId(id)
-                                          .orElse(null));
-  }
-
-  public List<Necesidad> obtenerTodosLasNecesidades() {
-    return repositorio.obtenerTodos();
-  }
-
   //Lo agregue para poder registrar donaciones
   public void agregarDonacionANecesidad(UUID necesidadId, Donacion donacion) {
     try {
@@ -44,20 +35,6 @@ public class GestorNecesidades {
     } catch (IllegalArgumentException e) {
       System.err.println("Error al registrar donación en necesidad: " + e.getMessage());
     }
-  }
-
-  public void actualizarNecesidad(UUID idOriginal, Necesidad datosNuevos) {
-    try {
-      repositorio.actualizar(idOriginal, datosNuevos);
-      System.out.println("Administrador actualizado con éxito.");
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al modificar administrador: " + e.getMessage());
-    }
-  }
-
-  public void eliminarNecesidad(UUID id) {
-    repositorio.eliminarPorId(id);
-    System.out.println("Administrador dado de baja (si existía).");
   }
 }
 

@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 
 import java.util.ArrayList;

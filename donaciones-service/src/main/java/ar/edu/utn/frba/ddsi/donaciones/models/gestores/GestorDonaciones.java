@@ -72,31 +72,6 @@ public class GestorDonaciones {
         return donacion;
     }
 
-    public Donacion actualizarDonacion(UUID id, Donacion actualizacion) {
-        Optional<Donacion> existente = repositorioDonaciones.obtenerPorId(id);
-        if (existente.isPresent()) {
-            return repositorioDonaciones.actualizar(existente.get().getId(), actualizacion).get();
-        }
-        throw new RuntimeException("Donación no encontrada con ID: " + id);
-    }
-
-    public void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {
-        try {
-            repositorioDonaciones.asignarEntidad(donacionId, entidad);
-            System.out.println("Entidad asignada con éxito a la donación: " + donacionId);
-        } catch (IllegalArgumentException e) {
-            System.err.println("Error al asignar entidad: " + e.getMessage());
-        }
-    }
-
-//    public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
-//        DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
-//                new AsignadorDonaciones());
-//
-//        donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
-//        return donacionFacade.obtenerDonacionesPendientesDeAprobacion();
-//    }
-
     private Estado parseEstado(String nuevoEstado) {
         if (nuevoEstado == null) {
             throw new IllegalArgumentException("El nuevo estado no puede ser nulo");
@@ -137,9 +112,6 @@ public class GestorDonaciones {
         EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
             TipoEventoNotificacion.DONACION_ASIGNADA);
         estrategia.ejecutar(donacion);
-    }
-    public void guardarDonaciones(List<Donacion> donaciones){
-        repositorioDonaciones.guardarDonaciones(donaciones);
     }
 
 }

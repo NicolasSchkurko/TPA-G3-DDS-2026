@@ -33,9 +33,15 @@ public class RepositorioAdministradores {
     }
 
     public Optional<Administrador> buscarPorId(UUID id) {
-        return this.administradoresEnMemoria.stream()
-                                            .filter(a -> a.getId().equals(id))
-                                            .findFirst();
+        Optional<Administrador> admin = this.administradoresEnMemoria.stream()
+                .filter(a -> a.getId().equals(id))
+                .findFirst();
+
+        if (admin.isEmpty()) {
+            throw new IllegalArgumentException("No se encontró el administrador con ID: " + id);
+        }
+
+        return admin;
     }
 
     public void actualizar(UUID idOriginal, Administrador adminActualizado) {
