@@ -24,6 +24,14 @@ public abstract class Persona {
         }
         this.mediosDeContacto.agregarMedioDeContacto(medioDeContacto);
     }
+
+    public void eliminarMedioDeContacto(MedioDeContacto medioDeContacto) {
+        if (this.mediosDeContacto == null) {
+            throw new IllegalStateException("La colección de medios de contacto no existe.");
+        }
+        this.mediosDeContacto.eliminarMedioDeContacto(medioDeContacto);
+    }
+
     public String getNombreDeUsuario(){
       return "";
     };

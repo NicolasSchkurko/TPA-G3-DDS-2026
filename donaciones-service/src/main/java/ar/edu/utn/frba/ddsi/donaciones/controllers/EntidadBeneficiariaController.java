@@ -100,6 +100,17 @@ public class EntidadBeneficiariaController {
         }
     }
 
+    @Operation(summary = "actualizar necesidad", description = "permite actualizar una necesidad buscandola por su id")
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizarNecesidad(@PathVariable UUID id, @RequestBody NecesidadDTO dto) {
+        try {
+            NecesidadDTO actualizada = service.actualizarNecesidad(id, dto);
+            return ResponseEntity.ok(actualizada);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @Operation(summary = "eliminar necesidad")
     @DeleteMapping("/{id}/necesidades/{idNecesidad}")
     public ResponseEntity<Void> eliminarNecesidad(@PathVariable UUID id, @PathVariable UUID idNecesidad) {

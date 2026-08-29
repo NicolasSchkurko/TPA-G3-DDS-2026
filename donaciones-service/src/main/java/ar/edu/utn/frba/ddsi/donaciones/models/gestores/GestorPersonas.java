@@ -86,6 +86,24 @@ public class GestorPersonas {
   }
 
   /**
+   * Eliminar un medio de contacto a una persona existente.
+   */
+  public void eliminarMedioDeContactoAPersona(UUID idPersona, MedioDeContacto medioAEliminar) {
+    Persona persona = obtenerPersona(idPersona);
+    if (persona != null) {
+      try {
+        persona.eliminarMedioDeContacto(medioAEliminar);
+        repositorio.actualizar(idPersona, persona);
+        System.out.println("Medio de contacto eliminado exitosamente de la persona: " + idPersona);
+      } catch (IllegalStateException e) {
+        System.err.println("Error al eliminar medio de contacto: " + e.getMessage());
+      }
+    } else {
+      throw new IllegalArgumentException("No se pudo eliminar el medio de contacto: Persona no encontrada.");
+    }
+  }
+
+  /**
    * Obtiene una persona por su ID.
    */
   private Persona obtenerPersona(UUID id) {

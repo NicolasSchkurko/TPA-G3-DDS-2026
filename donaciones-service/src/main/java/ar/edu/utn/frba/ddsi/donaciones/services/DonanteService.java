@@ -7,7 +7,6 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -17,7 +16,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioPersonas;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,18 +36,16 @@ public class DonanteService {
   private final NotificacionesClient notificacionClient;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
-  private final RepositorioPersonas repositorioPersonas;
   private final RepositorioDonantes repositorioDonantes;
 
   public DonanteService(GestorDonantes gestorDonantes, GestorPersonas gestorPersonas,
                         NotificacionesClient notificacionClient, FabricaEstrategiasNotificacion fabricaEstrategias,
-                        IncentivosClient incentivosClient, RepositorioPersonas repositorioPersonas, RepositorioDonantes repositorioDonantes) {
+                        IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes) {
     this.gestorDonantes = gestorDonantes;
     this.gestorPersonas = gestorPersonas;
     this.notificacionClient = notificacionClient;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
-    this.repositorioPersonas = repositorioPersonas;
     this.repositorioDonantes = repositorioDonantes;
   }
 
@@ -139,6 +135,13 @@ public class DonanteService {
     Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
     if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
     gestorPersonas.agregarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
+    return PersonaDonanteDTO.from(donante);
+  }
+
+  public PersonaDonanteDTO eliminarMedioContacto(UUID id, MediosContactoDTO dto) {
+    Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
+    if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
+    gestorPersonas.eliminarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
     return PersonaDonanteDTO.from(donante);
   }
 

@@ -81,6 +81,14 @@ public class EntidadBeneficiariaService {
         return NecesidadDTO.from(necesidad);
     }
 
+    public NecesidadDTO actualizarNecesidad(UUID id, NecesidadDTO dto) {
+        Necesidad necesidadActualizada = dto.toDomain();
+        Necesidad existente = repositorioNecesidades.buscarPorId(id).orElse(null);
+        if (existente == null) throw new IllegalArgumentException("No se encontró la necesidad con ID: " + id);
+
+        return NecesidadDTO.from(gestorNecesidades.modificarNecesidad(id, necesidadActualizada));
+    }
+
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
         gestorEntidades.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
         repositorioNecesidades.eliminarPorId(idNecesidad);
