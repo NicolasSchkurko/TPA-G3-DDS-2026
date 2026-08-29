@@ -13,7 +13,6 @@ import java.util.List;
 @Setter
 
 public class Mail extends MedioDeContacto {
-
     private String direccionMail;
 
     public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeProhibidos) {

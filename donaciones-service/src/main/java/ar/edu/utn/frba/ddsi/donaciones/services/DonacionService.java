@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class DonacionService {
-  private final GestorEntidadesBeneficiarias gestorEntidades;
   private final GestorDonantes gestorDonantes;
   private final GestorDonaciones gestorDonaciones;
   private final GestorAsignaciones gestorAsignaciones;
@@ -34,20 +33,18 @@ public class DonacionService {
   private final NotificacionesClient notificacionesClient;
   private final GestorNecesidades gestorNecesidades;
   private final RepositorioDonaciones repositorioDonaciones;
-  private final RepositorioBienes repositorioBienes;
   private final RepositorioDonantes repositorioDonantes;
   private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final GestorBienes gestorBienes;
 
-  public DonacionService(GestorEntidadesBeneficiarias gestorEntidades, GestorDonantes gestorDonantes,
+  public DonacionService(GestorDonantes gestorDonantes,
                          GestorDonaciones gestorDonaciones, GestorAsignaciones gestorAsignaciones,
                          GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
                          NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades,
-                         RepositorioDonaciones repositorioDonaciones, RepositorioBienes repositorioBienes,
+                         RepositorioDonaciones repositorioDonaciones,
                          RepositorioDonantes repositorioDonantes, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
                          RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, GestorBienes gestorBienes) {
-    this.gestorEntidades = gestorEntidades;
     this.gestorDonantes = gestorDonantes;
     this.gestorDonaciones = gestorDonaciones;
     this.gestorAsignaciones = gestorAsignaciones;
@@ -56,7 +53,6 @@ public class DonacionService {
     this.notificacionesClient = notificacionesClient;
     this.gestorNecesidades=gestorNecesidades;
     this.repositorioDonaciones = repositorioDonaciones;
-    this.repositorioBienes = repositorioBienes;
     this.repositorioDonantes = repositorioDonantes;
     this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;

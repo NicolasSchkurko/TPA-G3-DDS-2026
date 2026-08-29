@@ -59,12 +59,4 @@ public class GestorMatchmaking {
         PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
         return  propuesta;
     }
-
-    public void eliminarResultado(UUID donacionId){
-        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
-                        "No hay resultado de matchmaking para la donación " + donacionId
-                )
-        );
-        repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
-    }
 }

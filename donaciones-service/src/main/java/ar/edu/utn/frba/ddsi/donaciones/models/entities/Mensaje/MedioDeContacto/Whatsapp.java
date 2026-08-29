@@ -12,8 +12,6 @@ import java.util.List;
 @Setter
 
 public class Whatsapp extends MedioDeContacto {
-
-
     private String numeroDeTelefono;
 
     public Whatsapp(String numTelefono, List<TipoDeMensaje> tiposDeMensajeProhibidos) {

@@ -25,7 +25,7 @@ public class DonacionController {
     this.donacionService = donacionService;
   }
 
-  @Operation(summary = "Crear una Donacion")
+  @Operation(summary = "Crear una Donación")
   @PostMapping("/formulario")
   public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
     List<DonacionDTO> donaciones = donacionService.procesarFormulario(request);
@@ -41,7 +41,7 @@ public class DonacionController {
     return ResponseEntity.ok(donacionService.obtenerTodas());
   }
 
-  @Operation(summary = "Ver donacion por id")
+  @Operation(summary = "Ver donación por id")
   @GetMapping("/{id}")
   public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
     try {
@@ -51,7 +51,7 @@ public class DonacionController {
     }
   }
 
-  @Operation(summary = "Actualizar donacion")
+  @Operation(summary = "Actualizar donación")
   @PutMapping("/{id}")
   public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody DonacionDTO dto) {
     try {
@@ -61,14 +61,14 @@ public class DonacionController {
     }
   }
 
-  @Operation(summary = "Eliminar donacion")
+  @Operation(summary = "Eliminar donación")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> eliminarDonacion(@PathVariable UUID id) {
     donacionService.eliminarDonacion(id);
     return ResponseEntity.noContent().build();
   }
 
-  @Operation(summary = "Cambiar estado de una donacion")
+  @Operation(summary = "Cambiar estado de una donación")
   @PatchMapping("/{id}/estado")
   public ResponseEntity<DonacionDTO> cambiarEstado(@PathVariable UUID id, @RequestBody CambioEstadoDTO cambioEstadoDTO) {
     try {
@@ -82,7 +82,7 @@ public class DonacionController {
     }
   }
 
-  @Operation(summary = "Marcar donacion como vencida (Solo Admins)")
+  @Operation(summary = "Marcar donación como vencida (Solo Admins)")
   @PatchMapping("/{id}/vencer")
   public ResponseEntity<DonacionDTO> marcarComoVencida(@PathVariable UUID id) {
     try {
@@ -98,14 +98,14 @@ public class DonacionController {
     return ResponseEntity.ok(donacionService.obtenerTodosLosResultadosMatchmaking());
   }
 
-  @Operation(summary = "Ejecutar algoritmos de asignacion a demanda")
+  @Operation(summary = "Ejecutar algoritmos de asignación a demanda")
   @PostMapping("/matchmaking/ejecutar")
   public ResponseEntity<Void> ejecutarMatchmaking() {
     donacionService.ejecutarMatchmakingADemanda();
     return ResponseEntity.ok().build();
   }
 
-  @Operation(summary = "Aprobar asignacion de donacion")
+  @Operation(summary = "Aprobar asignación de donación")
   @PostMapping("/asignar")
   public ResponseEntity<Void> asignarPropuesta(@RequestBody AsignarPropuestaRequestDTO request) {
     try {

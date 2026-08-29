@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
