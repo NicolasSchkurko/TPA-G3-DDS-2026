@@ -15,22 +15,5 @@ public class GestorBienes {
     this.repositorio = new RepositorioBienes();
   }
 
-  public void crearBien(Bien nuevoBien) {
-    try {
-      repositorio.guardar(nuevoBien);
-      System.out.println("Bien registrado con éxito con ID: " + nuevoBien.getId());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar bien: " + e.getMessage());
-    }
-  }
-
-  public void actualizarBien(UUID idOriginal, Bien datosNuevos) {
-    try {
-      repositorio.actualizar(idOriginal, datosNuevos);
-      System.out.println("Administrador actualizado con éxito.");
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al modificar administrador: " + e.getMessage());
-    }
-  }
 }
 

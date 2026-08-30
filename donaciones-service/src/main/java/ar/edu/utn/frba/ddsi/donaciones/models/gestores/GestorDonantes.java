@@ -19,15 +19,6 @@ public class GestorDonantes {
     this.repositorio = new RepositorioDonantes();
   }
 
-  public void registrarDonante(Donante nuevoDonante) {
-    try {
-      repositorio.guardar(nuevoDonante);
-      System.out.println("Donante registrado con éxito con ID: " + nuevoDonante.getId());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar donante: " + e.getMessage());
-    }
-  }
-
   public Donante modificarDonante(UUID idOriginal, Donante datosNuevos) {
     Donante existente = obtenerDonante(idOriginal);
     if (existente == null) {
@@ -47,7 +38,7 @@ public class GestorDonantes {
   }
 
   public void agregarFormularioADonante(UUID idDonante, Formulario nuevoFormulario) {
-    Donante donante = obtenerDonante(idDonante);
+    Donante donante = repositorio.buscarPorId(idDonante).orElse(null);
     if (donante != null) {
       donante.agregarFormulario(nuevoFormulario);
       repositorio.actualizar(idDonante, donante);

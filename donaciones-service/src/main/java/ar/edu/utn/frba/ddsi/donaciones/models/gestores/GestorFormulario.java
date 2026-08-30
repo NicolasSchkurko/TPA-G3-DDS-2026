@@ -27,15 +27,6 @@ public class GestorFormulario {
     // --- Lógica de Negocio ---
 
     /**
-     * Solo crea y persiste el formulario original con sus bienes.
-     */
-    public Formulario crearFormulario(Donante donante, List<Bien> bienesNormal, LocalDate fechaRealizacion) {
-        Formulario formulario = new Formulario(donante, bienesNormal, fechaRealizacion);
-        repositorioFormularios.guardar(formulario);
-        return formulario;
-    }
-
-    /**
      * Toma un formulario ya creado y ejecuta la segmentación a través de la Fachada.
      * Devuelve las Donaciones segmentadas pero NO altera el formulario original.
      */

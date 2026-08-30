@@ -20,15 +20,6 @@ public class GestorNecesidades {
     this.repositorio = new RepositorioNecesidades();
   }
 
-  public void crearNecesidad(Necesidad nuevoNecesidad) {
-    try {
-      repositorio.guardar(nuevoNecesidad);
-      System.out.println("Necesidad registrada con éxito con ID: " + nuevoNecesidad.getId());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar Necesidad: " + e.getMessage());
-    }
-  }
-
   public Necesidad modificarNecesidad(UUID idOriginal, Necesidad datosNuevos) {
     Necesidad existente = repositorio.buscarPorId(idOriginal).get();
     if (repositorio.buscarPorId(idOriginal).isEmpty()) {
@@ -51,16 +42,6 @@ public class GestorNecesidades {
     }
 
     return existente;
-  }
-
-  //Lo agregue para poder registrar donaciones
-  public void agregarDonacionANecesidad(UUID necesidadId, Donacion donacion) {
-    try {
-      repositorio.agregarDonacion(necesidadId, donacion);
-      System.out.println("Donación registrada con éxito en la necesidad: " + necesidadId);
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar donación en necesidad: " + e.getMessage());
-    }
   }
 }
 

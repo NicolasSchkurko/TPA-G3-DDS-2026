@@ -20,15 +20,6 @@ public class GestorEntidadesBeneficiarias {
     this.repositorio = new RepositorioEntidadesBeneficiarias();
   }
 
-  public void registrarEntidad(EntidadBeneficiaria nuevaEntidad) {
-    try {
-      repositorio.guardar(nuevaEntidad);
-      System.out.println("Entidad beneficiaria registrada con éxito con ID: " + nuevaEntidad.getId());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Error al registrar entidad: " + e.getMessage());
-    }
-  }
-
   public List<EntidadBeneficiaria> listarTodasLasEntidades() {
     return repositorio.obtenerTodas();
   }
@@ -48,31 +39,6 @@ public class GestorEntidadesBeneficiarias {
     }
 
     return existente;
-  }
-
-  public void agregarNecesidadAEntidad(UUID idEntidad, Necesidad nuevaNecesidad) {
-    EntidadBeneficiaria entidad = obtenerEntidad(idEntidad);
-    if (entidad != null) {
-      entidad.agregarNecesidad(nuevaNecesidad);
-      repositorio.actualizar(idEntidad, entidad);
-      System.out.println("Necesidad agregada a la entidad: " + idEntidad);
-    } else {
-      throw new IllegalArgumentException("No se pudo agregar necesidad: Entidad no encontrada.");
-    }
-  }
-
-  public void eliminarNecesidadDeEntidad(UUID idEntidad, UUID idNecesidad) {
-    EntidadBeneficiaria entidad = obtenerEntidad(idEntidad);
-    if (entidad == null) {
-      throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
-    }
-
-    Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
-                                 .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
-
-    entidad.eliminarNecesidad(necesidad);
-    repositorio.actualizar(idEntidad, entidad);
-    System.out.println("Necesidad desvinculada de la entidad con éxito.");
   }
 
   private EntidadBeneficiaria obtenerEntidad(UUID id) {

@@ -67,7 +67,7 @@ public class DonanteService {
 
       gestorPersonas.registrarPersona(nuevoDonante.getPersona());
     }
-    gestorDonantes.registrarDonante(nuevoDonante);
+    registrarDonante(nuevoDonante);
     return PersonaDonanteDTO.from(nuevoDonante);
   }
 
@@ -150,6 +150,15 @@ public class DonanteService {
       if (p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
         fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE).ejecutar(p);
       }
+    }
+  }
+
+  private void registrarDonante(Donante nuevoDonante) {
+    try {
+      repositorioDonantes.guardar(nuevoDonante);
+      System.out.println("Donante registrado con éxito con ID: " + nuevoDonante.getId());
+    } catch (IllegalArgumentException e) {
+      System.err.println("Error al registrar donante: " + e.getMessage());
     }
   }
 }
