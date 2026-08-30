@@ -28,7 +28,7 @@ public class GestorFormulario {
 
     /**
      * Toma un formulario ya creado y ejecuta la segmentación a través de la Fachada.
-     * Devuelve las Donaciones segmentadas pero NO altera el formulario original.
+     * Devuelve las Donaciones segmentadas, pero NO altera el formulario original.
      */
     public List<Donacion> procesarFormulario(Formulario formulario) {
         DonacionFacade donacionFacade = new DonacionFacade(

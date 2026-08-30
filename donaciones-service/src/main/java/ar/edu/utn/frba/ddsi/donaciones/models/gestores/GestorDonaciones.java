@@ -91,4 +91,13 @@ public class GestorDonaciones {
         estrategia.ejecutar(donacion);
     }
 
+
+//    public List<ResultadoMatchmaking> asignarDonaciones(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades) {
+//        DonacionFacade donacionFacade = new DonacionFacade(new SegmentadorDonaciones(),
+//                new AsignadorDonaciones());
+//
+//        donacionFacade.ejecutarAsignador(donacionesNoAsignadas, entidades);
+//        return donacionFacade.obtenerDonacionesPendientesDeAprobacion();
+//    }
+
 }
