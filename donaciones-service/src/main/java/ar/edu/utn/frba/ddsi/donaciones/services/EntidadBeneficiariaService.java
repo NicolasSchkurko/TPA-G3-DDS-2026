@@ -77,7 +77,7 @@ public class EntidadBeneficiariaService {
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
         Necesidad necesidad = dto.toDomain();
         crearNecesidad(necesidad);
-        agregarNecesidadAEntidad(idEntidad, necesidad);
+        gestorEntidades.agregarNecesidadAEntidad(idEntidad, necesidad);
         return NecesidadDTO.from(necesidad);
     }
 
@@ -90,7 +90,7 @@ public class EntidadBeneficiariaService {
     }
 
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
-        eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
+        gestorEntidades.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
         repositorioNecesidades.eliminarPorId(idNecesidad);
         System.out.println("Administrador dado de baja (si existía).");
     }
@@ -116,31 +116,6 @@ public class EntidadBeneficiariaService {
             System.err.println("Entidad no encontrada.");
             return new ArrayList<>();
         }
-    }
-
-    private void agregarNecesidadAEntidad(UUID idEntidad, Necesidad nuevaNecesidad) {
-        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
-        if (entidad != null) {
-            entidad.agregarNecesidad(nuevaNecesidad);
-            repositorioEntidadesBeneficiarias.actualizar(idEntidad, entidad);
-            System.out.println("Necesidad agregada a la entidad: " + idEntidad);
-        } else {
-            throw new IllegalArgumentException("No se pudo agregar necesidad: Entidad no encontrada.");
-        }
-    }
-
-    private void eliminarNecesidadDeEntidad(UUID idEntidad, UUID idNecesidad) {
-        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
-        if (entidad == null) {
-            throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
-        }
-
-        Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
-
-        entidad.eliminarNecesidad(necesidad);
-        repositorioEntidadesBeneficiarias.actualizar(idEntidad, entidad);
-        System.out.println("Necesidad desvinculada de la entidad con éxito.");
     }
 
     private void crearNecesidad(Necesidad nuevoNecesidad) {

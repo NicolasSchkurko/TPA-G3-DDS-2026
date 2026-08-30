@@ -41,6 +41,32 @@ public class GestorEntidadesBeneficiarias {
     return existente;
   }
 
+
+  public void agregarNecesidadAEntidad(UUID idEntidad, Necesidad nuevaNecesidad) {
+    EntidadBeneficiaria entidad = repositorio.buscarPorId(idEntidad).orElse(null);
+    if (entidad != null) {
+      entidad.agregarNecesidad(nuevaNecesidad);
+      repositorio.actualizar(idEntidad, entidad);
+      System.out.println("Necesidad agregada a la entidad: " + idEntidad);
+    } else {
+      throw new IllegalArgumentException("No se pudo agregar necesidad: Entidad no encontrada.");
+    }
+  }
+
+  public void eliminarNecesidadDeEntidad(UUID idEntidad, UUID idNecesidad) {
+    EntidadBeneficiaria entidad = repositorio.buscarPorId(idEntidad).orElse(null);
+    if (entidad == null) {
+      throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
+    }
+
+    Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
+            .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
+
+    entidad.eliminarNecesidad(necesidad);
+    repositorio.actualizar(idEntidad, entidad);
+    System.out.println("Necesidad desvinculada de la entidad con éxito.");
+  }
+
   private EntidadBeneficiaria obtenerEntidad(UUID id) {
     return repositorio.buscarPorId(id).orElse(null);
   }
