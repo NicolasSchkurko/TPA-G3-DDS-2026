@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.CamionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -9,12 +10,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/camiones")
+@RequestMapping("/camiones")
 @Tag(name = "Camiones", description = "API CRUD y operaciones de negocio para la gestión de Camiones")
 public class CamionController {
 
@@ -25,10 +24,9 @@ public class CamionController {
   }
 
   // --- CRUD ---
-
   @Operation(summary = "Listar todos los camiones")
   @GetMapping
-  public ResponseEntity<List<CamionDTO>> obtenerTodos() {
+  public ResponseEntity<CamionesDTO> obtenerTodos() {
     return ResponseEntity.ok(camionService.findAll());
   }
 
@@ -55,8 +53,8 @@ public class CamionController {
 
   @Operation(summary = "Registrar múltiples camiones")
   @PostMapping("/registrar")
-  public ResponseEntity<List<CamionDTO>> registrarCamiones(@RequestBody List<CamionDTO> camiones) {
-  List<CamionDTO> nuevosCamiones = camionService.createMultiple(camiones);
+  public ResponseEntity<CamionesDTO> registrarCamiones(@RequestBody CamionesDTO camiones) {
+    CamionesDTO nuevosCamiones = camionService.createMultiple(camiones);
   return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
 }
 
@@ -76,7 +74,7 @@ public class CamionController {
 
   @Operation(summary = "Eliminar un camión")
   @ApiResponses(value = {
-          @ApiResponse(responseCode = "200", description = "Camion eliminado"),
+          @ApiResponse(responseCode = "204", description = "Camion eliminado"),
           @ApiResponse(responseCode = "404", description = "Camión no encontrado")
   })
   @DeleteMapping("/{patente}")
@@ -101,14 +99,8 @@ public class CamionController {
       @PathVariable String patente,
       @RequestBody Map<String, Boolean> body) {
     try {
-      Boolean disponible = body.get("disponible");
-      if (disponible != null && disponible) {
-        camionService.marcarDisponible(patente);
-        return ResponseEntity.ok("Camión marcado como disponible.");
-      } else {
-        camionService.marcarOcupado(patente);
-        return ResponseEntity.ok("Camión marcado como ocupado.");
-      }
+      String mensaje = camionService.cambiarDisponibilidad(patente, body);
+      return ResponseEntity.ok(mensaje);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }

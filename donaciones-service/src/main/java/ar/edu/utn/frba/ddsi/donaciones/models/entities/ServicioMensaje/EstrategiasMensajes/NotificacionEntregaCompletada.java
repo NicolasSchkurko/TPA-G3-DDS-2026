@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionEntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
@@ -26,7 +26,7 @@ public class NotificacionEntregaCompletada extends EstrategiaMensaje {
     @Override
     public void ejecutar(Object datos) {
 
-        NotificacionEntregaDTO evento = (NotificacionEntregaDTO) datos;
+        NotificacionEntregaDatos evento = (NotificacionEntregaDatos) datos;
 
         Mensaje mensaje = new Mensaje(
                 "Donación Entregada Exitosamente",

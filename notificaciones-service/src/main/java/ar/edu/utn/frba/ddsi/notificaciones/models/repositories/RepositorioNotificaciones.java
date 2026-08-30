@@ -4,11 +4,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNo
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Repositorio en memoria de notificaciones.
@@ -17,6 +13,7 @@ import java.util.Map;
 @Repository("repositorio")
 public class RepositorioNotificaciones {
     private final Map<EstadoNotificacion, List<Notificacion>> notificacionesPorEstado;
+    private final List<Notificacion> notificaciones = new ArrayList<>();
 
     public RepositorioNotificaciones() {
         this.notificacionesPorEstado = new EnumMap<>(EstadoNotificacion.class);
@@ -41,6 +38,12 @@ public class RepositorioNotificaciones {
         return Collections.unmodifiableList(
                 this.notificacionesPorEstado.computeIfAbsent(estado, estadoNotificacion -> new ArrayList<>())
         );
+    }
+
+    public Optional<Notificacion> findById(UUID id) {
+        return notificaciones.stream()
+                .filter(n -> n.getId().equals(id))
+                .findFirst();
     }
 
     public List<Notificacion> buscarTodas() {

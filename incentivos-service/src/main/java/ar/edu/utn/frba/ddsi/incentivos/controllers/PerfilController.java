@@ -1,7 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
+import ar.edu.utn.frba.ddsi.incentivos.services.PersonaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,13 +17,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/perfiles") //https:localhost:8001/api/perfiles
+@RequestMapping("/perfiles") //https:localhost:8001/api/perfiles
 @Tag(name = "Gestión de Perfiles e Incentivos", description = "Endpoints para consultar métricas, misiones, insignias y rankings de los perfiles de colaboradores.")
 public class PerfilController {
     private final PerfilService service;
+    private final PersonaService personaService;
 
-    public PerfilController(PerfilService service) {
+    public PerfilController(PerfilService service, PersonaService personaService) {
         this.service = service;
+        this.personaService = personaService;
     }
 
 //    @DeleteMapping("/{id}")
@@ -45,6 +51,22 @@ public class PerfilController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(metricas);
+    }
+
+    @Operation(
+            summary = "Obtener perfil por id de usuario",
+            description = "Busca el perfil asociado al UUID del usuario de donaciones-service."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil obtenido con éxito"),
+            @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
+    })
+    @GetMapping("{idUsuario}/perfil")
+    public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
+            @Parameter(description = "UUID del usuario asociado al perfil")
+            @PathVariable UUID idUsuario) {
+        PerfilDTO perfil = service.buscarPorIdUsuario(idUsuario);
+        return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
     }
 
     @Operation(
@@ -139,5 +161,46 @@ public class PerfilController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(top3);
+    }
+
+    //https:localhost/perfiles
+//permite q Donaciones nos pida crear un Perfil
+    @Operation(
+        summary = "Crear un nuevo perfil de donante",
+        description = "Permite al microservicio de Donaciones solicitar la creación e inicialización de un perfil gamificado cuando un nuevo colaborador se registra en el sistema."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Perfil creado e inicializado con éxito"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes")
+    })
+    @PostMapping
+    public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
+        PerfilDTO nuevo = personaService.crearPerfil(dto);
+        if (nuevo == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(nuevo);
+    }
+
+    //https:localhost/perfiles/{idUsuario}
+//permite q Donaciones nos pida actualizarPerfil ante una donacion
+    @Operation(
+        summary = "Actualizar perfil por impacto de donación",
+        description = "Permite registrar una nueva donación realizada por el usuario. El servicio procesará el impacto del evento, actualizará las métricas, evaluará las reglas de las misiones y guardará el histórico."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Perfil impactado y actualizado con éxito"),
+        @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<PerfilDTO> actualizarPerfil(@Parameter(description = "UUID del usuario que realizó la donación", example = "123e4567-e89b-12d3-a456-426614174000")
+                                                      @PathVariable UUID id,
+                                                      @RequestBody ImpactoDonacionDTO dto) {
+        //Recibe donacion, actualizar perfil y guardan en repo de donaciones
+        PerfilDTO actualizado = personaService.actualizarPerfil(id, dto);
+        if (actualizado == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(actualizado);
     }
 }

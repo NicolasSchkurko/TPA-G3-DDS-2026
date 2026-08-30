@@ -2,9 +2,9 @@ package ar.edu.utn.frba.ddsi.donaciones.necesidad;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadExtraordinaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.NecesidadRecurrente;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

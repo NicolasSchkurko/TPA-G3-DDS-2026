@@ -1,16 +1,17 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion.AlgoritmoAsignacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion.CompatibilidadSemantica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion.SubAtendidos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Necesidades.Necesidad;
-import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
+
+
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -23,21 +24,15 @@ import java.util.stream.Collectors;
 public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;
-    private final List<ResultadoMatchmaking> donacionesPendientesDeAprobacion;
+    private GestorMatchmaking gestorMatchmaking;
+    private GestorDonaciones gestorDonaciones;
 
-    public AsignadorDonaciones() {
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones) {
         this.algoritmos = new ArrayList<>();
-        this.donacionesPendientesDeAprobacion = new ArrayList<>();
-    }
-
-    public void agregarAlgoritmo(AlgoritmoAsignacion algoritmo) {
-        if (algoritmo != null && !this.algoritmos.contains(algoritmo)) {
-            this.algoritmos.add(algoritmo);
-        }
-    }
-
-    public void removerAlgoritmo(AlgoritmoAsignacion algoritmo) {
-        this.algoritmos.remove(algoritmo);
+        this.gestorMatchmaking = gestorMatchmaking;
+        this.gestorDonaciones = gestorDonaciones;
+        algoritmos.add(new CompatibilidadSemantica());
+        algoritmos.add(new SubAtendidos());
     }
 
     public List<AlgoritmoAsignacion> getAlgoritmos() {
@@ -79,32 +74,10 @@ public class AsignadorDonaciones {
         }
 
         // 4. Procesar resultado final
-        procesarResultadoFinal(donacion, resultadoFinal, huboCoincidenciaTotal);
+        registrarDonacionPendienteDeAprobacion(donacion, resultadoFinal, huboCoincidenciaTotal);
     }
 
-    public List<ResultadoMatchmaking> getDonacionesPendientesDeAprobacion() {
-        return this.donacionesPendientesDeAprobacion;
-    }
 
-public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignacion propuestaElegida) {
-    if (resultado == null || propuestaElegida == null) {
-        throw new IllegalArgumentException("Resultado y propuesta no pueden ser nulos.");
-    }
-
-    Donacion donacion = resultado.getDonacion();
-
-    if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
-        throw new IllegalStateException("La donación no está en estado pendiente.");
-    }
-
-    // Validar que la propuesta pertenece a este resultado
-    if (!resultado.getPropuestasOrdenadas().contains(propuestaElegida)) {
-        throw new IllegalArgumentException("La propuesta elegida no pertenece a este matching.");
-    }
-
-    asignarDonacionAPropuesta(donacion, propuestaElegida);
-    donacionesPendientesDeAprobacion.remove(resultado);
-}
     // --------------------------------------------------
     // Métodos privados
     // --------------------------------------------------
@@ -119,8 +92,8 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
      * Ejecuta todos los algoritmos y recolecta todo en una sola lista.
      */
     private List<PropuestaAsignacion> ejecutarTodosLosAlgoritmos(
-        Donacion donacion,
-        List<EntidadBeneficiaria> todasLasEntidades) {
+            Donacion donacion,
+            List<EntidadBeneficiaria> todasLasEntidades) {
 
         List<PropuestaAsignacion> listaPlana = new ArrayList<>();
         for (AlgoritmoAsignacion algoritmo : this.algoritmos) {
@@ -137,12 +110,12 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
         int totalAlgoritmos = this.algoritmos.size();
 
         List<PropuestaAsignacion> interseccionEnriquecida = todasLasPropuestas.stream()
-                                                                              .collect(Collectors.groupingBy(p -> p.getNecesidad().getId())) // Agrupa por UUID
-                                                                              .values().stream()
-                                                                              .filter(apariciones -> apariciones.size() == totalAlgoritmos) // Filtra las que están en todos
-                                                                              .map(this::consolidarApariciones) // Convierte cada grupo en 1 propuesta consolidada
-                                                                              .sorted(Comparator.comparingDouble(PropuestaAsignacion::getScore)) // Ordena por score
-                                                                              .collect(Collectors.toList());
+                .collect(Collectors.groupingBy(p -> p.getNecesidad().getId())) // Agrupa por UUID
+                .values().stream()
+                .filter(apariciones -> apariciones.size() == totalAlgoritmos) // Filtra las que están en todos
+                .map(this::consolidarApariciones) // Convierte cada grupo en 1 propuesta consolidada
+                .sorted(Comparator.comparingDouble(PropuestaAsignacion::getScore)) // Ordena por score
+                .collect(Collectors.toList());
 
         // Asignamos el índice final
         for (int i = 0; i < interseccionEnriquecida.size(); i++) {
@@ -160,61 +133,37 @@ public void confirmarAsignacion(ResultadoMatchmaking resultado, PropuestaAsignac
 
         // Determinar la mejor aparición individual de esta propuesta
         PropuestaAsignacion mejorAparicion = apariciones.stream()
-                                                        .min(Comparator.comparingInt(PropuestaAsignacion::getPosicion))
-                                                        .orElse(representativa);
+                .min(Comparator.comparingInt(PropuestaAsignacion::getPosicion))
+                .orElse(representativa);
 
         // En la intersección, el score es simplemente la suma de posiciones
         double scoreNumerico = apariciones.stream().mapToInt(PropuestaAsignacion::getPosicion).sum();
 
         return new PropuestaAsignacion(
-            representativa.getEntidad(),
-            representativa.getNecesidad(),
-            "Interseccion",
-            0, // Posición final a determinar después de ordenar
-            scoreNumerico
+                representativa.getEntidad(),
+                representativa.getNecesidad(),
+                "Interseccion",
+                0, // Posición final a determinar después de ordenar
+                scoreNumerico
         );
     }
 
-    private void procesarResultadoFinal(
-        Donacion donacion,
-        List<PropuestaAsignacion> resultadoFinal,
-        boolean huboCoincidenciaTotal) {
 
-        if (huboCoincidenciaTotal && resultadoFinal.size() == 1) {
-            PropuestaAsignacion propuestaUnica = resultadoFinal.get(0);
-            asignarDonacionAPropuesta(donacion, propuestaUnica);
-        } else {
-            registrarDonacionPendienteDeAprobacion(donacion, resultadoFinal, huboCoincidenciaTotal);
-        }
-    }
-
-    public static void asignarDonacionAPropuesta(Donacion donacion, PropuestaAsignacion propuesta) {
-        donacion.setEntidad(propuesta.getEntidad());
-        donacion.setEstado(Estado.ASIGNADO);
-        registrarDonacionEnNecesidad(donacion, propuesta.getNecesidad());
-    }
-
-    private static void registrarDonacionEnNecesidad(Donacion donacion, Necesidad necesidad) {
-        necesidad.registrarDonacionAsignada(donacion);
-    }
-
+    //cambie que el gestor se encargue de cambiar el estado y que el repo guarde los resultados
     private void registrarDonacionPendienteDeAprobacion(
-        Donacion donacion,
-        List<PropuestaAsignacion> resultadoFinal,
-        boolean huboCoincidenciaTotal) {
-
-        donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
+            Donacion donacion,
+            List<PropuestaAsignacion> resultadoFinal,
+            boolean huboCoincidenciaTotal) {
+        System.out.println("propuestas:" + resultadoFinal);
+        //donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
+        gestorDonaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
 
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
-            donacion,
-            resultadoFinal,
-            huboCoincidenciaTotal
+                donacion,
+                resultadoFinal,
+                huboCoincidenciaTotal
         );
 
-        donacionesPendientesDeAprobacion.add(resultado);
-    }
-
-    public void limpiarDonacionesPendientesDeAprobacion(){
-        donacionesPendientesDeAprobacion.clear();
+        gestorMatchmaking.guardarResultado(resultado);
     }
 }

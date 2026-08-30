@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
 
-  private final String URL_CALLBACK_LOCAL = "http://localhost:8080/api/logistica/rutas/callback";
+  private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
 
@@ -34,6 +34,9 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
         // Usamos Jackson para la serialización
         String jsonBody = objectMapper.writeValueAsString(asignacionFinal);
 
+        System.out.println("JSON SIMULADO");
+        System.out.println(jsonBody);
+
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(URL_CALLBACK_LOCAL))
                                          .header("Content-Type", "application/json")
@@ -42,7 +45,12 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
 
         httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       } catch (Exception e) {
-        System.err.println("Error en la simulación: " + e.getMessage());
+        System.err.println("=================================");
+        System.err.println("ERROR EN LA SIMULACIÓN");
+        System.err.println("Tipo: " + e.getClass().getName());
+        System.err.println("Mensaje: " + e.getMessage());
+        e.printStackTrace();
+        System.err.println("=================================");
       }
     });
   }

@@ -27,26 +27,29 @@ public class PersonaService {
     }
 
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
-        Perfil nuevo = new Perfil(
-                dto.getIdUsuario(),
-                dto.getNombreUsuario()
-        );
+        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
 
-        Categoria categoriaBase = gestorCategorias.categoriaCorrespondiente(1); //creo q la categoria base va a estar en la posicion 1
+        Categoria categoriaBase = gestorCategorias.categoriaCorrespondiente(1);
 
-        if (categoriaBase != null) {
-            nuevo.setCategoriaActual(categoriaBase);
-            nuevo.setMisionActual(categoriaBase.primeraMision());
+        if (categoriaBase == null) {
+            throw new IllegalStateException("No existe una categoría base para inicializar el perfil");
         }
+
+        nuevo.setCategoriaActual(categoriaBase);
+        nuevo.setMisionActual(categoriaBase.primeraMision());
 
         Perfil p = gestorPerfiles.crearPerfil(nuevo);
 
+        if (p == null || p.getCategoriaActual() == null || p.getMisionActual() == null) {
+            throw new IllegalStateException("El perfil se creó sin categoría o misión iniciales");
+        }
+
         return new PerfilDTO(
-                p.getNombreUsuario(),
-                p.getCategoriaActual().getNombre(),
-                p.getInsignias().stream().map(Insignia::getNombre).toList(),
-                p.getMisionActual().getNombreMision(),
-                p.getPosicionRanking().getPuesto()
+            p.getNombreUsuario(),
+            p.getCategoriaActual().getNombre(),
+            p.getInsignias().stream().map(Insignia::getNombre).toList(),
+            p.getMisionActual().getNombreMision(),
+            p.getPosicionRanking().getPuesto()
         );
     }
 

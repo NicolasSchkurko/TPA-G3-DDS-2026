@@ -31,7 +31,7 @@ public class NotificacionDonacionAsignada extends EstrategiaMensaje {
                 "Nueva donación asignada",
                 String.format(
                         "Se asignó una donación a la entidad %s. Donación: %s. Cantidad total de bienes: %d. Fecha de entrega: %s.",
-                        donacion.getEntidad().getRazonSocial(),
+                        donacion.getEntidad().getPersonaJuridica().getRazonSocial(),
                         valorOTexto(
                                 donacion.getDescripcion(),
                                 "sin descripción"
@@ -45,12 +45,12 @@ public class NotificacionDonacionAsignada extends EstrategiaMensaje {
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                donacion.getEntidad().getCorreosRepresentantes(),
+                donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),
                 mensaje
         );
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
-                donacion.getDonante().getMediosDeContacto(),
+                donacion.getDonante().getPersona().getMediosDeContacto(),
                 mensaje
         );
     }

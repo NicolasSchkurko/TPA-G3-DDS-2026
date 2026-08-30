@@ -1,21 +1,27 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
+import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.ParadaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutasDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
+
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,32 +31,33 @@ public class RutaService {
   private final GestorChoferes gestorChoferes;
   private final GestorItemEntrega gestorItemEntrega;
   private final GestorCamiones gestorCamiones;
-  private final EventoLogisticaService eventoService;
+  private final GestorEventos gestorEventos;
 
   public RutaService(GestorRutas gestorRutas,
                      GestorChoferes gestorChoferes,
                      GestorItemEntrega gestorItemEntrega,
                      GestorCamiones gestorCamiones,
-                     EventoLogisticaService eventoService) {
+                     GestorEventos gestorEventos) {
     this.gestorRutas = gestorRutas;
     this.gestorChoferes = gestorChoferes;
     this.gestorItemEntrega = gestorItemEntrega;
     this.gestorCamiones = gestorCamiones;
-    this.eventoService = eventoService;
+    this.gestorEventos = gestorEventos;
   }
 
   // --- MÉTODOS CRUD ---
-  public List<Ruta> findAll() {
-      return gestorRutas.listarRutas();
+  public RutasDTO findAll() {
+      return convertirARutasDTO(gestorRutas.listarRutas());
   }
 
-  public Ruta findById(UUID idRuta) {
-    return gestorRutas.buscarRuta(idRuta);
+  public RutaDTO findById(UUID idRuta) {
+    return convertirARutaDTO(gestorRutas.buscarRuta(idRuta));
   }
 
+  /*
   public Ruta create(Ruta ruta) {
-    return gestorRutas.guardarRuta(ruta);
-  }
+      return gestorRutas.guardarRuta(ruta);
+    }
 
   public Ruta update(UUID id, Ruta rutaActualizada) {
     return gestorRutas.actualizarRuta(id, rutaActualizada);
@@ -59,59 +66,103 @@ public class RutaService {
   public void delete(UUID idRuta) {
     gestorRutas.eliminarRuta(idRuta);
   }
+   */
 
   // --- MÉTODOS DE NEGOCIO ---
-  public Ruta obtenerRutaDeChofer(Chofer chofer) {
-    if (chofer == null) return null;
-    return repositorioRutas.findByChofer(chofer).orElse(null);
-  }
-
-  public Camion obtenerCamionDeChofer(UUID idChofer) {
-    if (idChofer == null) return null;
-    return repositorioCamiones.findByChoferId(idChofer).orElse(null);
-  }
 
   public void iniciarRuta(UUID idChofer) {
-    Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
-
-    Ruta rutaActual = this.obtenerRutaDeChofer(chofer);
-    if (rutaActual == null) throw new IllegalStateException("El chofer no tiene ninguna ruta asignada");
-
-    repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
-
-    rutaActual.getParadas().forEach(parada ->
-                                        parada.getItems().forEach(item -> {
-                                          repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.EN_TRASLADO);
-                                        })
-    );
-
-    eventoService.publicarInicioRuta(rutaActual);
+    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
+    gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
+    List<Parada> paradas = gestorEventos.publicarInicioRuta(rutaActual).getParadas();
+    for(Parada parada : paradas) {
+        parada.getItems().forEach(gestorItemEntrega::guardarItem);
+    }
   }
 
   public void terminarRuta(UUID idChofer) {
-    Chofer chofer = repositorioChoferes.findById(idChofer);
-    if (chofer == null) throw new IllegalArgumentException("Chofer no encontrado");
-
-    Ruta rutaActual = obtenerRutaDeChofer(chofer);
+    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
 
     if (rutaActual != null) {
-      repositorioRutas.actualizarEstado(rutaActual, EstadoRuta.FINALIZADA);
+      gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.FINALIZADA);
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
-          if(item.getEstado() != EstadoEntrega.ENTREGADA){
-            repositorioItemEntrega.actualizarEstado(item, EstadoEntrega.PENDIENTE);
+          if (item.getEstado() != EstadoEntrega.ENTREGADA) {
+            gestorEventos.publicarReingresoDeposito(item);
           } else {
-            repositorioItemEntrega.deleteById(item.getIdDonacion());
+            gestorItemEntrega.eliminarItem(item.getIdDonacion());
           }
         }
       }
+      Chofer chofer = rutaActual.getCamionAsignado().getChofer();
+      chofer.disponible();
+      gestorChoferes.guardarChofer(chofer);
+      Camion camion = rutaActual.getCamionAsignado();
+      camion.disponible();
+      gestorCamiones.guardarCamion(camion);
     }
 
-    Camion camion = obtenerCamionDeChofer(idChofer);
+    Camion camion = gestorCamiones.buscarCamionPorIdChofer(idChofer);
     if (camion != null) {
       camion.eliminarChofer();
-      repositorioCamiones.actualizarcarga(camion);
+      gestorCamiones.resetearCamion(camion);
     }
+  }
+
+  private RutasDTO convertirARutasDTO(List<Ruta> rutas){
+    return new RutasDTO(rutas.stream().map(this::convertirARutaDTO).toList());
+  }
+
+  private RutaDTO convertirARutaDTO(Ruta ruta){
+    return new RutaDTO(ruta.getIdRuta(), convertirADTO(ruta.getCamionAsignado()), ruta.getFechaProgramada(), ruta.getEstado().toString(), ruta.getUrlSeguimiento(), convertirAParadasDTO(ruta.getParadas()));
+  }
+
+  private CamionDTO convertirADTO(Camion camion){
+    if (camion == null) return null;
+    CamionDTO dto = new CamionDTO();
+    if (camion.getChofer() != null) {
+      dto.setIdChofer(camion.getChofer().getIdChofer());
+    }
+    dto.setPatente(camion.getPatente());
+    dto.setCapacidadVolumen(camion.getCapacidadVolumen());
+    dto.setAltura(camion.getAltura());
+    dto.setCapacidadCarga(camion.getCapacidadCarga());
+    dto.setDisponible(camion.getDisponible());
+    return dto;
+  }
+
+  private List<ParadaDTO> convertirAParadasDTO(List<Parada> paradas){
+    return paradas.stream().map(this::convertirAParadaDTO).toList();
+  }
+
+  private ParadaDTO convertirAParadaDTO(Parada parada){
+    return new ParadaDTO(convertirADireccionDTO(parada.getEntidadDestino()), new BienesDTO(obtenerIdDonaciones(parada.getItems()), convertirItemsADTO(parada.getItems())));
+  }
+
+  private DireccionDTO convertirADireccionDTO(Entidad entidad){
+    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+  }
+
+  private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
+    return items.stream().map(this::convertirABienDTO).toList();
+  }
+
+  //TODO Arreglar eventos
+  private BienDTO convertirABienDTO(ItemEntrega item){
+    return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
+  }
+
+  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+    if(eventos != null){
+      return eventos.stream().map(this::convertirAEventoDTO).toList();
+    }
+    return new ArrayList<>();
+  }
+
+  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+  }
+
+  private List<UUID> obtenerIdDonaciones(List<ItemEntrega> items){
+    return items.stream().map(ItemEntrega::getIdDonacion).toList();
   }
 }

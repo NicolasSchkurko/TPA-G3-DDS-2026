@@ -34,6 +34,9 @@ public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
 
       String jsonPayload = objectMapper.writeValueAsString(payloadData);
 
+      System.out.println("JSON ENVIADO AL PROVEEDOR:");
+      System.out.println(jsonPayload);
+
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(urlApiExterna))
                                        .header("Content-Type", "application/json")

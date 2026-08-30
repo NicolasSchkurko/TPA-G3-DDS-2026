@@ -2,7 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.Estrateg
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.PersonaDonante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.ServicioNotificaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -24,7 +24,7 @@ public class NotificacionRegistroPersona extends EstrategiaMensaje {
     @Override
     public void ejecutar(Object datos) {
 
-        PersonaDonante persona = (PersonaDonante) datos;
+        Donante persona = (Donante) datos;
 
         Mensaje mensaje = new Mensaje(
                 "Nuevo Registro en DonaTrack",
@@ -33,7 +33,7 @@ public class NotificacionRegistroPersona extends EstrategiaMensaje {
         );
 
         servicioNotificaciones.enviarNotificacionAMedioPredeterminado(
-                persona.getMediosDeContacto(),
+                persona.getPersona().getMediosDeContacto(),
                 mensaje
         );
     }

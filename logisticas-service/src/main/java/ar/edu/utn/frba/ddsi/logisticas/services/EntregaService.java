@@ -1,18 +1,18 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ActualizacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.BienDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.DireccionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.EntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.Estado.*;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorEventos;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,14 +20,19 @@ import java.util.UUID;
 public class EntregaService {
 
   private final GestorItemEntrega gestorItemEntrega;
+  private final GestorRutas gestorRutas;
+  private final GestorEventos gestorEventos;
 
-    public EntregaService(GestorItemEntrega gestorItemEntrega) {
-    this.gestorItemEntrega = gestorItemEntrega;
+    public EntregaService(GestorItemEntrega gestorItemEntrega,  GestorEventos gestorEventos, GestorRutas gestorRutas) {
+      this.gestorItemEntrega = gestorItemEntrega;
+      this.gestorRutas = gestorRutas;
+      this.gestorEventos = gestorEventos;
     }
 
   // --- MÉTODOS CRUD BÁSICOS ---
-  public List<ItemEntrega> findAll() {
-    return gestorItemEntrega.listarItems();
+  public BienesDTO findAll() {
+      List<ItemEntrega> items = gestorItemEntrega.listarItems();
+      return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
   public ItemEntrega findById(UUID id) {
@@ -44,7 +49,7 @@ public class EntregaService {
 
     List<EntregaDTO> entregas = request.getEntregas();
     for (EntregaDTO entregaActual : entregas) {
-      List<BienDTO> bienes = entregaActual.getDonacionResumen();
+      List<BienDTO> bienes = entregaActual.getDonacionResumen().getBienes();
       if (bienes == null) continue;
 
       for (int j = 0; j < bienes.size(); j++) {
@@ -55,7 +60,7 @@ public class EntregaService {
         UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
 
         ItemEntrega nuevoItem = new ItemEntrega(
-            entregaActual.getIdsDonaciones().get(j),
+            entregaActual.getDonacionResumen().getIdsDonaciones().get(j),
             bien.getCantidad(),
             unidadDominio,
             new Entidad(entregaActual.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad)
@@ -92,31 +97,23 @@ public class EntregaService {
 
     switch (request.getEstado().toUpperCase()) {
       case "ENTREGADA":
-        if (request.getFotoUrl() == null || request.getFotoUrl().trim().isEmpty()) {
+        if(comprobarExistencia(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        if (!(item.getEstado() instanceof EnCamino)){
-          break;
-        }
-        item.getEstado().actualizar();
-        Entregada estado = (Entregada) item.getEstado();
-        estado.setFotoComprobante(request.getFotoUrl());
+        gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getFotoUrl()));
         break;
 
       case "NO_RECIBIDA":
-        if (request.getJustificacion() == null || request.getJustificacion().trim().isEmpty()) {
+        if(comprobarExistencia(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        item.getEstado().marcarNoRecibida(request.getJustificacion());
+        gestorItemEntrega.guardarItem(gestorEventos.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getJustificacion()));
         break;
 
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-        if (!(item.getEstado() instanceof NoRecibida)){
-          break;
-        }
-        item.getEstado().actualizar();
+        gestorItemEntrega.guardarItem(gestorEventos.publicarReingresoDeposito(item));
         break;
 
       default:
@@ -131,8 +128,23 @@ public class EntregaService {
    * o replanificación). El control de quién puede llamar a este endpoint
    * es responsabilidad del front/capa de autorización, no de este servicio.
    */
-  public List<ItemEntrega> obtenerEntregasNoRecibidas() {
-    return gestorItemEntrega.buscarNoRecibidos();
+
+  private boolean comprobarExistencia(String elemento){
+    return (elemento == null || elemento.trim().isEmpty());
+  }
+
+  public BienesDTO obtenerEntregasNoRecibidas() {
+    List<ItemEntrega> items = gestorItemEntrega.buscarNoRecibidos();
+    return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
+  }
+
+  private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
+    return items.stream().map(this::convertirABienDTO).toList();
+  }
+
+  //TODO Arreglar eventos
+  private BienDTO convertirABienDTO(ItemEntrega item){
+    return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
   }
 
   private Direccion convertirDireccionDTO(DireccionDTO dto) {
@@ -142,5 +154,20 @@ public class EntregaService {
         dto.getPiso(), dto.getDepartamento(), dto.getCiudad(),
         dto.getProvincia(), dto.getPais()
     );
+  }
+
+  private DireccionDTO convertirADireccionDTO(Entidad entidad){
+    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+  }
+
+  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
+    if(eventos != null){
+      return eventos.stream().map(this::convertirAEventoDTO).toList();
+    }
+    return new ArrayList<>();
+  }
+
+  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
+    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

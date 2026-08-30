@@ -1,9 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
@@ -29,6 +31,25 @@ public class PerfilService {
         this.perfiles = perfiles;
         this.rankings = rankings;
         this.actividad = actividad;
+    }
+
+    /**
+     * Busca el perfil usando el identificador del usuario (el identificador
+     * que llega desde donaciones-service), no el identificador interno del
+     * perfil.
+     */
+    public PerfilDTO buscarPorIdUsuario(UUID idUsuario){
+        Perfil p = perfiles.obtenerPerfil(idUsuario);
+        if (p == null) {
+            return null;
+        }
+
+        return new PerfilDTO(
+                p.getNombreUsuario(),
+                p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
+                p.getInsignias() == null ? List.of() : p.getInsignias().stream().map(Insignia::getNombre).toList(),
+                p.getMisionActual() == null ? null : p.getMisionActual().getNombreMision(),
+                p.getPosicionRanking() == null ? null : p.getPosicionRanking().getPuesto());
     }
 
     public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){

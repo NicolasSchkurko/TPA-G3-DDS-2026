@@ -26,6 +26,10 @@ public class GestorPerfiles {
         this.eventPublisher = eventPublisher;
     }
 
+    public Perfil obtenerPerfil(UUID idUsuario){
+        return repositorio.buscarPorIDUsuario(idUsuario);
+    }
+
     public void verificarProgresos() {
         repositorio.listarTodos().stream()
                 .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)

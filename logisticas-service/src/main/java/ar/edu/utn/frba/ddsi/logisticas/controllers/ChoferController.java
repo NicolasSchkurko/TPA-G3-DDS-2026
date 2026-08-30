@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.ChoferDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.ChoferService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,12 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/choferes")
+@RequestMapping("/choferes")
 @Tag(name = "Choferes", description = "API CRUD y gestión de estados operativos de los Choferes")
 public class ChoferController {
 
@@ -29,7 +29,7 @@ public class ChoferController {
 
     @Operation(summary = "Listar todos los choferes")
     @GetMapping
-    public ResponseEntity<List<ChoferDTO>> obtenerTodos() {
+    public ResponseEntity<ChoferesDTO> obtenerTodos() {
         return ResponseEntity.ok(choferService.findAll());
     }
 
@@ -52,6 +52,13 @@ public class ChoferController {
     public ResponseEntity<ChoferDTO> crearChofer(@RequestBody ChoferDTO request) {
         ChoferDTO nuevo = choferService.create(request);
         return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Registrar múltiples choferes")
+    @PostMapping("/registrar")
+    public ResponseEntity<ChoferesDTO> registrarChoferes(@RequestBody ChoferesDTO choferes) {
+        ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
+        return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Actualizar datos de un chofer")
@@ -95,14 +102,8 @@ public class ChoferController {
         @PathVariable UUID id,
         @RequestBody Map<String, Boolean> body) {
         try {
-            Boolean disponible = body.get("disponible");
-            if (disponible != null && disponible) {
-                choferService.marcarDisponible(id);
-                return ResponseEntity.ok("Chofer marcado como disponible para ruteo.");
-            } else {
-                choferService.marcarOcupado(id);
-                return ResponseEntity.ok("Chofer marcado como ocupado.");
-            }
+            String mensaje = choferService.cambiarDisponibilidad(id, body);
+            return ResponseEntity.ok(mensaje);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }

@@ -40,7 +40,7 @@ public class RepositorioCamiones {
         return camion;
     }
 
-    public void actualizarcarga(Camion camion){
+    public void resetearCarga(Camion camion){
         int posicion = camiones.indexOf(camion);
         if (posicion != -1) {
             camion.setCiudadDestinoActual(null);

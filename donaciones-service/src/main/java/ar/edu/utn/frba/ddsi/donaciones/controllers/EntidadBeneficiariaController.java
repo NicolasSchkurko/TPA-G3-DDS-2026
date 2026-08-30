@@ -28,28 +28,17 @@ public class EntidadBeneficiariaController {
 
     // --- ENDPOINTS DE ENTIDAD BENEFICIARIA ---
 
-    @Operation(
-            summary = "Ver entidades",
-            description = "permite ver todas las entidades del repositorio de entidades"
-    )
+    @Operation(summary = "Ver entidades", description = "permite ver todas las entidades del repositorio de entidades")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidades obtenidas con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de obtener las entidades")
+        @ApiResponse(responseCode = "202", description = "entidades obtenidas con exito"),
+        @ApiResponse(responseCode = "400", description = "Error al tratar de obtener las entidades")
     })
     @GetMapping
     public ResponseEntity<List<EntidadBeneficiariaDTO>> obtenerTodas() {
         return ResponseEntity.ok(service.obtenerTodas());
     }
 
-
-    @Operation(
-            summary = "Ver entidad por id",
-            description = "permite buscar y obtener una entidad en base a su id"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidad obtenida con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de obtener la entidad")
-    })
+    @Operation(summary = "Ver entidad por id", description = "permite buscar y obtener una entidad en base a su id")
     @GetMapping("/{id}")
     public ResponseEntity<EntidadBeneficiariaDTO> obtenerEntidad(@PathVariable UUID id) {
         try {
@@ -59,14 +48,7 @@ public class EntidadBeneficiariaController {
         }
     }
 
-    @Operation(
-            summary = "Crear una Entidad",
-            description = "permite registrar una nueva entidad"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidad creada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al crear nueva entidad")
-    })
+    @Operation(summary = "Crear una Entidad", description = "permite registrar una nueva entidad")
     @PostMapping
     public ResponseEntity<?> registrarEntidad(@RequestBody EntidadBeneficiariaDTO dto) {
         try {
@@ -77,14 +59,7 @@ public class EntidadBeneficiariaController {
         }
     }
 
-    @Operation(
-            summary = "actualizar entidad",
-            description = "permite actualizar una entidad buscandola por su id y cargando la nueva entidad con los datos actualizados"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidad actualizada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de actualizar la entidad")
-    })
+    @Operation(summary = "actualizar entidad", description = "permite actualizar una entidad buscandola por su id")
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarEntidad(@PathVariable UUID id, @RequestBody EntidadBeneficiariaDTO dto) {
         try {
@@ -95,14 +70,7 @@ public class EntidadBeneficiariaController {
         }
     }
 
-    @Operation(
-            summary = "eliminar entidad",
-            description = "permite eliminar una entidad buscandola por su id"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidad eliminada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de eliminar la entidad")
-    })
+    @Operation(summary = "eliminar entidad")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarEntidad(@PathVariable UUID id) {
         service.eliminarEntidad(id);
@@ -111,14 +79,7 @@ public class EntidadBeneficiariaController {
 
     // --- ENDPOINTS DE NECESIDADES ---
 
-    @Operation(
-            summary = "Ver necesidades",
-            description = "permite ver todas las necesidades de una entidad en base a su id"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "necesidades obtenidas con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de obtener las necesidades")
-    })
+    @Operation(summary = "Ver necesidades")
     @GetMapping("/{id}/necesidades")
     public ResponseEntity<List<NecesidadDTO>> obtenerNecesidades(@PathVariable UUID id) {
         try {
@@ -128,32 +89,18 @@ public class EntidadBeneficiariaController {
         }
     }
 
-    @Operation(
-            summary = "agregar necesidad",
-            description = "permite agregar una nueva necesidad a una entidad beneficiaria"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "necesidad agregada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de agregar la necesidad a la entidad")
-    })
+    @Operation(summary = "agregar necesidad")
     @PostMapping("/{id}/necesidades")
     public ResponseEntity<?> agregarNecesidad(@PathVariable UUID id, @RequestBody NecesidadDTO dto) {
         try {
-            NecesidadDTO necesidad = service.agregarNecesidad(id, dto);
-            return new ResponseEntity<>(necesidad, HttpStatus.CREATED);
+            NecesidadDTO agregada = service.agregarNecesidad(id, dto);
+            return new ResponseEntity<>(agregada, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @Operation(
-            summary = "eliminar necesidad",
-            description = "permite eliminar una necesidad de una entidad en base a la id de la necesidad y la id de la entidad"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "entidad eliminada con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de eliminar la entidad")
-    })
+    @Operation(summary = "eliminar necesidad")
     @DeleteMapping("/{id}/necesidades/{idNecesidad}")
     public ResponseEntity<Void> eliminarNecesidad(@PathVariable UUID id, @PathVariable UUID idNecesidad) {
         try {
@@ -166,14 +113,7 @@ public class EntidadBeneficiariaController {
 
     // --- ENDPOINTS DE DONACIONES DE LA ENTIDAD ---
 
-    @Operation(
-            summary = "Ver donaciones",
-            description = "permite ver todas las donaciones asignadas de una entidad en base a su id"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "donaciones obtenidas con exito"),
-            @ApiResponse(responseCode = "400", description = "Error al tratar de obtener las donaciones")
-    })
+    @Operation(summary = "Ver donaciones")
     @GetMapping("/{id}/donaciones")
     public ResponseEntity<List<DonacionDTO>> obtenerDonaciones(@PathVariable UUID id) {
         try {
@@ -182,5 +122,4 @@ public class EntidadBeneficiariaController {
             return ResponseEntity.notFound().build();
         }
     }
-    
 }

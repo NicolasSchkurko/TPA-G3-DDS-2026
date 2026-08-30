@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.incentivos.clients;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.MedioContactoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,14 +20,23 @@ public class DonacionClient {
     }
 
     public MedioContacto obtenerContactoPersona(UUID idUsuario) {
-        MedioContactoDTO dto = restTemplate.getForObject(
-                donacionesUrl + idUsuario,
-                MedioContactoDTO.class
-        );
+        try {
+            MedioContactoDTO dto = restTemplate.getForObject(
+                    donacionesUrl + idUsuario + "/medios-contacto",
+                    MedioContactoDTO.class
+            );
 
-        return new MedioContacto(
-                dto.getMedioDeContacto(),
-                dto.getDireccionContacto()
-        );
+            if (dto == null) {
+                return null;
+            }
+
+            return new MedioContacto(
+                    dto.getMedioDeContacto(),
+                    dto.getDireccionContacto()
+            );
+        } catch (Exception e) {
+            System.err.println("No se pudo obtener el contacto de la persona: " + e.getMessage());
+            return null;
+        }
     }
 }

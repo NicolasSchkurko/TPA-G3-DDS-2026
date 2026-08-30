@@ -1,38 +1,54 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
+/**
+ * Repositorio en memoria para gestionar operaciones CRUD sobre Entidades Beneficiarias.
+ */
 @Repository
 public class RepositorioEntidadesBeneficiarias {
-    private final List<EntidadBeneficiaria> entidades;
+    private List<EntidadBeneficiaria> entidadesEnMemoria;
 
     public RepositorioEntidadesBeneficiarias() {
-        this.entidades = new ArrayList<>();
+        this.entidadesEnMemoria = new ArrayList<>();
     }
 
-    public List<EntidadBeneficiaria> findAll() {
-        return new ArrayList<>(entidades);
+    public void guardar(EntidadBeneficiaria entidad) {
+        if (entidad != null && entidad.getId() != null) {
+            if (buscarPorId(entidad.getId()).isPresent()) {
+                throw new IllegalArgumentException("Ya existe una entidad con el ID: " + entidad.getId());
+            }
+            this.entidadesEnMemoria.add(entidad);
+        }
     }
 
-    public Optional<EntidadBeneficiaria> findById(UUID id) {
-        return entidades.stream()
-                        .filter(e -> e.getId().equals(id))
-                        .findFirst();
+    public List<EntidadBeneficiaria> obtenerTodas() {
+        return new ArrayList<>(this.entidadesEnMemoria);
     }
 
-    public EntidadBeneficiaria save(EntidadBeneficiaria entidad) {
-        deleteById(entidad.getId()); // Si existe la actualiza (borra e inserta), si no, la agrega.
-        entidades.add(entidad);
-        return entidad;
+    public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {
+        return this.entidadesEnMemoria.stream()
+                                      .filter(e -> e.getId().equals(id))
+                                      .findFirst();
     }
 
-    public void deleteById(UUID id) {
-        entidades.removeIf(e -> e.getId().equals(id));
+    public void actualizar(UUID idOriginal, EntidadBeneficiaria entidadActualizada) {
+        Optional<EntidadBeneficiaria> entidadExistente = buscarPorId(idOriginal);
+        if (entidadExistente.isPresent()) {
+            int index = this.entidadesEnMemoria.indexOf(entidadExistente.get());
+            this.entidadesEnMemoria.set(index, entidadActualizada);
+        } else {
+            throw new IllegalArgumentException("No se encontró la entidad a actualizar.");
+        }
+    }
+
+    public void eliminarPorId(UUID id) {
+        this.entidadesEnMemoria.removeIf(e -> e.getId().equals(id));
     }
 }
