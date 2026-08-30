@@ -48,7 +48,7 @@ public class EntidadBeneficiariaService {
     public EntidadBeneficiariaDTO registrarEntidad(EntidadBeneficiariaDTO dto) {
         EntidadBeneficiaria entidad = dto.toDomain();
         if (entidad.getPersonaJuridica() != null) gestorPersonas.registrarPersona(entidad.getPersonaJuridica());
-        gestorEntidades.registrarEntidad(entidad);
+        registrarEntidad(entidad);
         return EntidadBeneficiariaDTO.from(entidad);
     }
 
@@ -76,8 +76,8 @@ public class EntidadBeneficiariaService {
 
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
         Necesidad necesidad = dto.toDomain();
-        gestorNecesidades.crearNecesidad(necesidad);
-        gestorEntidades.agregarNecesidadAEntidad(idEntidad, necesidad);
+        crearNecesidad(necesidad);
+        agregarNecesidadAEntidad(idEntidad, necesidad);
         return NecesidadDTO.from(necesidad);
     }
 
@@ -90,13 +90,22 @@ public class EntidadBeneficiariaService {
     }
 
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
-        gestorEntidades.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
+        eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
         repositorioNecesidades.eliminarPorId(idNecesidad);
         System.out.println("Administrador dado de baja (si existía).");
     }
 
     public List<DonacionDTO> obtenerDonaciones(UUID idEntidad) {
         return obtenerDonacionesDeEntidad(idEntidad).stream().map(DonacionDTO::from).collect(Collectors.toList());
+    }
+
+    private void registrarEntidad(EntidadBeneficiaria nuevaEntidad) {
+        try {
+            repositorioEntidadesBeneficiarias.guardar(nuevaEntidad);
+            System.out.println("Entidad beneficiaria registrada con éxito con ID: " + nuevaEntidad.getId());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error al registrar entidad: " + e.getMessage());
+        }
     }
 
     private List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
@@ -106,6 +115,40 @@ public class EntidadBeneficiariaService {
         } else {
             System.err.println("Entidad no encontrada.");
             return new ArrayList<>();
+        }
+    }
+
+    private void agregarNecesidadAEntidad(UUID idEntidad, Necesidad nuevaNecesidad) {
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+        if (entidad != null) {
+            entidad.agregarNecesidad(nuevaNecesidad);
+            repositorioEntidadesBeneficiarias.actualizar(idEntidad, entidad);
+            System.out.println("Necesidad agregada a la entidad: " + idEntidad);
+        } else {
+            throw new IllegalArgumentException("No se pudo agregar necesidad: Entidad no encontrada.");
+        }
+    }
+
+    private void eliminarNecesidadDeEntidad(UUID idEntidad, UUID idNecesidad) {
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+        if (entidad == null) {
+            throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
+        }
+
+        Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
+
+        entidad.eliminarNecesidad(necesidad);
+        repositorioEntidadesBeneficiarias.actualizar(idEntidad, entidad);
+        System.out.println("Necesidad desvinculada de la entidad con éxito.");
+    }
+
+    private void crearNecesidad(Necesidad nuevoNecesidad) {
+        try {
+            repositorioNecesidades.guardar(nuevoNecesidad);
+            System.out.println("Necesidad registrada con éxito con ID: " + nuevoNecesidad.getId());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error al registrar Necesidad: " + e.getMessage());
         }
     }
 }
