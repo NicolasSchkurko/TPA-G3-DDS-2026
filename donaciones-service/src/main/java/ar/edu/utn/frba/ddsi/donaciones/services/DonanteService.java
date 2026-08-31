@@ -1,12 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -33,17 +30,15 @@ public class DonanteService {
 
   private final GestorDonantes gestorDonantes;
   private final GestorPersonas gestorPersonas;
-  private final NotificacionesClient notificacionClient;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
 
   public DonanteService(GestorDonantes gestorDonantes, GestorPersonas gestorPersonas,
-                        NotificacionesClient notificacionClient, FabricaEstrategiasNotificacion fabricaEstrategias,
+                        FabricaEstrategiasNotificacion fabricaEstrategias,
                         IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes) {
     this.gestorDonantes = gestorDonantes;
     this.gestorPersonas = gestorPersonas;
-    this.notificacionClient = notificacionClient;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repositorioDonantes = repositorioDonantes;
@@ -53,20 +48,14 @@ public class DonanteService {
     Donante nuevoDonante = dto.toDomain();
 
     if (nuevoDonante.getPersona() != null) {
+
       String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
       incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario));
-
-      if (nuevoDonante.getPersona().getMediosDeContacto() != null && nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado() != null) {
-        MedioDeContacto predeterminado = nuevoDonante.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado();
-        NotificacionDTO notificacion = new NotificacionDTO(
-            predeterminado.getTipo().toUpperCase(), predeterminado.getValor(),
-            "Gracias por registrarse en DonaTrack", "Nuevo Registro en DonaTrack"
-        );
-        notificacionClient.enviarNotificacion(notificacion);
-      }
-
+      fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
       gestorPersonas.registrarPersona(nuevoDonante.getPersona());
+
     }
+
     registrarDonante(nuevoDonante);
     return PersonaDonanteDTO.from(nuevoDonante);
   }
@@ -148,7 +137,7 @@ public class DonanteService {
   public void revisarActividades(){
     for (Donante p : repositorioDonantes.obtenerTodos()) {
       if (p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
-        fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE).ejecutar(p);
+        fabricaEstrategias.ejecutar(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, p);
       }
     }
   }

@@ -86,9 +86,7 @@ public class GestorDonaciones {
         // Nota: asumo que `incentivosClient` está correctamente inyectado en la clase
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
 
-        EstrategiaNotificacion estrategia = fabricaEstrategiasNotificacion.obtenerEstrategia(
-            TipoEventoNotificacion.DONACION_ASIGNADA);
-        estrategia.ejecutar(donacion);
+        fabricaEstrategiasNotificacion.ejecutar(TipoEventoNotificacion.DONACION_ASIGNADA, donacion);
     }
 
 

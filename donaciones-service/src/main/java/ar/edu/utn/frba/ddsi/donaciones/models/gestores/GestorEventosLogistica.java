@@ -92,12 +92,13 @@ public class GestorEventosLogistica {
       repositorioDonaciones.guardar(donacion);
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
-      fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.COMPROBANTE_ENTREGA).ejecutar(
-          new NotificacionEntregaDatos(
-              payload,
-              donacion.getDonante().getPersona().getMediosDeContacto(),
-              donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
-          ));
+
+      fabricaEstrategias.ejecutar(TipoEventoNotificacion.COMPROBANTE_ENTREGA,
+              new NotificacionEntregaDatos(
+                  payload,
+                  donacion.getDonante().getPersona().getMediosDeContacto(),
+                  donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
+      ));
     });
   }
 
@@ -109,13 +110,13 @@ public class GestorEventosLogistica {
       repositorioDonaciones.guardar(donacion);
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
-      fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA).ejecutar(
-          new NotificacionEntregaFallidaDatos(
-              payload,
-              donacion.getDonante().getPersona().getMediosDeContacto(),
-              donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),
-              contactosAdministradores
-          ));
+      fabricaEstrategias.ejecutar(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA,
+              new NotificacionEntregaFallidaDatos(
+                  payload,
+                  donacion.getDonante().getPersona().getMediosDeContacto(),
+                  donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),
+                  contactosAdministradores
+      ));
     });
   }
 
