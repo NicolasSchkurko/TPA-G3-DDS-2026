@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -44,9 +45,9 @@ public class PerfilController {
             @ApiResponse(responseCode = "404", description = "Perfil no encontrado o sin actividad")
     })
     @GetMapping("/{id}/comparativas/{idPerfil}")
-    public ResponseEntity<MetricasHistoricasDTO> obtenerMetricas(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
+    public ResponseEntity<List<MetricaDTO>> obtenerMetricas(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                       @PathVariable UUID idUsuario, @PathVariable UUID idPerfil) {
-        MetricasHistoricasDTO metricas = service.obtenerMetricasDonante(idUsuario, idPerfil);
+        List<MetricaDTO> metricas = service.obtenerMetricasDonante(idUsuario, idPerfil);
         if (metricas == null) {
             return ResponseEntity.notFound().build();
         }
@@ -115,9 +116,9 @@ public class PerfilController {
             @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
     @GetMapping("/{id}/insignias")
-    public ResponseEntity<ListaInsigniasDTO> obtenerInsigniasPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
+    public ResponseEntity<List<InsigniaDTO>> obtenerInsigniasPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                     @PathVariable UUID id) {
-        ListaInsigniasDTO insignias = service.obtenerInsigniasPorID(id);
+        List<InsigniaDTO> insignias = service.obtenerInsigniasPorID(id);
         if (insignias == null) {
             return ResponseEntity.notFound().build();
         }

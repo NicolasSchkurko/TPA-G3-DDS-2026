@@ -52,14 +52,13 @@ public class PerfilService {
                 p.getPosicionRanking() == null ? null : p.getPosicionRanking().getPuesto());
     }
 
-    public MetricasHistoricasDTO obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
+    public List<MetricaDTO> obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
         //% de variacion de donaciones x mes
         List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
 
-        return new MetricasHistoricasDTO(
-                metricasHistoricas.stream()
-                .map(this::convertirMetricaADTO).toList()
-        );
+        return metricasHistoricas.stream()
+                .map(this::convertirMetricaADTO)
+                .toList();
     }
 
     public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
@@ -129,12 +128,10 @@ public class PerfilService {
                 );
     }
 
-    public ListaInsigniasDTO obtenerInsigniasPorID(UUID idUsuario) {
+    public List<InsigniaDTO> obtenerInsigniasPorID(UUID idUsuario) {
         List<Insignia> insignias = perfiles.obtenerInsigniasPerfil(idUsuario);
 
-        List<InsigniaDTO> dto = insignias.stream().map(this::convertirInsigniaADTO).toList();
-
-        return new ListaInsigniasDTO(dto);
+        return insignias.stream().map(this::convertirInsigniaADTO).toList();
     }
 
     public InsigniaDTO convertirInsigniaADTO(Insignia insignia) {
