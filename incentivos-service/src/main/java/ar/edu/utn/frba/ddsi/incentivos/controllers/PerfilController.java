@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
-import ar.edu.utn.frba.ddsi.incentivos.services.PersonaService;
+import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,10 +17,10 @@ import java.util.UUID;
 @RequestMapping("/perfiles") //https:localhost:8001/api/perfiles
 @Tag(name = "Gestión de Perfiles e Incentivos", description = "Endpoints para consultar métricas, misiones, insignias y rankings de los perfiles de colaboradores.")
 public class PerfilController {
-    private final PersonaService personaService;
+    private final PerfilService perfilService;
 
-    public PerfilController(PersonaService personaService) {
-        this.personaService = personaService;
+    public PerfilController(PerfilService perfilService) {
+        this.perfilService = perfilService;
     }
 //    @DeleteMapping("/{id}")
 //    public ResponseEntity<Void> eliminarPerfil(@PathVariable UUID id) {
@@ -41,7 +40,7 @@ public class PerfilController {
     public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
             @Parameter(description = "UUID del usuario asociado al perfil")
             @PathVariable UUID idUsuario) {
-        PerfilDTO perfil = personaService.buscarPorIdUsuario(idUsuario);
+        PerfilDTO perfil = perfilService.buscarPorIdUsuario(idUsuario);
         return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
     }
 
@@ -59,7 +58,7 @@ public class PerfilController {
     public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
         //los admins se crean en donaciones-service asi q me tiene que pasar el rol
         //si se crea un admin tengo que crearle un perfil
-        PerfilDTO nuevo = personaService.crearPerfil(dto);
+        PerfilDTO nuevo = perfilService.crearPerfil(dto);
         if (nuevo == null) {
             return ResponseEntity.notFound().build();
         }

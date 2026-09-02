@@ -1,167 +1,74 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.dto.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
-
-import java.time.YearMonth;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
-import java.util.UUID;
-
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class PerfilService {
-    private final GestorPerfiles perfiles;
-    private final GestorRanking rankings;
-    private final GestorActividad actividad;
+    private final RepositorioPerfiles repositorioPerfiles;
+    private final RepositorioCategorias repositorioCategorias;
 
-    public PerfilService(GestorPerfiles perfiles,
-                         GestorRanking rankings,
-                         GestorActividad actividad) {
-        this.perfiles = perfiles;
-        this.rankings = rankings;
-        this.actividad = actividad;
+    public PerfilService(RepositorioPerfiles repositorio,
+                         RepositorioCategorias repositorioCategorias) {
+        this.repositorioPerfiles = repositorio;
+        this.repositorioCategorias = repositorioCategorias;
     }
 
-    public PerfilDTO actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
-        if (idUsuario == null) {
+    public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
+        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario(), dto.getRole());
+
+        boolean rolUser = dto.getRole().toUpperCase(Locale.ROOT).equals("USER");
+        //todo: deberian comunicarse por evento o lo dejo asi?
+        Categoria categoriaBase = rolUser ?
+                repositorioCategorias.buscarPorPosicionSecuencia(1)
+                : null;
+//        if (rolUser  && categoriaBase == null) {
+//            throw new IllegalStateException("No existe una categoría base para inicializar el perfil");
+//        }
+        if (rolUser) {
+            nuevo.setCategoriaActual(categoriaBase);
+            nuevo.setMisionActual(categoriaBase.primeraMision());
+        }
+
+        if (repositorioPerfiles.buscarPorIDUsuario(nuevo.getIdUsuario()) != null) return null;
+        repositorioPerfiles.agregarPerfil(nuevo);
+
+        nuevo = repositorioPerfiles.buscarPorIDPerfil(nuevo.getIdPerfil());
+//        if (p == null || (rolUser && (p.getCategoriaActual() == null || p.getMisionActual() == null))) {
+//            throw new IllegalStateException("El perfil se creó sin categoría o misión iniciales");
+//        }
+        return new PerfilDTO(
+                nuevo.getNombreUsuario(),
+                nuevo.getCategoriaActual() == null ? null : nuevo.getCategoriaActual().getNombre(),
+                nuevo.getInsignias() == null ? List.of() : nuevo.getInsignias().stream().map(Insignia::getNombre).toList(),
+                nuevo.getMisionActual() == null ? null : nuevo.getMisionActual().getNombreMision(),
+                nuevo.getPosicionRanking() == null ? null : nuevo.getPosicionRanking().getPuesto(),
+                nuevo.getRole() == null ? null : nuevo.getRole().name()
+        );
+    }
+
+    public PerfilDTO buscarPorIdUsuario(UUID idUsuario){
+        Perfil p = repositorioPerfiles.buscarPorIDUsuario(idUsuario);
+        if (p == null) {
             return null;
         }
 
-        ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
-        Perfil p = perfiles.progresarPerfil(idUsuario, donacion);
-        if (p == null) return null;
-
-        actividad.guardarDonacion(p.getIdPerfil(), donacion);
-
         return new PerfilDTO(
                 p.getNombreUsuario(),
-                p.getCategoriaActual().getNombre(),
-                p.getInsignias().stream().map(Insignia::getNombre).toList(),
-                p.getMisionActual().getNombreMision(),
-                p.getPosicionRanking().getPuesto(),
-                p.getRole() == null ? null : p.getRole().name()
-        );
-    }
-
-    public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion){
-        return new ImpactoDonacion(donacion.getEntidadBeneficiaria(),
-                donacion.getCantidadBienes(),
-                donacion.getFechaEntrega(),
-                donacion.getCategoria(),
-                donacion.getSubCategoria(),
-                donacion.getEstado(),
-                id);
-    }
-
-    public List<MetricaDTO> obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
-        //% de variacion de donaciones x mes
-        List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
-
-        return metricasHistoricas.stream()
-                .map(this::convertirMetricaADTO)
-                .toList();
-    }
-
-    public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
-        Integer donacionesTotales = actividad.donacionesTotales(idPerfil);
-        Integer cantidadOrgsAyudadas = actividad.cantidadOrganizacionesAyudadas(idPerfil);
-        //obtener cantidad de donaciones y organizaciones ayudadas x mes
-        Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(idPerfil);
-        Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(idPerfil);
-
-        TreeSet<YearMonth> meses = new TreeSet<>(donacionesXMes.keySet());
-        meses.addAll(orgsAyudadasXMes.keySet());
-
-        List<RegistroMensualDTO> actividadPerfil = meses.stream()
-                .map(mes -> new RegistroMensualDTO(
-                            mes,
-                            donacionesXMes.getOrDefault(mes, 0),
-                            orgsAyudadasXMes.getOrDefault(mes, 0)
-                        )
-                )
-                .toList();
-
-
-
-        return new ActividadDTO(
-                actividadPerfil,
-                donacionesTotales,
-                cantidadOrgsAyudadas
-        );
-    }
-
-    public RankingMesDTO obtenerRanking(UUID idRanking) {
-        RankingMensual rank = rankings.obtenerRanking(idRanking);
-
-        return new RankingMesDTO(
-                rank.getPosiciones().stream()
-                                .map(this::convertirRankingADTO).toList(),
-                rank.getPeriodo());
-    }
-
-    public RankingMesDTO obtenerTop3Ranking(UUID idRanking) {
-        RankingMensual top3 = rankings.obtenerTop3(idRanking);
-
-        return new RankingMesDTO(
-                top3.getPosiciones().stream()
-                        .map(this::convertirRankingADTO).toList(),
-                top3.getPeriodo());
-    }
-
-    public MisionPerfilDTO obtenerMisionPorID(UUID idUsuario) {
-        Mision mision = perfiles.obtenerMisionPerfil(idUsuario);
-
-        return convertirMisionPerfilADTO(mision);
-    }
-
-    public MetricaDTO convertirMetricaADTO(Metricas metrica){
-        return new MetricaDTO(
-                metrica.getInicio(),
-                metrica.getFin(),
-                metrica.getVariacionPorcentual());
-    }
-
-    public MisionPerfilDTO convertirMisionPerfilADTO(Mision mision) {
-        return new MisionPerfilDTO(
-                        mision.getNombreMision(),
-                        mision.getDescripcion(),
-                        mision.getInsigniaObjetivo().getNombre()
-                );
-    }
-
-    public List<InsigniaDTO> obtenerInsigniasPorID(UUID idUsuario) {
-        List<Insignia> insignias = perfiles.obtenerInsigniasPerfil(idUsuario);
-
-        return insignias.stream().map(this::convertirInsigniaADTO).toList();
-    }
-
-    public InsigniaDTO convertirInsigniaADTO(Insignia insignia) {
-        return new InsigniaDTO( insignia.getNombre(),
-                                insignia.getDescripcion(),
-                                insignia.getUrlImagen(),
-                                insignia.getFechaObtencion()
-        );
-    }
-
-    public RankingDTO convertirRankingADTO(Ranking ranking) {
-        if (ranking == null) return null;
-        RankingDTO dto = new RankingDTO();
-        dto.setPosicionRanking(ranking.getPosicionRanking().getPuesto());
-        dto.setNombreUsuario(ranking.getNombreUsuario());
-        dto.setCantidadMisionesCompletas(ranking.getPosicionRanking().getMisionesCumplidasEnPeriodo());
-        return dto;
+                p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
+                p.getInsignias() == null ? List.of() : p.getInsignias().stream().map(Insignia::getNombre).toList(),
+                p.getMisionActual() == null ? null : p.getMisionActual().getNombreMision(),
+                p.getPosicionRanking() == null ? null : p.getPosicionRanking().getPuesto(),
+                p.getRole() == null ? null : p.getRole().name());
     }
 }
