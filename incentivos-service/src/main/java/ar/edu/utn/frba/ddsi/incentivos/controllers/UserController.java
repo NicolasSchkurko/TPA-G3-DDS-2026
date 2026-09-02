@@ -3,12 +3,11 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
+import ar.edu.utn.frba.ddsi.incentivos.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -19,9 +18,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/user")
 public class UserController {
-    private final PerfilService service;
+    private final UserService service;
 
-    public UserController(PerfilService service) {
+    public UserController(UserService service) {
         this.service = service;
     }
 
