@@ -29,9 +29,6 @@ public class GestorCategoria {
         this.inicializarCategoriasBase();
     }
 
-
-
-
     @EventListener
     public void avanzarCategoria(UltimaMisionCategoria event) {
         if (event.idCategoriaCompletada() == null) {
@@ -39,7 +36,7 @@ public class GestorCategoria {
         }
 
         Categoria categoriaAnterior = repositorio.buscarPorId(event.idCategoriaCompletada());
-        Categoria categoriaSiguiente = categoriaCorrespondiente(categoriaAnterior.getPosicionSecuencia() + 1);
+        Categoria categoriaSiguiente = repositorio.buscarPorPosicionSecuencia(categoriaAnterior.getPosicionSecuencia() + 1);
         if (categoriaSiguiente == null || categoriaSiguiente.primeraMision() == null) {
             return;
         }
@@ -153,9 +150,5 @@ public class GestorCategoria {
         }
 
         return repositorio.actualizar(categoriaActual);
-    }
-
-    public Categoria categoriaCorrespondiente(Integer posicion){
-        return repositorio.buscarPorPosicionSecuencia(posicion);
     }
 }
