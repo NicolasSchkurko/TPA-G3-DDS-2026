@@ -19,6 +19,8 @@ public class AdminController {
         this.service = service;
     }
 
+    //
+
     @PostMapping("/categorias")
     @PreAuthorize("hasRole('ADMIN')") //hace que vaya a las clases de preautorizacion definidas en carpeta config
     public ResponseEntity<List<CategoriaDTO>> crearCategoria(@RequestBody CategoriaDTO request) {
