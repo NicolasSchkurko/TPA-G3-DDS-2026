@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.AdminService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class AdminController {
     }
 
     @PostMapping("/categorias")
+    @PreAuthorize("hasRole('ADMIN')") //hace que vaya a las clases de preautorizacion definidas en carpeta config
     public ResponseEntity<List<CategoriaDTO>> crearCategoria(@RequestBody CategoriaDTO request) {
         List<CategoriaDTO> nuevaSecuencia = service.agregarCategoria(request);
         if (nuevaSecuencia == null) {
@@ -28,6 +30,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/categorias/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<CategoriaDTO>> eliminarCategoria(@PathVariable UUID id) {
         List<CategoriaDTO> nuevaSecuencia = service.eliminarCategoria(id);
         if (nuevaSecuencia == null) {
@@ -37,6 +40,7 @@ public class AdminController {
     }
 
     @PutMapping("/categorias/modificar/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoriaDTO> actualizarCategoria(@PathVariable UUID id, @RequestBody CategoriaDTO categoria) {
         try {
             CategoriaDTO actualizada = service.actualizarCategoria(id, categoria);
@@ -47,6 +51,7 @@ public class AdminController {
     }
 
     @PostMapping("/misiones")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MisionDTO> crearMision(@RequestBody MisionDTO request) {
         MisionDTO nuevaMision = service.crearMision(request);
         if (nuevaMision == null) {
@@ -56,6 +61,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/misiones/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MisionDTO> eliminarMision(@PathVariable UUID id) {
         MisionDTO misionEliminada = service.eliminarMision(id);
         if (misionEliminada == null) {
@@ -65,6 +71,7 @@ public class AdminController {
     }
 
     @PutMapping("/misiones/modificar/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MisionDTO> actualizarMision(@PathVariable UUID id, @RequestBody MisionDTO mision) {
         try {
             MisionDTO actualizada = service.actualizarMision(id, mision);

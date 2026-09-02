@@ -176,6 +176,8 @@ public class PerfilController {
     })
     @PostMapping
     public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
+        //los admins se crean en donaciones-service asi q me tiene que pasar el rol
+        //si se crea un admin tengo que crearle un perfil
         PerfilDTO nuevo = personaService.crearPerfil(dto);
         if (nuevo == null) {
             return ResponseEntity.notFound().build();

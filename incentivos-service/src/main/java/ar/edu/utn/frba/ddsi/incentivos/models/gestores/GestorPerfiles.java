@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Role;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -32,6 +33,7 @@ public class GestorPerfiles {
 
     public void verificarProgresos() {
         repositorio.listarTodos().stream()
+                .filter(perfil -> perfil.getRole() == Role.USER)
                 .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)
                 .forEach(Perfil::verificarProgresoMision);
     }
@@ -46,12 +48,6 @@ public class GestorPerfiles {
         Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
 
         return perfil.getInsignias();
-    }
-
-    public Perfil crearPerfil(Perfil nuevo) {
-        if (repositorio.buscarPorIDUsuario(nuevo.getIdUsuario()) != null) return null;
-        repositorio.agregarPerfil(nuevo);
-        return repositorio.buscarPorIDPerfil(nuevo.getIdPerfil());
     }
 
     public Perfil progresarPerfil(UUID idUsuario, ImpactoDonacion donacion) {
@@ -93,6 +89,7 @@ public class GestorPerfiles {
         // lista de perfiles con su cantidad de misiones en el periodo
         List<Perfil> candidatos = repositorio.listarTodos().stream()
                 // solo consideramos perfiles con >0 misiones en el periodo
+                .filter(perfil -> perfil.getRole() == Role.USER)
                 .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
                         && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
                 // ordenamos desc por misiones cumplidas

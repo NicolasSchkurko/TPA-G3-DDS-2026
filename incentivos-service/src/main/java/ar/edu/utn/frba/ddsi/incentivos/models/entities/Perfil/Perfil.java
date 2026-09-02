@@ -22,15 +22,19 @@ public class Perfil {
     private List<Insignia> insignias;
     private Mision misionActual;
     private PosicionRanking posicionRanking;
+    private Role role;
 
-    public Perfil(UUID idUsuario, String nombreUsuario) {
+    public Perfil(UUID idUsuario, String nombreUsuario, String role) {
         this.idUsuario = idUsuario;
         this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = null; //inicializar en gestorPerfiles
-        this.insignias = new ArrayList<>();
-        this.posicionRanking = new PosicionRanking(null);
-        this.misionActual = null; //se inicializa en gestorPerfiles
+        this.role = role == null ? Role.USER : Role.valueOf(role.toUpperCase());
+        if (this.role == Role.USER) {
+            this.categoriaActual = null; //inicializar en gestorPerfiles
+            this.insignias = new ArrayList<>();
+            this.posicionRanking = new PosicionRanking(null);
+            this.misionActual = null; //se inicializa en gestorPerfiles
+        }
     }
 
     public void verificarProgresoMision(){
