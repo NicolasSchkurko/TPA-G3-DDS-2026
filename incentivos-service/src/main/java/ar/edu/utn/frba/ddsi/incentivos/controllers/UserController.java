@@ -24,7 +24,7 @@ public class UserController {
         this.service = service;
     }
 
-    //https:localhost/perfiles/{idUsuario}
+    //https:localhost:8001/api/user/{idUsuario}
 //permite q Donaciones nos pida actualizarPerfil ante una donacion
     @Operation(
             summary = "Actualizar perfil por impacto de donación",

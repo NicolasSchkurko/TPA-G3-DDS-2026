@@ -22,6 +22,7 @@ public class PerfilController {
     public PerfilController(PerfilService perfilService) {
         this.perfilService = perfilService;
     }
+
 //    @DeleteMapping("/{id}")
 //    public ResponseEntity<Void> eliminarPerfil(@PathVariable UUID id) {
 //        service.eliminarPerfil(id);

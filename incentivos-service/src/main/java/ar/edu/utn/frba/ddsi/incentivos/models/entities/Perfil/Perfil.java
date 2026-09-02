@@ -20,32 +20,34 @@ public class Perfil {
     private String nombreUsuario;
     private Categoria categoriaActual;
     private List<Insignia> insignias;
-    private Mision misionActual;
+    private ProgresoMision progresoMisionActual;
     private PosicionRanking posicionRanking;
-    private Role role;
 
     public Perfil(UUID idUsuario, String nombreUsuario, String role) {
         this.idUsuario = idUsuario;
         this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.role = role == null ? Role.USER : Role.valueOf(role.toUpperCase());
-        if (this.role == Role.USER) {
-            this.categoriaActual = null; //inicializar en gestorPerfiles
-            this.insignias = new ArrayList<>();
-            this.posicionRanking = new PosicionRanking(null);
-            this.misionActual = null; //se inicializa en gestorPerfiles
-        }
+        this.categoriaActual = null; //inicializar en perfilService
+        this.insignias = new ArrayList<>();
+        this.posicionRanking = new PosicionRanking(null);
+        this.progresoMisionActual = null; //inicializar en perfilService
     }
 
     public void verificarProgresoMision(){
-        misionActual.evaluarConstancia();
+        if (progresoMisionActual != null)
+            progresoMisionActual.evaluarConstancia();
     }
 
     public boolean progresarMision(ImpactoDonacion donacion){
-        misionActual.evaluarConstancia();
-        misionActual.evaluarProgreso(donacion);
+        Mision misionActual = getMisionActual();
+        if (misionActual == null) return false;
+        if (progresoMisionActual == null || progresoMisionActual.getMision() != misionActual) {
+            progresoMisionActual = new ProgresoMision(misionActual);
+        }
+        progresoMisionActual.evaluarConstancia();
+        progresoMisionActual.evaluarProgreso(donacion);
 
-        if (misionActual.estaCompleta()) {
+        if (progresoMisionActual.estaCompleta()) {
             this.otorgarInsignia();
             this.sumarMisionCumplida();
             return true;
@@ -54,7 +56,7 @@ public class Perfil {
     }
 
     private void otorgarInsignia() {
-        Insignia insignia = misionActual.getInsigniaObjetivo();
+        Insignia insignia = getMisionActual().getInsigniaObjetivo();
         insignia.setFechaObtencion(LocalDate.now());
         insignias.add(insignia);
     }
@@ -62,5 +64,13 @@ public class Perfil {
     private void sumarMisionCumplida(){
         Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
         posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
+    }
+
+    public void setMisionActual(Mision misionActual) {
+        this.progresoMisionActual = misionActual == null ? null : new ProgresoMision(misionActual);
+    }
+
+    public Mision getMisionActual() {
+        return progresoMisionActual == null ? null : progresoMisionActual.getMision();
     }
 }
