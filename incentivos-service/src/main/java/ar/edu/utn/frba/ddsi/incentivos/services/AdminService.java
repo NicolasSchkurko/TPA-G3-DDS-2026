@@ -28,7 +28,7 @@ public class AdminService {
         this.gestorMisiones = gestorMision;
     }
 
-    public SecuenciaCategoriasDTO agregarCategoria(CategoriaDTO dto){
+    public List<CategoriaDTO> agregarCategoria(CategoriaDTO dto){
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
         Categoria categoria = new Categoria(
@@ -53,10 +53,10 @@ public class AdminService {
             categoriasDTO.add(cat);
         }
 
-        return new SecuenciaCategoriasDTO(categoriasDTO);
+        return categoriasDTO;
     }
 
-    public SecuenciaCategoriasDTO eliminarCategoria(UUID id){
+    public List<CategoriaDTO> eliminarCategoria(UUID id){
         List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
@@ -73,7 +73,7 @@ public class AdminService {
             categoriasDTO.add(cat);
         }
 
-        return new SecuenciaCategoriasDTO(categoriasDTO);
+        return categoriasDTO;
     }
 
     public CategoriaDTO actualizarCategoria(UUID id, CategoriaDTO dto){
