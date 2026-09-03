@@ -1,4 +1,3 @@
-/*
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
@@ -51,4 +50,3 @@ public class GestorCategoria {
         );
     }
 }
-*/

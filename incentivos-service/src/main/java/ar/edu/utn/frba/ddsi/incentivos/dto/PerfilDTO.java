@@ -14,19 +14,16 @@ public class PerfilDTO {
     private List<String> insignias;
     private String misionActual;
     private Integer posicionRanking;
-    private String rol;
 
     public PerfilDTO(String nombreUsuario,
                      String categoriaActual,
                      List<String> insignias,
                      String misionActual,
-                     Integer posicionRanking,
-                     String rol) {
+                     Integer posicionRanking) {
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = categoriaActual;
         this.insignias = insignias;
         this.misionActual = misionActual;
         this.posicionRanking = posicionRanking;
-        this.rol = rol;
     }
 }

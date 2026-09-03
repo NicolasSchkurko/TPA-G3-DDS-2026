@@ -28,6 +28,7 @@ public class AdminService {
         this.gestorCategoria = gestorCategoria;
         this.gestorMisiones = gestorMision;
         this.repositorioCategorias = repositorioCategorias;
+        repositorioCategorias.inicializarCategoriasBase();
     }
 
     public List<CategoriaDTO> agregarCategoria(CategoriaDTO dto){
@@ -35,6 +36,7 @@ public class AdminService {
 
         Categoria categoria = new Categoria(
                 dto.getNombre(),
+                dto.getAdmin(),
                 dto.getPosicionSecuencia(),
                 misiones
         );
@@ -43,7 +45,7 @@ public class AdminService {
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
         for(Categoria x : categorias){
-            List<UUID> idMisiones = x.getMisiones().stream()
+            List<UUID> idMisiones = x.getCMisiones().stream()
                     .map(Mision::getIdMision).toList();
 
             CategoriaDTO cat = new CategoriaDTO(
@@ -83,6 +85,7 @@ public class AdminService {
 
         Categoria categoria = new Categoria(
                 dto.getNombre(),
+                dto.getAdmin(),
                 dto.getPosicionSecuencia(),
                 misiones
         );
