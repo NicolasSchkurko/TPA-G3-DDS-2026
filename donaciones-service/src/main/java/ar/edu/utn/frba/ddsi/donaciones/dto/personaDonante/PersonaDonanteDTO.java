@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJur
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import lombok.Getter;
@@ -40,7 +41,19 @@ public class PersonaDonanteDTO {
 
   public Donante toDomain() {
     Direccion dir = this.direccion != null ? this.direccion.toDomain() : null;
+    return construirDonante(dir);
+  }
 
+  // Variante que recibe una Ciudad ya persistida/managed (resuelta vía GestorDirecciones,
+  // buscar-o-crear) en lugar de construir la cadena Pais/Provincia/Ciudad "al vuelo" — mismo
+  // bug que se corrigió en EntidadBeneficiariaDTO/DireccionDTO (EntityNotFoundException en
+  // merge() por Ciudad no cascadeada). Usar esta variante siempre que el Donante se persista vía JPA.
+  public Donante toDomain(Ciudad ciudad) {
+    Direccion dir = this.direccion != null ? this.direccion.toDomain(ciudad) : null;
+    return construirDonante(dir);
+  }
+
+  private Donante construirDonante(Direccion dir) {
     Persona persona = crearPersonaDesdeTipo();
     List<MedioDeContacto> medios = mapearMedios();
     MedioDeContacto medioPredeterminado = resolverMedioPredeterminado(medios);

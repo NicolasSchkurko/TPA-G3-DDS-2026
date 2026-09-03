@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Asign
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -17,7 +18,6 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +28,7 @@ public class DonacionService {
   private final GestorAsignaciones gestorAsignaciones;
   private final GestorFormulario gestorFormulario;
   private final GestorMatchmaking gestorMatchmaking;
+  private final GestorNecesidades gestorNecesidades;
   private final RepositorioDonaciones repositorioDonaciones;
   private final RepositorioDonantes repositorioDonantes;
   private final RepositorioFormularios repositorioFormularios;
@@ -38,6 +39,7 @@ public class DonacionService {
   public DonacionService(GestorDonantes gestorDonantes, GestorDonaciones gestorDonaciones,
                          GestorAsignaciones gestorAsignaciones,
                          GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
+                         GestorNecesidades gestorNecesidades,
                          RepositorioDonaciones repositorioDonaciones,
                          RepositorioDonantes repositorioDonantes, RepositorioFormularios repositorioFormularios,
                          RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
@@ -48,6 +50,7 @@ public class DonacionService {
       this.gestorAsignaciones = gestorAsignaciones;
       this.gestorFormulario = gestorFormulario;
     this.gestorMatchmaking = gestorMatchmaking;
+    this.gestorNecesidades = gestorNecesidades;
     this.repositorioDonaciones = repositorioDonaciones;
     this.repositorioDonantes = repositorioDonantes;
       this.repositorioFormularios = repositorioFormularios;
@@ -69,7 +72,7 @@ public class DonacionService {
     Donante donante = repositorioDonantes.buscarPorId(request.getIdDonante()).orElse(null);
     if (donante == null) throw new NullPointerException("No se encontró persona con ese ID");
 
-    List<Bien> bienesNormal = request.getBienes() != null ? request.getBienes().stream().map(BienResumenDTO::toDomain).collect(Collectors.toList()) : List.of();
+    List<Bien> bienesNormal = request.getBienes() != null ? request.getBienes().stream().map(this::resolverBien).collect(Collectors.toList()) : List.of();
     bienesNormal.forEach(this::crearBien);
 
     Formulario formularioGenerado = new Formulario(donante, bienesNormal, request.getFechaRealizacion());
@@ -89,12 +92,24 @@ public class DonacionService {
     asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
   }
 
+  // A diferencia de dto.toDomain() (que sólo completa id/descripcion/bienes, dejando
+  // donante/entidad/estado/subcategoria/fechaEntrega en null), acá partimos de la Donacion
+  // existente y sólo pisamos los campos que vienen en el DTO. Con persistencia real (merge()),
+  // guardar un objeto mayormente-null hubiera nuleado esas columnas en la base.
   public DonacionDTO actualizarDonacion(UUID id, DonacionDTO dto) {
-    Optional<Donacion> existente = repositorioDonaciones.obtenerPorId(id);
-    if (existente.isPresent()) {
-      return DonacionDTO.from(repositorioDonaciones.actualizar(existente.get().getId(), dto.toDomain()).get());
+    Donacion existente = repositorioDonaciones.obtenerPorId(id)
+            .orElseThrow(() -> new RuntimeException("Donación no encontrada con ID: " + id));
+
+    if (dto.getDescripcion() != null) {
+      existente.setDescripcion(dto.getDescripcion());
     }
-    throw new RuntimeException("Donación no encontrada con ID: " + id);
+    if (dto.getBienes() != null) {
+      List<Bien> bienesActualizados = dto.getBienes().stream().map(this::resolverBien).collect(Collectors.toList());
+      bienesActualizados.forEach(this::crearBien);
+      existente.setBienes(bienesActualizados);
+    }
+
+    return DonacionDTO.from(repositorioDonaciones.actualizar(existente.getId(), existente).get());
   }
 
   public void eliminarDonacion(UUID id) {
@@ -120,6 +135,13 @@ public class DonacionService {
     gestorAsignaciones.asignarPropuesta(donacion, propuestaAsignacion);
     eliminarResultadoMatchmaking(donacion.getId());
     gestorDonaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+  }
+
+  // Resuelve (o crea) la SubcategoriaBien del catálogo compartido ANTES de construir el Bien,
+  // mismo patrón que usamos para Necesidad, para no romper merge() ni duplicar el catálogo.
+  private Bien resolverBien(BienResumenDTO dto) {
+    SubcategoriaBien subcategoria = gestorNecesidades.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
+    return dto.toDomain(subcategoria);
   }
 
   private void crearBien(Bien nuevoBien) {

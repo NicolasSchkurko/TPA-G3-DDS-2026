@@ -2,15 +2,19 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
+import jakarta.persistence.Entity;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Entity
 @Getter
 @Setter
-
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Telefono extends MedioDeContacto {
     private String numeroDeTelefono;
 

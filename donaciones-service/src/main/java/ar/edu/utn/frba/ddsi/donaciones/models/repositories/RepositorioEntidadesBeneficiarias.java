@@ -2,21 +2,23 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repositorio en memoria para gestionar operaciones CRUD sobre Entidades Beneficiarias.
+ * Fachada sobre EntidadBeneficiariaJpaRepository (Spring Data JPA).
+ * Mantiene la misma interfaz pública que tenía cuando era un repositorio en memoria,
+ * para no tener que tocar los Gestores/Services que ya la usan.
  */
 @Repository
 public class RepositorioEntidadesBeneficiarias {
-    private List<EntidadBeneficiaria> entidadesEnMemoria;
 
-    public RepositorioEntidadesBeneficiarias() {
-        this.entidadesEnMemoria = new ArrayList<>();
+    private final EntidadBeneficiariaJpaRepository jpaRepository;
+
+    public RepositorioEntidadesBeneficiarias(EntidadBeneficiariaJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
     }
 
     public void guardar(EntidadBeneficiaria entidad) {
@@ -24,31 +26,27 @@ public class RepositorioEntidadesBeneficiarias {
             if (buscarPorId(entidad.getId()).isPresent()) {
                 throw new IllegalArgumentException("Ya existe una entidad con el ID: " + entidad.getId());
             }
-            this.entidadesEnMemoria.add(entidad);
+            jpaRepository.save(entidad);
         }
     }
 
     public List<EntidadBeneficiaria> obtenerTodas() {
-        return new ArrayList<>(this.entidadesEnMemoria);
+        return jpaRepository.findAll();
     }
 
     public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {
-        return this.entidadesEnMemoria.stream()
-                                      .filter(e -> e.getId().equals(id))
-                                      .findFirst();
+        return jpaRepository.findById(id);
     }
 
     public void actualizar(UUID idOriginal, EntidadBeneficiaria entidadActualizada) {
-        Optional<EntidadBeneficiaria> entidadExistente = buscarPorId(idOriginal);
-        if (entidadExistente.isPresent()) {
-            int index = this.entidadesEnMemoria.indexOf(entidadExistente.get());
-            this.entidadesEnMemoria.set(index, entidadActualizada);
+        if (jpaRepository.existsById(idOriginal)) {
+            jpaRepository.save(entidadActualizada);
         } else {
             throw new IllegalArgumentException("No se encontró la entidad a actualizar.");
         }
     }
 
     public void eliminarPorId(UUID id) {
-        this.entidadesEnMemoria.removeIf(e -> e.getId().equals(id));
+        jpaRepository.deleteById(id);
     }
 }

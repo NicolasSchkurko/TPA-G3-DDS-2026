@@ -3,10 +3,12 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
 
+@Entity
 @Getter
 @Setter
 public class NecesidadRecurrente extends Necesidad {
@@ -15,6 +17,10 @@ public class NecesidadRecurrente extends Necesidad {
     public NecesidadRecurrente(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo, Integer plazoEnDias){
         super(subcategoria, descripcion, cantidadObjetivo);
         this.plazoEnDias = plazoEnDias;
+    }
+
+    protected NecesidadRecurrente() {
+        // Constructor requerido por JPA/Hibernate.
     }
 
     @Override

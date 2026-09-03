@@ -4,6 +4,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,22 +24,55 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Entity
 @Getter
 @Setter
 public class Donacion {
+    @Id
     private UUID id = UUID.randomUUID(); // Identificador único como UUID autogenerado
+
+    // ManyToOne (no OneToOne): el Donante vive en su propio repositorio (RepositorioDonantes),
+    // igual que Administrador.humano/Donante.persona. Sin cascade REMOVE: eliminar la donación
+    // no debe borrar el Donante asociado.
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "donante_id")
     private Donante donante;
+
+    // Igual que arriba pero para EntidadBeneficiaria: al crearse la Donacion todavía no tiene
+    // entidad asignada (se completa después vía matchmaking, GestorAsignaciones.asignarEntidad).
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "entidad_id")
     private EntidadBeneficiaria entidad;
+
     private String descripcion;
+
+    // Los Bien ya se persisten individualmente vía RepositorioBienes ANTES de armar la Donacion
+    // (ver DonacionService.procesarFormulario: cada Bien se guarda, luego se segmenta en
+    // Donaciones). Cascade PERSIST/MERGE (no ALL, sin orphanRemoval): cada Bien "pertenece" a
+    // este segmento, pero su ciclo de vida propio sigue gestionado por su propio repositorio,
+    // mismo criterio que Donante.persona/Administrador.humano.
+    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "donacion_id")
     private List<Bien> bienes = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
     private Estado estado; // Cambiado a minúscula por convención
+
+    // Catálogo compartido (buscar-o-crear vía GestorNecesidades), igual que
+    // Necesidad.subcategoria y Bien.subcategoria: sin cascade.
+    @ManyToOne
+    @JoinColumn(name = "subcategoria_id")
     private SubcategoriaBien subcategoria;
+
     private LocalDate fechaEntrega;
 
-    // Lista para garantizar trazabilidad y auditoría de los estados
+    // Lista para garantizar trazabilidad y auditoría de los estados.
+    @ElementCollection
+    @CollectionTable(name = "donacion_historial_estados", joinColumns = @JoinColumn(name = "donacion_id"))
+    @Column(name = "registro", length = 1000)
     private List<String> historialEstados = new ArrayList<>();
 
-    // Constructor vacío necesario para la deserialización (JSON a Objeto) de Spring
+    // Constructor vacío necesario para la deserialización (JSON a Objeto) de Spring y para JPA/Hibernate.
     public Donacion() {
     }
 

@@ -17,9 +17,8 @@ public class GestorPersonas {
 
   private final RepositorioPersonas repositorio;
 
-  public GestorPersonas() {
-    // Inicializamos el repo en memoria. En un futuro esto se puede inyectar.
-    this.repositorio = new RepositorioPersonas();
+  public GestorPersonas(RepositorioPersonas repositorio) {
+    this.repositorio = repositorio;
   }
 
   /**

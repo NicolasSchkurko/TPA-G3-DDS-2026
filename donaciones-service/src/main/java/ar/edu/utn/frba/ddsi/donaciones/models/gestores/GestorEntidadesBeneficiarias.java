@@ -16,8 +16,8 @@ public class GestorEntidadesBeneficiarias {
 
   private final RepositorioEntidadesBeneficiarias repositorio;
 
-  public GestorEntidadesBeneficiarias() {
-    this.repositorio = new RepositorioEntidadesBeneficiarias();
+  public GestorEntidadesBeneficiarias(RepositorioEntidadesBeneficiarias repositorio) {
+    this.repositorio = repositorio;
   }
 
   public List<EntidadBeneficiaria> listarTodasLasEntidades() {

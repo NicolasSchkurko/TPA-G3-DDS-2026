@@ -1,42 +1,43 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Fachada sobre FormularioJpaRepository (Spring Data JPA).
+ * Mantiene la misma interfaz pública que tenía cuando era un repositorio en memoria.
+ */
 @Repository
 public class RepositorioFormularios {
-    private List<Formulario> formularios;
 
-    public RepositorioFormularios() {
-        this.formularios = new ArrayList<>();
+    private final FormularioJpaRepository jpaRepository;
+
+    public RepositorioFormularios(FormularioJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
     }
 
     public void guardar(Formulario formulario) {
         if (formulario != null && formulario.getId() != null) {
-            if (buscarPorId(formulario.getId()).isPresent()) {
-                throw new IllegalArgumentException("Ya existe un donante con el ID: " + formulario.getId());
+            if (jpaRepository.existsById(formulario.getId())) {
+                throw new IllegalArgumentException("Ya existe un formulario con el ID: " + formulario.getId());
             }
-            this.formularios.add(formulario);
+            jpaRepository.save(formulario);
         }
     }
 
     public List<Formulario> obtenerTodos() {
-        return new ArrayList<>(this.formularios);
+        return jpaRepository.findAll();
     }
 
     public Optional<Formulario> buscarPorId(UUID id) {
-        return this.formularios.stream()
-                .filter(f -> f.getId().equals(id))
-                .findFirst();
+        return jpaRepository.findById(id);
     }
 
     public void eliminarPorId(UUID id) {
-        this.formularios.removeIf(f -> f.getId().equals(id));
+        jpaRepository.deleteById(id);
     }
 }

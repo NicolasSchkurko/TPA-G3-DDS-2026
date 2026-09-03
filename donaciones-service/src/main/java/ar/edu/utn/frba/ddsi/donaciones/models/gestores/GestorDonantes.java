@@ -15,8 +15,8 @@ public class GestorDonantes {
 
   private final RepositorioDonantes repositorio;
 
-  public GestorDonantes() {
-    this.repositorio = new RepositorioDonantes();
+  public GestorDonantes(RepositorioDonantes repositorio) {
+    this.repositorio = repositorio;
   }
 
   public Donante modificarDonante(UUID idOriginal, Donante datosNuevos) {

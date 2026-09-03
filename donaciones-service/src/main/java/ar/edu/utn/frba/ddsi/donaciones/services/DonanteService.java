@@ -3,13 +3,16 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDirecciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonantes;
@@ -30,22 +33,26 @@ public class DonanteService {
 
   private final GestorDonantes gestorDonantes;
   private final GestorPersonas gestorPersonas;
+  private final GestorDirecciones gestorDirecciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
 
   public DonanteService(GestorDonantes gestorDonantes, GestorPersonas gestorPersonas,
+                        GestorDirecciones gestorDirecciones,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
                         IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes) {
     this.gestorDonantes = gestorDonantes;
     this.gestorPersonas = gestorPersonas;
+    this.gestorDirecciones = gestorDirecciones;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repositorioDonantes = repositorioDonantes;
   }
 
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
-    Donante nuevoDonante = dto.toDomain();
+    Ciudad ciudad = resolverCiudad(dto.getDireccion());
+    Donante nuevoDonante = dto.toDomain(ciudad);
 
     if (nuevoDonante.getPersona() != null) {
 
@@ -80,7 +87,8 @@ public class DonanteService {
   }
 
   public PersonaDonanteDTO actualizarPersona(UUID id, PersonaDonanteDTO dto) {
-    Donante datosNuevos = dto.toDomain();
+    Ciudad ciudad = resolverCiudad(dto.getDireccion());
+    Donante datosNuevos = dto.toDomain(ciudad);
     Donante existente = repositorioDonantes.buscarPorId(id).orElse(null);
     if (existente == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
     if (existente.getPersona() != null && datosNuevos.getPersona() != null) {
@@ -140,6 +148,14 @@ public class DonanteService {
         fabricaEstrategias.ejecutar(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, p);
       }
     }
+  }
+
+  // Resuelve (o crea) la Ciudad/Provincia/Pais del catálogo geográfico compartido ANTES de
+  // construir el domain object, para evitar que Direccion apunte a una Ciudad nunca persistida
+  // (eso rompía merge() con EntityNotFoundException, ver GestorDirecciones / EntidadBeneficiariaService).
+  private Ciudad resolverCiudad(DireccionDTO direccionDTO) {
+    if (direccionDTO == null) return null;
+    return gestorDirecciones.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
   }
 
   private void registrarDonante(Donante nuevoDonante) {

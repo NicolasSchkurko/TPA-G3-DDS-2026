@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Entid
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,16 +19,19 @@ public class AsignacionScheduler {
     private final GestorDonaciones gestorDonaciones;
     private final GestorEntidadesBeneficiarias gestorEntidades;
     private final GestorMatchmaking gestorMatchmaking;
+    private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
 
-    public AsignacionScheduler(GestorDonaciones gestorDonaciones, GestorEntidadesBeneficiarias gestorEntidades, GestorMatchmaking gestorMatchmaking) {
+    public AsignacionScheduler(GestorDonaciones gestorDonaciones, GestorEntidadesBeneficiarias gestorEntidades, GestorMatchmaking gestorMatchmaking,
+                               RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
         this.gestorDonaciones = gestorDonaciones;
         this.gestorEntidades = gestorEntidades;
         this.gestorMatchmaking = gestorMatchmaking;
+        this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     }
 
     @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
     public void ejecutarAsignacion() {
-        AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones);
+        AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones,repositorioDeResultadosMatchmaking);
         List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
         List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
         asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
