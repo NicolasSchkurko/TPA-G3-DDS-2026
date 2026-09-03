@@ -32,17 +32,19 @@ public class RutaService {
   private final GestorItemEntrega gestorItemEntrega;
   private final GestorCamiones gestorCamiones;
   private final GestorEventos gestorEventos;
+  private final GestorPublicacionEventos gestorPublicacionEventos;
 
   public RutaService(GestorRutas gestorRutas,
                      GestorChoferes gestorChoferes,
                      GestorItemEntrega gestorItemEntrega,
                      GestorCamiones gestorCamiones,
-                     GestorEventos gestorEventos) {
+                     GestorEventos gestorEventos, GestorPublicacionEventos gestorPublicacionEventos) {
     this.gestorRutas = gestorRutas;
     this.gestorChoferes = gestorChoferes;
     this.gestorItemEntrega = gestorItemEntrega;
     this.gestorCamiones = gestorCamiones;
     this.gestorEventos = gestorEventos;
+    this.gestorPublicacionEventos = gestorPublicacionEventos;
   }
 
   // --- MÉTODOS CRUD ---
@@ -73,7 +75,7 @@ public class RutaService {
   public void iniciarRuta(UUID idChofer) {
     Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
     gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
-    List<Parada> paradas = gestorEventos.publicarInicioRuta(rutaActual).getParadas();
+    List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
     for(Parada parada : paradas) {
         parada.getItems().forEach(gestorItemEntrega::guardarItem);
     }
@@ -87,7 +89,7 @@ public class RutaService {
       for(Parada parada : rutaActual.getParadas()){
         for(ItemEntrega item : parada.getItems()){
           if (item.getEstado() != EstadoEntrega.ENTREGADA) {
-            gestorEventos.publicarReingresoDeposito(item);
+            gestorPublicacionEventos.publicarReingresoDeposito(item);
           } else {
             gestorItemEntrega.eliminarItem(item.getIdDonacion());
           }
