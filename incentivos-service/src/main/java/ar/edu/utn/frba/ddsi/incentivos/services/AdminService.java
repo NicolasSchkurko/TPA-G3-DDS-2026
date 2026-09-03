@@ -22,13 +22,14 @@ import java.util.UUID;
 public class AdminService {
     //private final GestorCategoria gestorCategoria;
     private final GestorMision gestorMisiones;
-    private RepositorioCategorias repositorioCategorias;
+    //private RepositorioCategorias repositorioCategorias;
+    private final GestorCategoria gestorCategoria;
     public AdminService(GestorCategoria gestorCategoria,
                         GestorMision gestorMision, RepositorioCategorias repositorioCategorias){
         this.gestorCategoria = gestorCategoria;
         this.gestorMisiones = gestorMision;
-        this.repositorioCategorias = repositorioCategorias;
-        repositorioCategorias.inicializarCategoriasBase();
+       // this.repositorioCategorias = repositorioCategorias;
+        gestorCategoria.inicializarCategoriasBase();
     }
 
     public List<CategoriaDTO> agregarCategoria(CategoriaDTO dto){
@@ -41,7 +42,7 @@ public class AdminService {
                 misiones
         );
 
-        List<Categoria> categorias = repositorioCategorias.crearCategoria(categoria);
+        List<Categoria> categorias = gestorCategoria.crearCategoria(categoria);
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
         for(Categoria x : categorias){
@@ -61,7 +62,7 @@ public class AdminService {
     }
 
     public List<CategoriaDTO> eliminarCategoria(UUID id){
-        List<Categoria> categorias = repositorioCategorias.eliminarCategoriaPorId(id);
+        List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
         for(Categoria x : categorias){
@@ -92,7 +93,7 @@ public class AdminService {
 
         categoria.setIdCategoria(id);
 
-        Categoria actualizada = repositorioCategorias.actualizar(categoria);
+        Categoria actualizada = gestorCategoria.actualizarCategoria(categoria);
 
         return actualizada != null? this.categoriaToDTO(actualizada) : null;
     }
