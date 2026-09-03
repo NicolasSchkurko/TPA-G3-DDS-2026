@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.scheduler;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -8,9 +9,9 @@ import java.time.YearMonth;
 
 @Component
 public class RankingScheduler {
-    private final GestorPerfiles gestor;
+    private final GestorRanking gestor;
 
-    public RankingScheduler(GestorPerfiles gestor) {
+    public RankingScheduler(GestorRanking gestor) {
         this.gestor = gestor;
     }
 

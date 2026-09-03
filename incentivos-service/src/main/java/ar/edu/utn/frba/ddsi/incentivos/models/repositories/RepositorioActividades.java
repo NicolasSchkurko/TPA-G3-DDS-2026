@@ -17,14 +17,6 @@ public class RepositorioActividades {
         this.historial = new ArrayList<>();
     }
 
-    public void guardar(HistorialActividad actividad) {
-        if (actividad == null || actividad.getIdPerfil() == null) {
-            return;
-        }
-        historial.removeIf(actual -> actividad.getIdPerfil().equals(actual.getIdPerfil()));
-        historial.add(actividad);
-    }
-
     public void eliminarActividad(HistorialActividad actividad) {
         historial.remove(actividad);
     }
@@ -72,11 +64,9 @@ public class RepositorioActividades {
             actividad = new HistorialActividad(idPerfil, new ArrayList<>());
         }
         actividad.agregarDonacion(donacion);
-        guardar(actividad);
-    }
 
-    public Integer donacionesTotales(UUID idPerfil){
-        HistorialActividad actividad = buscarPorIdPerfil(idPerfil);
-        return actividad.cantidadDonacionesTotales();
+        HistorialActividad finalActividad = actividad;
+        historial.removeIf(actual -> finalActividad.getIdPerfil().equals(actual.getIdPerfil()));
+        historial.add(actividad);
     }
 }
