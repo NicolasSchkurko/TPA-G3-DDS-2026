@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
@@ -22,7 +23,7 @@ public class EntidadBeneficiariaDTO {
     private UUID id;
     private List<NecesidadDTO> necesidades;
 
-    public EntidadBeneficiaria toDomain() {
+    public EntidadBeneficiaria toDomain(Ciudad ciudad) {
         Juridica juridica = null;
         if (this.razonSocial != null || this.telefono != null) {
             String nombreRS = this.razonSocial != null ? this.razonSocial : "ONG Sin Nombre";
@@ -44,7 +45,7 @@ public class EntidadBeneficiariaDTO {
         }
 
         EntidadBeneficiaria entidad = new EntidadBeneficiaria(
-                this.direccion != null ? this.direccion.toDomain() : null,
+                this.direccion != null ? this.direccion.toDomain(ciudad) : null,
                 juridica
         );
 

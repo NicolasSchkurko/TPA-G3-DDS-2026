@@ -1,20 +1,34 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion;
 
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import java.util.UUID;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 
+@Entity
 @Getter
 @Setter
-
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Direccion {
+
+  @Id
+  private UUID id = UUID.randomUUID();
 
   private String calleUno;
   private String calleDos;
   private Integer altura;
   private int piso;
   private String departamento;
+
+  @ManyToOne
+  @JoinColumn(name = "ciudad_id")
   private Ciudad ciudad;
 
   /**

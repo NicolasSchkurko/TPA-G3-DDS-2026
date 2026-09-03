@@ -19,12 +19,23 @@ public class BienResumenDTO {
   private Boolean usado;
   private LocalDate fechaVencimiento;
 
+  // Variante "liviana" que arma una SubcategoriaBien transitoria al vuelo. Válida solo para
+  // flujos que todavía NO persisten el Bien resultante vía JPA (hoy: Donacion.bienes, que sigue
+  // siendo un repositorio en memoria) — si se llega a mapear Donacion como @Entity, este método
+  // hay que migrarlo al mismo patrón buscar-o-crear que toDomain(SubcategoriaBien).
   public Bien toDomain() {
     String nombreCat = (categoria != null && !categoria.trim().isEmpty()) ? categoria : "General";
     String nombreSub = (subcategoria != null && !subcategoria.trim().isEmpty()) ? subcategoria : "General";
     CategoriaBien cat = new CategoriaBien(nombreCat);
-    SubcategoriaBien subcat = new SubcategoriaBien(nombreSub, cat);
+    SubcategoriaBien subcatTransitoria = new SubcategoriaBien(nombreSub, cat);
+    return toDomain(subcatTransitoria);
+  }
 
+  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía GestorNecesidades) en vez de
+  // construir CategoriaBien/SubcategoriaBien "al vuelo": eso rompía merge() por no estar
+  // cascadeadas (son catálogo compartido, igual que Necesidad.subcategoria). Usar esta variante
+  // siempre que el Bien resultante se vaya a persistir vía JPA.
+  public Bien toDomain(SubcategoriaBien subcat) {
     UnidadDeMedida um = null;
     if (unidadDeMedida != null) {
       um = switch (unidadDeMedida.toUpperCase()) {

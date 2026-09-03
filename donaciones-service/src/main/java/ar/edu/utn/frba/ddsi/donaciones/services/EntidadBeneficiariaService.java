@@ -1,11 +1,15 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDirecciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorNecesidades;
@@ -24,13 +28,15 @@ public class EntidadBeneficiariaService {
     private final GestorEntidadesBeneficiarias gestorEntidades;
     private final GestorPersonas gestorPersonas;
     private final GestorNecesidades gestorNecesidades;
+    private final GestorDirecciones gestorDirecciones;
     private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
     private final RepositorioNecesidades repositorioNecesidades;
 
-    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades, GestorPersonas gestorPersonas, GestorNecesidades gestorNecesidades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades) {
+    public EntidadBeneficiariaService(GestorEntidadesBeneficiarias gestorEntidades, GestorPersonas gestorPersonas, GestorNecesidades gestorNecesidades, GestorDirecciones gestorDirecciones, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades) {
         this.gestorEntidades = gestorEntidades;
         this.gestorPersonas = gestorPersonas;
         this.gestorNecesidades = gestorNecesidades;
+        this.gestorDirecciones = gestorDirecciones;
         this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
         this.repositorioNecesidades = repositorioNecesidades;
     }
@@ -46,14 +52,16 @@ public class EntidadBeneficiariaService {
     }
 
     public EntidadBeneficiariaDTO registrarEntidad(EntidadBeneficiariaDTO dto) {
-        EntidadBeneficiaria entidad = dto.toDomain();
+        Ciudad ciudad = resolverCiudad(dto.getDireccion());
+        EntidadBeneficiaria entidad = dto.toDomain(ciudad);
         if (entidad.getPersonaJuridica() != null) gestorPersonas.registrarPersona(entidad.getPersonaJuridica());
         registrarEntidad(entidad);
         return EntidadBeneficiariaDTO.from(entidad);
     }
 
     public EntidadBeneficiariaDTO actualizarEntidad(UUID id, EntidadBeneficiariaDTO dto) {
-        EntidadBeneficiaria entidadActualizada = dto.toDomain();
+        Ciudad ciudad = resolverCiudad(dto.getDireccion());
+        EntidadBeneficiaria entidadActualizada = dto.toDomain(ciudad);
         EntidadBeneficiaria existente = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
         if (existente == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
 
@@ -75,14 +83,16 @@ public class EntidadBeneficiariaService {
     }
 
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
-        Necesidad necesidad = dto.toDomain();
+        SubcategoriaBien subcategoria = gestorNecesidades.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
+        Necesidad necesidad = dto.toDomain(subcategoria);
         crearNecesidad(necesidad);
         gestorEntidades.agregarNecesidadAEntidad(idEntidad, necesidad);
         return NecesidadDTO.from(necesidad);
     }
 
     public NecesidadDTO actualizarNecesidad(UUID id, NecesidadDTO dto) {
-        Necesidad necesidadActualizada = dto.toDomain();
+        SubcategoriaBien subcategoria = gestorNecesidades.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
+        Necesidad necesidadActualizada = dto.toDomain(subcategoria);
         Necesidad existente = repositorioNecesidades.buscarPorId(id).orElse(null);
         if (existente == null) throw new IllegalArgumentException("No se encontró la necesidad con ID: " + id);
 
@@ -116,6 +126,14 @@ public class EntidadBeneficiariaService {
             System.err.println("Entidad no encontrada.");
             return new ArrayList<>();
         }
+    }
+
+    // Resuelve (o crea) la Ciudad/Provincia/Pais del catálogo geográfico compartido ANTES de
+    // construir el domain object, para evitar que Direccion apunte a una Ciudad nunca persistida
+    // (eso rompía merge() con EntityNotFoundException, ver GestorDirecciones).
+    private Ciudad resolverCiudad(DireccionDTO direccionDTO) {
+        if (direccionDTO == null) return null;
+        return gestorDirecciones.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
     }
 
     private void crearNecesidad(Necesidad nuevoNecesidad) {

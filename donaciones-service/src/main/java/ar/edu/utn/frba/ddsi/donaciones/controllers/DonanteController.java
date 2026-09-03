@@ -131,7 +131,7 @@ public class DonanteController {
   }
 
   @Operation(summary = "Eliminar medio de contacto a donante")
-  @PostMapping("/{id}/medios-contacto")
+  @DeleteMapping("/{id}/medios-contacto")
   public ResponseEntity<?> eliminarMedioContacto(@PathVariable UUID id, @RequestBody MediosContactoDTO dto) {
     try {
       PersonaDonanteDTO actualizada = donanteService.eliminarMedioContacto(id, dto);

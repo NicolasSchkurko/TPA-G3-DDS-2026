@@ -5,78 +5,78 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Fachada sobre DonacionJpaRepository (Spring Data JPA).
+ * Mantiene la misma interfaz pública que tenía cuando era un repositorio en memoria.
+ */
 @Repository
 public class RepositorioDonaciones {
-    // Simulamos una base de datos en memoria
-    private final List<Donacion> donaciones = new ArrayList<>();
+
+    private final DonacionJpaRepository jpaRepository;
+
+    public RepositorioDonaciones(DonacionJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
 
     public List<Donacion> obtenerTodos() {
-        return new ArrayList<>(donaciones);
+        return jpaRepository.findAll();
     }
 
     public Optional<Donacion> obtenerPorId(UUID id) {
-        return this.donaciones.stream()
-                         .filter(d -> d.getId().equals(id))
-                         .findFirst();
+        return jpaRepository.findById(id);
     }
 
     public List<Donacion> buscarDonacionesEnDeposito() {
-        return this.donaciones.stream()
-                         .filter(d -> d.getEstado() == Estado.EN_DEPOSITO)
-                         .toList();
+        return jpaRepository.findByEstado(Estado.EN_DEPOSITO);
     }
 
     public List<Donacion> buscarDonacionesPendientesDeAsignar(){
-        return this.donaciones.stream()
-                .filter(d -> d.getEstado() == Estado.PENDIENTE_ASIGNACION)
-                .toList();
+        return jpaRepository.findByEstado(Estado.PENDIENTE_ASIGNACION);
     }
 
     public List<Donacion> buscarDonacionesSinAsignar(){
-        return this.donaciones.stream()
-                .filter(d -> d.getEstado() == Estado.EN_DEPOSITO)
-                .toList();
+        return jpaRepository.findByEstado(Estado.EN_DEPOSITO);
     }
 
     public List<Donacion> buscarEntregaPendiente() {
-        return this.donaciones.stream()
-                         .filter(d -> d.getEstado() == Estado.ASIGNADO)
-                         .toList();
+        return jpaRepository.findByEstado(Estado.ASIGNADO);
     }
 
     public void guardarDonaciones(List<Donacion> donacionesFormulario) {
-        this.donaciones.addAll(donacionesFormulario);
+        jpaRepository.saveAll(donacionesFormulario);
     }
 
     public void guardar(Donacion donacion) {
-        this.donaciones.add(donacion);
+        jpaRepository.save(donacion);
     }
 
+    // A diferencia de la versión en memoria (que devolvía la donación VIEJA por error), acá
+    // devolvemos la donación ya guardada/actualizada: con persistencia real, devolver el estado
+    // previo induciría a pensar que el PUT no aplicó los cambios (que sí se guardaron en la DB).
     public Optional<Donacion> actualizar(UUID idOriginal, Donacion donacionActualizada) {
-        Optional<Donacion> donacionExistente = obtenerPorId(idOriginal);
-        if (donacionExistente.isPresent()) {
-            int index = this.donaciones.indexOf(donacionExistente.get());
-            this.donaciones.set(index, donacionActualizada);
-
-            return donacionExistente;
+        if (jpaRepository.existsById(idOriginal)) {
+            return Optional.of(jpaRepository.save(donacionActualizada));
         } else {
             throw new IllegalArgumentException("No se encontró la donación a actualizar.");
         }
     }
 
+    // Con JPA, a diferencia del repositorio en memoria (donde mutar el objeto ya alcanzaba
+    // porque era la misma instancia guardada en la lista), hay que guardar explícitamente el
+    // cambio: lo que devuelve buscarPorId/findById queda detached apenas termina la transacción.
     public void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {
-        Donacion donacion = obtenerPorId(donacionId)
+        Donacion donacion = jpaRepository.findById(donacionId)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró la donación con ID: " + donacionId));
 
         donacion.setEntidad(entidad);
+        jpaRepository.save(donacion);
     }
 
     public void eliminarPorId(UUID id) {
-        donaciones.removeIf(d -> d.getId().equals(id));
+        jpaRepository.deleteById(id);
     }
 }

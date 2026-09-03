@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +14,11 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private final RepositorioAdministradores repositorioAdministradores;
+    private final GestorPersonas gestorPersonas;
 
-    public AdminService(RepositorioAdministradores repositorioAdministradores) {
+    public AdminService(RepositorioAdministradores repositorioAdministradores, GestorPersonas gestorPersonas) {
         this.repositorioAdministradores = repositorioAdministradores;
+        this.gestorPersonas = gestorPersonas;
     }
 
     public List<AdminDTO> getAdmins() {
@@ -34,6 +37,9 @@ public class AdminService {
 
     public AdminDTO crearAdministrador(AdminDTO dto) {
         Administrador nuevoAdmin = dto.toDomain();
+        // La Humana vive en su propio repositorio (RepositorioPersonas), igual que Juridica
+        // para EntidadBeneficiaria: se registra explícitamente antes de guardar el Administrador.
+        if (nuevoAdmin.getHumano() != null) gestorPersonas.registrarPersona(nuevoAdmin.getHumano());
         try {
             repositorioAdministradores.guardar(nuevoAdmin);
             System.out.println("Administrador registrado con éxito con ID: " + nuevoAdmin.getId());
@@ -48,6 +54,9 @@ public class AdminService {
         if (existente == null) throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
 
         Administrador datosNuevos = dto.toDomain();
+        if (existente.getHumano() != null && datosNuevos.getHumano() != null) {
+            gestorPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
+        }
         existente.setHumano(datosNuevos.getHumano());
         existente.setMedioDeContacto(datosNuevos.getContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());

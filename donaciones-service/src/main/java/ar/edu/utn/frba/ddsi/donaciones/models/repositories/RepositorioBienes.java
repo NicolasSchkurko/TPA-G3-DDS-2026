@@ -2,18 +2,22 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
 
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Fachada sobre BienJpaRepository (Spring Data JPA).
+ * Mantiene la misma interfaz pública que tenía cuando era un repositorio en memoria.
+ */
 @Repository
 public class RepositorioBienes {
-  private List<Bien> bienesEnMemoria;;
 
-  public RepositorioBienes() {
-    this.bienesEnMemoria = new ArrayList<>();
+  private final BienJpaRepository jpaRepository;
+
+  public RepositorioBienes(BienJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
   }
 
   public void guardar(Bien bien) {
@@ -25,31 +29,27 @@ public class RepositorioBienes {
       if (buscarPorId(bien.getId()).isPresent()) {
         throw new IllegalArgumentException("Ya existe un bien con el ID: " + bien.getId());
       }
-      this.bienesEnMemoria.add(bien);
+      jpaRepository.save(bien);
     }
   }
 
   public List<Bien> obtenerTodos() {
-    return new ArrayList<>(this.bienesEnMemoria);
+    return jpaRepository.findAll();
   }
 
   public Optional<Bien> buscarPorId(UUID id) {
-    return this.bienesEnMemoria.stream()
-                                        .filter(a -> a.getId().equals(id))
-                                        .findFirst();
+    return jpaRepository.findById(id);
   }
 
   public void actualizar(UUID idOriginal, Bien bienActualizado) {
-    Optional<Bien> bienExistente = buscarPorId(idOriginal);
-    if (bienExistente.isPresent()) {
-      int index = this.bienesEnMemoria.indexOf(bienExistente.get());
-      this.bienesEnMemoria.set(index, bienActualizado);
+    if (jpaRepository.existsById(idOriginal)) {
+      jpaRepository.save(bienActualizado);
     } else {
       throw new IllegalArgumentException("No se encontró el bien a actualizar.");
     }
   }
 
   public void eliminarPorId(UUID id) {
-    this.bienesEnMemoria.removeIf(a -> a.getId().equals(id));
+    jpaRepository.deleteById(id);
   }
 }

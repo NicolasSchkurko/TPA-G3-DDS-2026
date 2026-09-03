@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
@@ -26,16 +25,20 @@ public class NecesidadDTO {
     private UUID id;
     private List<DonacionDTO> donaciones;
 
-    public Necesidad toDomain() {
-        CategoriaBien cat = new CategoriaBien(this.nombreCategoria != null ? this.nombreCategoria : "General");
-        SubcategoriaBien sub = new SubcategoriaBien(this.nombreSubcategoria != null ? this.nombreSubcategoria : "General", cat);
+    /**
+     * Construye la Necesidad de dominio a partir del DTO.
+     * La SubcategoriaBien se recibe ya resuelta (buscada o creada previamente,
+     * ver GestorNecesidades.obtenerOCrearSubcategoria) para no duplicar entradas
+     * del catálogo de Bienes en cada alta.
+     */
+    public Necesidad toDomain(SubcategoriaBien subcategoria) {
         String tipo = this.tipoNecesidad != null ? this.tipoNecesidad.toUpperCase() : "RECURRENTE";
 
         Necesidad necesidad;
         if ("EXTRAORDINARIA".equals(tipo)) {
-            necesidad = new NecesidadExtraordinaria(sub, this.descripcion, this.cantidadObjetivo);
+            necesidad = new NecesidadExtraordinaria(subcategoria, this.descripcion, this.cantidadObjetivo);
         } else {
-            necesidad = new NecesidadRecurrente(sub, this.descripcion, this.cantidadObjetivo, this.plazoEnDias != null ? this.plazoEnDias : 30);
+            necesidad = new NecesidadRecurrente(subcategoria, this.descripcion, this.cantidadObjetivo, this.plazoEnDias != null ? this.plazoEnDias : 30);
         }
 
         if (this.id != null) {
