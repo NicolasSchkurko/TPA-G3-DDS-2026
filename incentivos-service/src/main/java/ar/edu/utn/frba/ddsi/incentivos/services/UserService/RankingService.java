@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.services;
+package ar.edu.utn.frba.ddsi.incentivos.services.UserService;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
@@ -23,12 +23,8 @@ public class RankingService {
     }
 
     public void generarRankingMensual(YearMonth periodo) {
-        List<Perfil> todosLosPerfiles = perfiles.listarTodos();
-
         // 1. Generamos lista de perfiles con su cantidad de misiones en el periodo
-        List<Perfil> candidatos = todosLosPerfiles.stream()
-                // solo consideramos perfiles con >0 misiones en el periodo
-                .filter(perfil -> perfil.getRole() == Role.USER)
+        List<Perfil> candidatos = perfiles.listarTodos().stream()
                 .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
                         && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
                 // ordenamos desc por misiones cumplidas

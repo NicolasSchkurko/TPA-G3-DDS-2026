@@ -1,100 +1,84 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.time.YearMonth;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class GestorPerfiles {
-    private final RepositorioPerfiles repositorio;
-    private final DonacionClient donacionClient;
     private final ApplicationEventPublisher eventPublisher;
 
-    public GestorPerfiles(RepositorioPerfiles repositorio, ApplicationEventPublisher eventPublisher, DonacionClient donacionClient) {
-        this.repositorio = repositorio;
+    public GestorPerfiles(ApplicationEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
-        this.donacionClient = donacionClient;
     }
 
-    public Perfil progresarPerfil(UUID idUsuario, ImpactoDonacion donacion) {
-        Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
-        if (perfil == null) return null;
-
+    public Boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
         ProgresoMision misionAnterior = perfil.getProgresoMisionActual();
-        Categoria categoriaActual = perfil.getCategoriaActual();
-        boolean misionCompletada = perfil.progresarMision(donacion);
-        repositorio.actualizar(perfil);
-        MedioContacto contacto = donacionClient.obtenerContactoPersona(idUsuario);
+        Boolean misionCompletada = perfil.progresarMision(donacion); //perfil cambio, pero no la mision ni categoria
 
         if (misionCompletada) {
-            if (categoriaActual.esUltimaMision(misionAnterior.getMision())) {
+            //activa guardarDonacion para actualizar actividad del perfil en progresoService
+            eventPublisher.publishEvent(
+                    new MisionCompletada(
+                            donacion,
+                            perfil
+                    )
+            );
+            //activa avanzarCategoria para actualizar categoria y mision del perfil en progresoService
+            if (perfil.getCategoriaActual().esUltimaMision(misionAnterior.getMision())) {
                 eventPublisher.publishEvent(
                         new UltimaMisionCategoria(
-                                categoriaActual.getIdCategoria(),
-                                perfil.getIdPerfil()
+                                perfil
                         )
                 );
-            } else {
-                Mision misionNueva = categoriaActual.siguienteMision(misionAnterior.getMision());
-                perfil.setProgresoMisionActual(new ProgresoMision(misionNueva));
-                repositorio.actualizar(perfil);
+            } else { //son asincronicos los publisher, asi q hay q repetir logica
+                //activa avanzarMision para actualizar mision del perfil en progresoService
                 eventPublisher.publishEvent(
-                        new MisionCambiada(misionAnterior.getMision().getNombreMision(),
-                                misionAnterior.getMision().getInsigniaObjetivo().getNombre(),
-                                perfil.getNombreUsuario(), contacto,
-                                perfil.getProgresoMisionActual().getMision().getNombreMision()
+                        new MisionCompletada(
+                                null,
+                                perfil
                         )
                 );
             }
         }
-        return perfil;
+
+        return misionCompletada;
     }
 
-
-    @EventListener
-    public void actualizarPerfil(CategoriaCambiada event) {
-        if (event.categoriaNueva() == null) {
-            return;
+    public Perfil actualizar(Perfil perfilModificado) {
+        if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
+            return null;
         }
 
-        Perfil perfil = repositorio.buscarPorIDPerfil(event.idPerfil());
+        Perfil existente = this.buscarPorIDUsuario(perfilModificado.getIdUsuario());
+        if (existente != null) {
+            // Actualizar solo los campos no nulos del perfilModificado
+            if (perfilModificado.getNombreUsuario() != null) {
+                existente.setNombreUsuario(perfilModificado.getNombreUsuario());
+            }
+            if (perfilModificado.getCategoriaActual() != null) {
+                existente.setCategoriaActual(perfilModificado.getCategoriaActual());
+            }
+            if (perfilModificado.getInsignias() != null) {
+                existente.setInsignias(perfilModificado.getInsignias());
+            }
+            if (perfilModificado.getMisionActual() != null) {
+                existente.setMisionActual(perfilModificado.getMisionActual());
+            }
+            if (perfilModificado.getPosicionRanking() != null) {
+                existente.setPosicionRanking(perfilModificado.getPosicionRanking());
+            }
 
-        ProgresoMision misionAnterior = perfil.getProgresoMisionActual();
-        perfil.setCategoriaActual(event.categoriaNueva());
-        perfil.setProgresoMisionActual(new ProgresoMision(event.categoriaNueva().primeraMision()));
-        repositorio.actualizar(perfil);
-        MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
-        eventPublisher.publishEvent(
-                new MisionCambiada(misionAnterior.getMision().getNombreMision(),
-                        misionAnterior.getMision().getInsigniaObjetivo().getNombre(),
-                        perfil.getNombreUsuario(),
-                        contacto,
-                        perfil.getProgresoMisionActual().getMision().getNombreMision()
-                )
-        );
-
-        eventPublisher.publishEvent(
-                new CategoriaNuevaPublicar(
-                        event.categoriaAnterior().getNombre(),
-                        perfil.getCategoriaActual().getNombre(),
-                        perfil.getNombreUsuario(),
-                        contacto
-                )
-        );
+            int index = perfiles.indexOf(existente);
+            if (index >= 0) {
+                perfiles.set(index, existente);
+            }
+        }
+        return existente;
     }
 }

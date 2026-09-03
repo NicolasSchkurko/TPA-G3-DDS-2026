@@ -5,17 +5,29 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
-import java.time.LocalDate;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+@Entity
 @Getter
 @Setter
+@NoArgsConstructor
 public class ProgresoMision {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+
+    private UUID id;
     private Mision mision;
     private List<ImpactoDonacion> donacionesExitosas;
     private Integer progreso;
@@ -56,15 +68,9 @@ public class ProgresoMision {
         evaluarProgreso(donacion);
         if (this.estaCompleta()) {
             posicionRanking.incrementarMisionesCumplidas();
-            return this.otorgarInsignia();
+            return this.getMision().getInsigniaObjetivo();
         }
         return null;
-    }
-
-    private Insignia otorgarInsignia() {
-        Insignia insignia = getMision().getInsigniaObjetivo();
-        insignia.setFechaObtencion(LocalDate.now());
-        return insignia;
     }
 
 

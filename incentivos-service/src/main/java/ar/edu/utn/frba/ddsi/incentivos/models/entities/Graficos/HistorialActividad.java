@@ -11,42 +11,41 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Entity
+@NoArgsConstructor
+@Table(name = "historial_actividad")
 public class HistorialActividad {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idActividad;
     private UUID idPerfil;
-    private List<ImpactoDonacion> historialDonaciones;
 
-    public HistorialActividad(UUID idPerfil, List<ImpactoDonacion> actividadPorMes) {
+    @OneToMany(
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    @JoinColumn(name = "historial_id")
+    private List<ImpactoDonacion> historialDonaciones= new ArrayList<>();
+
+    public HistorialActividad(UUID idPerfil, List<ImpactoDonacion> historialDonaciones) {
         this.idActividad = UUID.randomUUID();
         this.idPerfil = idPerfil;
-        setActividadPorMes(actividadPorMes);
+        setHistorialDonaciones(historialDonaciones);
     }
 
     /**
      * Agrega una donacion al mes correspondiente a su fecha de entrega.
      */
     public void agregarDonacion(ImpactoDonacion donacion) {
-        if (donacion == null || donacion.getFechaEntrega() == null) {
-            return ;
-        }
-
-        YearMonth mes = YearMonth.from(donacion.getFechaEntrega());
-        //agregar donacion en el mes correspondiente si existe actividad previa o en mes nuevo
-        ActividadMensual actividad = actividadPorMes.stream()
-                .filter(a -> a.getPeriodo().equals(mes))
-                .findFirst()
-                .orElseGet(() -> {
-                    ActividadMensual nueva = new ActividadMensual(mes, new ArrayList<>());
-                    actividadPorMes.add(nueva);
-                    actividadPorMes.sort(Comparator.comparing(ActividadMensual::getPeriodo));
-                    return nueva;
-                });
-        actividad.agregarDonacion(donacion);
+        historialDonaciones.add(donacion);
+        historialDonaciones.sort(Comparator.comparing(ImpactoDonacion::getFechaEntrega));
     }
 
     /** Devuelve la variacion de cada mes respecto del mes anterior registrado. */
@@ -65,6 +64,7 @@ public class HistorialActividad {
         }
         return metricas;
     }
+
 
 /*
     Evolucion porcentual entre el inicio y el fin del periodo indicado.

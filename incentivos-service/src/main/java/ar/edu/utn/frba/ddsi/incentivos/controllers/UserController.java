@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.services.UserService;
+import ar.edu.utn.frba.ddsi.incentivos.services.UserService.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,11 +35,11 @@ public class UserController {
     })
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<PerfilDTO> actualizarPerfil(@Parameter(description = "UUID del usuario que realizó la donación", example = "123e4567-e89b-12d3-a456-426614174000")
+    public ResponseEntity<Boolean> actualizarPerfil(@Parameter(description = "UUID del usuario que realizó la donación", example = "123e4567-e89b-12d3-a456-426614174000")
                                                       @PathVariable UUID id,
                                                       @RequestBody ImpactoDonacionDTO dto) {
         //Recibe donacion, actualizar perfil y guardan en repo de donaciones
-        PerfilDTO actualizado = service.actualizarPerfil(id, dto);
+        Boolean actualizado = service.actualizarPerfil(id, dto);
         if (actualizado == null) {
             return ResponseEntity.notFound().build();
         }
