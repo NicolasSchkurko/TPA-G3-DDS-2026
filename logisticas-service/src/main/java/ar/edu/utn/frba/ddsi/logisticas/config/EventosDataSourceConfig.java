@@ -10,13 +10,13 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.sql.DataSource;
 
 @EnableJpaRepositories(
-        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos"
+        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos",
+        entityManagerFactoryRef = "eventosEntityManagerFactory",
+        transactionManagerRef = "eventosTransactionManager"
 )
 
 @Configuration

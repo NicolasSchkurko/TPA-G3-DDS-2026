@@ -1,16 +1,21 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
 
-//@Entity
+import java.util.UUID;
+
+@Entity
 @Getter
 @Setter
 public class Camion {
-    private Chofer chofer;
+    @Column(name = "id_chofer")
+    private UUID idChofer;
+    @Id
     private String patente;
     private Double capacidadVolumen;
     private Double altura;
@@ -20,8 +25,8 @@ public class Camion {
     private Double volumenOcupado;
     private String ciudadDestinoActual;
 
-    public Camion(Chofer chofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.chofer = chofer;
+    public Camion(UUID idChofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.idChofer = idChofer;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -33,7 +38,7 @@ public class Camion {
     }
 
     public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.chofer = null;
+        this.idChofer = null;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -81,6 +86,6 @@ public class Camion {
     }
 
     public void eliminarChofer() {
-        this.chofer = null;
+        this.idChofer = null;
     }
 }
