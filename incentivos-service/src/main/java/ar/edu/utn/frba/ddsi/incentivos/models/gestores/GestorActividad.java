@@ -30,4 +30,6 @@ public class GestorActividad {
                         Integer::sum,
                         LinkedHashMap::new));
     }
+
+
 }

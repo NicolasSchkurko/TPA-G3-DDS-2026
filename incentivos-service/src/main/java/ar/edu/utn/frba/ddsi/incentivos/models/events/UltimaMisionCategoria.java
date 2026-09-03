@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.events;
 
-import java.util.UUID;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
-public record UltimaMisionCategoria(UUID idCategoriaCompletada, UUID idPerfil) {
+public record UltimaMisionCategoria(Perfil perfil) {
 }

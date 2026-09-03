@@ -8,17 +8,25 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.stream.IntStream;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Entity
 public class Categoria {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idCategoria; // id interno
     private UUID idAdmin;
     private String nombre;
     private Integer posicionSecuencia;
     private List<CategoriaMision> categoriaMisiones;
+
 
     public Categoria(String nombre,
                      UUID idAdmin,

@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.scheduler;
 
-import ar.edu.utn.frba.ddsi.incentivos.services.UserService;
+import ar.edu.utn.frba.ddsi.incentivos.services.UserService.UserService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
