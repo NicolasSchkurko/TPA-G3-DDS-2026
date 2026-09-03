@@ -31,8 +31,6 @@ public class GestorPerfiles {
         this.donacionClient = donacionClient;
     }
 
-
-
     public Perfil progresarPerfil(UUID idUsuario, ImpactoDonacion donacion) {
         Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
         if (perfil == null) return null;

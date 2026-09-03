@@ -94,7 +94,7 @@ public class UserController {
     @GetMapping("/{id}/mision")
     public ResponseEntity<MisionPerfilDTO> obtenerMisionPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                @PathVariable UUID id) {
-        MisionPerfilDTO mision = service.obtenerMisionPorID(id);
+        MisionPerfilDTO mision = service.obtenerMisionPorIdUsuario(id);
         if (mision == null) {
             return ResponseEntity.notFound().build();
         }
@@ -113,7 +113,7 @@ public class UserController {
     @GetMapping("/{id}/insignias")
     public ResponseEntity<List<InsigniaDTO>> obtenerInsigniasPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                     @PathVariable UUID id) {
-        List<InsigniaDTO> insignias = service.obtenerInsigniasPorID(id);
+        List<InsigniaDTO> insignias = service.obtenerInsigniasPorIdUsuario(id);
         if (insignias == null) {
             return ResponseEntity.notFound().build();
         }

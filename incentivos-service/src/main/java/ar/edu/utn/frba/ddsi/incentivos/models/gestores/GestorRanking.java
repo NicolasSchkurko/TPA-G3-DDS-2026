@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Role;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.GenerarRanking;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class GestorRanking {
@@ -27,22 +25,6 @@ public class GestorRanking {
         this.repo = rankings;
         this.eventPublisher = eventPublisher;
         this.repositorio = repositorio;
-    }
-
-    public RankingMensual obtenerRanking(UUID idRanking){
-        return repo.buscarPorId(idRanking);
-    }
-
-    public RankingMensual obtenerTop3(UUID idRanking){
-        RankingMensual rank = repo.buscarPorId(idRanking);
-
-        List<Ranking> top3 =  rank.getPosiciones().stream()
-                .limit(3) // Nos quedamos solo con los 3 primeros elementos de la lista ya ordenada
-                .toList();
-
-        rank.setPosiciones(top3);
-
-        return rank;
     }
 
     @EventListener
@@ -87,8 +69,6 @@ public class GestorRanking {
     public void generarRankingMensual(YearMonth periodo){
         // lista de perfiles con su cantidad de misiones en el periodo
         List<Perfil> candidatos = repositorio.listarTodos().stream()
-                                             // solo consideramos perfiles con >0 misiones en el periodo
-                                             .filter(perfil -> perfil.getRole() == Role.USER)
                                              .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
                                                  && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
                                              // ordenamos desc por misiones cumplidas

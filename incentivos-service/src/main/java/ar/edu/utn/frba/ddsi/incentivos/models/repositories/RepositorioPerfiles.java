@@ -91,16 +91,4 @@ public class RepositorioPerfiles {
                    .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)
                    .forEach(Perfil::verificarProgresoMision);
     }
-
-    public Mision obtenerMisionPerfil(UUID idUsuario){
-        Perfil perfil = this.buscarPorIDUsuario(idUsuario);
-
-        return perfil.getMisionActual();
-    }
-
-    public List<Insignia> obtenerInsigniasPerfil(UUID idUsuario){
-        Perfil perfil = this.buscarPorIDUsuario(idUsuario);
-
-        return perfil.getInsignias();
-    }
 }
