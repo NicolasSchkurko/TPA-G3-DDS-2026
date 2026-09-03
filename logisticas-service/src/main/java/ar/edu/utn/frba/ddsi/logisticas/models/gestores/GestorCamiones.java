@@ -7,7 +7,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioC
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Component
