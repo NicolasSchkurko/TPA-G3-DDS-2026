@@ -35,12 +35,17 @@ public class Notificacion {
         this.mensaje = mensaje;
     }
 
-    public void marcarEnviada(){
+    public void marcarEnviada() {
         this.estado = EstadoNotificacion.ENVIADA;
     }
 
-    public void marcarFallida(){
+    public void marcarFallida() {
         this.estado = EstadoNotificacion.FALLIDA;
     }
+
+    public void marcarPendiente() {
+        this.estado = EstadoNotificacion.PENDIENTE;
+    }
+
 
 }
