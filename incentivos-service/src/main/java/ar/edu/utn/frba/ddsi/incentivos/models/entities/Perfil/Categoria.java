@@ -41,24 +41,15 @@ public class Categoria {
     }
 
     public void agregarMision(Mision mision) {
-        this.categoriaMisiones.add(new CategoriaMision(this, mision, categoriaMisiones.size() + 1));
+        this.categoriaMisiones.add(
+                new CategoriaMision(
+                        this, mision, categoriaMisiones.size() + 1
+                ))
+        ;
     }
 
     public void eliminarMision(Mision mision) {
         this.categoriaMisiones.removeIf(cm -> cm.getMision().equals(mision));
-    }
-
-    public void setMisiones(List<Mision> misiones) {
-        this.categoriaMisiones = new ArrayList<>();
-        if (misiones != null) {
-            IntStream.range(0, misiones.size()).forEach(i ->
-                    this.categoriaMisiones.add(
-                            new CategoriaMision(
-                                    this, misiones.get(i), i + 1
-                            )
-                    )
-            );
-        }
     }
 
 

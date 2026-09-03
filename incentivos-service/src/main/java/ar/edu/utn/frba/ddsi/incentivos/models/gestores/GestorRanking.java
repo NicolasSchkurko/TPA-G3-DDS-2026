@@ -17,18 +17,18 @@ import java.util.List;
 
 @Service
 public class GestorRanking {
-    private final RepositorioRankings repo;
-    private final ApplicationEventPublisher eventPublisher;
-    private final RepositorioPerfiles repositorio;
+//    private final RepositorioRankings repo;
+//    private final ApplicationEventPublisher eventPublisher;
+//    private final RepositorioPerfiles repositorio;
 
-    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher, RepositorioPerfiles repositorio) {
-        this.repo = rankings;
-        this.eventPublisher = eventPublisher;
-        this.repositorio = repositorio;
-    }
+//    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher, RepositorioPerfiles repositorio) {
+//        this.repo = rankings;
+//        this.eventPublisher = eventPublisher;
 
-    @EventListener
-    public void generarRankingMensual(GenerarRanking event) {
+//        this.repositorio = repositorio;
+//    }
+
+    public void generarRankingMensual(YearMonth periodo, List<Perfil> candidatos) {
         // lista de perfiles con su cantidad de misiones en el periodo
         List<Perfil> candidatos = event.perfiles();
 
@@ -63,24 +63,6 @@ public class GestorRanking {
                 new ResultadosRanking(
                         rankingDelMes.getPosiciones()
                 )
-        );
-    }
-
-    public void generarRankingMensual(YearMonth periodo){
-        // lista de perfiles con su cantidad de misiones en el periodo
-        List<Perfil> candidatos = repositorio.listarTodos().stream()
-                                             .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
-                                                 && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
-                                             // ordenamos desc por misiones cumplidas
-                                             .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
-                                                                                 p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
-                                             .toList();
-
-        eventPublisher.publishEvent(
-            new GenerarRanking(
-                periodo,
-                candidatos
-            )
         );
     }
 
