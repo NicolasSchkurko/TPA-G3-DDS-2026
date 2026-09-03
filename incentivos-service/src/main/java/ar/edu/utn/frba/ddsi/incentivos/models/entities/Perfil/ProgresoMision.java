@@ -1,8 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
+import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -47,4 +50,22 @@ public class ProgresoMision {
             progreso++;
         }
     }
+
+    public Insignia progresarMision (ImpactoDonacion donacion, PosicionRanking posicionRanking) {
+        evaluarConstancia();
+        evaluarProgreso(donacion);
+        if (this.estaCompleta()) {
+            posicionRanking.incrementarMisionesCumplidas();
+            return this.otorgarInsignia();
+        }
+        return null;
+    }
+
+    private Insignia otorgarInsignia() {
+        Insignia insignia = getMision().getInsigniaObjetivo();
+        insignia.setFechaObtencion(LocalDate.now());
+        return insignia;
+    }
+
+
 }

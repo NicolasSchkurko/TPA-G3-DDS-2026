@@ -1,11 +1,14 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Role;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.GenerarRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.ResultadosRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
+import java.time.YearMonth;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -18,10 +21,12 @@ import java.util.UUID;
 public class GestorRanking {
     private final RepositorioRankings repo;
     private final ApplicationEventPublisher eventPublisher;
+    private final RepositorioPerfiles repositorio;
 
-    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher) {
+    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher, RepositorioPerfiles repositorio) {
         this.repo = rankings;
         this.eventPublisher = eventPublisher;
+        this.repositorio = repositorio;
     }
 
     public RankingMensual obtenerRanking(UUID idRanking){
@@ -77,5 +82,36 @@ public class GestorRanking {
                         rankingDelMes.getPosiciones()
                 )
         );
+    }
+
+    public void generarRankingMensual(YearMonth periodo){
+        // lista de perfiles con su cantidad de misiones en el periodo
+        List<Perfil> candidatos = repositorio.listarTodos().stream()
+                                             // solo consideramos perfiles con >0 misiones en el periodo
+                                             .filter(perfil -> perfil.getRole() == Role.USER)
+                                             .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
+                                                 && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
+                                             // ordenamos desc por misiones cumplidas
+                                             .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
+                                                                                 p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
+                                             .toList();
+
+        eventPublisher.publishEvent(
+            new GenerarRanking(
+                periodo,
+                candidatos
+            )
+        );
+    }
+
+    @EventListener
+    public void actualizarPosicionesRanking(ResultadosRanking event){
+        List<Ranking> posiciones = event.posiciones();
+
+        for(Ranking pos : posiciones){
+            Perfil p = repositorio.buscarPorIDPerfil(pos.getIdPerfil());
+            p.setPosicionRanking(pos.getPosicionRanking());
+            repositorio.actualizar(p);
+        }
     }
 }

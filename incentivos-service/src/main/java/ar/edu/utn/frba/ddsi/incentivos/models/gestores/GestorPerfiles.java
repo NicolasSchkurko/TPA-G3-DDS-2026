@@ -26,24 +26,7 @@ public class GestorPerfiles {
         this.eventPublisher = eventPublisher;
     }
 
-    public void verificarProgresos() {
-        repositorio.listarTodos().stream()
-                .filter(perfil -> perfil.getRole() == Role.USER)
-                .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)
-                .forEach(Perfil::verificarProgresoMision);
-    }
 
-    public Mision obtenerMisionPerfil(UUID idUsuario){
-        Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
-
-        return perfil.getMisionActual();
-    }
-
-    public List<Insignia> obtenerInsigniasPerfil(UUID idUsuario){
-        Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
-
-        return perfil.getInsignias();
-    }
 
     public Perfil progresarPerfil(UUID idUsuario, ImpactoDonacion donacion) {
         Perfil perfil = repositorio.buscarPorIDUsuario(idUsuario);
@@ -53,8 +36,6 @@ public class GestorPerfiles {
         Categoria categoriaActual = perfil.getCategoriaActual();
         boolean misionCompletada = perfil.progresarMision(donacion);
         repositorio.actualizar(perfil);
-
-        if (!misionCompletada) return perfil;
 
         if (categoriaActual.esUltimaMision(misionAnterior)) {
             eventPublisher.publishEvent(
@@ -80,36 +61,6 @@ public class GestorPerfiles {
         return perfil;
     }
 
-    public void generarRankingMensual(YearMonth periodo){
-        // lista de perfiles con su cantidad de misiones en el periodo
-        List<Perfil> candidatos = repositorio.listarTodos().stream()
-                // solo consideramos perfiles con >0 misiones en el periodo
-                .filter(perfil -> perfil.getRole() == Role.USER)
-                .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
-                        && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
-                // ordenamos desc por misiones cumplidas
-                .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
-                        p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
-                .toList();
-
-        eventPublisher.publishEvent(
-                new GenerarRanking(
-                        periodo,
-                        candidatos
-                )
-        );
-    }
-
-    @EventListener
-    public void actualizarPosicionesRanking(ResultadosRanking event){
-        List<Ranking> posiciones = event.posiciones();
-
-        for(Ranking pos : posiciones){
-            Perfil p = repositorio.buscarPorIDPerfil(pos.getIdPerfil());
-            p.setPosicionRanking(pos.getPosicionRanking());
-            repositorio.actualizar(p);
-        }
-    }
 
     @EventListener
     public void actualizarPerfil(CategoriaCambiada event) {
@@ -139,7 +90,7 @@ public class GestorPerfiles {
                         event.categoriaAnterior().getNombre(),
                         perfil.getCategoriaActual().getNombre(),
                         perfil.getNombreUsuario(),
-                        perfil.getIdUsuario()
+                        perfil.getmedio
                 )
         );
     }

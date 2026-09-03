@@ -15,4 +15,8 @@ public class PosicionRanking {
         this.puesto = puesto;
         this.misionesCumplidasEnPeriodo = 0;
     }
+
+    public void incrementarMisionesCumplidas() {
+        this.misionesCumplidasEnPeriodo++;
+    }
 }

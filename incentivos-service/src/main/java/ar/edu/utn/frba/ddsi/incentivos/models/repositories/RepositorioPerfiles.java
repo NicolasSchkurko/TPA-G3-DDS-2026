@@ -1,7 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Role;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -80,5 +83,24 @@ public class RepositorioPerfiles {
                 .filter(perfil -> id.equals(perfil.getIdPerfil()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void verificarProgresos() {
+        this.listarTodos().stream()
+                   .filter(perfil -> perfil.getRole() == Role.USER)
+                   .filter(perfil -> perfil.getMisionActual().getReglaDeProgreso().getConstancia() != null)
+                   .forEach(Perfil::verificarProgresoMision);
+    }
+
+    public Mision obtenerMisionPerfil(UUID idUsuario){
+        Perfil perfil = this.buscarPorIDUsuario(idUsuario);
+
+        return perfil.getMisionActual();
+    }
+
+    public List<Insignia> obtenerInsigniasPerfil(UUID idUsuario){
+        Perfil perfil = this.buscarPorIDUsuario(idUsuario);
+
+        return perfil.getInsignias();
     }
 }
