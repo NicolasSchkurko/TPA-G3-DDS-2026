@@ -39,38 +39,11 @@ public class Perfil {
     }
 
     public boolean progresarMision(ImpactoDonacion donacion){
-        Mision misionActual = getMisionActual();
-        if (misionActual == null) return false;
-        if (progresoMisionActual == null || progresoMisionActual.getMision() != misionActual) {
-            progresoMisionActual = new ProgresoMision(misionActual);
-        }
-        progresoMisionActual.evaluarConstancia();
-        progresoMisionActual.evaluarProgreso(donacion);
-
-        if (progresoMisionActual.estaCompleta()) {
-            this.otorgarInsignia();
-            this.sumarMisionCumplida();
+        Insignia insignia =  progresoMisionActual.progresarMision(donacion, posicionRanking);
+        if (insignia != null) {
+            this.insignias.add(insignia);
             return true;
         }
         return false;
-    }
-
-    private void otorgarInsignia() {
-        Insignia insignia = getMisionActual().getInsigniaObjetivo();
-        insignia.setFechaObtencion(LocalDate.now());
-        insignias.add(insignia);
-    }
-
-    private void sumarMisionCumplida(){
-        Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
-        posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
-    }
-
-    public void setMisionActual(Mision misionActual) {
-        this.progresoMisionActual = misionActual == null ? null : new ProgresoMision(misionActual);
-    }
-
-    public Mision getMisionActual() {
-        return progresoMisionActual == null ? null : progresoMisionActual.getMision();
     }
 }
