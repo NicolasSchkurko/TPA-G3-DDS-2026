@@ -1,59 +1,23 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public class RepositorioCamiones {
-    private final List<Camion> camiones = new ArrayList<>();
+public interface RepositorioCamiones extends JpaRepository<Camion, String> {
 
-    public List<Camion> findAll() {
-        return new ArrayList<>(camiones);
-    }
+    Optional<Camion> findByChofer_IdChofer(UUID idChofer);
 
-    public Optional<Camion> findById(String patente) {
-        return camiones.stream()
-                       .filter(c -> c.getPatente().equals(patente))
-                       .findFirst();
-    }
-
-    public Optional<Camion> findByChoferId(UUID idChofer) {
-        if (idChofer == null) return Optional.empty();
-        return camiones.stream()
-                       .filter(camion -> camion.getChofer() != null &&
-                           idChofer.equals(camion.getChofer().getIdChofer()))
-                       .findFirst();
-    }
-
-    public Camion save(Camion camion) {
-        int posicion = camiones.indexOf(camion);
-        if (posicion != -1) {
-            camiones.set(posicion, camion);
-        } else {
-            camiones.add(camion);
+    default void resetearCarga(Camion camion){
+        Optional<Camion> camionEncontrado = this.findById(camion.getPatente());
+        if(camionEncontrado.isPresent()){
+            camionEncontrado.get().setCiudadDestinoActual(null);
+            camionEncontrado.get().resetearCargaOcupada();
+            this.save(camionEncontrado.get());
         }
-        return camion;
-    }
-
-    public void resetearCarga(Camion camion){
-        int posicion = camiones.indexOf(camion);
-        if (posicion != -1) {
-            camion.setCiudadDestinoActual(null);
-            camion.resetearCargaOcupada();
-            camiones.set(posicion, camion);
-        }
-    }
-
-    public void deleteById(String patente) {
-        camiones.removeIf(c -> c.getPatente().equals(patente));
     }
 }

@@ -16,41 +16,41 @@ import java.util.HashMap;
 import java.util.Map;
 
 @EnableJpaRepositories(
-        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes"
+        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas"
 )
 
 @Configuration
-public class ChoferesDataSourceConfig {
+public class RutasDataSourceConfig {
 
     @Bean
-    public DataSource choferesDataSource() {
+    public DataSource rutasDataSource() {
         return DataSourceBuilder.create()
-                .url("jdbc:mysql://localhost:3306/choferes")
+                .url("jdbc:mysql://localhost:3306/rutas")
                 .username("valentin")
                 .password("10032001")
                 .build();
     }
 
-    @Bean(name = "choferesEntityManagerFactory")
+    @Bean(name = "rutasEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
-            @Qualifier("choferesDataSource") DataSource dataSource) {
+            @Qualifier("rutasDataSource") DataSource dataSource) {
 
         LocalContainerEntityManagerFactoryBean emf =
                 new LocalContainerEntityManagerFactoryBean();
 
         emf.setDataSource(dataSource);
         emf.setPackagesToScan(
-                "ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer"
+                "ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta"
         );
-        emf.setPersistenceUnitName("choferes");
+        emf.setPersistenceUnitName("rutas");
         emf.setPersistenceProviderClass(HibernatePersistenceProvider.class);
 
         return emf;
     }
 
-    @Bean(name = "choferesTransactionManager")
+    @Bean(name = "rutasTransactionManager")
     public PlatformTransactionManager transactionManager(
-            @Qualifier("choferesEntityManagerFactory")
+            @Qualifier("rutasEntityManagerFactory")
             EntityManagerFactory entityManagerFactory) {
 
         return new JpaTransactionManager(entityManagerFactory);

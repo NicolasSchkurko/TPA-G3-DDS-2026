@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioC
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -27,7 +28,7 @@ public class GestorCamiones {
     }
 
     public Camion buscarCamionPorIdChofer(UUID idchofer){
-        return repoCamiones.findByChoferId(idchofer)
+        return repoCamiones.findByChofer_IdChofer(idchofer)
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
     }
 
