@@ -13,6 +13,8 @@ public class LogisticaServiceApplication {
     SpringApplication.run(LogisticaServiceApplication.class, args);
   }
 
+
+
   @Bean
   public RestTemplate restTemplate() {
     return new RestTemplate();
