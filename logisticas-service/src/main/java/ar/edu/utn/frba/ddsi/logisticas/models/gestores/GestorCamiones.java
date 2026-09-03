@@ -3,7 +3,7 @@ package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

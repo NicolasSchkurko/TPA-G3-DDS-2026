@@ -1,17 +1,27 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
-
 import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
+@Entity
 @Getter
 @Setter
+@Table(name = "chofer")
 public class Chofer {
+    @Id
+    @Column(name = "id_chofer")
     private UUID idChofer;
     private String nombre;
     private boolean disponible;
+
+    protected Chofer() {
+    }
 
     public Chofer(UUID idChofer, String nombre){
         this.idChofer = idChofer;

@@ -1,10 +1,11 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -20,13 +21,13 @@ public class GestorChoferes {
     }
 
     public Chofer buscarChofer(UUID id) {
-        Chofer chofer = repoChoferes.findById(id);
+        Optional<Chofer> chofer = repoChoferes.findById(id);
 
-        if (chofer == null) {
+        if (chofer.isPresent()) {
+            return chofer.get();
+        } else {
             throw new IllegalArgumentException("Chofer no encontrado");
         }
-
-        return chofer;
     }
 
     public void guardarChofer(Chofer chofer){

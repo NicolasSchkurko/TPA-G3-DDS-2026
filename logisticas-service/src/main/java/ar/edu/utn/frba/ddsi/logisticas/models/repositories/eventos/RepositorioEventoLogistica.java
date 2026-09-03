@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import org.springframework.stereotype.Repository;

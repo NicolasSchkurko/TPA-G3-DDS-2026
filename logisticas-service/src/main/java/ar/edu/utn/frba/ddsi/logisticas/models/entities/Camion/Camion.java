@@ -2,9 +2,11 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.Setter;
 
+//@Entity
 @Getter
 @Setter
 public class Camion {
