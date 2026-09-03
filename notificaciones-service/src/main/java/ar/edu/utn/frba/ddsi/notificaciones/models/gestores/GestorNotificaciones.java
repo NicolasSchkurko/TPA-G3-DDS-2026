@@ -6,25 +6,31 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeE
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
 public class GestorNotificaciones {
     private final RepositorioNotificaciones repositorioNotificaciones;
     private final MedioDeEnvioFactory factory;
+    private final BlockingQueue<Notificacion> cola = new LinkedBlockingQueue<>();
 
-  public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory) {
-    this.repositorioNotificaciones = repositorioNotificaciones;
-    this.factory = factory; //No se donde se asigna
-  }
+    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory) {
+        this.repositorioNotificaciones = repositorioNotificaciones;
+        this.factory = factory; //No se donde se asigna
+    }
 
-  public void enviarSolicitudDeNotificacion(String tipoDeMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo){
+    public void enviarSolicitudDeNotificacion(String tipoDeMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
 
         Notificacion notificacion = crearNotificacion(direccionDeContacto, asunto, cuerpo);
-        enviarNotificacion(tipoDeMedioDeContacto,direccionDeContacto, notificacion);
+        notificacion.marcarPendiente();
+        repositorioNotificaciones.guardar(notificacion);
+        cola.add(notificacion);
 
     }
 
@@ -33,14 +39,28 @@ public class GestorNotificaciones {
 
         Mensaje mensaje = new Mensaje(asunto, cuerpo);
         Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-
         repositorioNotificaciones.guardar(notificacion);
 
         return new Notificacion(direccionDeContacto, mensaje);
     }
 
+    @Scheduled(fixedDelay = 2000)
+    public void procesarCola() {
+        Notificacion notificacion = cola.poll();
+        if (notificacion != null) {
+            try {
+                enviarNotificacion("sms", notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
+                notificacion.marcarEnviada();
+            } catch (Exception e) {
+                notificacion.marcarFallida();
+                cola.add(notificacion);
+            }
+            repositorioNotificaciones.guardar(notificacion);
+        }
+    }
+
     // Por ahora solo envia al medio predeterminado
-    public void enviarNotificacion(String tipoMedioContacto ,String direccionContacto, Notificacion notificacion) {
+    public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
 
         try {
             MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioContacto);
