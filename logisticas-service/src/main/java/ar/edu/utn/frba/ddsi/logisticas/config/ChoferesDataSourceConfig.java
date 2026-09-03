@@ -12,11 +12,11 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
-import java.util.HashMap;
-import java.util.Map;
 
 @EnableJpaRepositories(
-        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes"
+        basePackages = "ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes",
+        entityManagerFactoryRef = "choferesEntityManagerFactory",
+        transactionManagerRef = "choferesTransactionManager"
 )
 
 @Configuration
