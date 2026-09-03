@@ -16,7 +16,6 @@ public class RepositorioCategorias {
     public RepositorioCategorias(MisionFactory misionFactory) {
         this.categorias = new ArrayList<>();
         this.misionFactory=misionFactory;
-        this.inicializarCategoriasBase();
     }
 
     public Categoria buscarPorId(UUID id) {
@@ -51,7 +50,7 @@ public class RepositorioCategorias {
         }
     }
 
-    public void eliminarCategoria(Categoria categoria) {
+    private void eliminarCategoria(Categoria categoria) {
         categorias.remove(categoria);
     }
 
@@ -74,11 +73,11 @@ public class RepositorioCategorias {
             categoriaActual.setNombre(categoriaModificada.getNombre());
         }
 
-        if (!categoriaModificada.getMisiones().isEmpty()) {
+        if (!categoriaModificada.getCategoriaMisiones().isEmpty()) {
             //modifica las misiones de categoria
             //pasame la lista completa con la modificacion
             //hacer que reciba una operacion con una mision de la list es complejo :p
-            categoriaActual.setMisiones(categoriaModificada.getMisiones());
+            categoriaActual.setCategoriaMisiones(categoriaModificada.getCategoriaMisiones());
         }
 
         if (categoriaModificada.getPosicionSecuencia() != null) {
@@ -128,23 +127,11 @@ public class RepositorioCategorias {
 
 
 
-    private List<Categoria> inicializarCategoriasBase(){
-        Categoria colaborador = new Categoria("Colaborador", 1, new ArrayList<>());
-
-        colaborador.getMisiones().add(
-                misionFactory.crearMision(
-                        "Primera donación",
-                        "Realiza tu primera donación para empezar a colaborar.",
-                        "Primer paso",
-                        null,
-                        AtributoImpacto.ESTADO,
-                        misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
-                )
-        );
-
+    public List<Categoria> inicializarCategoriasBase(){
+        Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
         agregarCategoria(colaborador);
-        agregarCategoria(new Categoria("Sostenedor", 2, new ArrayList<>()));
-        agregarCategoria(new Categoria("Transformador", 3, new ArrayList<>()));
+        agregarCategoria(new Categoria("Sostenedor", null, 2, new ArrayList<>()));
+        agregarCategoria(new Categoria("Transformador", null, 3, new ArrayList<>()));
 
         return obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
     }

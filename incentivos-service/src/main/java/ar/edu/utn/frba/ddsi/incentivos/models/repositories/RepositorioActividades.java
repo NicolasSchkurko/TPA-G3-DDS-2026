@@ -61,4 +61,22 @@ public class RepositorioActividades {
                 .flatMap(mes -> mes.getDonacionesEnMes().stream())
                 .toList();
     }
+
+    public void guardarDonacion(UUID idPerfil, ImpactoDonacion donacion) {
+        if (idPerfil == null || donacion == null) {
+            return;
+        }
+
+        HistorialActividad actividad = buscarPorIdPerfil(idPerfil);
+        if (actividad == null) {
+            actividad = new HistorialActividad(idPerfil, new ArrayList<>());
+        }
+        actividad.agregarDonacion(donacion);
+        guardar(actividad);
+    }
+
+    public Integer donacionesTotales(UUID idPerfil){
+        HistorialActividad actividad = buscarPorIdPerfil(idPerfil);
+        return actividad.cantidadDonacionesTotales();
+    }
 }

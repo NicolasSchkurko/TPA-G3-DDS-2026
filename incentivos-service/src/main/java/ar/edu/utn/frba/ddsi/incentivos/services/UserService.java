@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.HistorialActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Graficos.Metricas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
@@ -19,6 +20,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioActividades;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,13 +28,15 @@ public class UserService {
     private final GestorPerfiles perfiles;
     private final GestorRanking rankings;
     private final GestorActividad actividad;
+    private final RepositorioActividades repoActividades;
 
     public UserService(GestorPerfiles perfiles,
                        GestorRanking rankings,
-                       GestorActividad actividad) {
+                       GestorActividad actividad, RepositorioActividades repoActividades) {
         this.perfiles = perfiles;
         this.rankings = rankings;
         this.actividad = actividad;
+        this.repoActividades= repoActividades;
     }
 
     public PerfilDTO actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
@@ -44,15 +48,14 @@ public class UserService {
         Perfil p = perfiles.progresarPerfil(idUsuario, donacion);
         if (p == null) return null;
 
-        actividad.guardarDonacion(p.getIdPerfil(), donacion);
+        repoActividades.guardarDonacion(p.getIdPerfil(), donacion);
 
         return new PerfilDTO(
                 p.getNombreUsuario(),
                 p.getCategoriaActual().getNombre(),
                 p.getInsignias().stream().map(Insignia::getNombre).toList(),
                 p.getMisionActual().getNombreMision(),
-                p.getPosicionRanking().getPuesto(),
-                p.getRole() == null ? null : p.getRole().name()
+                p.getPosicionRanking().getPuesto()
         );
     }
 
@@ -68,19 +71,20 @@ public class UserService {
 
     public List<MetricaDTO> obtenerMetricasDonante(UUID idUsuario, UUID idPerfil){
         //% de variacion de donaciones x mes
-        List<Metricas> metricasHistoricas = actividad.comparacionHistorica(idPerfil);
+        HistorialActividad actividad = repoActividades.buscarPorIdPerfil(idPerfil);
 
-        return metricasHistoricas.stream()
+        return actividad.calcularMetricasMensuales(ImpactoDonacion::getCantidadBienes).stream()
                 .map(this::convertirMetricaADTO)
                 .toList();
     }
 
     public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario, UUID idPerfil){
-        Integer donacionesTotales = actividad.donacionesTotales(idPerfil);
-        Integer cantidadOrgsAyudadas = actividad.cantidadOrganizacionesAyudadas(idPerfil);
+        HistorialActividad historial = repoActividades.buscarPorIdPerfil(idPerfil);
+        Integer donacionesTotales = historial.cantidadDonacionesTotales();
+        Integer cantidadOrgsAyudadas = historial.cantidadEntidadesBeneficiadas();
         //obtener cantidad de donaciones y organizaciones ayudadas x mes
-        Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(idPerfil);
-        Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(idPerfil);
+        Map<YearMonth, Integer> donacionesXMes = actividad.actividadPerfilDonaciones(historial);
+        Map<YearMonth, Integer> orgsAyudadasXMes = actividad.actividadPerfilOrganizaciones(historial);
 
         TreeSet<YearMonth> meses = new TreeSet<>(donacionesXMes.keySet());
         meses.addAll(orgsAyudadasXMes.keySet());
@@ -93,8 +97,6 @@ public class UserService {
                         )
                 )
                 .toList();
-
-
 
         return new ActividadDTO(
                 actividadPerfil,

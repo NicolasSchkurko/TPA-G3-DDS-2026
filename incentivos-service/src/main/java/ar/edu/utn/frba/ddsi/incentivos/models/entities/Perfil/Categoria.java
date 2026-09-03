@@ -61,6 +61,7 @@ public class Categoria {
         }
     }
 
+
     public boolean esUltimaMision(Mision mision) {
         List<CategoriaMision> relaciones = relacionesOrdenadas();
         if (relaciones.isEmpty() || mision == null) return false;
