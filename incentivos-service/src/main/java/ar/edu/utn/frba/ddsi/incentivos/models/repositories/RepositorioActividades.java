@@ -33,6 +33,7 @@ public class RepositorioActividades {
                 .orElse(null);
     }
 
+/*
     public ImpactoDonacion buscarDonacionPorIDs(UUID idPerfil, UUID idDonacion) {
         HistorialActividad actividad = buscarPorIdPerfil(idPerfil);
         if (idDonacion == null || actividad == null) {
@@ -53,6 +54,7 @@ public class RepositorioActividades {
                 .flatMap(mes -> mes.getDonacionesEnMes().stream())
                 .toList();
     }
+*/
 
     public void guardarDonacion(UUID idPerfil, ImpactoDonacion donacion) {
         if (idPerfil == null || donacion == null) {

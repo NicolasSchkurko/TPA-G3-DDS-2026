@@ -19,9 +19,9 @@ import lombok.Setter;
 public class HistorialActividad {
     private UUID idActividad;
     private UUID idPerfil;
-    private List<ActividadMensual> actividadPorMes;
+    private List<ImpactoDonacion> historialDonaciones;
 
-    public HistorialActividad(UUID idPerfil, List<ActividadMensual> actividadPorMes) {
+    public HistorialActividad(UUID idPerfil, List<ImpactoDonacion> actividadPorMes) {
         this.idActividad = UUID.randomUUID();
         this.idPerfil = idPerfil;
         setActividadPorMes(actividadPorMes);
@@ -32,10 +32,11 @@ public class HistorialActividad {
      */
     public void agregarDonacion(ImpactoDonacion donacion) {
         if (donacion == null || donacion.getFechaEntrega() == null) {
-            throw new IllegalArgumentException("La donacion debe tener fecha de entrega");
+            return ;
         }
 
         YearMonth mes = YearMonth.from(donacion.getFechaEntrega());
+        //agregar donacion en el mes correspondiente si existe actividad previa o en mes nuevo
         ActividadMensual actividad = actividadPorMes.stream()
                 .filter(a -> a.getPeriodo().equals(mes))
                 .findFirst()
@@ -48,40 +49,33 @@ public class HistorialActividad {
         actividad.agregarDonacion(donacion);
     }
 
-    /** Compara el total del atributo entre dos meses. */
-    public Metricas calcularMetricasDeterminada(
-            Function<ImpactoDonacion, Integer> keyExtractor,
-            YearMonth mes1, YearMonth mes2){
-        Objects.requireNonNull(keyExtractor, "El atributo numerico es obligatorio");
-        Objects.requireNonNull(mes1, "El primer mes es obligatorio");
-        Objects.requireNonNull(mes2, "El segundo mes es obligatorio");
-        return new Metricas(mes1, mes2, Metricas.calcularVariacion(totalDelMes(mes1, keyExtractor), totalDelMes(mes2, keyExtractor)));
-    }
-
     /** Devuelve la variacion de cada mes respecto del mes anterior registrado. */
     public List<Metricas> calcularMetricasMensuales(
             Function<ImpactoDonacion, Integer> keyExtractor) {
-        Objects.requireNonNull(keyExtractor, "El atributo numerico es obligatorio");
         List<Metricas> metricas = new ArrayList<>();
+        /* Compara el total del atributo entre dos meses. */
         for (int i = 1; i < actividadPorMes.size(); i++) {
             YearMonth actual = actividadPorMes.get(i).getPeriodo();
             YearMonth anterior = actividadPorMes.get(i - 1).getPeriodo();
-            metricas.add(calcularMetricasDeterminada(keyExtractor, actual, anterior));
+            Metricas m = new Metricas(
+                    actual, anterior,
+                    Metricas.calcularVariacion(totalDelMes(actual, keyExtractor), totalDelMes(anterior, keyExtractor))
+            );
+            metricas.add(m);
         }
         return metricas;
     }
 
-    /** Evolucion porcentual entre el inicio y el fin del periodo indicado. */
+/*
+    Evolucion porcentual entre el inicio y el fin del periodo indicado.
     public Double calcularEvolucionPorPeriodo(
             Function<ImpactoDonacion, Integer> keyExtractor, YearMonth inicio, YearMonth fin) {
-        Objects.requireNonNull(keyExtractor, "El atributo numerico es obligatorio");
-        Objects.requireNonNull(inicio, "El primer mes es obligatorio");
-        Objects.requireNonNull(fin, "El segundo mes es obligatorio");
         if (inicio.isAfter(fin)) {
-            throw new IllegalArgumentException("El inicio no puede ser posterior al fin");
+            return null;
         }
         return Metricas.calcularVariacion(totalDelMes(fin, keyExtractor), totalDelMes(inicio, keyExtractor));
     }
+*/
 
     public int cantidadDonacionesTotales() {
         return actividadPorMes.stream()
@@ -99,7 +93,8 @@ public class HistorialActividad {
 
     //el setter para este atributo no es suficiente, asi q usar este
     public void setActividadPorMes(List<ActividadMensual> actividadPorMes) {
-        Map<YearMonth, List<ImpactoDonacion>> donacionesPorMes = (actividadPorMes == null ? List.<ActividadMensual>of() : actividadPorMes)
+        Map<YearMonth, List<ImpactoDonacion>> donacionesPorMes =
+                (actividadPorMes == null ? List.<ActividadMensual>of() : actividadPorMes)
                 .stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(

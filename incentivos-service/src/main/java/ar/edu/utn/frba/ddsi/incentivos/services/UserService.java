@@ -10,6 +10,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.GenerarRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 
@@ -42,6 +43,19 @@ public class UserService {
         this.repoRankings = rankings;
         this.actividad = actividad;
         this.repoActividades= repoActividades;
+    }
+
+    public void generarRankingMensual(YearMonth periodo){
+        // lista de perfiles con su cantidad de misiones en el periodo
+        List<Perfil> candidatos = repoPerfiles.listarTodos().stream()
+                .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
+                        && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
+                // ordenamos desc por misiones cumplidas
+                .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
+                        p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
+                .toList();
+
+
     }
 
     public List<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario) {
