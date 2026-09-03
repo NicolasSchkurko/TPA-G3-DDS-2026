@@ -1,7 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import org.springframework.stereotype.Repository;
 
@@ -11,11 +9,9 @@ import java.util.function.Function;
 @Repository
 public class RepositorioCategorias {
     private final List<Categoria> categorias;
-    private final MisionFactory misionFactory;
 
-    public RepositorioCategorias(MisionFactory misionFactory) {
+    public RepositorioCategorias() {
         this.categorias = new ArrayList<>();
-        this.misionFactory=misionFactory;
     }
 
     public Categoria buscarPorId(UUID id) {
@@ -44,13 +40,13 @@ public class RepositorioCategorias {
         return listaOrdenada;
     }
 
-    private void agregarCategoria(Categoria categoria) {
+    public void agregarCategoria(Categoria categoria) {
         if (!categorias.contains(categoria)) {
             categorias.add(categoria);
         }
     }
 
-    private void eliminarCategoria(Categoria categoria) {
+    public void eliminarCategoria(Categoria categoria) {
         categorias.remove(categoria);
     }
 
@@ -62,97 +58,20 @@ public class RepositorioCategorias {
 
     //para modificacion de categorias
     public Categoria actualizar(Categoria categoriaModificada) {
-        if (categoriaModificada.getIdCategoria() == null) {
+        if (categoriaModificada == null) {
             return null;
         }
 
-        Categoria categoriaActual = buscarPorId(categoriaModificada.getIdCategoria());
-        if (categoriaActual == null) return null;
+        Categoria existente = this.buscarPorId(categoriaModificada.getIdCategoria());
 
-        if (categoriaModificada.getNombre() != null) { //modifica nomCategoria
-            categoriaActual.setNombre(categoriaModificada.getNombre());
-        }
-
-        if (!categoriaModificada.getCategoriaMisiones().isEmpty()) {
-            //modifica las misiones de categoria
-            //pasame la lista completa con la modificacion
-            //hacer que reciba una operacion con una mision de la list es complejo :p
-            categoriaActual.setCategoriaMisiones(categoriaModificada.getCategoriaMisiones());
-        }
-
-        if (categoriaModificada.getPosicionSecuencia() != null) {
-            Integer posicionAnterior = categoriaActual.getPosicionSecuencia();
-            Integer posicionNueva = categoriaModificada.getPosicionSecuencia();
-
-            if (posicionNueva < 1
-                    || posicionNueva > obtenerDesdeNivel(1).size()) {
-                return null;
+        if (existente != null) {
+            int index = categorias.indexOf(existente);
+            if (index >= 0) {
+                categorias.set(index, existente);
             }
-
-            List<Categoria> modificarPosiciones = new ArrayList<>();
-            if (posicionNueva < posicionAnterior) {
-                // La categoría sube: las que estaban entre ambos lugares bajan un puesto
-                modificarPosiciones = obtenerDesdeNivel(posicionNueva).stream()
-                        .filter(c -> !c.getIdCategoria().equals(categoriaModificada.getIdCategoria()))
-                        .filter(c -> c.getPosicionSecuencia() < posicionAnterior)
-                        .toList();
-
-                modificarPosiciones.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
-
-                for (Categoria x : modificarPosiciones) {
-                    actualizar(x);
-                }
-            } else if (posicionNueva > posicionAnterior) {
-                // La categoría baja: las que estaban entre ambos lugares suben un puesto
-                modificarPosiciones = obtenerDesdeNivel(posicionAnterior + 1).stream()
-                        .filter(c -> c.getPosicionSecuencia() <= posicionNueva)
-                        .toList();
-
-                modificarPosiciones.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
-
-                for (Categoria x : modificarPosiciones) {
-                    actualizar(x);
-                }
-            }
-            categoriaActual.setPosicionSecuencia(posicionNueva);
+            return existente;
         }
 
-        int index = categorias.indexOf(categoriaActual);
-        if (index >= 0) {
-            categorias.set(index, categoriaActual);
-        }
-
-        return categoriaActual;
-    }
-
-
-
-    public List<Categoria> inicializarCategoriasBase(){
-        Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
-        agregarCategoria(colaborador);
-        agregarCategoria(new Categoria("Sostenedor", null, 2, new ArrayList<>()));
-        agregarCategoria(new Categoria("Transformador", null, 3, new ArrayList<>()));
-
-        return obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
-    }
-
-    public List<Categoria> crearCategoria(Categoria nueva) {
-        obtenerDesdeNivel(nueva.getPosicionSecuencia())
-                .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
-
-        agregarCategoria(nueva);
-
-        //para retornar al admin
-        return obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
-    }
-
-    public List<Categoria> eliminarCategoriaPorId(UUID idCategoria) {
-        Categoria cat = buscarPorId(idCategoria);
-        eliminarCategoria(cat);
-        obtenerDesdeNivel(cat.getPosicionSecuencia() + 1)
-                    .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
-
-        //para retornar al admin
-        return obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
+        return null;
     }
 }
