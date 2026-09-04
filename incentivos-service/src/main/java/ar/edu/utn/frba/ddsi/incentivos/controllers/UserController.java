@@ -7,8 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,7 +34,6 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
     })
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<Boolean> actualizarPerfil(@Parameter(description = "UUID del usuario que realizó la donación", example = "123e4567-e89b-12d3-a456-426614174000")
                                                       @PathVariable UUID id,
                                                       @RequestBody ImpactoDonacionDTO dto) {
@@ -94,11 +93,9 @@ public class UserController {
     public ResponseEntity<MisionPerfilDTO> obtenerMisionPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                @PathVariable UUID id) {
         MisionPerfilDTO mision = service.obtenerMisionPorIdUsuario(id);
-        if (mision == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(mision);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(mision);
     }
 
     @Operation(
@@ -113,12 +110,10 @@ public class UserController {
     public ResponseEntity<List<InsigniaDTO>> obtenerInsigniasPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
                                                                     @PathVariable UUID id) {
         List<InsigniaDTO> insignias = service.obtenerInsigniasPorIdUsuario(id);
-        if (insignias == null) {
-            return ResponseEntity.notFound().build();
-        }
 
-
-        return ResponseEntity.ok(insignias);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(insignias);
     }
 
     //le habilito al perfil ver el ranking del mes y top3, no se si sea necesario el id en la ruta

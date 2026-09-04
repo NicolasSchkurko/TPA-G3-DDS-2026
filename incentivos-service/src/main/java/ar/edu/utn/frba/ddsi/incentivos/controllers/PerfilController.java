@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,12 +58,10 @@ public class PerfilController {
     })
     @PostMapping
     public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
-        //los admins se crean en donaciones-service asi q me tiene que pasar el rol
-        //si se crea un admin tengo que crearle un perfil
         PerfilDTO nuevo = perfilService.crearPerfil(dto);
-        if (nuevo == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(nuevo);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(nuevo);
     }
 }

@@ -42,8 +42,8 @@ public class GestorPerfiles {
                                       if (perfilModificado.getInsignias() != null) {
                                           existente.setInsignias(perfilModificado.getInsignias());
                                       }
-                                      if (perfilModificado.getMisionActual() != null) {
-                                          existente.setMisionActual(perfilModificado.getMisionActual());
+                                      if (perfilModificado.getProgresoMisionActual() != null) {
+                                          existente.setProgresoMisionActual(perfilModificado.getProgresoMisionActual());
                                       }
                                       if (perfilModificado.getPosicionRanking() != null) {
                                           existente.setPosicionRanking(perfilModificado.getPosicionRanking());

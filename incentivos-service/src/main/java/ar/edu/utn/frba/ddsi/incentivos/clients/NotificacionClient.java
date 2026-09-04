@@ -19,6 +19,7 @@ public class NotificacionClient {
     private String notificacionesUrl;
 
     private final RestTemplate restTemplate;
+    //todo: este repo puede q lo maneje servicio notificaciones
     private final RepositorioNotificacionesPendientes repositorioPendientes;
 
     public NotificacionClient(RestTemplate restTemplate,
@@ -27,7 +28,8 @@ public class NotificacionClient {
         this.repositorioPendientes = repositorioPendientes;
     }
 
-    public void enviarNotificacion(PerfilNotificacionDTO dto) throws EnvioNotificacionException {
+    public void enviarNotificacion(PerfilNotificacionDTO dto)
+            throws EnvioNotificacionException {
         try {
             restTemplate.postForEntity(notificacionesUrl, dto, void.class);
             log.info("Notificación enviada exitosamente a {}", dto.getDireccionContacto());

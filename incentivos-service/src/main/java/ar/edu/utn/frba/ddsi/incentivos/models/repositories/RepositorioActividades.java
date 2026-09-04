@@ -12,7 +12,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RepositorioActividades extends JpaRepository<HistorialActividad, UUID> {
+public interface RepositorioActividades
+        extends JpaRepository<HistorialActividad, UUID> {
 
     // Si buscas por el campo 'idPerfil' en la entidad:
     Optional<HistorialActividad> findByIdPerfil(UUID idPerfil);
@@ -22,8 +23,4 @@ public interface RepositorioActividades extends JpaRepository<HistorialActividad
 
     // Ejemplo con Pageable para resultados paginados:
     Page<HistorialActividad> findAllByIdPerfil(UUID idPerfil, Pageable pageable);
-
-    // Ejemplo con JPQL personalizado:
-    @Query("SELECT h FROM HistorialActividad h WHERE h.idPerfil = :idPerfil")
-    Optional<HistorialActividad> buscarPorPerfil(@Param("idPerfil") UUID idPerfil);
 }

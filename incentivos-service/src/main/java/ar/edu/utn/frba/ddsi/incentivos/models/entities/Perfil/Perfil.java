@@ -52,10 +52,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @Embedded
     private PosicionRanking posicionRanking;
 
-    @Transient
-    private Mision misionActual; // Asumiendo que existe basado en el Gestor original
-
-    public Perfil(UUID idUsuario, String nombreUsuario, String role) {
+    public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = null; //inicializar en perfilService

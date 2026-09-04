@@ -9,7 +9,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorActividad;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 
@@ -19,7 +18,7 @@ import java.util.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioActividades;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
-import org.springframework.context.event.EventListener;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -42,13 +41,34 @@ public class UserService {
     }
 
     public List<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario) {
-        List<Insignia> insignias = repoPerfiles.buscarPorIDUsuario(idUsuario).getInsignias();
-        return insignias.stream().map(this::convertirInsigniaADTO).toList();
+        // distinguir entre perfil inexistente y perfil sin insignias.
+        repoPerfiles.findByIdUsuario(idUsuario)
+                .orElseThrow(InexistenteException::new);
+
+        return repoPerfiles.obtenerInsigniasPorIdUsuario(idUsuario)
+                .stream()
+                .map(this::convertirInsigniaADTO)
+                .toList();
     }
 
     public MisionPerfilDTO obtenerMisionPorIdUsuario(UUID idUsuario) {
-        Mision mision = repoPerfiles.buscarPorIDUsuario(idUsuario).getProgresoMisionActual().getMision();
+        repoPerfiles.findByIdUsuario(idUsuario)
+                .orElseThrow(InexistenteException::new);
+
+        Mision mision = repoPerfiles.obtenerMisionPorIdUsuario(idUsuario)
+                .orElseThrow();
         return convertirMisionPerfilADTO(mision);
+    }
+
+    public Boolean actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
+        if (idUsuario == null) {
+            return null;
+        }
+
+        ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
+        Perfil p = repoPerfiles.findByIdUsuario(idUsuario)
+                .orElseThrow(InexistenteException::new);
+        return perfiles.progresarPerfil(p, donacion);
     }
 
     public RankingMesDTO obtenerRanking(UUID idRanking) {
@@ -111,16 +131,6 @@ public class UserService {
         );
     }
 
-    public Boolean actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
-        if (idUsuario == null) {
-            return null;
-        }
-
-        ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
-        Perfil p = repoPerfiles.buscarPorIDUsuario(idUsuario);
-        return perfiles.progresarPerfil(p, donacion);
-    }
-
     public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion){
         return new ImpactoDonacion(donacion.getEntidadBeneficiaria(),
                 donacion.getCantidadBienes(),
@@ -149,8 +159,7 @@ public class UserService {
     public InsigniaDTO convertirInsigniaADTO(Insignia insignia) {
         return new InsigniaDTO( insignia.getNombre(),
                                 insignia.getDescripcion(),
-                                insignia.getUrlImagen(),
-                                insignia.getFechaObtencion()
+                                insignia.getUrlImagen()
         );
     }
 
