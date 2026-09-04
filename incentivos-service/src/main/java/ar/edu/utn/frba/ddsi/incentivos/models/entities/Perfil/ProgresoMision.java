@@ -4,11 +4,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,10 +28,14 @@ public class ProgresoMision {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-
     private UUID id;
+
+    @ManyToOne
     private Mision mision;
+
+    @OneToMany(cascade = CascadeType.ALL)
     private List<ImpactoDonacion> donacionesExitosas;
+
     private Integer progreso;
 
     public ProgresoMision(Mision mision) {
@@ -43,7 +49,7 @@ public class ProgresoMision {
         if (constancia == null || donacionesExitosas.isEmpty()) return;
 
         LocalDateTime limite = donacionesExitosas.getLast().getFechaEntrega().plus(
-                constancia.getCantidad(), constancia.getUnidadTiempo());
+            constancia.getCantidad(), constancia.getUnidadTiempo());
 
         if (LocalDateTime.now().isAfter(limite)) {
             donacionesExitosas.clear();
@@ -63,15 +69,15 @@ public class ProgresoMision {
         }
     }
 
-    public Insignia progresarMision (ImpactoDonacion donacion, PosicionRanking posicionRanking) {
+    // Se ha removido PosicionRanking de los parámetros.
+    // Esa actualización debe manejarse mediante un EventListener que escuche MisionCompletada.
+    public Insignia progresarMision(ImpactoDonacion donacion) {
         evaluarConstancia();
         evaluarProgreso(donacion);
+
         if (this.estaCompleta()) {
-            posicionRanking.incrementarMisionesCumplidas();
             return this.getMision().getInsigniaObjetivo();
         }
         return null;
     }
-
-
 }

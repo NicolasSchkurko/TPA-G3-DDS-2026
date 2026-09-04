@@ -1,84 +1,56 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import org.springframework.context.ApplicationEventPublisher;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class GestorPerfiles {
-    private final ApplicationEventPublisher eventPublisher;
+    private final RepositorioPerfiles repositorioPerfiles;
 
-    public GestorPerfiles(ApplicationEventPublisher eventPublisher) {
-        this.eventPublisher = eventPublisher;
+    public GestorPerfiles(RepositorioPerfiles repositorioPerfiles) {
+        this.repositorioPerfiles = repositorioPerfiles;
     }
 
+    @Transactional
     public Boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
-        ProgresoMision misionAnterior = perfil.getProgresoMisionActual();
-        Boolean misionCompletada = perfil.progresarMision(donacion); //perfil cambio, pero no la mision ni categoria
+        Boolean misionCompletada = perfil.progresarMision(donacion);
 
-        if (misionCompletada) {
-            //activa guardarDonacion para actualizar actividad del perfil en progresoService
-            eventPublisher.publishEvent(
-                    new MisionCompletada(
-                            donacion,
-                            perfil
-                    )
-            );
-            //activa avanzarCategoria para actualizar categoria y mision del perfil en progresoService
-            if (perfil.getCategoriaActual().esUltimaMision(misionAnterior.getMision())) {
-                eventPublisher.publishEvent(
-                        new UltimaMisionCategoria(
-                                perfil
-                        )
-                );
-            } else { //son asincronicos los publisher, asi q hay q repetir logica
-                //activa avanzarMision para actualizar mision del perfil en progresoService
-                eventPublisher.publishEvent(
-                        new MisionCompletada(
-                                null,
-                                perfil
-                        )
-                );
-            }
-        }
+        // Al guardar el perfil, Spring Data automáticamente publicará
+        // los eventos registrados dentro de la entidad Perfil
+        repositorioPerfiles.save(perfil);
 
         return misionCompletada;
     }
 
+    @Transactional
     public Perfil actualizar(Perfil perfilModificado) {
         if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
             return null;
         }
 
-        Perfil existente = this.buscarPorIDUsuario(perfilModificado.getIdUsuario());
-        if (existente != null) {
-            // Actualizar solo los campos no nulos del perfilModificado
-            if (perfilModificado.getNombreUsuario() != null) {
-                existente.setNombreUsuario(perfilModificado.getNombreUsuario());
-            }
-            if (perfilModificado.getCategoriaActual() != null) {
-                existente.setCategoriaActual(perfilModificado.getCategoriaActual());
-            }
-            if (perfilModificado.getInsignias() != null) {
-                existente.setInsignias(perfilModificado.getInsignias());
-            }
-            if (perfilModificado.getMisionActual() != null) {
-                existente.setMisionActual(perfilModificado.getMisionActual());
-            }
-            if (perfilModificado.getPosicionRanking() != null) {
-                existente.setPosicionRanking(perfilModificado.getPosicionRanking());
-            }
-
-            int index = perfiles.indexOf(existente);
-            if (index >= 0) {
-                perfiles.set(index, existente);
-            }
-        }
-        return existente;
+        return repositorioPerfiles.findByIdUsuario(perfilModificado.getIdUsuario())
+                                  .map(existente -> {
+                                      if (perfilModificado.getNombreUsuario() != null) {
+                                          existente.setNombreUsuario(perfilModificado.getNombreUsuario());
+                                      }
+                                      if (perfilModificado.getCategoriaActual() != null) {
+                                          existente.setCategoriaActual(perfilModificado.getCategoriaActual());
+                                      }
+                                      if (perfilModificado.getInsignias() != null) {
+                                          existente.setInsignias(perfilModificado.getInsignias());
+                                      }
+                                      if (perfilModificado.getMisionActual() != null) {
+                                          existente.setMisionActual(perfilModificado.getMisionActual());
+                                      }
+                                      if (perfilModificado.getPosicionRanking() != null) {
+                                          existente.setPosicionRanking(perfilModificado.getPosicionRanking());
+                                      }
+                                      // Persistimos los cambios en la base de datos
+                                      return repositorioPerfiles.save(existente);
+                                  })
+                                  .orElse(null);
     }
 }
