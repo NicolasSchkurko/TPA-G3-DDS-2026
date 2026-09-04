@@ -1,10 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.events;
 
-import java.util.UUID;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 
 public record MisionCambiada(String misionAnterior,
                              String insigniaAnterior,
                              String nombreUsuario,
-                             UUID idUsuario,
+                             MedioContacto contacto,
                              String misionNueva) {
 }

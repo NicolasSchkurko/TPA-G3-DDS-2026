@@ -11,6 +11,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConsta
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,20 +20,24 @@ import java.util.UUID;
 
 @Service
 public class AdminService {
-    private final GestorCategoria gestorCategoria;
+    //private final GestorCategoria gestorCategoria;
     private final GestorMision gestorMisiones;
-
+    //private RepositorioCategorias repositorioCategorias;
+    private final GestorCategoria gestorCategoria;
     public AdminService(GestorCategoria gestorCategoria,
-                        GestorMision gestorMision){
+                        GestorMision gestorMision, RepositorioCategorias repositorioCategorias){
         this.gestorCategoria = gestorCategoria;
         this.gestorMisiones = gestorMision;
+       // this.repositorioCategorias = repositorioCategorias;
+        gestorCategoria.inicializarCategoriasBase();
     }
 
-    public SecuenciaCategoriasDTO agregarCategoria(CategoriaDTO dto){
+    public List<CategoriaDTO> agregarCategoria(CategoriaDTO dto){
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
         Categoria categoria = new Categoria(
                 dto.getNombre(),
+                dto.getAdmin(),
                 dto.getPosicionSecuencia(),
                 misiones
         );
@@ -41,7 +46,7 @@ public class AdminService {
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
         for(Categoria x : categorias){
-            List<UUID> idMisiones = x.getMisiones().stream()
+            List<UUID> idMisiones = x.getCMisiones().stream()
                     .map(Mision::getIdMision).toList();
 
             CategoriaDTO cat = new CategoriaDTO(
@@ -53,10 +58,10 @@ public class AdminService {
             categoriasDTO.add(cat);
         }
 
-        return new SecuenciaCategoriasDTO(categoriasDTO);
+        return categoriasDTO;
     }
 
-    public SecuenciaCategoriasDTO eliminarCategoria(UUID id){
+    public List<CategoriaDTO> eliminarCategoria(UUID id){
         List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
 
         List<CategoriaDTO> categoriasDTO = new ArrayList<>();
@@ -73,7 +78,7 @@ public class AdminService {
             categoriasDTO.add(cat);
         }
 
-        return new SecuenciaCategoriasDTO(categoriasDTO);
+        return categoriasDTO;
     }
 
     public CategoriaDTO actualizarCategoria(UUID id, CategoriaDTO dto){
@@ -81,6 +86,7 @@ public class AdminService {
 
         Categoria categoria = new Categoria(
                 dto.getNombre(),
+                dto.getAdmin(),
                 dto.getPosicionSecuencia(),
                 misiones
         );
@@ -217,4 +223,5 @@ public class AdminService {
                 "Tipo de operación no soportado: " + operacion.getClass().getSimpleName()
         );
     }
+
 }

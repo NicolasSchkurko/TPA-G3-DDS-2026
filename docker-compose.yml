@@ -16,8 +16,8 @@ services:
       - "8082:8082"
     environment:
       SERVER_PORT: 8082
-      DONACIONES_URL: http://donaciones-service:8084/api/personas
-      NOTIFICACIONES_URL: http://notificaciones-service:8083/api/notificaciones
+      DONACIONES_URL: http://donaciones-service:8084/personas
+      NOTIFICACIONES_URL: http://notificaciones-service:8083/notificaciones
       N8N_URL: http://host.docker.internal:5678/webhook/incentivos
 
   donaciones-service:
@@ -27,14 +27,14 @@ services:
       - "8084:8084"
     environment:
       SERVER_PORT: 8084
-      NOTIFICACIONES_URL:  http://notificaciones-service:8083/api/notificaciones
-      INCENTIVOS_URL: http://incentivos-service:8082/api/perfiles
-      LOGISTICAS_URL: http://logisticas-service:8085/api/
+      NOTIFICACIONES_URL: http://notificaciones-service:8083
+      INCENTIVOS_URL: http://incentivos-service:8082/perfiles
+      LOGISTICAS_URL: http://logisticas-service:8086
 
   logisticas-service:
     image: logisticas-service:latest
     container_name: logisticas-service
     ports:
-      - "8085:8085"
+      - "8086:8086"
     environment:
-      SERVER_PORT: 8085
+      SERVER_PORT: 8086

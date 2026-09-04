@@ -16,46 +16,16 @@ import java.util.UUID;
 
 @Service
 public class GestorCategoria {
-    private final RepositorioCategorias repositorio;
-    private final ApplicationEventPublisher eventPublisher;
     private final MisionFactory misionFactory;
 
-    public GestorCategoria(RepositorioCategorias repositorio,
-                           ApplicationEventPublisher eventPublisher,
-                           MisionFactory misionFactory) {
-        this.repositorio = repositorio;
-        this.eventPublisher = eventPublisher;
+    public GestorCategoria(MisionFactory misionFactory) {
         this.misionFactory = misionFactory;
         this.inicializarCategoriasBase();
     }
 
-
-
-
-    @EventListener
-    public void avanzarCategoria(UltimaMisionCategoria event) {
-        if (event.idCategoriaCompletada() == null) {
-            return;
-        }
-
-        Categoria categoriaAnterior = repositorio.buscarPorId(event.idCategoriaCompletada());
-        Categoria categoriaSiguiente = categoriaCorrespondiente(categoriaAnterior.getPosicionSecuencia() + 1);
-        if (categoriaSiguiente == null || categoriaSiguiente.primeraMision() == null) {
-            return;
-        }
-
-        eventPublisher.publishEvent(
-                new CategoriaCambiada(
-                        categoriaAnterior,
-                        categoriaSiguiente,
-                        event.idPerfil()
-                )
-        );
-    }
-
     //init default, dsp el admin puede modificarlas
     public List<Categoria> inicializarCategoriasBase() {
-        Categoria colaborador = new Categoria("Colaborador", 1, new ArrayList<>());
+        Categoria colaborador = new Categoria("Colaborador", null,1, new ArrayList<>());
 
         colaborador.getMisiones().add(
             misionFactory.crearMision(
@@ -69,8 +39,8 @@ public class GestorCategoria {
         );
 
         repositorio.agregarCategoria(colaborador);
-        repositorio.agregarCategoria(new Categoria("Sostenedor", 2, new ArrayList<>()));
-        repositorio.agregarCategoria(new Categoria("Transformador", 3, new ArrayList<>()));
+        repositorio.agregarCategoria(new Categoria("Sostenedor", null,2, new ArrayList<>()));
+        repositorio.agregarCategoria(new Categoria("Transformador", null,3, new ArrayList<>()));
 
         return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
     }
@@ -108,11 +78,11 @@ public class GestorCategoria {
             categoriaActual.setNombre(categoria.getNombre());
         }
 
-        if (!categoria.getMisiones().isEmpty()) {
+        if (!categoria.getCategoriaMisiones().isEmpty()) {
             //modifica las misiones de categoria
             //pasame la lista completa con la modificacion
             //hacer que reciba una operacion con una mision de la list es complejo :p
-            categoriaActual.setMisiones(categoria.getMisiones());
+            categoriaActual.setCategoriaMisiones(categoria.getCategoriaMisiones());
         }
 
         if (categoria.getPosicionSecuencia() != null) {
@@ -153,9 +123,5 @@ public class GestorCategoria {
         }
 
         return repositorio.actualizar(categoriaActual);
-    }
-
-    public Categoria categoriaCorrespondiente(Integer posicion){
-        return repositorio.buscarPorPosicionSecuencia(posicion);
     }
 }

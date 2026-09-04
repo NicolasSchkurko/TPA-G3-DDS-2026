@@ -16,7 +16,7 @@ public class PerfilDTO {
     private Integer posicionRanking;
 
     public PerfilDTO(String nombreUsuario,
-                            String categoriaActual,
+                     String categoriaActual,
                      List<String> insignias,
                      String misionActual,
                      Integer posicionRanking) {

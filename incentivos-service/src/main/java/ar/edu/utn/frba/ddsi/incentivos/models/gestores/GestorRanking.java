@@ -5,43 +5,30 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.GenerarRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.ResultadosRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
+import java.time.YearMonth;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class GestorRanking {
-    private final RepositorioRankings repo;
-    private final ApplicationEventPublisher eventPublisher;
+//    private final RepositorioRankings repo;
+//    private final ApplicationEventPublisher eventPublisher;
+//    private final RepositorioPerfiles repositorio;
 
-    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher) {
-        this.repo = rankings;
-        this.eventPublisher = eventPublisher;
-    }
+//    public GestorRanking(RepositorioRankings rankings, ApplicationEventPublisher eventPublisher, RepositorioPerfiles repositorio) {
+//        this.repo = rankings;
+//        this.eventPublisher = eventPublisher;
 
-    public RankingMensual obtenerRanking(UUID idRanking){
-        return repo.buscarPorId(idRanking);
-    }
+//        this.repositorio = repositorio;
+//    }
 
-    public RankingMensual obtenerTop3(UUID idRanking){
-        RankingMensual rank = repo.buscarPorId(idRanking);
-
-        List<Ranking> top3 =  rank.getPosiciones().stream()
-                .limit(3) // Nos quedamos solo con los 3 primeros elementos de la lista ya ordenada
-                .toList();
-
-        rank.setPosiciones(top3);
-
-        return rank;
-    }
-
-    @EventListener
-    public void generarRankingMensual(GenerarRanking event) {
+    public void generarRankingMensual(YearMonth periodo, List<Perfil> candidatos) {
         // lista de perfiles con su cantidad de misiones en el periodo
         List<Perfil> candidatos = event.perfiles();
 
@@ -77,5 +64,16 @@ public class GestorRanking {
                         rankingDelMes.getPosiciones()
                 )
         );
+    }
+
+    @EventListener
+    public void actualizarPosicionesRanking(ResultadosRanking event){
+        List<Ranking> posiciones = event.posiciones();
+
+        for(Ranking pos : posiciones){
+            Perfil p = repositorio.buscarPorIDPerfil(pos.getIdPerfil());
+            p.setPosicionRanking(pos.getPosicionRanking());
+            repositorio.actualizar(p);
+        }
     }
 }

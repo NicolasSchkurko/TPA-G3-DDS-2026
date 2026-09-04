@@ -4,7 +4,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -14,49 +16,58 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@Entity
+@NoArgsConstructor
 public class Perfil {
+
     private UUID idUsuario; // id en donaciones
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idPerfil; // id interno
+
     private String nombreUsuario;
+
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
     private Categoria categoriaActual;
+
+    @ManyToMany
+    @JoinTable(
+    name = "perfil_insignia",
+    joinColumns = @JoinColumn(name = "perfil_id"),
+    inverseJoinColumns = @JoinColumn(name = "insignia_id")
+        )
     private List<Insignia> insignias;
-    private Mision misionActual;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    private ProgresoMision progresoMisionActual;
+
+    @Embedded
     private PosicionRanking posicionRanking;
 
-    public Perfil(UUID idUsuario, String nombreUsuario) {
+    public Perfil(UUID idUsuario, String nombreUsuario, String role) {
         this.idUsuario = idUsuario;
-        this.idPerfil = UUID.randomUUID();
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = null; //inicializar en gestorPerfiles
+        this.categoriaActual = null; //inicializar en perfilService
         this.insignias = new ArrayList<>();
         this.posicionRanking = new PosicionRanking(null);
-        this.misionActual = null; //se inicializa en gestorPerfiles
+        this.progresoMisionActual = null; //inicializar en perfilService
     }
 
     public void verificarProgresoMision(){
-        misionActual.evaluarConstancia();
+        if (progresoMisionActual != null)
+            progresoMisionActual.evaluarConstancia();
     }
 
-    public boolean progresarMision(ImpactoDonacion donacion){
-        misionActual.evaluarConstancia();
-        misionActual.evaluarProgreso(donacion);
-
-        if (misionActual.estaCompleta()) {
-            this.otorgarInsignia();
-            this.sumarMisionCumplida();
-            return true;
+    public Boolean progresarMision(ImpactoDonacion donacion){
+        Insignia insignia = progresoMisionActual.progresarMision(donacion, posicionRanking);
+        if (insignia != null) {
+            this.insignias.add(insignia);
+            return Boolean.TRUE;
         }
-        return false;
+        return Boolean.FALSE;
     }
 
-    private void otorgarInsignia() {
-        Insignia insignia = misionActual.getInsigniaObjetivo();
-        insignia.setFechaObtencion(LocalDate.now());
-        insignias.add(insignia);
-    }
 
-    private void sumarMisionCumplida(){
-        Integer current = posicionRanking.getMisionesCumplidasEnPeriodo();
-        posicionRanking.setMisionesCumplidasEnPeriodo(current + 1);
-    }
 }
