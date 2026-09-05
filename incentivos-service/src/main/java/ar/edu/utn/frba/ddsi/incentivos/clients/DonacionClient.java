@@ -22,8 +22,8 @@ public class DonacionClient {
     public MedioContacto obtenerContactoPersona(UUID idUsuario) {
         try {
             MedioContactoDTO dto = restTemplate.getForObject(
-                    donacionesUrl + idUsuario + "/medios-contacto",
-                    MedioContactoDTO.class
+                donacionesUrl + "api/donante/" + idUsuario + "/medios-contacto",
+                MedioContactoDTO.class
             );
 
             if (dto == null) {
@@ -31,12 +31,34 @@ public class DonacionClient {
             }
 
             return new MedioContacto(
-                    dto.getMedioDeContacto(),
-                    dto.getDireccionContacto()
+                dto.getMedioDeContacto(),
+                dto.getDireccionContacto()
             );
         } catch (Exception e) {
             System.err.println("No se pudo obtener el contacto de la persona: " + e.getMessage());
             return null;
+        }
+    }
+
+    public boolean verificarAdmin(UUID idAdmin) {
+        try {
+            // Consultamos al microservicio de Donaciones al endpoint correcto: /api/admins/{id}
+            org.springframework.http.ResponseEntity<Object> response = restTemplate.getForEntity(
+                donacionesUrl + "api/admins/" + idAdmin,
+                Object.class
+            );
+
+            // Si devuelve un código 2xx (ej. 200 OK), el admin existe
+            return response.getStatusCode().is2xxSuccessful();
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Captura errores 4xx (como 404 Not Found si el ID no corresponde a un admin)
+            System.err.println("El administrador no fue encontrado o la petición es inválida: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            // Captura cualquier otro error de conexión o del servidor (5xx)
+            System.err.println("Error de conexión al verificar el rol de administrador: " + e.getMessage());
+            return false;
         }
     }
 }

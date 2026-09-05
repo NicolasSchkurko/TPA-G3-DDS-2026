@@ -3,12 +3,9 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,71 +14,79 @@ import java.util.UUID;
 @Service
 public class GestorCategoria {
     private final MisionFactory misionFactory;
+    private final RepositorioCategorias repositorio;
 
-    public GestorCategoria(MisionFactory misionFactory) {
+    public GestorCategoria(MisionFactory misionFactory, RepositorioCategorias repositorio) {
         this.misionFactory = misionFactory;
+        this.repositorio = repositorio;
         this.inicializarCategoriasBase();
     }
 
-    //init default, dsp el admin puede modificarlas
+    @Transactional
     public List<Categoria> inicializarCategoriasBase() {
-        Categoria colaborador = new Categoria("Colaborador", null,1, new ArrayList<>());
+        // Solo inicializamos si la tabla de la base de datos está vacía
+        if (repositorio.count() == 0) {
+            Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
 
-        colaborador.getMisiones().add(
-            misionFactory.crearMision(
-                "Primera donación",
-                "Realiza tu primera donación para empezar a colaborar.",
-                "Primer paso",
-                null,
-                AtributoImpacto.ESTADO,
-                misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
-            )
-        );
+            colaborador.agregarMision(
+                misionFactory.crearMision(
+                    "Primera donación",
+                    "Realiza tu primera donación para empezar a colaborar.",
+                    "Primer paso",
+                    null,
+                    AtributoImpacto.ESTADO,
+                    misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
+                )
+            );
 
-        repositorio.agregarCategoria(colaborador);
-        repositorio.agregarCategoria(new Categoria("Sostenedor", null,2, new ArrayList<>()));
-        repositorio.agregarCategoria(new Categoria("Transformador", null,3, new ArrayList<>()));
-
-        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
-    }
-
-
-    public List<Categoria> crearCategoria(Categoria nueva) {
-        repositorio.obtenerDesdeNivel(nueva.getPosicionSecuencia())
-                .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
-
-        repositorio.agregarCategoria(nueva);
-
-        //para retornar al admin
-        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
-    }
-
-    public List<Categoria> eliminarCategoria(UUID idCategoria) {
-        Categoria cat = repositorio.buscarPorId(idCategoria);
-        repositorio.eliminarCategoria(cat);
-        repositorio.obtenerDesdeNivel(cat.getPosicionSecuencia() + 1)
-                .forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
-
-        //para retornar al admin
-        return repositorio.obtenerCategoriasOrdenadasPor(Categoria::getPosicionSecuencia);
-    }
-
-    public Categoria actualizarCategoria(Categoria categoria) {
-        if (categoria.getIdCategoria() == null) {
-            return null;
+            repositorio.save(colaborador);
+            repositorio.save(new Categoria("Sostenedor", null, 2, new ArrayList<>()));
+            repositorio.save(new Categoria("Transformador", null, 3, new ArrayList<>()));
         }
 
-        Categoria categoriaActual = repositorio.buscarPorId(categoria.getIdCategoria());
+        return repositorio.findAllByOrderByPosicionSecuenciaAsc();
+    }
+
+    @Transactional
+    public List<Categoria> crearCategoria(Categoria nueva) {
+        // Desplazamos las siguientes
+        List<Categoria> aDesplazar = repositorio.findByPosicionSecuenciaGreaterThanEqual(nueva.getPosicionSecuencia());
+        aDesplazar.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
+
+        repositorio.saveAll(aDesplazar);
+        repositorio.save(nueva);
+
+        return repositorio.findAllByOrderByPosicionSecuenciaAsc();
+    }
+
+    @Transactional
+    public List<Categoria> eliminarCategoria(UUID idCategoria) {
+        Categoria cat = repositorio.findById(idCategoria).orElse(null);
+        if (cat == null) return null;
+
+        Integer posicionLiberada = cat.getPosicionSecuencia();
+        repositorio.delete(cat);
+
+        // Acomodamos a las que estaban por debajo para rellenar el hueco
+        List<Categoria> aDesplazar = repositorio.findByPosicionSecuenciaGreaterThanEqual(posicionLiberada + 1);
+        aDesplazar.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
+        repositorio.saveAll(aDesplazar);
+
+        return repositorio.findAllByOrderByPosicionSecuenciaAsc();
+    }
+
+    @Transactional
+    public Categoria actualizarCategoria(Categoria categoria) {
+        if (categoria.getIdCategoria() == null) return null;
+
+        Categoria categoriaActual = repositorio.findById(categoria.getIdCategoria()).orElse(null);
         if (categoriaActual == null) return null;
 
-        if (categoria.getNombre() != null) { //modifica nomCategoria
+        if (categoria.getNombre() != null) {
             categoriaActual.setNombre(categoria.getNombre());
         }
 
-        if (!categoria.getCategoriaMisiones().isEmpty()) {
-            //modifica las misiones de categoria
-            //pasame la lista completa con la modificacion
-            //hacer que reciba una operacion con una mision de la list es complejo :p
+        if (categoria.getCategoriaMisiones() != null && !categoria.getCategoriaMisiones().isEmpty()) {
             categoriaActual.setCategoriaMisiones(categoria.getCategoriaMisiones());
         }
 
@@ -89,39 +94,23 @@ public class GestorCategoria {
             Integer posicionAnterior = categoriaActual.getPosicionSecuencia();
             Integer posicionNueva = categoria.getPosicionSecuencia();
 
-            if (posicionNueva < 1
-                    || posicionNueva > repositorio.obtenerDesdeNivel(1).size()) {
+            long totalCategorias = repositorio.count();
+            if (posicionNueva < 1 || posicionNueva > totalCategorias) {
                 return null;
             }
 
-            List<Categoria> modificarPosiciones = new ArrayList<>();
             if (posicionNueva < posicionAnterior) {
-                // La categoría sube: las que estaban entre ambos lugares bajan un puesto
-                modificarPosiciones = repositorio.obtenerDesdeNivel(posicionNueva).stream()
-                        .filter(c -> !c.getIdCategoria().equals(categoria.getIdCategoria()))
-                        .filter(c -> c.getPosicionSecuencia() < posicionAnterior)
-                        .toList();
-
-                modificarPosiciones.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
-
-                for (Categoria x : modificarPosiciones) {
-                    repositorio.actualizar(x);
-                }
+                List<Categoria> intermedias = repositorio.findByPosicionSecuenciaBetween(posicionNueva, posicionAnterior - 1);
+                intermedias.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() + 1));
+                repositorio.saveAll(intermedias);
             } else if (posicionNueva > posicionAnterior) {
-                // La categoría baja: las que estaban entre ambos lugares suben un puesto
-                modificarPosiciones = repositorio.obtenerDesdeNivel(posicionAnterior + 1).stream()
-                        .filter(c -> c.getPosicionSecuencia() <= posicionNueva)
-                        .toList();
-
-                modificarPosiciones.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
-
-                for (Categoria x : modificarPosiciones) {
-                    repositorio.actualizar(x);
-                }
+                List<Categoria> intermedias = repositorio.findByPosicionSecuenciaBetween(posicionAnterior + 1, posicionNueva);
+                intermedias.forEach(c -> c.setPosicionSecuencia(c.getPosicionSecuencia() - 1));
+                repositorio.saveAll(intermedias);
             }
             categoriaActual.setPosicionSecuencia(posicionNueva);
         }
 
-        return repositorio.actualizar(categoriaActual);
+        return repositorio.save(categoriaActual);
     }
 }

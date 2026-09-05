@@ -1,106 +1,33 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public class RepositorioMisiones {
-    private final List<Mision> misiones;
-    private MisionFactory misionFactory;
-    public RepositorioMisiones(MisionFactory misionFactory) {
-        this.misiones = new ArrayList<>();
-        this.misionFactory = misionFactory;
-    }
+public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
 
-    public void agregarMision(Mision mision) {
-        if (!misiones.contains(mision)) {
-            misiones.add(mision);
-        }
-    }
+    // NOTA: JpaRepository ya incluye por defecto y listos para usar en tus Gestores:
+    // - findById(UUID id)
+    // - findAll()
+    // - findAllById(Iterable<UUID> ids)
+    // - save(Mision mision)
+    // - delete(Mision mision)
+    // - deleteById(UUID id)
 
-    public void eliminarMision(Mision mision) {
-        misiones.remove(mision);
-    }
+    // Búsquedas personalizadas (Spring Data genera el SQL automáticamente al leer el nombre):
 
-    public Mision actualizar(Mision misionModificada) {
-        if (misionModificada == null) {
-            return null;
-        }
+    // Buscar una misión específica por su nombre exacto
+    Optional<Mision> findByNombreMision(String nombreMision);
 
-        Mision existente = this.buscarPorId(misionModificada.getIdMision());
+    // Buscar todas las misiones creadas por un administrador en particular
+    List<Mision> findByIdAdmin(UUID idAdmin);
 
-        if (existente != null) {
-            int index = misiones.indexOf(existente);
-            if (index >= 0) {
-                misiones.set(index, existente);
-            }
-            return existente;
-        }
-
-        return null;
-    }
-
-    public Mision buscarPorId(UUID id) {
-        if (id == null || misiones.isEmpty()) return null;
-
-        return misiones.stream()
-                .filter(m -> id.equals(m.getIdMision()))
-                .findFirst()
-                .orElse(null);
-    }
-
-    public List<Mision> obtenerTodas() {
-        return new ArrayList<>(this.misiones);
-    }
-
-    public void inicializarMisionesBase() {
-        agregarMision( misionFactory.crearMision(
-                        "Racha",
-                        "realizar 1 donación durante 3 meses consecutivos",
-                        "Usuario Constante",
-                        misionFactory.crearConstancia(3, "months"),
-                        misionFactory.crearAtributoImpacto("estado"),
-                        misionFactory.crearOperacion("COINCIDENCIAS",1, null,
-                                "ENTREGADA")
-                )
-        );
-
-        agregarMision( misionFactory.crearMision(
-                        "Completitud",
-                        "realizar 5 donaciones de 3 categorías distintas",
-                        "Usuario Variado",
-                        null,
-                        misionFactory.crearAtributoImpacto("categoria"),
-                        misionFactory.crearOperacion("VALORES_DISTINTOS",5, 3,
-                                null)
-                )
-        );
-
-        agregarMision( misionFactory.crearMision(
-                        "Habil Donador",
-                        "1 donación que supere 3 cantidad de bienes",
-                        "Usuario Generoso",
-                        null,
-                        misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
-                        misionFactory.crearOperacion("SUPERA_CANTIDAD",1, 3,
-                                null)
-                )
-        );
-
-        agregarMision( misionFactory.crearMision(
-                        "Donaciones Exitosas",
-                        "Lograr 3 donaciones que sean recibidas exitosamente por una entidad beneficiaria.",
-                        "Usuario Exitoso",
-                        null,
-                        misionFactory.crearAtributoImpacto("ESTADO"),
-                        misionFactory.crearOperacion("COINCIDENCIAS",3, null,
-                                "ENTREGADA")
-                )
-        );
-    }
+    // Buscar misiones que contengan una palabra clave en su nombre (ignorando mayúsculas/minúsculas)
+    // Muy útil si quieres hacer un buscador en el frontend
+    List<Mision> findByNombreMisionContainingIgnoreCase(String keyword);
 }

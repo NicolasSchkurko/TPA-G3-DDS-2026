@@ -8,91 +8,82 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Ope
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * @param repositorio gestiona las misiones existentes en el repositorio
- */
 @Service
-public record GestorMision(RepositorioMisiones repositorio,
-                           MisionFactory misionFactory) {
+public class GestorMision {
+    private final RepositorioMisiones repositorio;
+    private final MisionFactory misionFactory;
+
+    public GestorMision(RepositorioMisiones repositorio, MisionFactory misionFactory) {
+        this.repositorio = repositorio;
+        this.misionFactory = misionFactory;
+    }
 
     public List<Mision> conseguirMisiones(List<UUID> idMisiones) {
-        List<Mision> misiones = new ArrayList<>();
-
-        for (UUID idMision : idMisiones) {
-            List<Mision> lstMisiones = repositorio.obtenerTodas();
-            for (Mision m : lstMisiones) {
-                if (m.getIdMision().equals(idMision)) {
-                    misiones.add(m);
-                }
-            }
-        }
-
-        return misiones;
+        // JPA maneja esto de forma nativa con una única consulta SQL (WHERE id IN (...))
+        return repositorio.findAllById(idMisiones);
     }
 
     public Operacion conseguirOperacion(String tipoOperacion,
                                         Integer progresoObjetivo,
-                                        Integer cantidad, String valor){
+                                        Integer cantidad, String valor) {
         return misionFactory.crearOperacion(tipoOperacion, progresoObjetivo, cantidad, valor);
     }
 
-    public ReglaConstancia conseguirConstancia(Integer cantidadTiempo, String unidadTiempo){
+    public ReglaConstancia conseguirConstancia(Integer cantidadTiempo, String unidadTiempo) {
         return misionFactory.crearConstancia(cantidadTiempo, unidadTiempo);
     }
 
+    @Transactional
     public Mision crearMision(String nomMision, String descripcion, String nomInsignia,
                               ReglaConstancia constancia, String atributo,
-                              Operacion operacion){
+                              Operacion operacion) {
         AtributoImpacto atributoImpacto = misionFactory.crearAtributoImpacto(atributo);
 
         Mision mision = misionFactory.crearMision(
-                nomMision, descripcion, nomInsignia,
-                constancia,
-                atributoImpacto,
-                operacion
+            nomMision, descripcion, nomInsignia,
+            constancia,
+            atributoImpacto,
+            operacion
         );
-        repositorio.agregarMision(mision);
 
-        return mision;
+        return repositorio.save(mision);
     }
 
+    @Transactional
     public Mision eliminarMision(UUID idMision) {
-        Mision m = repositorio.buscarPorId(idMision);
-        repositorio.eliminarMision(m);
-
-        //para retornar al admin
+        Mision m = repositorio.findById(idMision).orElse(null);
+        if (m != null) {
+            repositorio.delete(m);
+        }
         return m;
     }
 
+    @Transactional
     public Mision actualizarMision(Mision mision) {
-        if(mision.getIdMision() == null) return null;
+        if (mision.getIdMision() == null) return null;
 
-        Mision misionActual = repositorio.buscarPorId(mision.getIdMision());
-        if(misionActual == null) return null;
+        Mision misionActual = repositorio.findById(mision.getIdMision()).orElse(null);
+        if (misionActual == null) return null;
 
-        if(mision.getNombreMision() != null){
+        if (mision.getNombreMision() != null) {
             misionActual.setNombreMision(mision.getNombreMision());
             misionActual.getInsigniaObjetivo().setDescripcion(mision.getNombreMision());
         }
 
-        if(mision.getInsigniaObjetivo() != null){
+        if (mision.getInsigniaObjetivo() != null) {
             misionActual.setInsigniaObjetivo(
-                    new Insignia(
-                            mision.getInsigniaObjetivo().getNombre(),
-                            misionActual.getNombreMision()
-                    )
+                new Insignia(
+                    mision.getInsigniaObjetivo().getNombre(),
+                    misionActual.getNombreMision()
+                )
             );
         }
 
-        //no esta permitido reescribir la reglaProgreso en una mision
-        //muy complejo y quiza no tiene sentido si podes crear una regla nueva
-        //y eliminar la anterior o mantenerla
-
-        return repositorio.actualizar(misionActual);
+        return repositorio.save(misionActual);
     }
 }

@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.AdminService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,9 +19,18 @@ public class AdminController {
         this.service = service;
     }
 
+    // Este manejador atrapa la SecurityException que lanza el Service 
+    // y devuelve un 403 Forbidden automáticamente.
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<String> handleSecurityException(SecurityException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    }
+
     @PostMapping("/categorias")
-    public ResponseEntity<List<CategoriaDTO>> crearCategoria(@RequestBody CategoriaDTO request) {
-        List<CategoriaDTO> nuevaSecuencia = service.agregarCategoria(request);
+    public ResponseEntity<List<CategoriaDTO>> crearCategoria(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @RequestBody CategoriaDTO request) {
+        List<CategoriaDTO> nuevaSecuencia = service.agregarCategoria(idAdmin, request);
         if (nuevaSecuencia == null) {
             return ResponseEntity.notFound().build();
         }
@@ -28,8 +38,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/categorias/{id}")
-    public ResponseEntity<List<CategoriaDTO>> eliminarCategoria(@PathVariable UUID id) {
-        List<CategoriaDTO> nuevaSecuencia = service.eliminarCategoria(id);
+    public ResponseEntity<List<CategoriaDTO>> eliminarCategoria(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @PathVariable UUID id) {
+        List<CategoriaDTO> nuevaSecuencia = service.eliminarCategoria(idAdmin, id);
         if (nuevaSecuencia == null) {
             return ResponseEntity.notFound().build();
         }
@@ -37,9 +49,12 @@ public class AdminController {
     }
 
     @PutMapping("/categorias/modificar/{id}")
-    public ResponseEntity<CategoriaDTO> actualizarCategoria(@PathVariable UUID id, @RequestBody CategoriaDTO categoria) {
+    public ResponseEntity<CategoriaDTO> actualizarCategoria(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @PathVariable UUID id,
+        @RequestBody CategoriaDTO categoria) {
         try {
-            CategoriaDTO actualizada = service.actualizarCategoria(id, categoria);
+            CategoriaDTO actualizada = service.actualizarCategoria(idAdmin, id, categoria);
             return ResponseEntity.ok(actualizada);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -47,8 +62,10 @@ public class AdminController {
     }
 
     @PostMapping("/misiones")
-    public ResponseEntity<MisionDTO> crearMision(@RequestBody MisionDTO request) {
-        MisionDTO nuevaMision = service.crearMision(request);
+    public ResponseEntity<MisionDTO> crearMision(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @RequestBody MisionDTO request) {
+        MisionDTO nuevaMision = service.crearMision(idAdmin, request);
         if (nuevaMision == null) {
             return ResponseEntity.notFound().build();
         }
@@ -56,8 +73,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/misiones/{id}")
-    public ResponseEntity<MisionDTO> eliminarMision(@PathVariable UUID id) {
-        MisionDTO misionEliminada = service.eliminarMision(id);
+    public ResponseEntity<MisionDTO> eliminarMision(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @PathVariable UUID id) {
+        MisionDTO misionEliminada = service.eliminarMision(idAdmin, id);
         if (misionEliminada == null) {
             return ResponseEntity.notFound().build();
         }
@@ -65,9 +84,12 @@ public class AdminController {
     }
 
     @PutMapping("/misiones/modificar/{id}")
-    public ResponseEntity<MisionDTO> actualizarMision(@PathVariable UUID id, @RequestBody MisionDTO mision) {
+    public ResponseEntity<MisionDTO> actualizarMision(
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @PathVariable UUID id,
+        @RequestBody MisionDTO mision) {
         try {
-            MisionDTO actualizada = service.actualizarMision(id, mision);
+            MisionDTO actualizada = service.actualizarMision(idAdmin, id, mision);
             return ResponseEntity.ok(actualizada);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
