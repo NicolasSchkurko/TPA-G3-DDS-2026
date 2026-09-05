@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
-import org.springframework.data.domain.AbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

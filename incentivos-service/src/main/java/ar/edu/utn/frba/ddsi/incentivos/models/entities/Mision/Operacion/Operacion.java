@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

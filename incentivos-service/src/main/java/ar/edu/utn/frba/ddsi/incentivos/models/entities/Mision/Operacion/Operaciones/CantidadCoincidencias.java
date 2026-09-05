@@ -1,5 +1,6 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import jakarta.persistence.Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -11,7 +12,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-public class CantidadCoincidencias extends Operacion{
+public class CantidadCoincidencias extends Operacion {
     //5 donaciones "ENTREGADAS"
     @JdbcTypeCode(SqlTypes.JSON)
     private Object valorEsperado;

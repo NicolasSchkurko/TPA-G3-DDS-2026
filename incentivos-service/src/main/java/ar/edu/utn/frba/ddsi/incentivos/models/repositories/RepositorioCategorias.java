@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

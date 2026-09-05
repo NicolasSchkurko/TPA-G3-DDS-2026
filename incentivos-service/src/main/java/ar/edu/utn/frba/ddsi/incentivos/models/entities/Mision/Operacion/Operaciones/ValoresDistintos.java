@@ -1,5 +1,6 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import jakarta.persistence.Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -14,7 +15,7 @@ import java.util.List;
 @Setter
 @Entity
 @NoArgsConstructor
-public class ValoresDistintos extends Operacion{
+public class ValoresDistintos extends Operacion {
     // hacer 6 donaciones de 3 categorias distintas
     @JdbcTypeCode(SqlTypes.JSON)
     private List<Object> valoresDistintos;

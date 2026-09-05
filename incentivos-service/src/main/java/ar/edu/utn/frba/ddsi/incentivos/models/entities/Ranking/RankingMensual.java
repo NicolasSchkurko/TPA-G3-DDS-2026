@@ -1,7 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking;
 
-import lombok.AllArgsConstructor;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.YearMonth;
@@ -11,15 +12,27 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@AllArgsConstructor
+@Entity
+@NoArgsConstructor
 public class RankingMensual {
-    private UUID idRanking;
-    private YearMonth periodo;
-    private List<Ranking> posiciones;
 
-    public RankingMensual(YearMonth periodo, List<Ranking> posiciones) {
-        this.idRanking = UUID.randomUUID();
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID idRanking;
+
+    // Spring Data/Hibernate saben convertir YearMonth automáticamente en versiones recientes
+    private YearMonth periodo;
+
+    @OneToMany(mappedBy = "rankingMensual", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("puesto ASC")
+    private List<Ranking> posiciones = new ArrayList<>();
+
+    public RankingMensual(YearMonth periodo) {
         this.periodo = periodo;
-        this.posiciones = posiciones;
+    }
+
+    public void agregarPosicion(Ranking ranking) {
+        this.posiciones.add(ranking);
+        ranking.setRankingMensual(this);
     }
 }

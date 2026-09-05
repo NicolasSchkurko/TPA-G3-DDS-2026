@@ -1,5 +1,6 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-public class SuperaCantidad extends Operacion{
+public class SuperaCantidad extends Operacion {
     //hacer 5 donaciones de al menos 4 bienes cada una
     private Integer cantidadEsperada;
 

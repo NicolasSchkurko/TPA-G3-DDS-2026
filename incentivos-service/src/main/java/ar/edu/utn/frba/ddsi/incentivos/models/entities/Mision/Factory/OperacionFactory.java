@@ -1,6 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;

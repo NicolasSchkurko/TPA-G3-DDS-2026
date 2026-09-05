@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.*;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;

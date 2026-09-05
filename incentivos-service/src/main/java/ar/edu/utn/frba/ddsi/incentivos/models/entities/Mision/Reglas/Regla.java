@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.MotorOperacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

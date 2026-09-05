@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import java.util.List;
 import org.springdoc.core.converters.models.Pageable;
@@ -16,18 +16,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RepositorioPerfiles
-        extends JpaRepository<Perfil, UUID> {
+public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     Optional<Perfil> findByIdUsuario(UUID idUsuario);
 
-    @Query("SELECT DISTINCT i FROM Perfil p JOIN p.insignias i WHERE p.idUsuario = :idUsuario")
-    List<Insignia> obtenerInsigniasPorIdUsuario(
-            @Param("idUsuario") UUID idUsuario);
+    @Query("SELECT io.insignia FROM Perfil p JOIN p.insigniasObtenidas io WHERE p.idUsuario = :idUsuario")
+    List<Insignia> obtenerInsigniasPorIdUsuario(@Param("idUsuario") UUID idUsuario);
 
     @Query("SELECT pm.mision FROM Perfil p JOIN p.progresoMisionActual pm WHERE p.idUsuario = :idUsuario")
-    Optional<Mision> obtenerMisionPorIdUsuario(
-            @Param("idUsuario") UUID idUsuario);
+    Optional<Mision> obtenerMisionPorIdUsuario(@Param("idUsuario") UUID idUsuario);
 
     boolean existsByIdUsuario(UUID idUsuario);
 
@@ -35,6 +32,13 @@ public interface RepositorioPerfiles
 
     List<Perfil> findAllByCategoriaActual(Categoria categoria);
 
-    Page<Perfil> findAll(Pageable pageable); // paginación
+    @Query("SELECT p, COUNT(io) as total " +
+        "FROM Perfil p JOIN p.insigniasObtenidas io " +
+        "WHERE MONTH(io.fechaObtencion) = :mes AND YEAR(io.fechaObtencion) = :anio " +
+        "GROUP BY p.idPerfil " +
+        "ORDER BY total DESC " +
+        "FETCH FIRST 10 ROWS ONLY")
+    List<Object[]> calcularRankingMensual(@Param("mes") int mes, @Param("anio") int anio);
 
+    Page<Perfil> findAll(Pageable pageable); // paginación
 }

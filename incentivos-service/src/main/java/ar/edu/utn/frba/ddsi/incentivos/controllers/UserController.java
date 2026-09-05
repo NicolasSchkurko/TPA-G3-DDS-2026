@@ -2,7 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.services.UserService.UserService;
+import ar.edu.utn.frba.ddsi.incentivos.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

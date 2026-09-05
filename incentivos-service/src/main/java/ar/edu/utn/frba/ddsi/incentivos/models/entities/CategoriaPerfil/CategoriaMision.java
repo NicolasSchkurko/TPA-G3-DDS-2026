@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import jakarta.persistence.*;

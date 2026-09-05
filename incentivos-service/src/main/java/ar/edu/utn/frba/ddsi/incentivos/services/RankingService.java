@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.services.UserService;
+package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;

@@ -1,9 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Insignia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.PosicionRanking;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
 import org.springframework.data.domain.AbstractAggregateRoot;
@@ -22,10 +22,6 @@ import java.util.UUID;
 @NoArgsConstructor
 public class Perfil extends AbstractAggregateRoot<Perfil> {
 
-
-    //El calculo del ranking se puede hacer con un query que pegue directo a la bdd de mysql. calcularlo siempre
-    //trae problemas
-
     private UUID idUsuario; // id en donaciones
 
     @Id
@@ -38,27 +34,18 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @JoinColumn(name = "categoria_id")
     private Categoria categoriaActual;
 
-    @ManyToMany
-    @JoinTable(
-        name = "perfil_insignia",
-        joinColumns = @JoinColumn(name = "perfil_id"),
-        inverseJoinColumns = @JoinColumn(name = "insignia_id")
-    )
-    private List<Insignia> insignias;
+    @OneToMany(mappedBy = "perfil", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InsigniaObtenida> insigniasObtenidas;
 
     @OneToOne(cascade = CascadeType.ALL)
     private ProgresoMision progresoMisionActual;
 
-    @Embedded
-    private PosicionRanking posicionRanking;
-
     public Perfil(UUID idUsuario, String nombreUsuario) {
         this.idUsuario = idUsuario;
         this.nombreUsuario = nombreUsuario;
-        this.categoriaActual = null; //inicializar en perfilService
-        this.insignias = new ArrayList<>();
-        this.posicionRanking = new PosicionRanking(null);
-        this.progresoMisionActual = null; //inicializar en perfilService
+        this.categoriaActual = null;
+        this.insigniasObtenidas = new ArrayList<>();
+        this.progresoMisionActual = null;
     }
 
     public void verificarProgresoMision(){
@@ -73,19 +60,17 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         Insignia insignia = progresoMisionActual.progresarMision(donacion);
 
         if (insignia != null) {
-            this.insignias.add(insignia);
+            this.insigniasObtenidas.add(new InsigniaObtenida(this, insignia));
 
-            // Registramos los eventos de dominio para que Spring Data los publique al guardar
+
             registerEvent(new MisionCompletada(donacion, this));
 
             if (this.categoriaActual != null && this.categoriaActual.esUltimaMision(misionAnterior)) {
                 registerEvent(new UltimaMisionCategoria(this));
-            } else {
-                registerEvent(new MisionCompletada(null, this));
             }
 
-            return Boolean.TRUE;
+            return true;
         }
-        return Boolean.FALSE;
+        return false;
     }
 }
