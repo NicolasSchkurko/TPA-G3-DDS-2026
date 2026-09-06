@@ -12,10 +12,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.Ti
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDirecciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,20 +30,18 @@ import java.util.stream.Collectors;
 @Service
 public class DonanteService {
 
-  private final GestorDonantes gestorDonantes;
-  private final GestorPersonas gestorPersonas;
-  private final GestorDirecciones gestorDirecciones;
+  private final RepositorioPersonas repositorioPersonas;
+  private final RepositorioCiudades repositorioCiudades;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
 
-  public DonanteService(GestorDonantes gestorDonantes, GestorPersonas gestorPersonas,
-                        GestorDirecciones gestorDirecciones,
+  public DonanteService(RepositorioPersonas repositorioPersonas,
+                        RepositorioCiudades repositorioCiudades,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
                         IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes) {
-    this.gestorDonantes = gestorDonantes;
-    this.gestorPersonas = gestorPersonas;
-    this.gestorDirecciones = gestorDirecciones;
+    this.repositorioPersonas = repositorioPersonas;
+    this.repositorioCiudades = repositorioCiudades;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repositorioDonantes = repositorioDonantes;
@@ -59,7 +56,7 @@ public class DonanteService {
       String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
       incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario));
       fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
-      gestorPersonas.registrarPersona(nuevoDonante.getPersona());
+      repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
 
     }
 
@@ -92,9 +89,9 @@ public class DonanteService {
     Donante existente = repositorioDonantes.buscarPorId(id).orElse(null);
     if (existente == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
     if (existente.getPersona() != null && datosNuevos.getPersona() != null) {
-      gestorPersonas.modificarPersona(existente.getPersona().getId(), datosNuevos.getPersona());
+      repositorioPersonas.modificarPersona(existente.getPersona().getId(), datosNuevos.getPersona());
     }
-    return PersonaDonanteDTO.from(gestorDonantes.modificarDonante(id, datosNuevos));
+    return PersonaDonanteDTO.from(repositorioDonantes.modificarDonante(id, datosNuevos));
   }
 
   public void eliminarPersona(UUID id) {
@@ -131,14 +128,14 @@ public class DonanteService {
   public PersonaDonanteDTO agregarMedioContacto(UUID id, MediosContactoDTO dto) {
     Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
     if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
-    gestorPersonas.agregarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
+    repositorioPersonas.agregarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
     return PersonaDonanteDTO.from(donante);
   }
 
   public PersonaDonanteDTO eliminarMedioContacto(UUID id, MediosContactoDTO dto) {
     Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
     if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
-    gestorPersonas.eliminarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
+    repositorioPersonas.eliminarMedioDeContactoAPersona(donante.getPersona().getId(), dto.toDomain());
     return PersonaDonanteDTO.from(donante);
   }
 
@@ -152,10 +149,10 @@ public class DonanteService {
 
   // Resuelve (o crea) la Ciudad/Provincia/Pais del catálogo geográfico compartido ANTES de
   // construir el domain object, para evitar que Direccion apunte a una Ciudad nunca persistida
-  // (eso rompía merge() con EntityNotFoundException, ver GestorDirecciones / EntidadBeneficiariaService).
+  // (eso rompía merge() con EntityNotFoundException, ver RepositorioCiudades / EntidadBeneficiariaService).
   private Ciudad resolverCiudad(DireccionDTO direccionDTO) {
     if (direccionDTO == null) return null;
-    return gestorDirecciones.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
+    return repositorioCiudades.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
   }
 
   private void registrarDonante(Donante nuevoDonante) {

@@ -26,7 +26,7 @@ public class DireccionDTO {
         return new Direccion(this.calleUno, this.calleDos, this.altura, this.piso, this.departamento, c);
     }
 
-    // Variante que recibe una Ciudad ya persistida/managed (resuelta vía GestorDirecciones,
+    // Variante que recibe una Ciudad ya persistida/managed (resuelta vía RepositorioCiudades,
     // buscar-o-crear) en lugar de construir la cadena Pais/Provincia/Ciudad "al vuelo", que
     // rompía merge() por no estar cascadeada (ver Ciudad/Provincia/Pais sin cascade en Direccion).
     public Direccion toDomain(Ciudad ciudad) {

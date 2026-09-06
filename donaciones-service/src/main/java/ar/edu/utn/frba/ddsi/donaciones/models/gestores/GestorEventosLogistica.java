@@ -12,7 +12,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;

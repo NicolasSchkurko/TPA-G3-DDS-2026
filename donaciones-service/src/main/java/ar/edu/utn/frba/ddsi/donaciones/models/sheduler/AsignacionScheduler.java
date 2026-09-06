@@ -4,10 +4,11 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Asign
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,24 +17,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class AsignacionScheduler {
 
-    private final GestorDonaciones gestorDonaciones;
-    private final GestorEntidadesBeneficiarias gestorEntidades;
+    private final RepositorioDonaciones repositorioDonaciones;
+    private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
     private final GestorMatchmaking gestorMatchmaking;
+    private final GestorAsignaciones gestorAsignaciones;
     private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
 
-    public AsignacionScheduler(GestorDonaciones gestorDonaciones, GestorEntidadesBeneficiarias gestorEntidades, GestorMatchmaking gestorMatchmaking,
-                               RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
-        this.gestorDonaciones = gestorDonaciones;
-        this.gestorEntidades = gestorEntidades;
+    public AsignacionScheduler(RepositorioDonaciones repositorioDonaciones, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, GestorMatchmaking gestorMatchmaking,
+                               GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
+        this.repositorioDonaciones = repositorioDonaciones;
+        this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
         this.gestorMatchmaking = gestorMatchmaking;
+        this.gestorAsignaciones = gestorAsignaciones;
         this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     }
 
     @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
     public void ejecutarAsignacion() {
-        AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones,repositorioDeResultadosMatchmaking);
-        List<Donacion> donacionesNoAsignadas = gestorDonaciones.listarSinAsignacion();
-        List<EntidadBeneficiaria> entidades = gestorEntidades.listarTodasLasEntidades();
+        AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorAsignaciones,repositorioDeResultadosMatchmaking);
+        List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();
+        List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas();
         asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
     }
 }

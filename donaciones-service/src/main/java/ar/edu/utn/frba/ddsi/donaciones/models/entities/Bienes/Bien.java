@@ -25,7 +25,7 @@ public abstract class Bien {
     String descripcion;
 
     // Catálogo compartido (igual que Necesidad.subcategoria): se resuelve vía
-    // GestorNecesidades.obtenerOCrearSubcategoria antes de construir el Bien, sin cascade,
+    // RepositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria antes de construir el Bien, sin cascade,
     // para no duplicar CategoriaBien/SubcategoriaBien en cada alta.
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")

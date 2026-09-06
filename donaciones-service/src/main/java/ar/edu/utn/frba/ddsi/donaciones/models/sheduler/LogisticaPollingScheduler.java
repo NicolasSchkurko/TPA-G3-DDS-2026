@@ -4,8 +4,8 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class LogisticaPollingScheduler {
 
     private final GestorEventosLogistica gestorLogistica;
-    private final GestorAdministradores gestorAdministradores;
+    private final RepositorioAdministradores repositorioAdministradores;
     private final RestTemplate restTemplate;
 
     @Value("${servicio.logisticas.url}")
@@ -28,9 +28,9 @@ public class LogisticaPollingScheduler {
 
     private Long ultimoIdProcesado = 0L;
 
-    public LogisticaPollingScheduler(GestorEventosLogistica gestorLogistica, GestorAdministradores gestorAdministradores, RestTemplate restTemplate) {
+    public LogisticaPollingScheduler(GestorEventosLogistica gestorLogistica, RepositorioAdministradores repositorioAdministradores, RestTemplate restTemplate) {
         this.gestorLogistica = gestorLogistica;
-        this.gestorAdministradores = gestorAdministradores;
+        this.repositorioAdministradores = repositorioAdministradores;
         this.restTemplate = restTemplate;
     }
 
@@ -56,7 +56,7 @@ public class LogisticaPollingScheduler {
                 List<EventoLogisticaDTO> eventos = response.getBody().getEventos();
 
                 if (!eventos.isEmpty()) {
-                    List<MedioDeContacto> contactosAdmins = gestorAdministradores.listarTodosLosAdministradores()
+                    List<MedioDeContacto> contactosAdmins = repositorioAdministradores.obtenerTodos()
                                                                                  .stream()
                                                                                  .map(Administrador::getContacto)
                                                                                  .collect(Collectors.toList());
