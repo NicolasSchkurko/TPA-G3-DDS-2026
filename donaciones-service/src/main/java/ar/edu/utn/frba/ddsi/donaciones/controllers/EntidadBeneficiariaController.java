@@ -33,6 +33,7 @@ public class EntidadBeneficiariaController {
         @ApiResponse(responseCode = "202", description = "entidades obtenidas con exito"),
         @ApiResponse(responseCode = "400", description = "Error al tratar de obtener las entidades")
     })
+
     @GetMapping
     public ResponseEntity<List<EntidadBeneficiariaDTO>> obtenerTodas() {
         return ResponseEntity.ok(service.obtenerTodas());

@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -44,6 +45,13 @@ public class Donacion {
     @JoinColumn(name = "entidad_id")
     private EntidadBeneficiaria entidad;
 
+    // Lado dueño de la relación con Necesidad (inversa: Necesidad.donaciones, mappedBy="necesidad").
+    // Sin cascade: la Necesidad vive en su propio repositorio, se asigna vía
+    // GestorAsignaciones.agregarDonacionANecesidad una vez matcheada.
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "necesidad_id")
+    private Necesidad necesidad;
+
     private String descripcion;
 
     // Los Bien ya se persisten individualmente vía RepositorioBienes ANTES de armar la Donacion
@@ -58,7 +66,7 @@ public class Donacion {
     @Enumerated(EnumType.STRING)
     private Estado estado; // Cambiado a minúscula por convención
 
-    // Catálogo compartido (buscar-o-crear vía GestorNecesidades), igual que
+    // Catálogo compartido (buscar-o-crear vía RepositorioSubcategoriasDeBienes), igual que
     // Necesidad.subcategoria y Bien.subcategoria: sin cascade.
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
@@ -115,7 +123,7 @@ public class Donacion {
 
     @Override
     public String toString() {
-        return "Donacion{id=" + id + ", donante=" + donante + ", entidad=" + entidad + ", descripcion=" + descripcion + ", bienes=" + bienes + ", estado=" + estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
+        return "Donacion{id=" + id + ", donante=" + donante + ", entidad=" + entidad + ", necesidad=" + (necesidad != null ? necesidad.getId() : null) + ", descripcion=" + descripcion + ", bienes=" + bienes + ", estado=" + estado + ", subcategoria=" + subcategoria + ", fechaEntrega=" + fechaEntrega + '}';
     }
 
 }

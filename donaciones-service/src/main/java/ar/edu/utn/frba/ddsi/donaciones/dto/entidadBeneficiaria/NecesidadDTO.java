@@ -28,7 +28,7 @@ public class NecesidadDTO {
     /**
      * Construye la Necesidad de dominio a partir del DTO.
      * La SubcategoriaBien se recibe ya resuelta (buscada o creada previamente,
-     * ver GestorNecesidades.obtenerOCrearSubcategoria) para no duplicar entradas
+     * ver RepositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria) para no duplicar entradas
      * del catálogo de Bienes en cada alta.
      */
     public Necesidad toDomain(SubcategoriaBien subcategoria) {

@@ -18,6 +18,9 @@ import java.util.stream.Collectors;
 @Setter
 public class EntidadBeneficiariaDTO {
     private String razonSocial;
+    private String rubro;
+    private String cuit;
+    private String tipoJuridico;
     private String telefono;
     private DireccionDTO direccion;
     private UUID id;
@@ -26,14 +29,19 @@ public class EntidadBeneficiariaDTO {
     public EntidadBeneficiaria toDomain(Ciudad ciudad) {
         Juridica juridica = null;
         if (this.razonSocial != null || this.telefono != null) {
-            String nombreRS = this.razonSocial != null ? this.razonSocial : "ONG Sin Nombre";
+            if (this.razonSocial == null || this.razonSocial.isBlank()) {
+                throw new IllegalArgumentException("La razón social es obligatoria para registrar una entidad beneficiaria");
+            }
 
-            // Inicializamos Juridica con todos los parámetros requeridos por su constructor actual
+            TipoJuridico tipo = this.tipoJuridicoValido()
+                    ? TipoJuridico.valueOf(this.tipoJuridico.toUpperCase())
+                    : TipoJuridico.ONG;
+
             juridica = new Juridica(
-                    nombreRS,
-                    "ONG",
-                    TipoJuridico.ONG,
-                    "00-00000000-0",
+                    this.razonSocial,
+                    this.rubro,
+                    tipo,
+                    this.cuit,
                     new ArrayList<>()
             );
 
@@ -56,12 +64,21 @@ public class EntidadBeneficiariaDTO {
         return entidad;
     }
 
+    private boolean tipoJuridicoValido() {
+        return this.tipoJuridico != null && !this.tipoJuridico.isBlank();
+    }
+
     public static EntidadBeneficiariaDTO from(EntidadBeneficiaria entidad) {
         if (entidad == null) return null;
         EntidadBeneficiariaDTO dto = new EntidadBeneficiariaDTO();
 
         if (entidad.getPersonaJuridica() != null) {
             dto.setRazonSocial(entidad.getPersonaJuridica().getRazonSocial());
+            dto.setRubro(entidad.getPersonaJuridica().getRubro());
+            dto.setCuit(entidad.getPersonaJuridica().getCuit());
+            dto.setTipoJuridico(entidad.getPersonaJuridica().getTipoJuridico() != null
+                    ? entidad.getPersonaJuridica().getTipoJuridico().name()
+                    : null);
             if (entidad.getPersonaJuridica().getMediosDeContacto() != null &&
                     entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado() != null) {
                 dto.setTelefono(entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor());

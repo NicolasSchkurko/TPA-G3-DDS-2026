@@ -24,7 +24,7 @@ public class Administrador {
     // ManyToOne (no OneToOne): la Humana vive en su propio repositorio (RepositorioPersonas),
     // igual que Juridica para EntidadBeneficiaria. Sin cascade REMOVE: dar de baja el
     // administrador no debe borrar la Persona asociada. Se registra explícitamente vía
-    // GestorPersonas antes de guardar el Administrador (ver AdminService).
+    // RepositorioPersonas antes de guardar el Administrador (ver AdminService).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "humano_id")
     private Humana humano;

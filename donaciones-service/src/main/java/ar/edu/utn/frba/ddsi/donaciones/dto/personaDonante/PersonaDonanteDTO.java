@@ -44,7 +44,7 @@ public class PersonaDonanteDTO {
     return construirDonante(dir);
   }
 
-  // Variante que recibe una Ciudad ya persistida/managed (resuelta vía GestorDirecciones,
+  // Variante que recibe una Ciudad ya persistida/managed (resuelta vía RepositorioCiudades,
   // buscar-o-crear) en lugar de construir la cadena Pais/Provincia/Ciudad "al vuelo" — mismo
   // bug que se corrigió en EntidadBeneficiariaDTO/DireccionDTO (EntityNotFoundException en
   // merge() por Ciudad no cascadeada). Usar esta variante siempre que el Donante se persista vía JPA.
