@@ -29,18 +29,23 @@ public class N8nClient {
     public void publicarInsignia(MisionCambiada event)
             throws EnvioPublicacionException {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(
+                "formato circulo, diseño estrella, color dorado, " +
+                        "en el centro debe decir " + event.insigniaAnterior(),
+                "felicidades a " + event.nombreUsuario() +
+                        ", por ganar la insignia " + event.insigniaAnterior() +
+                        " tras haber completado la mision " + event.misionAnterior(),
+                "discord",
                 event.nombreUsuario(),
-                event.insigniaAnterior(),
-                event.misionAnterior()
+                event.idUsuario()
         );
         try {
             restTemplate.postForEntity(
                     n8nUrl, publicar, void.class);
             log.info("Publicacion exitosa en {}",
-                    event.contacto());
+                    publicar.getRedSocial());
         } catch (Exception e) {
             log.error("Error al publicar en {}, guardando en pendientes",
-                    event.contacto(), e);
+                    publicar.getRedSocial(), e);
             repositorio.guardar(publicar);
             throw new EnvioPublicacionException(publicar);
         }
