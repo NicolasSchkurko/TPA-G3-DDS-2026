@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
+import java.util.UUID;
 
 @Component
 public class MisionFactory {
@@ -37,6 +38,7 @@ public class MisionFactory {
     }
 
     public Mision crearMision(
+            UUID idAdmin,
             String nombreMision,
             String descripcion,
             String nombreInsignia,
@@ -45,6 +47,6 @@ public class MisionFactory {
             Operacion operacion
     ) {
         Regla regla = new Regla(constancia, atributo, operacion);
-        return new Mision(nombreMision, descripcion, nombreInsignia, regla);
+        return new Mision(nombreMision, idAdmin, descripcion, nombreInsignia, regla);
     }
 }

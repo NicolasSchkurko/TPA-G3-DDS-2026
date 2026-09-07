@@ -116,7 +116,8 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
-        Mision m = gestorMisiones.crearMision(nuevaMision.getNombreMision(),
+        Mision m = gestorMisiones.crearMision(idAdmin,
+                                              nuevaMision.getNombreMision(),
                                               nuevaMision.getDescripcion(),
                                               nuevaMision.getInsigniaObjetivo(),
                                               gestorMisiones.conseguirConstancia(
@@ -131,8 +132,6 @@ public class AdminService {
                                                   operacionDTO.getValorEsperado()
                                               )
         );
-        m.setIdAdmin(idAdmin); // Asignando el admin
-
         return misionToDTO(m);
     }
 
@@ -151,7 +150,8 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
-        Mision mision = gestorMisiones.crearMision(dto.getNombreMision(),
+        Mision mision = gestorMisiones.crearMision(idAdmin,
+                                                   dto.getNombreMision(),
                                                    dto.getDescripcion(),
                                                    dto.getInsigniaObjetivo(),
                                                    gestorMisiones.conseguirConstancia(
@@ -168,7 +168,6 @@ public class AdminService {
         );
 
         mision.setIdMision(idMision);
-        mision.setIdAdmin(idAdmin);
 
         Mision actualizada = gestorMisiones.actualizarMision(mision);
 

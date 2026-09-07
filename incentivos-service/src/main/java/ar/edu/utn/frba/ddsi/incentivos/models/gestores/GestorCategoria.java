@@ -30,6 +30,7 @@ public class GestorCategoria {
 
             colaborador.agregarMision(
                 misionFactory.crearMision(
+                    null,
                     "Primera donación",
                     "Realiza tu primera donación para empezar a colaborar.",
                     "Primer paso",

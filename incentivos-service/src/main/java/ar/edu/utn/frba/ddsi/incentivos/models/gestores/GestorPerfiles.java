@@ -6,6 +6,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class GestorPerfiles {
   private final RepositorioPerfiles repositorioPerfiles;
@@ -21,6 +23,17 @@ public class GestorPerfiles {
     repositorioPerfiles.save(perfil);
 
     return misionCompletada;
+  }
+
+  @Transactional
+  public void verificarProgresos() {
+    List<Perfil> perfilesConMision = repositorioPerfiles.findAll()
+        .stream()
+        .filter(perfil -> perfil.getProgresoMisionActual() != null)
+        .toList();
+
+    perfilesConMision.forEach(Perfil::verificarProgresoMision);
+    repositorioPerfiles.saveAll(perfilesConMision);
   }
 
   @Transactional

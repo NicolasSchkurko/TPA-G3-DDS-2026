@@ -39,13 +39,13 @@ public class GestorMision {
     }
 
     @Transactional
-    public Mision crearMision(String nomMision, String descripcion, String nomInsignia,
+    public Mision crearMision(UUID idAdmin, String nomMision, String descripcion, String nomInsignia,
                               ReglaConstancia constancia, String atributo,
                               Operacion operacion) {
         AtributoImpacto atributoImpacto = misionFactory.crearAtributoImpacto(atributo);
 
         Mision mision = misionFactory.crearMision(
-            nomMision, descripcion, nomInsignia,
+            idAdmin, nomMision, descripcion, nomInsignia,
             constancia,
             atributoImpacto,
             operacion
