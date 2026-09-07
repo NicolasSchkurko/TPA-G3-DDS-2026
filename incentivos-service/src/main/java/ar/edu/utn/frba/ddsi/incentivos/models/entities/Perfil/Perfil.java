@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;

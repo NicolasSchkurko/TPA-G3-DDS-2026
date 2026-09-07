@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;

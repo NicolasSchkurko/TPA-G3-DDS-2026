@@ -9,11 +9,12 @@ import java.time.YearMonth;
 @Setter
 public class RegistroMensualDTO {
     private YearMonth periodo;
-    private Integer cantidadDonaciones;
-    private Integer cantidadOrganizacionesAyudadas;
 
-    public RegistroMensualDTO(YearMonth periodo, Integer cantidadDonaciones,
-                              Integer cantidadOrganizacionesAyudadas){
+    // Cambiamos a Long anticipando las queries dinámicas de SQL (COUNT)
+    private Long cantidadDonaciones;
+    private Long cantidadOrganizacionesAyudadas;
+
+    public RegistroMensualDTO(YearMonth periodo, Long cantidadDonaciones, Long cantidadOrganizacionesAyudadas){
         this.periodo = periodo;
         this.cantidadDonaciones = cantidadDonaciones;
         this.cantidadOrganizacionesAyudadas = cantidadOrganizacionesAyudadas;

@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,6 +25,7 @@ public class ImpactoDonacion {
     private String categoria;
     private String entidadBeneficiaria;
     private String estado;
+    private Boolean exito;
 
     public ImpactoDonacion(String entidadBeneficiaria,
                            Integer cantidadBienes,

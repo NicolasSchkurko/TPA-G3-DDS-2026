@@ -3,7 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ActividadMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
