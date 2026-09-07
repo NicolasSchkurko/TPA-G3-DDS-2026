@@ -20,7 +20,7 @@ public class RankingMensual {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idRanking;
 
-    // Spring Data/Hibernate saben convertir YearMonth automáticamente en versiones recientes
+    // Spring Data/Hibernate sabe convertir YearMonth automáticamente en versiones recientes
     private YearMonth periodo;
 
     @OneToMany(mappedBy = "rankingMensual", cascade = CascadeType.ALL, orphanRemoval = true)
