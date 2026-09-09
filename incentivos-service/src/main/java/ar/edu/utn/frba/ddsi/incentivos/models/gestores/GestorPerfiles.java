@@ -1,8 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,28 +12,48 @@ import java.util.List;
 @Service
 public class GestorPerfiles {
   private final RepositorioPerfiles repositorioPerfiles;
+  private final RepositorioDonaciones repositorioDonaciones;
 
-  public GestorPerfiles(RepositorioPerfiles repositorioPerfiles) {
+  public GestorPerfiles(RepositorioPerfiles repositorioPerfiles,
+                        RepositorioDonaciones repositorioDonaciones) {
     this.repositorioPerfiles = repositorioPerfiles;
+    this.repositorioDonaciones = repositorioDonaciones;
   }
 
   @Transactional
   public Boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
-    Boolean misionCompletada = perfil.progresarMision(donacion);
+    List<ImpactoDonacion> donaciones = List.of();
+    if (perfil.getProgresoMisionActual() != null
+        && perfil.getProgresoMisionActual().getMision() != null) {
+      donaciones = repositorioDonaciones
+          .findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
+              perfil.getIdUsuario(),
+              perfil.getProgresoMisionActual().getMision().getIdMision());
+    }
+
+    Boolean misionCompletada = perfil.progresarMision(donacion, donaciones);
 
     repositorioPerfiles.save(perfil);
+    repositorioDonaciones.save(donacion);
 
     return misionCompletada;
   }
 
   @Transactional
-  public void verificarProgresos() {
+  public void evaluarProgresosConstantes() {
     List<Perfil> perfilesConMision = repositorioPerfiles.findAll()
         .stream()
         .filter(perfil -> perfil.getProgresoMisionActual() != null)
+        .filter(perfil -> perfil.getProgresoMisionActual().getMision() != null)
+        .filter(perfil -> perfil.getProgresoMisionActual().getMision()
+            .getReglaDeProgreso().getConstancia() != null)
         .toList();
 
-    perfilesConMision.forEach(Perfil::verificarProgresoMision);
+    perfilesConMision.forEach(perfil -> perfil.verificarProgresoMision(
+        repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
+            perfil.getIdUsuario(),
+            perfil.getProgresoMisionActual().getMision().getIdMision())
+    ));
     repositorioPerfiles.saveAll(perfilesConMision);
   }
 

@@ -17,7 +17,6 @@ public class Mision {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idMision; // id interno
-
     private UUID idAdmin;
     private String nombreMision;
     private String descripcion;

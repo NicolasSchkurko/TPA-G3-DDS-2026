@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -47,16 +49,17 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         this.progresoMisionActual = null;
     }
 
-    public void verificarProgresoMision(){
+    public void verificarProgresoMision(List<ImpactoDonacion> donaciones){
         if (progresoMisionActual != null)
-            progresoMisionActual.evaluarConstancia();
+            progresoMisionActual.evaluarConstancia(donaciones, LocalDateTime.now());
     }
 
-    public Boolean progresarMision(ImpactoDonacion donacion){
+    public Boolean progresarMision(ImpactoDonacion donacion,
+                                   List<ImpactoDonacion> donaciones){
         if (progresoMisionActual == null) return false;
 
         Mision misionAnterior = progresoMisionActual.getMision();
-        Insignia insignia = progresoMisionActual.progresarMision(donacion);
+        Insignia insignia = progresoMisionActual.progresarMision(donacion, donaciones);
 
         if (insignia != null) {
             this.insigniasObtenidas.add(new InsigniaObtenida(this, insignia));

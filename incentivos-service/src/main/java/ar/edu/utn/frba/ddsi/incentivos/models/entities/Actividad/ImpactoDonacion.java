@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
+package ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,7 +25,8 @@ public class ImpactoDonacion {
     private String categoria;
     private String entidadBeneficiaria;
     private String estado;
-    private Boolean exito;
+    private Boolean hizoProgresarMision = false; //indica si hizo progresar la mision actual
+    private UUID idMision; //en el momento en que ingreso esta donacion, el perfil tenia una mision asignada, asi q le asigno el id de esa mision
 
     public ImpactoDonacion(String entidadBeneficiaria,
                            Integer cantidadBienes,

@@ -45,53 +45,6 @@ public class UserController {
     }
 
     @Operation(
-            summary = "Obtener métricas comparativas del donante",
-            description = "Devuelve los indicadores clave de rendimiento del perfil comparados con promedios generales."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Métricas obtenidas con éxito"),
-            @ApiResponse(responseCode = "404", description = "Perfil no encontrado o sin actividad")
-    })
-    @GetMapping("/{id}/comparativas")
-    public ResponseEntity<List<MetricaDTO>> obtenerMetricas(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
-                                                            @PathVariable UUID id) {
-        List<MetricaDTO> metricas = service.obtenerMetricasHistoricas(id);
-        return ResponseEntity.ok(metricas);
-    }
-
-    @Operation(
-            summary = "Obtener la métrica de actividad del período actual",
-            description = "Devuelve la variación porcentual de donaciones entre el período anterior y el mes corriente."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Métrica del período actual obtenida con éxito"),
-            @ApiResponse(responseCode = "404", description = "No existe actividad para el período actual o el perfil no tiene un período anterior")
-    })
-    @GetMapping("/{id}/comparativas/actual")
-    public ResponseEntity<MetricaDTO> obtenerMetricaPeriodoActual(
-            @Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
-            @PathVariable UUID id) {
-        return service.obtenerMetricaPeriodoActual(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @Operation(
-            summary = "Obtener evolución de actividad mensual",
-            description = "Retorna el historial mes a mes de las donaciones y colaboraciones realizadas por el usuario."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Historial mensual obtenido con éxito"),
-            @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
-    })
-    @GetMapping("/{id}/actividadPerfil")
-    public ResponseEntity<ActividadDTO> obtenerActividadPerfil(@Parameter(description = "UUID del usuario asociado al perfil", example = "123e4567-e89b-12d3-a456-426614174000")
-                                                               @PathVariable UUID id){
-        ActividadDTO dto = service.obtenerEvolucionHistorica(id);
-        return ResponseEntity.ok(dto);
-    }
-
-    @Operation(
             summary = "Obtener la misión actual asignada",
             description = "Devuelve los detalles del objetivo gamificado vigente (racha, completitud, etc.) que posee el perfil."
     )

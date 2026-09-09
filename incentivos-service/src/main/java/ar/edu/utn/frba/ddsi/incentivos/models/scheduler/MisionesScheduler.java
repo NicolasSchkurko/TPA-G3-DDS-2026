@@ -15,7 +15,7 @@ public class MisionesScheduler {
     // 1 vez por dia se revisan los perfiles para actualizarles el
     // progreso en las misiones que requieren constancia
     @Scheduled(cron = "0 0 0 * * ?")
-    public void actualizarMisiones() {
-        gestor.verificarProgresos();
+    public void evaluarProgresosConstantes() {
+        gestor.evaluarProgresosConstantes();
     }
 }
