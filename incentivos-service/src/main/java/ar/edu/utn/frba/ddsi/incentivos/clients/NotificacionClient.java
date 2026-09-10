@@ -2,15 +2,17 @@ package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Service
@@ -19,12 +21,15 @@ public class NotificacionClient {
     private String notificacionesUrl;
 
     private final RestTemplate restTemplate;
+    private final DonacionClient donacionClient;
     //todo: este repo puede q lo maneje servicio notificaciones
     private final RepositorioNotificacionesPendientes repositorioPendientes;
 
     public NotificacionClient(RestTemplate restTemplate,
+                              DonacionClient donacionClient,
                               RepositorioNotificacionesPendientes repositorioPendientes) {
         this.restTemplate = restTemplate;
+        this.donacionClient = donacionClient;
         this.repositorioPendientes = repositorioPendientes;
     }
 
@@ -41,14 +46,27 @@ public class NotificacionClient {
         }
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void notificarMisionCompletada(MisionCompletada event) {
+        enviar(
+                donacionClient.obtenerContactoPersona(event.idUsuario()),
+                "¡Misión completada!",
+                crearMensajeMisionCompletada(
+                        event.misionAnterior(),
+                        event.insigniaObtenida(),
+                        event.impactoDonacion().getEntidadBeneficiaria()
+                )
+        );
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioMision(MisionCambiada event) {
         enviar(event.contacto(),
                "Nueva misión disponible",
                crearMensajeMision(event.misionAnterior(), event.misionNueva()));
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioCategoria(CategoriaNuevaPublicar event) {
         enviar(event.contacto(),
                "Nueva categoría",
@@ -76,6 +94,13 @@ public class NotificacionClient {
 
     private String crearMensajeMision(String misionAnterior, String misionNueva) {
         return "Completaste '%s'. Tu nueva misión es '%s'.".formatted(misionAnterior, misionNueva);
+    }
+
+    private String crearMensajeMisionCompletada(String misionAnterior,
+                                                String insigniaObtenida,
+                                                String entidadBeneficiaria) {
+        return "Completaste '%s' y obtuviste la insignia '%s' tras impactar a '%s'."
+                .formatted(misionAnterior, insigniaObtenida, entidadBeneficiaria);
     }
 
     private String crearMensajeCategoria(String categoriaAnterior, String categoriaNueva) {

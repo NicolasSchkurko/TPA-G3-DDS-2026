@@ -2,10 +2,12 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.UltimaMisionCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import org.springframework.data.domain.AbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -64,15 +66,66 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         if (insignia != null) {
             this.insigniasObtenidas.add(new InsigniaObtenida(this, insignia));
 
-
-            registerEvent(new MisionCompletada(donacion, this));
-
-            if (this.categoriaActual != null && this.categoriaActual.esUltimaMision(misionAnterior)) {
-                registerEvent(new UltimaMisionCategoria(this));
-            }
+            registerEvent(new MisionCompletada(
+                    misionAnterior != null ? misionAnterior.getNombreMision() : null,
+                    insignia.getNombre(),
+                    this.idUsuario,
+                    this.nombreUsuario,
+                    donacion
+            ));
 
             return true;
         }
         return false;
+    }
+
+    public void cambiarMision(Mision misionNueva, Mision misionAnterior, MedioContacto contacto) {
+        if (misionNueva == null) {
+            this.progresoMisionActual = null;
+            return;
+        }
+
+        this.progresoMisionActual = new ProgresoMision(misionNueva);
+
+        if (misionAnterior != null) {
+            registerEvent(new MisionCambiada(
+                    misionAnterior.getNombreMision(),
+                    misionAnterior.getInsigniaObjetivo().getNombre(),
+                    this.nombreUsuario,
+                    this.idUsuario,
+                    contacto,
+                    misionNueva.getNombreMision()
+            ));
+        }
+    }
+
+    public void cambiarCategoria(Categoria categoriaNueva,
+                                 Categoria categoriaAnterior,
+                                 Mision misionAnterior,
+                                 MedioContacto contacto) {
+        this.categoriaActual = categoriaNueva;
+
+        Mision primeraMision = categoriaNueva != null ? categoriaNueva.primeraMision() : null;
+        this.progresoMisionActual = primeraMision != null ? new ProgresoMision(primeraMision) : null;
+
+        if (categoriaAnterior != null && categoriaNueva != null) {
+            registerEvent(new CategoriaNuevaPublicar(
+                    categoriaAnterior.getNombre(),
+                    categoriaNueva.getNombre(),
+                    this.nombreUsuario,
+                    contacto
+            ));
+        }
+
+        if (misionAnterior != null && primeraMision != null) {
+            registerEvent(new MisionCambiada(
+                    misionAnterior.getNombreMision(),
+                    misionAnterior.getInsigniaObjetivo().getNombre(),
+                    this.nombreUsuario,
+                    this.idUsuario,
+                    contacto,
+                    primeraMision.getNombreMision()
+            ));
+        }
     }
 }

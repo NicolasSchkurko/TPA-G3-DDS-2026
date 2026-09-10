@@ -6,9 +6,10 @@ import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Service
@@ -25,7 +26,7 @@ public class N8nClient {
         this.repositorio = repositorio;
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publicarInsignia(MisionCambiada event)
             throws EnvioPublicacionException {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(

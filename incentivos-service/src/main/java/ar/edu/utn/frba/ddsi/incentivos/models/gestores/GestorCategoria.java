@@ -1,9 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
@@ -19,21 +19,21 @@ public class GestorCategoria {
     private final RepositorioCategorias repositorio;
     private final RepositorioMisiones repositorioMisiones;
 
-
-    public GestorCategoria(MisionFactory misionFactory, RepositorioCategorias repositorio,
+    public GestorCategoria(MisionFactory misionFactory,
+                           RepositorioCategorias repositorio,
                            RepositorioMisiones repositorioMisiones) {
         this.misionFactory = misionFactory;
         this.repositorio = repositorio;
-        this.repositorioMisiones= repositorioMisiones;
+        this.repositorioMisiones = repositorioMisiones;
         this.inicializarCategoriasBase();
     }
 
     @Transactional
-    public List<Categoria> inicializarCategoriasBase() {
+    public void inicializarCategoriasBase() {
         // Solo inicializamos si la tabla de la base de datos está vacía
         if (repositorio.count() == 0) {
             Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
-            Mision nuevaMision= misionFactory.crearMision(
+            Mision nuevaMision = misionFactory.crearMision(
                     null,
                     "Primera donación",
                     "Realiza tu primera donación para empezar a colaborar.",
@@ -43,16 +43,24 @@ public class GestorCategoria {
                     misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
             );
             repositorioMisiones.saveAndFlush(nuevaMision);
-            colaborador.agregarMision(
-               nuevaMision
-            );
+            colaborador.agregarMision(nuevaMision);
 
             repositorio.save(colaborador);
             repositorio.save(new Categoria("Sostenedor", null, 2, new ArrayList<>()));
             repositorio.save(new Categoria("Transformador", null, 3, new ArrayList<>()));
         }
+    }
 
-        return repositorio.findAllByOrderByPosicionSecuenciaAsc();
+    public Categoria obtenerCategoriaSiguiente(Categoria categoriaActual) {
+        if (categoriaActual == null || categoriaActual.getPosicionSecuencia() == null) {
+            return null;
+        }
+
+        return repositorio.findAllByOrderByPosicionSecuenciaAsc().stream()
+                          .filter(categoria -> categoria.getPosicionSecuencia() != null)
+                          .filter(categoria -> categoria.getPosicionSecuencia() > categoriaActual.getPosicionSecuencia())
+                          .findFirst()
+                          .orElse(null);
     }
 
     @Transactional

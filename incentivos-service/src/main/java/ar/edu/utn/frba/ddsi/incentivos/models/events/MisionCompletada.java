@@ -1,7 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.events;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import java.util.UUID;
 
-public record MisionCompletada (ImpactoDonacion impactoDonacion, Perfil perfilActualizado){
+public record MisionCompletada(String misionAnterior,
+							   String insigniaObtenida,
+							   UUID idUsuario,
+							   String nombreUsuario,
+							   ImpactoDonacion impactoDonacion) {
 }

@@ -31,12 +31,7 @@ public class GestorPerfiles {
               perfil.getProgresoMisionActual().getMision().getIdMision());
     }
 
-    Boolean misionCompletada = perfil.progresarMision(donacion, donaciones);
-
-    repositorioPerfiles.save(perfil);
-    repositorioDonaciones.save(donacion);
-
-    return misionCompletada;
+    return perfil.progresarMision(donacion, donaciones);
   }
 
   @Transactional

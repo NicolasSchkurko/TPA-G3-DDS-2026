@@ -2,16 +2,21 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.*;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 
 import java.util.*;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import org.springframework.stereotype.Service;
@@ -20,14 +25,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
     private final RepositorioPerfiles repoPerfiles;
+    private final RepositorioDonaciones repoDonaciones;
     private final GestorPerfiles perfiles;
+    private final GestorCategoria categorias;
     private final RepositorioRankings repoRankings;
+    private final DonacionClient donacionClient;
 
     public UserService(RepositorioPerfiles repositorio,
+                       RepositorioDonaciones repoDonaciones,
                        GestorPerfiles perfiles,
+                       GestorCategoria categorias,
+                       DonacionClient donacionClient,
                        RepositorioRankings rankings) {
         this.repoPerfiles = repositorio;
+        this.repoDonaciones = repoDonaciones;
         this.perfiles = perfiles;
+        this.categorias = categorias;
+        this.donacionClient = donacionClient;
         this.repoRankings = rankings;
     }
 
@@ -61,7 +75,35 @@ public class UserService {
         Perfil p = repoPerfiles.findByIdUsuario(idUsuario)
                 .orElseThrow(InexistenteException::new);
 
-        return perfiles.progresarPerfil(p, donacion);
+        Categoria categoriaAnterior = p.getCategoriaActual();
+        Mision misionAnterior = p.getProgresoMisionActual() == null
+                ? null
+                : p.getProgresoMisionActual().getMision();
+
+        Boolean misionCompletada = perfiles.progresarPerfil(p, donacion);
+
+        if (Boolean.TRUE.equals(misionCompletada)
+                && categoriaAnterior != null
+                && misionAnterior != null) {
+            MedioContacto contacto = donacionClient.obtenerContactoPersona(idUsuario);
+
+            if (categoriaAnterior.esUltimaMision(misionAnterior)) {
+                Categoria siguienteCategoria = categorias.obtenerCategoriaSiguiente(categoriaAnterior);
+                if (siguienteCategoria != null) {
+                    p.cambiarCategoria(siguienteCategoria, categoriaAnterior, misionAnterior, contacto);
+                }
+            } else {
+                Mision siguienteMision = categoriaAnterior.siguienteMision(misionAnterior);
+                if (siguienteMision != null) {
+                    p.cambiarMision(siguienteMision, misionAnterior, contacto);
+                }
+            }
+        }
+
+        repoPerfiles.save(p);
+        repoDonaciones.save(donacion);
+
+        return misionCompletada;
     }
 
     public RankingMesDTO obtenerRanking(UUID idRanking) {
