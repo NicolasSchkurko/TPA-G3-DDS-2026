@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -17,6 +19,7 @@ import lombok.Setter;
 @Table(name = "impacto_donacion")
 public class ImpactoDonacion {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idDonacion; // id interno
     private UUID idUsuario; // id de donaciones
     private LocalDateTime fechaEntrega;
@@ -35,7 +38,6 @@ public class ImpactoDonacion {
                            String categoria,
                            String estado,
                            UUID idUsuario){
-        this.idDonacion = UUID.randomUUID();
         this.idUsuario = idUsuario;
         this.estado = estado;
         this.entidadBeneficiaria = entidadBeneficiaria;

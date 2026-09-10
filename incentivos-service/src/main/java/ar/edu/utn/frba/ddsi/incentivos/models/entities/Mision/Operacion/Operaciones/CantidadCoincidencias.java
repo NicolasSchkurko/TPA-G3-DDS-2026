@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -15,18 +16,17 @@ import lombok.Setter;
 public class CantidadCoincidencias extends Operacion {
     //5 donaciones "ENTREGADAS"
     @JdbcTypeCode(SqlTypes.JSON)
-    private Object valorEsperado;
+    private JsonNode valorEsperado;
 
-    public CantidadCoincidencias(Integer progresoObjetivo,
-                                 Object valorEsperado) {
+    public CantidadCoincidencias(
+            Integer progresoObjetivo,
+            JsonNode valorEsperado
+    ) {
         super(progresoObjetivo);
         this.valorEsperado = valorEsperado;
     }
-
     @Override
-    public Boolean calcularProgreso(
-            Object valorAtributo
-    ){
-        return valorAtributo.equals(valorEsperado);
+    public Boolean calcularProgreso(Object valorAtributo) {
+        return valorEsperado.asText().equals(valorAtributo.toString());
     }
 }

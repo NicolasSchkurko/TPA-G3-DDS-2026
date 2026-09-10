@@ -36,7 +36,6 @@ public class Regla {
             AtributoImpacto atributo,
             Operacion operacion
     ) {
-        this.idRegla = UUID.randomUUID();
         this.constancia = constancia;
         this.atributo = atributo;
         this.operacion = operacion;

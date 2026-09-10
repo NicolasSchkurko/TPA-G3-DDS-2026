@@ -23,7 +23,6 @@ public abstract class Operacion {
     private Integer progresoObjetivo;
 
     protected Operacion(Integer progresoObjetivo) {
-        this.idOperacion = UUID.randomUUID();
         this.progresoObjetivo = progresoObjetivo;
     }
 

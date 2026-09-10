@@ -1,9 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +17,14 @@ import java.util.UUID;
 public class GestorCategoria {
     private final MisionFactory misionFactory;
     private final RepositorioCategorias repositorio;
+    private final RepositorioMisiones repositorioMisiones;
 
-    public GestorCategoria(MisionFactory misionFactory, RepositorioCategorias repositorio) {
+
+    public GestorCategoria(MisionFactory misionFactory, RepositorioCategorias repositorio,
+                           RepositorioMisiones repositorioMisiones) {
         this.misionFactory = misionFactory;
         this.repositorio = repositorio;
+        this.repositorioMisiones= repositorioMisiones;
         this.inicializarCategoriasBase();
     }
 
@@ -27,9 +33,7 @@ public class GestorCategoria {
         // Solo inicializamos si la tabla de la base de datos está vacía
         if (repositorio.count() == 0) {
             Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
-
-            colaborador.agregarMision(
-                misionFactory.crearMision(
+            Mision nuevaMision= misionFactory.crearMision(
                     null,
                     "Primera donación",
                     "Realiza tu primera donación para empezar a colaborar.",
@@ -37,7 +41,10 @@ public class GestorCategoria {
                     null,
                     AtributoImpacto.ESTADO,
                     misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
-                )
+            );
+            repositorioMisiones.saveAndFlush(nuevaMision);
+            colaborador.agregarMision(
+               nuevaMision
             );
 
             repositorio.save(colaborador);

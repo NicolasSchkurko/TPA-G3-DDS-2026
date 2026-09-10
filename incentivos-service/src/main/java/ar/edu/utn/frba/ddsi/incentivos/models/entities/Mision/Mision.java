@@ -34,7 +34,6 @@ public class Mision {
                   String descripcion,
                   String nombreInsignia,
                   Regla regla) {
-        this.idMision = UUID.randomUUID();
         this.idAdmin = idAdmin;
         this.nombreMision = nombre;
         this.descripcion = descripcion;
