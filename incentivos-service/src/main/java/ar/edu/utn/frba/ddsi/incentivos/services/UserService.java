@@ -19,8 +19,10 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.YearMonth;
 
 @Service
 public class UserService {
@@ -30,19 +32,22 @@ public class UserService {
     private final GestorCategoria categorias;
     private final RepositorioRankings repoRankings;
     private final DonacionClient donacionClient;
+    private final GestorRanking gestorRanking;
 
     public UserService(RepositorioPerfiles repositorio,
                        RepositorioDonaciones repoDonaciones,
                        GestorPerfiles perfiles,
                        GestorCategoria categorias,
                        DonacionClient donacionClient,
-                       RepositorioRankings rankings) {
+                       RepositorioRankings rankings,
+                       GestorRanking gestorRanking) {
         this.repoPerfiles = repositorio;
         this.repoDonaciones = repoDonaciones;
         this.perfiles = perfiles;
         this.categorias = categorias;
         this.donacionClient = donacionClient;
         this.repoRankings = rankings;
+        this.gestorRanking = gestorRanking;
     }
 
     public List<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario) {
@@ -158,5 +163,39 @@ public class UserService {
                 ranking.getPuesto(),
                 ranking.getMisionesCumplidas()
         );
+    }
+
+    @Transactional
+    public Boolean eliminarPerfil(UUID idUsuario) {
+        if (!repoPerfiles.existsByIdUsuario(idUsuario)) {
+            throw new InexistenteException();
+        }
+        repoPerfiles.deleteByIdUsuario(idUsuario);
+        return true;
+    }
+
+    @Transactional
+    public RankingMesDTO crearRanking(YearMonth periodo) {
+        // Verificar si ya existe un ranking para ese período
+        if (repoRankings.findByPeriodo(periodo).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
+        }
+
+        RankingMensual rankingCreado = gestorRanking.generarYPersistirRankingMensual(periodo);
+        
+        return new RankingMesDTO(
+                rankingCreado.getPosiciones().stream()
+                        .map(this::convertirRankingADTO).toList(),
+                rankingCreado.getPeriodo()
+        );
+    }
+
+    @Transactional
+    public Boolean eliminarRanking(UUID idRanking) {
+        if (!repoRankings.existsById(idRanking)) {
+            throw new InexistenteException();
+        }
+        repoRankings.deleteById(idRanking);
+        return true;
     }
 }

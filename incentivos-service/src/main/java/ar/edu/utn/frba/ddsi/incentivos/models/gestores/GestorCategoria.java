@@ -33,6 +33,8 @@ public class GestorCategoria {
         // Solo inicializamos si la tabla de la base de datos está vacía
         if (repositorio.count() == 0) {
             Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
+            Categoria sostenedor = new Categoria("Sostenedor", null, 2, new ArrayList<>());
+            Categoria transformador = new Categoria("Transformador", null, 3, new ArrayList<>());
             Mision nuevaMision = misionFactory.crearMision(
                     null,
                     "Primera donación",
@@ -42,12 +44,33 @@ public class GestorCategoria {
                     AtributoImpacto.ESTADO,
                     misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
             );
+            Mision nuevaMision2 = misionFactory.crearMision(
+                    null,
+                    "segunda donacion donación",
+                    "Realiza tu segunda donación.",
+                    "Sigo ayudando",
+                    null,
+                    AtributoImpacto.ESTADO,
+                    misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
+            );
+            Mision nuevaMision3 = misionFactory.crearMision(
+                    null,
+                    "Supera tus limites",
+                    "dona mas de 10 bienes",
+                    "Rompiendo los limites",
+                    null,
+                    AtributoImpacto.CANTIDAD_BIENES,
+                    misionFactory.crearOperacion("SUPERA_CANTIDAD", 1, 10, "ENTREGADA")
+            );
             repositorioMisiones.saveAndFlush(nuevaMision);
+            repositorioMisiones.saveAndFlush(nuevaMision2);
+            repositorioMisiones.saveAndFlush(nuevaMision3);
             colaborador.agregarMision(nuevaMision);
-
+            sostenedor.agregarMision(nuevaMision2);
+            sostenedor.agregarMision(nuevaMision3);
             repositorio.save(colaborador);
-            repositorio.save(new Categoria("Sostenedor", null, 2, new ArrayList<>()));
-            repositorio.save(new Categoria("Transformador", null, 3, new ArrayList<>()));
+            repositorio.save(sostenedor);
+            repositorio.save(transformador);
         }
     }
 

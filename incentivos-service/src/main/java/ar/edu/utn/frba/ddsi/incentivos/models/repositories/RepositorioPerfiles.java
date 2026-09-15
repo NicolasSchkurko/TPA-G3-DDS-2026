@@ -28,6 +28,9 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     boolean existsByIdUsuario(UUID idUsuario);
 
+    //@Query("SELECT io.insignia FROM Perfil p JOIN p.insigniasObtenidas io WHERE p.idUsuario = :idUsuario")
+    void deleteByIdUsuario(UUID idUsuario);
+
     Optional<Perfil> findByNombreUsuario(String nombreUsuario);
 
     List<Perfil> findAllByCategoriaActual(Categoria categoria);

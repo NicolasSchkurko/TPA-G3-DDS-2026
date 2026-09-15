@@ -105,6 +105,48 @@ public class UserController {
         RankingMesDTO top3 = service.obtenerTop3Ranking(id);
         return ResponseEntity.ok(top3);
     }
+
+    @Operation(
+            summary = "Eliminar un perfil",
+            description = "Elimina completamente un perfil del sistema, incluyendo sus insignias, progreso y datos asociados."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil eliminado con éxito"),
+            @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
+    })
+    @DeleteMapping("/{idUsuario}")
+    public ResponseEntity<Boolean> eliminarPerfil(@Parameter(description = "UUID del perfil a eliminar", example = "123e4567-e89b-12d3-a456-426614174000")
+                                                  @PathVariable UUID idUsuario) {
+        Boolean eliminado = service.eliminarPerfil(idUsuario);
+        return ResponseEntity.ok(eliminado);
+    }
+
+    @Operation(
+            summary = "Crear ranking para un período específico",
+            description = "Genera un nuevo ranking mensual a partir de los datos históricos de donaciones de ese período."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ranking creado con éxito"),
+            @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período")
+    })
+    @PostMapping("/rankings")
+    public ResponseEntity<RankingMesDTO> crearRanking(@RequestBody CrearRankingDTO request) {
+        RankingMesDTO rankingCreado = service.crearRanking(request.getPeriodo());
+        return ResponseEntity.ok(rankingCreado);
+    }
+
+    @Operation(
+            summary = "Eliminar un ranking",
+            description = "Elimina un ranking específico del sistema."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ranking eliminado con éxito"),
+            @ApiResponse(responseCode = "404", description = "Ranking no encontrado")
+    })
+    @DeleteMapping("/rankings/{idRanking}")
+    public ResponseEntity<Boolean> eliminarRanking(@Parameter(description = "UUID del ranking a eliminar", example = "123e4567-e89b-12d3-a456-426614174000")
+                                                   @PathVariable UUID idRanking) {
+        Boolean eliminado = service.eliminarRanking(idRanking);
+        return ResponseEntity.ok(eliminado);
+    }
 }
-
-
