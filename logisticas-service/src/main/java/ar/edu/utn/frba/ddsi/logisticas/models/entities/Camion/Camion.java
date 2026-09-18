@@ -1,32 +1,49 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.UUID;
+import lombok.NoArgsConstructor;
 
 @Entity
+@Table(name = "camion")
 @Getter
 @Setter
+@NoArgsConstructor
 public class Camion {
-    @Column(name = "id_chofer")
-    private UUID idChofer;
+    @ManyToOne
+    @JoinColumn(name = "id_chofer", referencedColumnName = "id_chofer")
+    private Chofer chofer;
+
     @Id
+    @Column(name = "patente", length = 20)
     private String patente;
+
+    @Column(name = "capacidad_volumen_m3")
     private Double capacidadVolumen;
+
+    @Column(name = "altura_m")
     private Double altura;
+
+    @Column(name = "capacidad_carga_kg")
     private Double capacidadCarga;
+
+    @Column(name = "disponible")
     private Boolean disponible;
+
+    @Column(name = "peso_ocupado_kg")
     private Double pesoOcupado;
+
+    @Column(name = "volumen_ocupado_m3")
     private Double volumenOcupado;
+
+    @Column(name = "ciudad_destino_actual")
     private String ciudadDestinoActual;
 
-    public Camion(UUID idChofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.idChofer = idChofer;
+    public Camion(Chofer chofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.chofer = chofer;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -38,7 +55,7 @@ public class Camion {
     }
 
     public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.idChofer = null;
+        this.chofer = null;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -86,6 +103,6 @@ public class Camion {
     }
 
     public void eliminarChofer() {
-        this.idChofer = null;
+        this.chofer = null;
     }
 }

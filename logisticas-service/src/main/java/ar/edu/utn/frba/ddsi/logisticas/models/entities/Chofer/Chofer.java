@@ -2,26 +2,26 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer;
 
 import java.util.UUID;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
+@Table(name = "chofer")
 @Getter
 @Setter
-@Table(name = "chofer")
+@NoArgsConstructor
 public class Chofer {
     @Id
-    @Column(name = "id_chofer")
+    @Column(name = "id_chofer", nullable = false, updatable = false)
     private UUID idChofer;
-    private String nombre;
-    private boolean disponible;
 
-    protected Chofer() {
-    }
+    @Column(name = "nombre", nullable = false)
+    private String nombre;
+
+    @Column(name = "disponible", nullable = false)
+    private boolean disponible;
 
     public Chofer(UUID idChofer, String nombre){
         this.idChofer = idChofer;
