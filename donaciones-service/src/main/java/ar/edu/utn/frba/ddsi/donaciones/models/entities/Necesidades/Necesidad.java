@@ -9,7 +9,7 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Transient;
+import jakarta.persistence.OneToMany;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,8 +29,9 @@ public abstract class Necesidad {
     @JoinColumn(name = "subcategoria_id")
     SubcategoriaBien subcategoria;
 
-    // Donacion todavía no es una entidad JPA (persistencia de ese dominio queda para otro paso/servicio).
-    @Transient
+    // Lado inverso: el dueño de la relación es Donacion.necesidad (@JoinColumn necesidad_id).
+    // Sin cascade acá: registrar/quitar una Donacion de esta lista no debe alterar su ciclo de vida.
+    @OneToMany(mappedBy = "necesidad")
     List<Donacion> donaciones = new ArrayList<>();
 
     String descripcion;
@@ -49,6 +50,7 @@ public abstract class Necesidad {
 
     public void registrarDonacionAsignada(Donacion donacion) {
         this.donaciones.add(donacion);
+        donacion.setNecesidad(this);
     }
 
     public Integer cantidadRecibida() {

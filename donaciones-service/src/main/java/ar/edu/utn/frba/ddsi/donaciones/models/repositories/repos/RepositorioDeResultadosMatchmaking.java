@@ -1,4 +1,5 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+package ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.ResultadoMatchmakingJpaRepository;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import org.springframework.stereotype.Repository;

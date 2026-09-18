@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Don
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioFormularios;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioFormularios;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,7 +32,7 @@ public class GestorFormulario {
      */
     public List<Donacion> procesarFormulario(Formulario formulario) {
         DonacionFacade donacionFacade = new DonacionFacade(
-            new SegmentadorDonaciones(), null
+            new SegmentadorDonaciones()
         );
 
         // Ejecutamos la segmentación y devolvemos el resultado
