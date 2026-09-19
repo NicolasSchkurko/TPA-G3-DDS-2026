@@ -35,7 +35,7 @@ public class MetricasService {
                         donacion -> YearMonth.from(donacion.getFechaEntrega()),
                         TreeMap::new,
                         toList()));
-
+        // aca quiza si haria una interface para repo
         List<RegistroMensualDTO> registros = porPeriodo.entrySet().stream()
                 .map(entry -> new RegistroMensualDTO(
                         entry.getKey(),

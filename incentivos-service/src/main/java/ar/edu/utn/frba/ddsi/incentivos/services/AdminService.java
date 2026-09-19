@@ -41,6 +41,8 @@ public class AdminService {
     // ========== CATEGORÍAS - GET ==========
     public List<CategoriaDTO> obtenerCategorias(UUID idAdmin) {
         verificarPermisos(idAdmin);
+
+        //TODO: esto deberia preguntarselo al repo directo o a una interface del repo (opcional, mejor)
         List<Categoria> categorias = gestorCategoria.obtenerTodas();
         return categorias.stream()
                         .map(this::categoriaToDTO)
@@ -49,6 +51,7 @@ public class AdminService {
 
     public CategoriaDTO obtenerCategoriaPorId(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
+        //TODO: esto deberia preguntarselo al repo directo o a una interface del repo (opcional, mejor)
         Categoria categoria = gestorCategoria.obtenerPorId(id);
         return categoria != null ? categoriaToDTO(categoria) : null;
     }
@@ -58,6 +61,11 @@ public class AdminService {
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
 
+        //TODO: esto esta raro. Quien deberia tener la resp de buscar las misiones desde el dto
+        // Quiza haria una funcion private  del service que busque misiones a partir de uuid
+        // mas que nada pq no creo que gestor misiones debaconocer un dto
+        // no dije nada es una lista de uuid entonces que le pegue al repo
+        // Maten a los gestores, domingo rojo
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
         Categoria categoria = new Categoria(
@@ -67,6 +75,8 @@ public class AdminService {
             misiones
         );
 
+
+        // No hace falta aclarar nada aca, me ahorro ponerlo
         Categoria categoriaCreada = gestorCategoria.crearCategoria(categoria);
         return categoriaCreada != null ? categoriaToDTO(categoriaCreada) : null;
     }
@@ -75,7 +85,7 @@ public class AdminService {
     @Transactional
     public CategoriaDTO actualizarCategoria(UUID idAdmin, UUID id, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
-
+        // TODO idem arriba
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
         Categoria categoria = new Categoria(
@@ -94,7 +104,7 @@ public class AdminService {
     @Transactional
     public List<CategoriaDTO> eliminarCategoria(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
-
+        // TODO: Ya creo que a nadie le sorprende
         List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
         return categorias.stream()
                         .map(this::categoriaToDTO)
@@ -104,6 +114,8 @@ public class AdminService {
     // ========== MISIONES - GET ==========
     public List<MisionDTO> obtenerMisiones(UUID idAdmin) {
         verificarPermisos(idAdmin);
+
+        // TODO: ITS REPO TIME
         List<Mision> misiones = gestorMisiones.obtenerTodas();
         return misiones.stream()
                       .map(this::misionToDTO)
@@ -112,6 +124,8 @@ public class AdminService {
 
     public MisionDTO obtenerMisionPorId(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
+
+        // TODO: miren al final del .java
         Mision mision = gestorMisiones.obtenerPorId(id);
         return mision != null ? misionToDTO(mision) : null;
     }
@@ -126,6 +140,8 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
+
+        // TODO: Si te digo te sorprendo dsp lo voy arreglando pero bue dejo constancia sino cuelgo
         Mision m = gestorMisiones.crearMision(
             idAdmin,
             nuevaMision.getNombreMision(),
@@ -155,7 +171,7 @@ public class AdminService {
         ConstanciaDTO constanciaDTO = reglaDTO.getConstancia();
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
-
+        // TODO: Skibidi dub dub dub yes yes
         Mision mision = gestorMisiones.crearMision(
             idAdmin,
             dto.getNombreMision(),
@@ -184,7 +200,7 @@ public class AdminService {
     @Transactional
     public MisionDTO eliminarMision(UUID idAdmin, UUID idMision) {
         verificarPermisos(idAdmin);
-
+        // TODO: Genio!
         Mision mision = gestorMisiones.eliminarMision(idMision);
         return misionToDTO(mision);
     }
@@ -258,3 +274,53 @@ public class AdminService {
         );
     }
 }
+
+
+/* efectivamente repo ya estoy sucumbiendo a la locura abstenerse a las consecuencias
+                                              =*#%###*#
+                                            #.         **------+#*#
+                                           # # ###      *+----------+*     +#*
+                                          # #######      #---------*           #
+                                         #  #####-      %----------#            #
+                                        :+             #*---------+*      ####   #
+                                        ##           :#------------#      ###:   #
+                                       #--#       ##*---------------#     :####  #
+                                      #-------+=---------------------+#          #
+                                     =+-------*#*+==============+##*----#+       #
+                                     #----##==========================*#---##*=##
+                                     *-+#=================================#-----*
+                                    +=#=====================================#=--#
+                                    ##========================================#-#
+                                    #==========================================#*
+                                    #==========================================*#
+                                     #=========================================+*
+                                    :+#*++=====================================#
+                                 *--------------+**####+======================#
+                                 #-------------------------+#**#+===========*#
+                                 #---------------------------------=###+=+#
+                                #-----------------------------------------##*
+                                #---------------------------------------------*#
+                            ##+----=+*######*+---------------------------------#
+                       *#*--#---------------------+###*+----------------------+
+                   #*+-----++-------------------------------+##*--------------#
+               ##----------#---------------------------------------=###-------+
+             #-------------#---------------------------------------------=*#+#
+               .##*-------*---------------------------------------------------*#
+                      ###**----------------------------------------------------*:
+                         #*=======+*#######------------------------------------#-*+
+                           ##+====#*#####+==-===**###*-------------------------*---*#
+                               ####--------**#============###*----------------#-------#
+                                  #-----------#==================###+---------*---------#
+                                  #----------####*=====#------*##======*##---#------------#
+                                  #----------#        *#----------=#=======+####***+=------#
+                                  #---------#          #----------+##########
+                                   *-------#           #----------#
+                                   #------#            #---------#
+                                   #-----#             #--------#
+                                   #----#              :=------*
+                                   *=--#                *-----*
+                                    #*                  *----#
+                                                        #---#
+                                                        +*+#
+*/
+

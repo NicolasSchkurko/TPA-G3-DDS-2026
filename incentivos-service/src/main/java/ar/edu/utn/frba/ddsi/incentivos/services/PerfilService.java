@@ -12,7 +12,6 @@ import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilExistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
@@ -105,7 +104,7 @@ public class PerfilService {
 
     // ========== ACTUALIZAR ==========
     @Transactional
-    public Boolean actualizarPerfil(UUID idUsuario, ImpactoDonacionDTO dto) {
+    public Boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         if (idUsuario == null) {
             return null;
         }
@@ -127,6 +126,36 @@ public class PerfilService {
 
         return true;
     }
+
+        // ========== ACTUALIZAR ==========
+    @Transactional
+    public PerfilDTO actualizarDatosPerfil(UUID idUsuario, PerfilDTO dto) {
+        if (idUsuario == null) {
+            throw new IllegalArgumentException("El ID del usuario no puede ser nulo");
+        }
+
+        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
+                                      .orElseThrow(InexistenteException::new);
+
+        // Actualizar nombre de usuario
+        if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
+            p.setNombreUsuario(dto.getNombreUsuario());
+        }
+        // TODO: hacer este socotroco lpm
+        // Nota: categoriaActual, insignias y misionActual se actualizan mediante otros métodos
+        // del dominio (progresión de misiones, cambios de categoría, etc.)
+        // No se actualizan directamente desde aquí por consistencia del modelo de dominio
+
+        Perfil actualizado = repositorioPerfiles.save(p);
+
+        return new PerfilDTO(
+            actualizado.getNombreUsuario(),
+            actualizado.getCategoriaActual() == null ? null : actualizado.getCategoriaActual().getNombre(),
+            actualizado.getInsigniasObtenidas() == null ? List.of() : actualizado.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
+            actualizado.getProgresoMisionActual() == null ? null : actualizado.getProgresoMisionActual().getMision().getNombreMision(),
+            null);
+    }
+
 
     // ========== CONVERTIDORES ==========
     public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion) {
@@ -166,3 +195,24 @@ public class PerfilService {
         return true;
     }
 }
+
+/*
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠄⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⡟⠄⠄⠄⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠇⠄⠄⠄⠄⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢿⣿⠿⠿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⡃⡛⠈⣹⣋⣲⡐⠂⢸⡇⡘⢣⠄⣠⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⠃⠄⠄⠄⠄⠄⠘⣿⣿⣿⣿⣿⣿⠿⠈⠹⢿⣠⠄⢸⣿⠄⠶⠶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡆⠰⠸⠤⢿⣡⣓⡒⡂⣒⡇⢃⢶⠄⣶⣾⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⠏⠄⠄⠄⠄⠄⠄⠄⠙⣿⣿⣿⣿⣿⣶⡀⣰⣾⣿⠄⢸⣟⠛⠿⠄⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣶⣿⣾⣿⣿⣿⣶⣿⣷⣿⣿⣶⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⠄⠄⠄⠄⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣾⣿⣷⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣃⣀⣀⠄⠄⠄⠄⠄⣀⣀⣈⣿⡿⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢿⣿⣿⣿⡿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣇⠄⠷⣤⡼⠋⡉⠻⡿⢉⡉⢻⠉⢹⠋⣉⠛⣿⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢫⣍⣴⣴⢴⣾⣴⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⡏⠙⠷⠄⠄⠘⠟⠄⣇⠸⠟⢻⠄⢸⠄⠶⠄⣇⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠟⠚⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⠉⣿⣿⣿⠃⠐⠒⠠⠄⠄⠠⠄⠄⠄⢻⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣿⡿⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⡟⢻⠟⣿⠿⢿⣿⣿⣿⣿⠏⠙⠃⠄⢻⣿⡇⠄⠄⡔⠄⠄⠄⠄⠠⡀⠄⠄⢿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⡏⠄⣶⣦⣼⠉⢉⡝⠉⡉⠙⡏⢉⡁⢸⠁⣏⠄⢸⣿⣿⣿⣿⡆⠄⠄⠄⢸⣿⡆⠄⠘⠄⠄⠄⠄⡀⠄⢱⠄⠄⣾⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣧⡀⠛⠋⢹⠄⢸⣇⠄⠖⠲⡇⠻⠃⢸⠄⣿⠄⢸⣿⣿⣿⣿⣧⡀⢀⣤⣾⣿⣷⡄⠸⡀⠄⢡⠰⠄⠄⡎⠄⣴⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣿⣿⣶⣾⣿⣶⣾⣿⣷⣶⣿⣿⣶⣶⣾⣶⣿⣷⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣵⣀⢸⢀⢀⣨⣴⣾⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠄⠄⠄⠄⠄⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+* */
+

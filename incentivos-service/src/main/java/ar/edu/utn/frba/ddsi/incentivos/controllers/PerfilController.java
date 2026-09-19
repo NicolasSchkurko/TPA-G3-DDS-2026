@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
@@ -78,6 +79,8 @@ public class PerfilController {
         return ResponseEntity.ok(mision);
     }
 
+    // TODO: PAGINACION
+
     @Operation(
         summary = "Listar insignias obtenidas",
         description = "Retorna la colección de medallas y logros desbloqueados históricamente por el colaborador."
@@ -94,6 +97,8 @@ public class PerfilController {
         return ResponseEntity.ok(insignias);
     }
 
+    // TODO: PAGINACION
+
     // ========== ACTUALIZAR ==========
     @Operation(
         summary = "Actualizar perfil por impacto de donación",
@@ -108,14 +113,32 @@ public class PerfilController {
             @Parameter(description = "UUID del usuario que realizó la donación")
             @PathVariable UUID idUsuario,
             @RequestBody ImpactoDonacionDTO dto) {
-        Boolean actualizado = perfilService.actualizarPerfil(idUsuario, dto);
+        Boolean actualizado = perfilService.actualizarPerfilImpacto(idUsuario, dto);
         if (actualizado == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(actualizado);
     }
 
-    // TODO: faltaria un put general para perfil me parece
+    @Operation(
+        summary = "Actualizar un perfil",
+        description = "Actualiza los datos de un perfil existente."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Perfil actualizado con éxito"),
+        @ApiResponse(responseCode = "404", description = "Perfil no encontrado"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<PerfilDTO> actualizarPerfil(
+        @Parameter(description = "UUID del perfil a actualizar")
+        @PathVariable UUID id,
+        @RequestBody PerfilDTO perfil) {
+        PerfilDTO actualizado = perfilService.actualizarDatosPerfil(id, perfil);
+        return actualizado == null
+               ? ResponseEntity.notFound().build()
+               : ResponseEntity.ok(actualizado);
+    }
 
     // ========== ELIMINAR ==========
     @Operation(
