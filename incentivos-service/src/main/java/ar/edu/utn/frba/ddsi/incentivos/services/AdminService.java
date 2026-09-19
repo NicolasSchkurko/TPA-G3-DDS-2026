@@ -12,8 +12,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,7 +38,24 @@ public class AdminService {
         }
     }
 
-    public List<CategoriaDTO> agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
+    // ========== CATEGORÍAS - GET ==========
+    public List<CategoriaDTO> obtenerCategorias(UUID idAdmin) {
+        verificarPermisos(idAdmin);
+        List<Categoria> categorias = gestorCategoria.obtenerTodas();
+        return categorias.stream()
+                        .map(this::categoriaToDTO)
+                        .toList();
+    }
+
+    public CategoriaDTO obtenerCategoriaPorId(UUID idAdmin, UUID id) {
+        verificarPermisos(idAdmin);
+        Categoria categoria = gestorCategoria.obtenerPorId(id);
+        return categoria != null ? categoriaToDTO(categoria) : null;
+    }
+
+    // ========== CATEGORÍAS - CREATE ==========
+    @Transactional
+    public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
 
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
@@ -50,45 +67,12 @@ public class AdminService {
             misiones
         );
 
-        List<Categoria> categorias = gestorCategoria.crearCategoria(categoria);
-
-        List<CategoriaDTO> categoriasDTO = new ArrayList<>();
-        for(Categoria x : categorias){
-            List<UUID> idMisiones = x.getCategoriaMisiones().stream() // Corregido: getCategoriaMisiones()
-                                     .map(cm -> cm.getMision().getIdMision()).toList();
-
-            CategoriaDTO cat = new CategoriaDTO(
-                x.getNombre(),
-                x.getPosicionSecuencia(),
-                idMisiones
-            );
-            categoriasDTO.add(cat);
-        }
-
-        return categoriasDTO;
+        Categoria categoriaCreada = gestorCategoria.crearCategoria(categoria);
+        return categoriaCreada != null ? categoriaToDTO(categoriaCreada) : null;
     }
 
-    public List<CategoriaDTO> eliminarCategoria(UUID idAdmin, UUID id) {
-        verificarPermisos(idAdmin);
-
-        List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
-
-        List<CategoriaDTO> categoriasDTO = new ArrayList<>();
-        for(Categoria x : categorias){
-            List<UUID> idMisiones = x.getCategoriaMisiones().stream() // Corregido: getCategoriaMisiones()
-                                     .map(cm -> cm.getMision().getIdMision()).toList();
-
-            CategoriaDTO cat = new CategoriaDTO(
-                x.getNombre(),
-                x.getPosicionSecuencia(),
-                idMisiones
-            );
-            categoriasDTO.add(cat);
-        }
-
-        return categoriasDTO;
-    }
-
+    // ========== CATEGORÍAS - UPDATE ==========
+    @Transactional
     public CategoriaDTO actualizarCategoria(UUID idAdmin, UUID id, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
 
@@ -100,14 +84,40 @@ public class AdminService {
             dto.getPosicionSecuencia(),
             misiones
         );
-
         categoria.setIdCategoria(id);
 
         Categoria actualizada = gestorCategoria.actualizarCategoria(categoria);
-
-        return actualizada != null ? this.categoriaToDTO(actualizada) : null;
+        return actualizada != null ? categoriaToDTO(actualizada) : null;
     }
 
+    // ========== CATEGORÍAS - DELETE ==========
+    @Transactional
+    public List<CategoriaDTO> eliminarCategoria(UUID idAdmin, UUID id) {
+        verificarPermisos(idAdmin);
+
+        List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
+        return categorias.stream()
+                        .map(this::categoriaToDTO)
+                        .toList();
+    }
+
+    // ========== MISIONES - GET ==========
+    public List<MisionDTO> obtenerMisiones(UUID idAdmin) {
+        verificarPermisos(idAdmin);
+        List<Mision> misiones = gestorMisiones.obtenerTodas();
+        return misiones.stream()
+                      .map(this::misionToDTO)
+                      .toList();
+    }
+
+    public MisionDTO obtenerMisionPorId(UUID idAdmin, UUID id) {
+        verificarPermisos(idAdmin);
+        Mision mision = gestorMisiones.obtenerPorId(id);
+        return mision != null ? misionToDTO(mision) : null;
+    }
+
+    // ========== MISIONES - CREATE ==========
+    @Transactional
     public MisionDTO crearMision(UUID idAdmin, MisionDTO nuevaMision) {
         verificarPermisos(idAdmin);
 
@@ -116,32 +126,28 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
-        Mision m = gestorMisiones.crearMision(idAdmin,
-                                              nuevaMision.getNombreMision(),
-                                              nuevaMision.getDescripcion(),
-                                              nuevaMision.getInsigniaObjetivo(),
-                                              gestorMisiones.conseguirConstancia(
-                                                  constanciaDTO.getCantidad(),
-                                                  constanciaDTO.getUnidadTiempo()
-                                              ),
-                                              atributo,
-                                              gestorMisiones.conseguirOperacion(
-                                                  operacionDTO.getTipoOperacion(),
-                                                  operacionDTO.getProgresoObjetivo(),
-                                                  operacionDTO.getCantidad(),
-                                                  operacionDTO.getValorEsperado()
-                                              )
+        Mision m = gestorMisiones.crearMision(
+            idAdmin,
+            nuevaMision.getNombreMision(),
+            nuevaMision.getDescripcion(),
+            nuevaMision.getInsigniaObjetivo(),
+            gestorMisiones.conseguirConstancia(
+                constanciaDTO.getCantidad(),
+                constanciaDTO.getUnidadTiempo()
+            ),
+            atributo,
+            gestorMisiones.conseguirOperacion(
+                operacionDTO.getTipoOperacion(),
+                operacionDTO.getProgresoObjetivo(),
+                operacionDTO.getCantidad(),
+                operacionDTO.getValorEsperado()
+            )
         );
         return misionToDTO(m);
     }
 
-    public MisionDTO eliminarMision(UUID idAdmin, UUID idMision) {
-        verificarPermisos(idAdmin);
-
-        Mision mision = gestorMisiones.eliminarMision(idMision);
-        return misionToDTO(mision);
-    }
-
+    // ========== MISIONES - UPDATE ==========
+    @Transactional
     public MisionDTO actualizarMision(UUID idAdmin, UUID idMision, MisionDTO dto) {
         verificarPermisos(idAdmin);
 
@@ -150,42 +156,53 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
-        Mision mision = gestorMisiones.crearMision(idAdmin,
-                                                   dto.getNombreMision(),
-                                                   dto.getDescripcion(),
-                                                   dto.getInsigniaObjetivo(),
-                                                   gestorMisiones.conseguirConstancia(
-                                                       constanciaDTO.getCantidad(),
-                                                       constanciaDTO.getUnidadTiempo()
-                                                   ),
-                                                   atributo,
-                                                   gestorMisiones.conseguirOperacion(
-                                                       operacionDTO.getTipoOperacion(),
-                                                       operacionDTO.getProgresoObjetivo(),
-                                                       operacionDTO.getCantidad(),
-                                                       operacionDTO.getValorEsperado()
-                                                   )
+        Mision mision = gestorMisiones.crearMision(
+            idAdmin,
+            dto.getNombreMision(),
+            dto.getDescripcion(),
+            dto.getInsigniaObjetivo(),
+            gestorMisiones.conseguirConstancia(
+                constanciaDTO.getCantidad(),
+                constanciaDTO.getUnidadTiempo()
+            ),
+            atributo,
+            gestorMisiones.conseguirOperacion(
+                operacionDTO.getTipoOperacion(),
+                operacionDTO.getProgresoObjetivo(),
+                operacionDTO.getCantidad(),
+                operacionDTO.getValorEsperado()
+            )
         );
 
         mision.setIdMision(idMision);
 
         Mision actualizada = gestorMisiones.actualizarMision(mision);
-
-        return actualizada != null ? this.misionToDTO(actualizada) : null;
+        return actualizada != null ? misionToDTO(actualizada) : null;
     }
 
-    public CategoriaDTO categoriaToDTO(Categoria actualizada) {
-        List<UUID> idMisiones = actualizada.getCategoriaMisiones().stream() // Corregido
-                                           .map(cm -> cm.getMision().getIdMision()).toList();
+    // ========== MISIONES - DELETE ==========
+    @Transactional
+    public MisionDTO eliminarMision(UUID idAdmin, UUID idMision) {
+        verificarPermisos(idAdmin);
+
+        Mision mision = gestorMisiones.eliminarMision(idMision);
+        return misionToDTO(mision);
+    }
+
+    // ========== CONVERTIDORES ==========
+    private CategoriaDTO categoriaToDTO(Categoria categoria) {
+        List<UUID> idMisiones = categoria.getCategoriaMisiones().stream()
+                                         .map(cm -> cm.getMision().getIdMision())
+                                         .toList();
 
         return new CategoriaDTO(
-            actualizada.getNombre(),
-            actualizada.getPosicionSecuencia(),
+            categoria.getNombre(),
+            categoria.getPosicionSecuencia(),
             idMisiones
         );
     }
 
-    public MisionDTO misionToDTO(Mision mision) {
+    private MisionDTO misionToDTO(Mision mision) {
         if (mision == null) {
             return null;
         }
@@ -194,9 +211,9 @@ public class AdminService {
         ConstanciaDTO constancia = reglaConstancia == null
                                    ? null
                                    : new ConstanciaDTO(
-            reglaConstancia.getCantidad(),
-            reglaConstancia.getUnidadTiempo().toString()
-        );
+                                       reglaConstancia.getCantidad(),
+                                       reglaConstancia.getUnidadTiempo().toString()
+                                   );
 
         return new MisionDTO(
             mision.getNombreMision(),

@@ -23,6 +23,7 @@ public class GestorMision {
         this.misionFactory = misionFactory;
     }
 
+    // ========== UTILIDADES ==========
     public List<Mision> conseguirMisiones(List<UUID> idMisiones) {
         // JPA maneja esto de forma nativa con una única consulta SQL (WHERE id IN (...))
         return repositorio.findAllById(idMisiones);
@@ -38,6 +39,16 @@ public class GestorMision {
         return misionFactory.crearConstancia(cantidadTiempo, unidadTiempo);
     }
 
+    // ========== GET ==========
+    public List<Mision> obtenerTodas() {
+        return repositorio.findAll();
+    }
+
+    public Mision obtenerPorId(UUID id) {
+        return repositorio.findById(id).orElse(null);
+    }
+
+    // ========== CREATE ==========
     @Transactional
     public Mision crearMision(UUID idAdmin, String nomMision, String descripcion, String nomInsignia,
                               ReglaConstancia constancia, String atributo,
@@ -54,6 +65,46 @@ public class GestorMision {
         return repositorio.save(mision);
     }
 
+    // ========== UPDATE ==========
+    @Transactional
+    public Mision actualizarMision(Mision mision) {
+        if (mision.getIdMision() == null) {
+            return null;
+        }
+
+        Mision misionActual = repositorio.findById(mision.getIdMision()).orElse(null);
+        if (misionActual == null) {
+            return null;
+        }
+
+        // Actualizar nombre de misión
+        if (mision.getNombreMision() != null) {
+            misionActual.setNombreMision(mision.getNombreMision());
+        }
+
+        // Actualizar descripción
+        if (mision.getDescripcion() != null) {
+            misionActual.setDescripcion(mision.getDescripcion());
+        }
+
+        // Actualizar insignia objetivo
+        if (mision.getInsigniaObjetivo() != null) {
+            Insignia insigniaActualizada = new Insignia(
+                mision.getInsigniaObjetivo().getNombre(),
+                mision.getDescripcion() != null ? mision.getDescripcion() : misionActual.getDescripcion()
+            );
+            misionActual.setInsigniaObjetivo(insigniaActualizada);
+        }
+
+        // Actualizar regla de progreso (constancia y operación)
+        if (mision.getReglaDeProgreso() != null) {
+            misionActual.setReglaDeProgreso(mision.getReglaDeProgreso());
+        }
+
+        return repositorio.save(misionActual);
+    }
+
+    // ========== DELETE ==========
     @Transactional
     public Mision eliminarMision(UUID idMision) {
         Mision m = repositorio.findById(idMision).orElse(null);
@@ -61,29 +112,5 @@ public class GestorMision {
             repositorio.delete(m);
         }
         return m;
-    }
-
-    @Transactional
-    public Mision actualizarMision(Mision mision) {
-        if (mision.getIdMision() == null) return null;
-
-        Mision misionActual = repositorio.findById(mision.getIdMision()).orElse(null);
-        if (misionActual == null) return null;
-
-        if (mision.getNombreMision() != null) {
-            misionActual.setNombreMision(mision.getNombreMision());
-            misionActual.getInsigniaObjetivo().setDescripcion(mision.getNombreMision());
-        }
-
-        if (mision.getInsigniaObjetivo() != null) {
-            misionActual.setInsigniaObjetivo(
-                new Insignia(
-                    mision.getInsigniaObjetivo().getNombre(),
-                    misionActual.getNombreMision()
-                )
-            );
-        }
-
-        return repositorio.save(misionActual);
     }
 }
