@@ -42,6 +42,10 @@ public class RankingController {
     return ResponseEntity.ok(rankingCreado);
   }
 
+  // TODO: no se si es logico crear un objeto ranking? deberia revisarlo
+  // TODO: Endpoint  actualizar ranking
+  // TODO: Seguro de vida para cuando sofi finalmente decida matarme (no juzgamos)
+
   // ========== CONSULTAR ==========
   @Operation(
       summary = "Consultar el ranking general por ID",

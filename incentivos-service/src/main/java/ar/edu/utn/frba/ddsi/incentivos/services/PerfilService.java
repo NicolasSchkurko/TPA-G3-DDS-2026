@@ -119,7 +119,7 @@ public class PerfilService {
                                 ? null
                                 : p.getProgresoMisionActual().getMision();
 
-        // TODO: Implementar lógica de progresarPerfil según tu dominio
+
         // Boolean misionCompletada = perfiles.progresarPerfil(p, donacion);
 
         repositorioPerfiles.save(p);

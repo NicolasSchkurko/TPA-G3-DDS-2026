@@ -103,7 +103,7 @@ public class PerfilController {
         @ApiResponse(responseCode = "200", description = "Perfil impactado y actualizado con éxito"),
         @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
     })
-    @PutMapping("/{idUsuario}")
+    @PutMapping("/donacion/{idUsuario}")
     public ResponseEntity<Boolean> actualizarPerfil(
             @Parameter(description = "UUID del usuario que realizó la donación")
             @PathVariable UUID idUsuario,
@@ -114,6 +114,8 @@ public class PerfilController {
         }
         return ResponseEntity.ok(actualizado);
     }
+
+    // TODO: faltaria un put general para perfil me parece
 
     // ========== ELIMINAR ==========
     @Operation(
