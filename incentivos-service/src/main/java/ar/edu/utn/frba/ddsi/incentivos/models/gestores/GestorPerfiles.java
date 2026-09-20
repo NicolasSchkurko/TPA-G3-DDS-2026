@@ -2,8 +2,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

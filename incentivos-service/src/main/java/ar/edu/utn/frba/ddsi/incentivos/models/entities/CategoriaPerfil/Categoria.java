@@ -97,4 +97,20 @@ public class Categoria {
                                      .findFirst()
                                      .orElse(null);
     }
+
+    public void copiar(Categoria origen) {
+        if (origen.getNombre() != null) {
+            this.nombre = origen.getNombre();
+        }
+
+        if (origen.getCategoriaMisiones() != null && !origen.getCategoriaMisiones().isEmpty()) {
+            this.categoriaMisiones.clear();
+            this.categoriaMisiones.addAll(origen.getCategoriaMisiones());
+
+            // Reasignar la referencia bidireccional si es necesario
+            for (CategoriaMision cm : this.categoriaMisiones) {
+                cm.setCategoria(this);
+            }
+        }
+    }
 }

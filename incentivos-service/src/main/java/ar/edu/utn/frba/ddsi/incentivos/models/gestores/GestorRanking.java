@@ -3,8 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFact
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioMisiones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

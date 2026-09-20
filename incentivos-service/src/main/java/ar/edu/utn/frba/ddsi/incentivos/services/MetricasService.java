@@ -4,7 +4,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ActividadDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MetricaDonacionesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RegistroMensualDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;

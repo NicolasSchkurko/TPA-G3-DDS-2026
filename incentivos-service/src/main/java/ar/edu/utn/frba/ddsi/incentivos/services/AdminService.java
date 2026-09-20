@@ -2,34 +2,70 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class AdminService {
-    private final GestorCategoria gestorCategoria;
+    private final RepositorioCategorias repositorioCategorias;
+    private final RepositorioMisiones repositorioMisiones;
+    private final GestorSecuenciaCategoria gestorSecuenciaCategoria;
     private final GestorMision gestorMisiones;
     private final DonacionClient donacionClient;
+    private final MisionFactory misionFactory;
 
-    public AdminService(GestorCategoria gestorCategoria,
+    public AdminService(RepositorioCategorias repositorioCategorias,
+                        RepositorioMisiones repositorioMisiones,
+                        GestorSecuenciaCategoria gestorSecuenciaCategoria,
                         GestorMision gestorMision,
-                        DonacionClient donacionClient) {
-        this.gestorCategoria = gestorCategoria;
+                        DonacionClient donacionClient,
+                        MisionFactory misionFactory) {
+        this.repositorioCategorias = repositorioCategorias;
+        this.repositorioMisiones = repositorioMisiones;
+        this.gestorSecuenciaCategoria = gestorSecuenciaCategoria;
         this.gestorMisiones = gestorMision;
         this.donacionClient = donacionClient;
-        gestorCategoria.inicializarCategoriasBase();
+        this.misionFactory = misionFactory;
+
+        inicializarCategoriasBase();
+    }
+
+    @Transactional
+    protected void inicializarCategoriasBase() {
+        if (repositorioCategorias.count() == 0) {
+            Mision mision1 = misionFactory.crearMision(null, "Primera donación", "Realiza tu primera donación para empezar a colaborar.", "Primer paso", null, AtributoImpacto.ESTADO, misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA"));
+            Mision mision2 = misionFactory.crearMision(null, "Segunda donación", "Realiza tu segunda donación.", "Sigo ayudando", null, AtributoImpacto.ESTADO, misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA"));
+            Mision mision3 = misionFactory.crearMision(null, "Supera tus límites", "Dona más de 10 bienes", "Rompiendo los límites", null, AtributoImpacto.CANTIDAD_BIENES, misionFactory.crearOperacion("SUPERA_CANTIDAD", 1, 10, "ENTREGADA"));
+
+            repositorioMisiones.saveAll(List.of(mision1, mision2, mision3));
+
+            Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
+            Categoria sostenedor = new Categoria("Sostenedor", null, 2, new ArrayList<>());
+            Categoria transformador = new Categoria("Transformador", null, 3, new ArrayList<>());
+
+            colaborador.agregarMision(mision1);
+            sostenedor.agregarMision(mision2);
+            sostenedor.agregarMision(mision3);
+
+            repositorioCategorias.saveAll(List.of(colaborador, sostenedor, transformador));
+        }
     }
 
     private void verificarPermisos(UUID idAdmin) {
@@ -42,17 +78,16 @@ public class AdminService {
     public List<CategoriaDTO> obtenerCategorias(UUID idAdmin) {
         verificarPermisos(idAdmin);
 
-        //TODO: esto deberia preguntarselo al repo directo o a una interface del repo (opcional, mejor)
-        List<Categoria> categorias = gestorCategoria.obtenerTodas();
+        List<Categoria> categorias = repositorioCategorias.obtenerTodas();
         return categorias.stream()
-                        .map(this::categoriaToDTO)
-                        .toList();
+                         .map(this::categoriaToDTO)
+                         .toList();
     }
 
     public CategoriaDTO obtenerCategoriaPorId(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
-        //TODO: esto deberia preguntarselo al repo directo o a una interface del repo (opcional, mejor)
-        Categoria categoria = gestorCategoria.obtenerPorId(id);
+
+        Categoria categoria = repositorioCategorias.obtenerPorId(id);
         return categoria != null ? categoriaToDTO(categoria) : null;
     }
 
@@ -61,11 +96,6 @@ public class AdminService {
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
 
-        //TODO: esto esta raro. Quien deberia tener la resp de buscar las misiones desde el dto
-        // Quiza haria una funcion private  del service que busque misiones a partir de uuid
-        // mas que nada pq no creo que gestor misiones debaconocer un dto
-        // no dije nada es una lista de uuid entonces que le pegue al repo
-        // Maten a los gestores, domingo rojo
         List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
         Categoria categoria = new Categoria(
@@ -75,9 +105,9 @@ public class AdminService {
             misiones
         );
 
+        gestorSecuenciaCategoria.desplazarParaCrear(categoria.getPosicionSecuencia());
+        Categoria categoriaCreada = repositorioCategorias.save(categoria);
 
-        // No hace falta aclarar nada aca, me ahorro ponerlo
-        Categoria categoriaCreada = gestorCategoria.crearCategoria(categoria);
         return categoriaCreada != null ? categoriaToDTO(categoriaCreada) : null;
     }
 
@@ -85,18 +115,29 @@ public class AdminService {
     @Transactional
     public CategoriaDTO actualizarCategoria(UUID idAdmin, UUID id, CategoriaDTO dto) {
         verificarPermisos(idAdmin);
-        // TODO idem arriba
-        List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
 
-        Categoria categoria = new Categoria(
+        List<Mision> misiones = gestorMisiones.conseguirMisiones(dto.getMisiones());
+        Categoria categoriaModificada = new Categoria(
             dto.getNombre(),
             idAdmin,
             dto.getPosicionSecuencia(),
             misiones
         );
-        categoria.setIdCategoria(id);
 
-        Categoria actualizada = gestorCategoria.actualizarCategoria(categoria);
+        Categoria actualizada = repositorioCategorias.findById(id).map(categoriaActual -> {
+            if (categoriaModificada.getPosicionSecuencia() != null) {
+                gestorSecuenciaCategoria.desplazarParaActualizar(
+                    categoriaActual.getPosicionSecuencia(),
+                    categoriaModificada.getPosicionSecuencia(),
+                    repositorioCategorias.count()
+                );
+                categoriaActual.setPosicionSecuencia(categoriaModificada.getPosicionSecuencia());
+            }
+
+            categoriaActual.copiar(categoriaModificada);
+            return repositorioCategorias.save(categoriaActual);
+        }).orElse(null);
+
         return actualizada != null ? categoriaToDTO(actualizada) : null;
     }
 
@@ -104,28 +145,34 @@ public class AdminService {
     @Transactional
     public List<CategoriaDTO> eliminarCategoria(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
-        // TODO: Ya creo que a nadie le sorprende
-        List<Categoria> categorias = gestorCategoria.eliminarCategoria(id);
-        return categorias.stream()
-                        .map(this::categoriaToDTO)
-                        .toList();
+
+        List<Categoria> categoriasResultantes = repositorioCategorias.findById(id).map(cat -> {
+            Integer posicionLiberada = cat.getPosicionSecuencia();
+            repositorioCategorias.delete(cat);
+
+            gestorSecuenciaCategoria.desplazarParaEliminar(posicionLiberada);
+
+            return repositorioCategorias.obtenerTodas();
+        }).orElse(List.of());
+
+        return categoriasResultantes.stream()
+                                    .map(this::categoriaToDTO)
+                                    .toList();
     }
 
     // ========== MISIONES - GET ==========
     public List<MisionDTO> obtenerMisiones(UUID idAdmin) {
         verificarPermisos(idAdmin);
 
-        // TODO: ITS REPO TIME
         List<Mision> misiones = gestorMisiones.obtenerTodas();
         return misiones.stream()
-                      .map(this::misionToDTO)
-                      .toList();
+                       .map(this::misionToDTO)
+                       .toList();
     }
 
     public MisionDTO obtenerMisionPorId(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
 
-        // TODO: miren al final del .java
         Mision mision = gestorMisiones.obtenerPorId(id);
         return mision != null ? misionToDTO(mision) : null;
     }
@@ -140,8 +187,6 @@ public class AdminService {
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
 
-
-        // TODO: Si te digo te sorprendo dsp lo voy arreglando pero bue dejo constancia sino cuelgo
         Mision m = gestorMisiones.crearMision(
             idAdmin,
             nuevaMision.getNombreMision(),
@@ -171,7 +216,7 @@ public class AdminService {
         ConstanciaDTO constanciaDTO = reglaDTO.getConstancia();
         OperacionDTO operacionDTO = reglaDTO.getOperacion();
         String atributo = reglaDTO.getAtributo();
-        // TODO: Skibidi dub dub dub yes yes
+
         Mision mision = gestorMisiones.crearMision(
             idAdmin,
             dto.getNombreMision(),
@@ -200,7 +245,6 @@ public class AdminService {
     @Transactional
     public MisionDTO eliminarMision(UUID idAdmin, UUID idMision) {
         verificarPermisos(idAdmin);
-        // TODO: Genio!
         Mision mision = gestorMisiones.eliminarMision(idMision);
         return misionToDTO(mision);
     }
@@ -227,9 +271,9 @@ public class AdminService {
         ConstanciaDTO constancia = reglaConstancia == null
                                    ? null
                                    : new ConstanciaDTO(
-                                       reglaConstancia.getCantidad(),
-                                       reglaConstancia.getUnidadTiempo().toString()
-                                   );
+            reglaConstancia.getCantidad(),
+            reglaConstancia.getUnidadTiempo().toString()
+        );
 
         return new MisionDTO(
             mision.getNombreMision(),
@@ -274,53 +318,3 @@ public class AdminService {
         );
     }
 }
-
-
-/* efectivamente repo ya estoy sucumbiendo a la locura abstenerse a las consecuencias
-                                              =*#%###*#
-                                            #.         **------+#*#
-                                           # # ###      *+----------+*     +#*
-                                          # #######      #---------*           #
-                                         #  #####-      %----------#            #
-                                        :+             #*---------+*      ####   #
-                                        ##           :#------------#      ###:   #
-                                       #--#       ##*---------------#     :####  #
-                                      #-------+=---------------------+#          #
-                                     =+-------*#*+==============+##*----#+       #
-                                     #----##==========================*#---##*=##
-                                     *-+#=================================#-----*
-                                    +=#=====================================#=--#
-                                    ##========================================#-#
-                                    #==========================================#*
-                                    #==========================================*#
-                                     #=========================================+*
-                                    :+#*++=====================================#
-                                 *--------------+**####+======================#
-                                 #-------------------------+#**#+===========*#
-                                 #---------------------------------=###+=+#
-                                #-----------------------------------------##*
-                                #---------------------------------------------*#
-                            ##+----=+*######*+---------------------------------#
-                       *#*--#---------------------+###*+----------------------+
-                   #*+-----++-------------------------------+##*--------------#
-               ##----------#---------------------------------------=###-------+
-             #-------------#---------------------------------------------=*#+#
-               .##*-------*---------------------------------------------------*#
-                      ###**----------------------------------------------------*:
-                         #*=======+*#######------------------------------------#-*+
-                           ##+====#*#####+==-===**###*-------------------------*---*#
-                               ####--------**#============###*----------------#-------#
-                                  #-----------#==================###+---------*---------#
-                                  #----------####*=====#------*##======*##---#------------#
-                                  #----------#        *#----------=#=======+####***+=------#
-                                  #---------#          #----------+##########
-                                   *-------#           #----------#
-                                   #------#            #---------#
-                                   #-----#             #--------#
-                                   #----#              :=------*
-                                   *=--#                *-----*
-                                    #*                  *----#
-                                                        #---#
-                                                        +*+#
-*/
-

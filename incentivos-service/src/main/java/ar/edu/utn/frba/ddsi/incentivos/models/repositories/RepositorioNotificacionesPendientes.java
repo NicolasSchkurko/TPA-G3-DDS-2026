@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 //a los usuarios; en caso de falla de nuevo, se eliminan y el repo queda vacio
 //para recibir nuevas notificaciones pendientes
 //quiza el usuario no quiera recibir mas notificaciones(?
+// TODO: Estaria bueno revisarlo. quiza podemos agregar un bool a medio de contacto
+
 public class RepositorioNotificacionesPendientes {
     private final List<PerfilNotificacionDTO> pendientes;
 

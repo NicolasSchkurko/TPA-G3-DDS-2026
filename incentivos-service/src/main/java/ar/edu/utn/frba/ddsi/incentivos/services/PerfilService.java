@@ -15,9 +15,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioCategorias;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
+package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import org.springframework.data.jpa.repository.JpaRepository;
