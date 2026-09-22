@@ -31,7 +31,7 @@ public class BienResumenDTO {
     return toDomain(subcatTransitoria);
   }
 
-  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía GestorNecesidades) en vez de
+  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía RepositorioSubcategoriasDeBienes) en vez de
   // construir CategoriaBien/SubcategoriaBien "al vuelo": eso rompía merge() por no estar
   // cascadeadas (son catálogo compartido, igual que Necesidad.subcategoria). Usar esta variante
   // siempre que el Bien resultante se vaya a persistir vía JPA.

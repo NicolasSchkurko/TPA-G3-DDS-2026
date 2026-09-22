@@ -38,7 +38,7 @@ public class Donante {
     // ManyToOne (no OneToOne): la Persona vive en su propio repositorio (RepositorioPersonas),
     // igual que Administrador.humano / EntidadBeneficiaria.personaJuridica. Sin cascade REMOVE:
     // dar de baja el donante no debe borrar la Persona asociada. Se registra explícitamente vía
-    // GestorPersonas antes de guardar el Donante (ver DonanteService).
+    // RepositorioPersonas antes de guardar el Donante (ver DonanteService).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "persona_id")
     private Persona persona;

@@ -2,8 +2,8 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorPersonas;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,11 +14,11 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private final RepositorioAdministradores repositorioAdministradores;
-    private final GestorPersonas gestorPersonas;
+    private final RepositorioPersonas repositorioPersonas;
 
-    public AdminService(RepositorioAdministradores repositorioAdministradores, GestorPersonas gestorPersonas) {
+    public AdminService(RepositorioAdministradores repositorioAdministradores, RepositorioPersonas repositorioPersonas) {
         this.repositorioAdministradores = repositorioAdministradores;
-        this.gestorPersonas = gestorPersonas;
+        this.repositorioPersonas = repositorioPersonas;
     }
 
     public List<AdminDTO> getAdmins() {
@@ -39,7 +39,7 @@ public class AdminService {
         Administrador nuevoAdmin = dto.toDomain();
         // La Humana vive en su propio repositorio (RepositorioPersonas), igual que Juridica
         // para EntidadBeneficiaria: se registra explícitamente antes de guardar el Administrador.
-        if (nuevoAdmin.getHumano() != null) gestorPersonas.registrarPersona(nuevoAdmin.getHumano());
+        if (nuevoAdmin.getHumano() != null) repositorioPersonas.registrarPersona(nuevoAdmin.getHumano());
         try {
             repositorioAdministradores.guardar(nuevoAdmin);
             System.out.println("Administrador registrado con éxito con ID: " + nuevoAdmin.getId());
@@ -55,7 +55,7 @@ public class AdminService {
 
         Administrador datosNuevos = dto.toDomain();
         if (existente.getHumano() != null && datosNuevos.getHumano() != null) {
-            gestorPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
+            repositorioPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
         }
         existente.setHumano(datosNuevos.getHumano());
         existente.setMedioDeContacto(datosNuevos.getContacto());

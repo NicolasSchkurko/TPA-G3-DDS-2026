@@ -14,7 +14,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.For
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,12 +23,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class DonacionService {
-  private final GestorDonantes gestorDonantes;
-  private final GestorDonaciones gestorDonaciones;
   private final GestorAsignaciones gestorAsignaciones;
   private final GestorFormulario gestorFormulario;
   private final GestorMatchmaking gestorMatchmaking;
-  private final GestorNecesidades gestorNecesidades;
+  private final RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes;
   private final RepositorioDonaciones repositorioDonaciones;
   private final RepositorioDonantes repositorioDonantes;
   private final RepositorioFormularios repositorioFormularios;
@@ -36,25 +34,23 @@ public class DonacionService {
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final RepositorioBienes repositorioBienes;
 
-  public DonacionService(GestorDonantes gestorDonantes, GestorDonaciones gestorDonaciones,
-                         GestorAsignaciones gestorAsignaciones,
+  public DonacionService(GestorAsignaciones gestorAsignaciones,
                          GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
-                         GestorNecesidades gestorNecesidades,
+                         RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes,
                          RepositorioDonaciones repositorioDonaciones,
-                         RepositorioDonantes repositorioDonantes, RepositorioFormularios repositorioFormularios,
+                         RepositorioDonantes repositorioDonantes,
+                         RepositorioFormularios repositorioFormularios,
                          RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
                          RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
                          RepositorioBienes repositorioBienes) {
-    this.gestorDonantes = gestorDonantes;
-    this.gestorDonaciones = gestorDonaciones;
-      this.gestorAsignaciones = gestorAsignaciones;
-      this.gestorFormulario = gestorFormulario;
+    this.gestorAsignaciones = gestorAsignaciones;
+    this.gestorFormulario = gestorFormulario;
     this.gestorMatchmaking = gestorMatchmaking;
-    this.gestorNecesidades = gestorNecesidades;
+    this.repositorioSubcategoriasDeBienes = repositorioSubcategoriasDeBienes;
     this.repositorioDonaciones = repositorioDonaciones;
     this.repositorioDonantes = repositorioDonantes;
-      this.repositorioFormularios = repositorioFormularios;
-      this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
+    this.repositorioFormularios = repositorioFormularios;
+    this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.repositorioBienes = repositorioBienes;
   }
@@ -80,13 +76,13 @@ public class DonacionService {
     List<Donacion> donacionesProcesadas = gestorFormulario.procesarFormulario(formularioGenerado);
 
     repositorioDonaciones.guardarDonaciones(donacionesProcesadas);
-    gestorDonantes.agregarFormularioADonante(donante.getId(), formularioGenerado);
+    repositorioDonantes.agregarFormularioADonante(donante.getId(), formularioGenerado);
 
     return donacionesProcesadas.stream().map(DonacionDTO::from).collect(Collectors.toList());
   }
 
   public void ejecutarMatchmakingADemanda() {
-    AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorDonaciones,repositorioDeResultadosMatchmaking);
+    AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorAsignaciones,repositorioDeResultadosMatchmaking);
     List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();
     List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas();
     asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
@@ -117,11 +113,11 @@ public class DonacionService {
   }
 
   public DonacionDTO cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
-    return DonacionDTO.from(gestorDonaciones.cambiarEstado(id, nuevoEstado, justificacion));
+    return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, nuevoEstado, justificacion));
   }
 
   public DonacionDTO marcarComoVencida(UUID id) {
-    return DonacionDTO.from(gestorDonaciones.cambiarEstado(id, "VENCIDA", "Registrado como vencido por la administración."));
+    return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, "VENCIDA", "Registrado como vencido por la administración."));
   }
 
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
@@ -134,13 +130,13 @@ public class DonacionService {
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación"));
     gestorAsignaciones.asignarPropuesta(donacion, propuestaAsignacion);
     eliminarResultadoMatchmaking(donacion.getId());
-    gestorDonaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+    gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
   }
 
   // Resuelve (o crea) la SubcategoriaBien del catálogo compartido ANTES de construir el Bien,
   // mismo patrón que usamos para Necesidad, para no romper merge() ni duplicar el catálogo.
   private Bien resolverBien(BienResumenDTO dto) {
-    SubcategoriaBien subcategoria = gestorNecesidades.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
+    SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
     return dto.toDomain(subcategoria);
   }
 

@@ -1,4 +1,5 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+package ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.DonacionJpaRepository;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
@@ -28,10 +29,6 @@ public class RepositorioDonaciones {
 
     public Optional<Donacion> obtenerPorId(UUID id) {
         return jpaRepository.findById(id);
-    }
-
-    public List<Donacion> buscarDonacionesEnDeposito() {
-        return jpaRepository.findByEstado(Estado.EN_DEPOSITO);
     }
 
     public List<Donacion> buscarDonacionesPendientesDeAsignar(){

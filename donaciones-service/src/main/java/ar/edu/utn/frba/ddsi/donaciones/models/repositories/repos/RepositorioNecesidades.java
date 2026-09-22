@@ -1,4 +1,5 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+package ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.NecesidadJpaRepository;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
@@ -17,9 +18,11 @@ import org.springframework.stereotype.Repository;
 public class RepositorioNecesidades {
 
   private final NecesidadJpaRepository jpaRepository;
+  private final RepositorioDonaciones repositorioDonaciones;
 
-  public RepositorioNecesidades(NecesidadJpaRepository jpaRepository) {
+  public RepositorioNecesidades(NecesidadJpaRepository jpaRepository, RepositorioDonaciones repositorioDonaciones) {
     this.jpaRepository = jpaRepository;
+    this.repositorioDonaciones = repositorioDonaciones;
   }
 
   public void guardar(Necesidad necesidad) {
@@ -47,9 +50,10 @@ public class RepositorioNecesidades {
     Necesidad necesidad = buscarPorId(necesidadId)
             .orElseThrow(() -> new IllegalArgumentException("No se encontró la Necesidad con ID: " + necesidadId));
 
-    // Nota: Donacion todavía no es una entidad JPA (Necesidad.donaciones es @Transient),
-    // así que esto no persiste en la base todavía. Queda pendiente para cuando se persista ese dominio.
+    // El dueño de la relación es Donacion.necesidad (columna necesidad_id), así que el cambio
+    // se persiste guardando la Donacion, no la Necesidad.
     necesidad.registrarDonacionAsignada(donacion);
+    repositorioDonaciones.guardar(donacion);
   }
 
   public void actualizar(UUID idOriginal, Necesidad necesidadActualizado) {
@@ -62,5 +66,29 @@ public class RepositorioNecesidades {
 
   public void eliminarPorId(UUID id) {
     jpaRepository.deleteById(id);
+  }
+
+  // Antes vivía en GestorNecesidades: es manejo de dominio de la propia Necesidad,
+  // se movió acá para no mantener un gestor que solo delegaba en el repositorio.
+  public Necesidad modificarNecesidad(UUID idOriginal, Necesidad datosNuevos) {
+    Necesidad existente = buscarPorId(idOriginal)
+            .orElseThrow(() -> new IllegalArgumentException("No se encontró la entidad con ID: " + idOriginal));
+
+    existente.setCantidadObjetivo(datosNuevos.getCantidadObjetivo());
+    existente.setDescripcion(datosNuevos.getDescripcion());
+    existente.setSubcategoria(datosNuevos.getSubcategoria());
+
+    if (datosNuevos instanceof NecesidadRecurrente) {
+      ((NecesidadRecurrente) existente).setPlazoEnDias(((NecesidadRecurrente) datosNuevos).getPlazoEnDias());
+    }
+
+    try {
+      actualizar(idOriginal, existente);
+      System.out.println("Necesidad actualizada con éxito.");
+    } catch (IllegalArgumentException e) {
+      System.err.println("Error al modificar necesidad: " + e.getMessage());
+    }
+
+    return existente;
   }
 }

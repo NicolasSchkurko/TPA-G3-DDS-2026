@@ -1,12 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,12 +14,9 @@ import java.util.List;
 
 public class DonacionFacade {
     private SegmentadorDonaciones segmentador;
-    private AsignadorDonaciones asignador;
 
-    public DonacionFacade(SegmentadorDonaciones segmentador,
-                          AsignadorDonaciones asignador){
+    public DonacionFacade(SegmentadorDonaciones segmentador){
         this.segmentador = segmentador;
-        this.asignador = asignador;
     }
 
     public List<Donacion> crearDonaciones(Formulario formulario){
@@ -34,10 +28,4 @@ public class DonacionFacade {
         }
         return donaciones;
     }
-
-    public void ejecutarAsignador(List<Donacion> donacionesNoAsignadas, List<EntidadBeneficiaria> entidades){
-        asignador.ejecutarMatchmakingBatch(donacionesNoAsignadas, entidades);
-    }
-
-
 }

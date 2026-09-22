@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
+import ar.edu.utn.frba.ddsi.logisticas.broker.BrokerLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
@@ -19,9 +20,11 @@ import java.util.UUID;
 public class EntregaController {
 
     private final EntregaService entregaService;
+    private final BrokerLogistica brokerLogistica;
 
-    public EntregaController(EntregaService entregaService) {
+    public EntregaController(EntregaService entregaService, BrokerLogistica brokerLogistica) {
         this.entregaService = entregaService;
+        this.brokerLogistica = brokerLogistica;
     }
 
     // --- CRUD ---
@@ -60,10 +63,12 @@ public class EntregaController {
             @ApiResponse(responseCode = "201", description = "Ítems creados y registrados en depósito.")
     })
     @PostMapping
-    public ResponseEntity<String> crearItems(@RequestBody PeticionEntregaDTO request) {
+    public ResponseEntity<String> crearItems(
+            @RequestBody PeticionEntregaDTO request,
+            @RequestHeader(value = "X-Proveedor-Logistica", required = false, defaultValue = "PROPIO") String proveedor) {
         try {
-            entregaService.procesarPeticion(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Ítems de entrega agregados al depósito correctamente.");
+            brokerLogistica.redirigirPeticion(request, proveedor);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Petición procesada exitosamente mediante el proveedor: " + proveedor);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al procesar la petición: " + e.getMessage());
         }

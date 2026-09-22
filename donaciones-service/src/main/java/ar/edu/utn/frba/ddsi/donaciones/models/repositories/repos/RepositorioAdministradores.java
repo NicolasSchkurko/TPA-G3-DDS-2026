@@ -1,4 +1,5 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+package ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.AdministradorJpaRepository;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 

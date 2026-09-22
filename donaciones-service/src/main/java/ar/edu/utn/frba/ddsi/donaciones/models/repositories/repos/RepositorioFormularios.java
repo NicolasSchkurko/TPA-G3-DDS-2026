@@ -1,4 +1,5 @@
-package ar.edu.utn.frba.ddsi.donaciones.models.repositories;
+package ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.FormularioJpaRepository;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import org.springframework.stereotype.Repository;
