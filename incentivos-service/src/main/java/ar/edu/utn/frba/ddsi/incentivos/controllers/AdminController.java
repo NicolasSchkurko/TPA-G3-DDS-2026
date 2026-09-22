@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/admin")
 @Tag(name = "Administración", description = "Endpoints para administradores - gestión de categorías y misiones del sistema gamificado.")
 public class AdminController {
     private final AdminService service;

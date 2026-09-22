@@ -14,5 +14,7 @@ public interface RepositorioRankings extends JpaRepository<RankingMensual, UUID>
     // Spring Data crea automáticamente esta consulta por nosotros
     Optional<RankingMensual> findByPeriodo(YearMonth periodo);
 
+    Optional<RankingMensual> findFirstByOrderByPeriodoDesc();
+
     // Todos los demás métodos (save, findById, findAll) ya vienen heredados de JpaRepository
 }

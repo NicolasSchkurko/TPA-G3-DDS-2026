@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.CrearRankingDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.RankingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/rankings")
+@RequestMapping("/rankings")
 public class RankingController {
   private final RankingService service;
 
@@ -47,6 +48,22 @@ public class RankingController {
   // TODO: Seguro de vida para cuando sofi finalmente decida matarme (no juzgamos)
 
   // ========== CONSULTAR ==========
+  @Operation(
+          summary = "Consultar el puesto ranking por ID",
+          description = "Obtiene la posicion en el ranking actual para un perfil especifico"
+  )
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "200", description = "puesto recuperado con éxito"),
+          @ApiResponse(responseCode = "404", description = "perfil no encontrado")
+  })
+  @GetMapping("/{id}/puestoRanking")
+  public ResponseEntity<RankingDTO> obtenerPuestoRankingActual(
+          @Parameter(description = "UUID del puesto perfil solicitado", example = "123e4567-e89b-12d3-a456-426614174000")
+          @PathVariable UUID id) {
+    RankingDTO puesto = service.obtenerPuestoRankingActual(id);
+    return ResponseEntity.ok(puesto);
+  }
+
   @Operation(
       summary = "Consultar el ranking general por ID",
       description = "Obtiene la lista de puntajes y posiciones de todos los colaboradores para un ranking específico."
@@ -80,12 +97,12 @@ public class RankingController {
   }
 
   @Operation(
-      summary = "Obtener ranking del mes actual",
-      description = "Retorna el ranking correspondiente al mes en curso."
+      summary = "Obtener el último ranking publicado",
+      description = "Retorna el snapshot de ranking más reciente, sin depender del mes calendario actual."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Ranking actual recuperado con éxito"),
-      @ApiResponse(responseCode = "404", description = "No existe ranking para el mes actual")
+      @ApiResponse(responseCode = "404", description = "No existe ningún ranking publicado")
   })
   @GetMapping("/actual")
   public ResponseEntity<RankingMesDTO> obtenerRankingActual() {

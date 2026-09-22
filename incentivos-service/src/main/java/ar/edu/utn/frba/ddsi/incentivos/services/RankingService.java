@@ -26,14 +26,22 @@ public class RankingService {
     this.gestorRanking = gestorRanking;
   }
 
+  public RankingDTO obtenerPuestoRankingActual(UUID idUsuario){
+    RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
+            .orElseThrow(InexistenteException::new);
+
+    Ranking puesto = rank.getPosiciones().stream()
+            .filter(ranking -> ranking.getIdUsuario().equals(idUsuario))
+            .findFirst().orElse(null);
+
+    return puesto != null ? this.convertirRankingADTO(puesto) : null;
+  }
+
   public RankingMesDTO obtenerRanking(UUID idRanking) {
     RankingMensual rank = repoRankings.findById(idRanking)
                                       .orElseThrow(InexistenteException::new);
 
-    return new RankingMesDTO(
-        rank.getPosiciones().stream()
-            .map(this::convertirRankingADTO).toList(),
-        rank.getPeriodo());
+    return convertirRankingMesADTO(rank);
   }
 
   public RankingMesDTO obtenerTop3Ranking(UUID idRanking) {
@@ -41,6 +49,7 @@ public class RankingService {
                                       .orElseThrow(InexistenteException::new);
 
     return new RankingMesDTO(
+        rank.getIdRanking(),
         rank.getPosiciones().stream()
             .limit(3)
             .map(this::convertirRankingADTO).toList(),
@@ -55,6 +64,19 @@ public class RankingService {
     );
   }
 
+  //para el rankingScheduler
+  public void crearRankingMensual(){
+    YearMonth periodo = YearMonth.now().minusMonths(1);
+    if (repoRankings.findByPeriodo(periodo).isPresent()) {
+      throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
+    }
+
+    RankingMensual rankingCreado = gestorRanking.generarYPersistirRankingMensual(periodo);
+
+    repoRankings.save(rankingCreado);
+  }
+
+  //para pruebas de crear ranking
   @Transactional
   public RankingMesDTO crearRanking(YearMonth periodo) {
     if (repoRankings.findByPeriodo(periodo).isPresent()) {
@@ -63,11 +85,9 @@ public class RankingService {
 
     RankingMensual rankingCreado = gestorRanking.generarYPersistirRankingMensual(periodo);
 
-    return new RankingMesDTO(
-        rankingCreado.getPosiciones().stream()
-                     .map(this::convertirRankingADTO).toList(),
-        rankingCreado.getPeriodo()
-    );
+    repoRankings.save(rankingCreado);
+
+    return convertirRankingMesADTO(rankingCreado);
   }
 
   @Transactional
@@ -80,24 +100,27 @@ public class RankingService {
   }
 
   public RankingMesDTO obtenerRankingActual() {
-    YearMonth mesActual = YearMonth.now();
-    RankingMensual rank = repoRankings.findByPeriodo(mesActual)
+    RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
                                       .orElseThrow(InexistenteException::new);
 
-    return new RankingMesDTO(
-        rank.getPosiciones().stream()
-            .map(this::convertirRankingADTO).toList(),
-        rank.getPeriodo());
+    return convertirRankingMesADTO(rank);
   }
 
   public List<RankingMesDTO> obtenerHistorialRankings() {
     List<RankingMensual> rankings = repoRankings.findAll();
 
     return rankings.stream()
-        .map(rank -> new RankingMesDTO(
-            rank.getPosiciones().stream()
-                .map(this::convertirRankingADTO).toList(),
-            rank.getPeriodo()))
+        .map(this::convertirRankingMesADTO)
         .collect(Collectors.toList());
+  }
+
+  private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {
+    return new RankingMesDTO(
+        ranking.getIdRanking(),
+        ranking.getPosiciones().stream()
+            .map(this::convertirRankingADTO)
+            .toList(),
+        ranking.getPeriodo()
+    );
   }
 }

@@ -4,7 +4,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +14,9 @@ import java.util.List;
 public class GestorRanking {
 
     private final RepositorioPerfiles repositorioPerfiles;
-    private final RepositorioRankings repositorioRankings;
 
-    public GestorRanking(RepositorioPerfiles repositorioPerfiles, RepositorioRankings repositorioRankings) {
+    public GestorRanking(RepositorioPerfiles repositorioPerfiles) {
         this.repositorioPerfiles = repositorioPerfiles;
-        this.repositorioRankings = repositorioRankings;
     }
 
     @Transactional
@@ -60,6 +57,6 @@ public class GestorRanking {
         }
 
 
-        return repositorioRankings.save(rankingDelMes);
+        return rankingDelMes;
     }
 }

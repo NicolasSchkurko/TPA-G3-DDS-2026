@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
@@ -27,15 +28,32 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PerfilService {
     private final RepositorioPerfiles repositorioPerfiles;
+    private final GestorPerfiles perfiles;
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioDonaciones repositorioDonaciones;
 
     public PerfilService(RepositorioPerfiles repositorioPerfiles,
+                         GestorPerfiles perfiles,
                          RepositorioCategorias repositorioCategorias,
                          RepositorioDonaciones repositorioDonaciones) {
         this.repositorioPerfiles = repositorioPerfiles;
+        this.perfiles = perfiles;
         this.repositorioCategorias = repositorioCategorias;
         this.repositorioDonaciones = repositorioDonaciones;
+    }
+
+    //para misionesScheduler
+    public void evaluarConstanciaPerfiles(){
+        List<Perfil> perfilesConMision = repositorioPerfiles.findAll().stream()
+                .filter(perfil -> perfil.getProgresoMisionActual() != null)
+                .filter(perfil -> perfil.getProgresoMisionActual().getMision() != null)
+                .filter(perfil -> perfil.getProgresoMisionActual().getMision()
+                        .getReglaDeProgreso().getConstancia() != null)
+                .toList();
+
+        perfilesConMision = perfiles.evaluarProgresosConstantes(perfilesConMision);
+
+        repositorioPerfiles.saveAll(perfilesConMision);
     }
 
     // ========== CREAR ==========
@@ -63,8 +81,7 @@ public class PerfilService {
             nuevo.getNombreUsuario(),
             nuevo.getCategoriaActual() != null ? nuevo.getCategoriaActual().getNombre() : null,
             nuevo.getInsigniasObtenidas() != null ? nuevo.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList() : List.of(),
-            nuevo.getProgresoMisionActual() != null ? nuevo.getProgresoMisionActual().getMision().getNombreMision() : null,
-            null
+            nuevo.getProgresoMisionActual() != null ? nuevo.getProgresoMisionActual().getMision().getNombreMision() : null
         );
     }
 
@@ -79,8 +96,8 @@ public class PerfilService {
             p.getNombreUsuario(),
             p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
             p.getInsigniasObtenidas() == null ? List.of() : p.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            p.getProgresoMisionActual() == null ? null : p.getProgresoMisionActual().getMision().getNombreMision(),
-            null);
+            p.getProgresoMisionActual() == null ? null : p.getProgresoMisionActual().getMision().getNombreMision()
+        );
     }
 
     public List<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario) {
@@ -113,18 +130,14 @@ public class PerfilService {
         Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
                                       .orElseThrow(InexistenteException::new);
 
-        Categoria categoriaAnterior = p.getCategoriaActual();
-        Mision misionAnterior = p.getProgresoMisionActual() == null
-                                ? null
-                                : p.getProgresoMisionActual().getMision();
-
-
-        // Boolean misionCompletada = perfiles.progresarPerfil(p, donacion);
+        Boolean perfilActualizado = perfiles.progresarPerfil(p, donacion);
 
         repositorioPerfiles.save(p);
         repositorioDonaciones.save(donacion);
 
-        return true;
+        return perfilActualizado;
+        //false = no consiguio insignia -pudo o no haber progresado-
+        //true = consiguio insignia
     }
 
         // ========== ACTUALIZAR ==========
@@ -138,10 +151,11 @@ public class PerfilService {
                                       .orElseThrow(InexistenteException::new);
 
         // Actualizar nombre de usuario
+        // -sapo: es lo unico que se puede editar en perfil x ahora
         if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
             p.setNombreUsuario(dto.getNombreUsuario());
         }
-        // TODO: hacer este socotroco lpm
+
         // Nota: categoriaActual, insignias y misionActual se actualizan mediante otros métodos
         // del dominio (progresión de misiones, cambios de categoría, etc.)
         // No se actualizan directamente desde aquí por consistencia del modelo de dominio
@@ -150,10 +164,10 @@ public class PerfilService {
 
         return new PerfilDTO(
             actualizado.getNombreUsuario(),
-            actualizado.getCategoriaActual() == null ? null : actualizado.getCategoriaActual().getNombre(),
+            actualizado.getCategoriaActual().getNombre(),
             actualizado.getInsigniasObtenidas() == null ? List.of() : actualizado.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            actualizado.getProgresoMisionActual() == null ? null : actualizado.getProgresoMisionActual().getMision().getNombreMision(),
-            null);
+            actualizado.getProgresoMisionActual().getMision().getNombreMision()
+        );
     }
 
 

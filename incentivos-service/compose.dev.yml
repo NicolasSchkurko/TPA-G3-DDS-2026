@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: incentivos-mysql
+    environment:
+      MYSQL_DATABASE: incentivos_db
+      MYSQL_USER: incentivos_user
+      MYSQL_PASSWORD: incentivos_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - incentivos_mysql_data:/var/lib/mysql
+    healthcheck:
+      # No depende de la contraseña root, que MySQL solo toma al crear el volumen por primera vez.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  incentivos:
+    build:
+      context: ..
+      dockerfile: incentivos-service/Dockerfile
+    container_name: incentivos-service-dev
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      DB_URL: jdbc:mysql://mysql:3306/incentivos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: incentivos_user
+      DB_PASSWORD: incentivos_pass
+      DONACIONES_URL: http://host.docker.internal:8085/
+      NOTIFICACIONES_URL: http://host.docker.internal:8083/
+      N8N_URL: http://host.docker.internal:5678/webhook/incentivos
+
+volumes:
+  incentivos_mysql_data:

@@ -108,8 +108,8 @@ public class PerfilController {
         @ApiResponse(responseCode = "200", description = "Perfil impactado y actualizado con éxito"),
         @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
     })
-    @PutMapping("/donacion/{idUsuario}")
-    public ResponseEntity<Boolean> actualizarPerfil(
+    @PatchMapping("/donacion/{idUsuario}")
+    public ResponseEntity<Boolean> progresarPerfil(
             @Parameter(description = "UUID del usuario que realizó la donación")
             @PathVariable UUID idUsuario,
             @RequestBody ImpactoDonacionDTO dto) {

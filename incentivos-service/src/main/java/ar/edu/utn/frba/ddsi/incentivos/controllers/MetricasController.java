@@ -19,7 +19,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/metricas")
+@RequestMapping("/metricas")
 @Tag(name = "Métricas", description = "Endpoints para obtener métricas y análisis de donaciones y actividad de perfiles.")
 public class MetricasController {
     private final MetricasService service;

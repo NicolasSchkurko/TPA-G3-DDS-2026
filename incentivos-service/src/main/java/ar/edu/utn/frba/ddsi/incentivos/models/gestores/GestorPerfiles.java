@@ -1,8 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
+import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,70 +15,86 @@ import java.util.List;
 
 @Service
 public class GestorPerfiles {
-  private final RepositorioPerfiles repositorioPerfiles;
   private final RepositorioDonaciones repositorioDonaciones;
+  private final RepositorioCategorias repositorioCategorias;
+  private final DonacionClient donacionClient;
 
-  public GestorPerfiles(RepositorioPerfiles repositorioPerfiles,
-                        RepositorioDonaciones repositorioDonaciones) {
-    this.repositorioPerfiles = repositorioPerfiles;
+  public GestorPerfiles(RepositorioDonaciones repositorioDonaciones,
+                        RepositorioCategorias repositorioCategorias,
+                        DonacionClient donacionClient) {
     this.repositorioDonaciones = repositorioDonaciones;
+    this.repositorioCategorias = repositorioCategorias;
+    this.donacionClient = donacionClient;
   }
 
   @Transactional
   public Boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
     List<ImpactoDonacion> donaciones = List.of();
-    if (perfil.getProgresoMisionActual() != null
-        && perfil.getProgresoMisionActual().getMision() != null) {
+    Mision misionActual = perfil.getProgresoMisionActual() == null
+        ? null
+        : perfil.getProgresoMisionActual().getMision();
+
+    if (misionActual != null) {
       donaciones = repositorioDonaciones
           .findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
               perfil.getIdUsuario(),
-              perfil.getProgresoMisionActual().getMision().getIdMision());
+              misionActual.getIdMision());
     }
 
-    return perfil.progresarMision(donacion, donaciones);
+    Boolean misionCompletada = perfil.progresarMision(donacion, donaciones);
+    if (!misionCompletada || misionActual == null) {
+      return misionCompletada;
+    }
+
+    this.asignarSiguienteMision(perfil, misionActual);
+    return true;
+  }
+
+  /**
+   * Avanza el recorrido gamificado luego de completar una misión. La insignia
+   * ya fue registrada por Perfil.progresarMision, junto con MisionCompletada.
+   */
+  private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
+    Categoria categoriaActual = perfil.getCategoriaActual();
+    if (categoriaActual == null) {
+      perfil.setProgresoMisionActual(null);
+      return;
+    }
+
+    Mision siguienteMision = categoriaActual.siguienteMision(misionCompletada);
+    if (siguienteMision != null) {
+      MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+      perfil.cambiarMision(siguienteMision, misionCompletada, contacto);
+      return;
+    }
+
+    Categoria siguienteCategoria = repositorioCategorias
+        .obtenerCategoriaSiguiente(categoriaActual);
+
+    if (siguienteCategoria != null) {
+      MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+      perfil.cambiarCategoria(
+          siguienteCategoria,
+          categoriaActual,
+          misionCompletada,
+          contacto
+      );
+      return;
+    }
+
+    // Fin del recorrido: no hay transición que notificar. Solo queda el
+    // evento MisionCompletada, que comunica la insignia recién obtenida.
+    perfil.setProgresoMisionActual(null);
   }
 
   @Transactional
-  public void evaluarProgresosConstantes() {
-    List<Perfil> perfilesConMision = repositorioPerfiles.findAll()
-        .stream()
-        .filter(perfil -> perfil.getProgresoMisionActual() != null)
-        .filter(perfil -> perfil.getProgresoMisionActual().getMision() != null)
-        .filter(perfil -> perfil.getProgresoMisionActual().getMision()
-            .getReglaDeProgreso().getConstancia() != null)
-        .toList();
-
+  public List<Perfil> evaluarProgresosConstantes(List<Perfil> perfilesConMision) {
     perfilesConMision.forEach(perfil -> perfil.verificarProgresoMision(
         repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
             perfil.getIdUsuario(),
             perfil.getProgresoMisionActual().getMision().getIdMision())
     ));
-    repositorioPerfiles.saveAll(perfilesConMision);
-  }
 
-  @Transactional
-  public Perfil actualizar(Perfil perfilModificado) {
-    if (perfilModificado == null || perfilModificado.getIdUsuario() == null) {
-      return null;
-    }
-
-    return repositorioPerfiles.findByIdUsuario(perfilModificado.getIdUsuario())
-                              .map(existente -> {
-                                if (perfilModificado.getNombreUsuario() != null) {
-                                  existente.setNombreUsuario(perfilModificado.getNombreUsuario());
-                                }
-                                if (perfilModificado.getCategoriaActual() != null) {
-                                  existente.setCategoriaActual(perfilModificado.getCategoriaActual());
-                                }
-                                if (perfilModificado.getInsigniasObtenidas() != null) {
-                                  existente.setInsigniasObtenidas(perfilModificado.getInsigniasObtenidas());
-                                }
-                                if (perfilModificado.getProgresoMisionActual() != null) {
-                                  existente.setProgresoMisionActual(perfilModificado.getProgresoMisionActual());
-                                }
-
-                                return repositorioPerfiles.save(existente);
-                              })
-                              .orElse(null);
+    return perfilesConMision;
   }
 }
