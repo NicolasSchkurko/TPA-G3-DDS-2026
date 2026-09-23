@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.gestores;
 
-import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
@@ -49,7 +48,7 @@ public class GestorNotificaciones {
         Notificacion notificacion = cola.poll();
         if (notificacion != null) {
             try {
-                enviarNotificacion("sms", notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
+                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
                 notificacion.marcarEnviada();
             } catch (Exception e) {
                 notificacion.marcarFallida();
