@@ -1,0 +1,149 @@
+{
+  "info": {
+    "name": "Incentivos - smoke tests locales",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8082/api" },
+    { "key": "donacionesUrl", "value": "http://localhost:8084/api" },
+    { "key": "userId", "value": "" }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "admin", "type": "string" },
+      { "key": "password", "value": "admin123", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "0 - Crear administrador de prueba en donaciones",
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+        "pm.collectionVariables.set('adminEmail', 'postman-admin-' + pm.variables.replaceIn('{{$guid}}') + '@example.com');"
+      ]}}, { "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Crea el administrador de prueba', () => pm.response.to.have.status(201));",
+        "const body = pm.response.json();",
+        "pm.test('Devuelve el UUID del administrador', () => pm.expect(body.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i));",
+        "pm.collectionVariables.set('adminId', body.id);"
+      ]}}],
+      "request": {
+        "method": "POST",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"nombreAMostrar\": \"Postman Admin\",\n  \"nombre\": \"Postman\",\n  \"apellido\": \"Admin\",\n  \"edad\": 30,\n  \"numeroDeDocumento\": 90000001,\n  \"genero\": \"OTRO\",\n  \"medioDeContacto\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"{{adminEmail}}\"\n  }\n}" },
+        "url": "{{donacionesUrl}}/admins"
+      }
+    },
+    {
+      "name": "1 - Crear perfil",
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+        "pm.collectionVariables.set('userId', pm.variables.replaceIn('{{$guid}}'));",
+        "pm.collectionVariables.set('fechaImpacto', new Date().toISOString());",
+        "pm.collectionVariables.set('fechaConsulta', pm.collectionVariables.get('fechaImpacto').slice(0, 10));",
+        "pm.request.body.update(JSON.stringify({ idUsuario: pm.collectionVariables.get('userId'), nombreUsuario: 'smoke-user', role: 'DONANTE' }));"
+      ]}}, { "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Crea el perfil', () => pm.response.to.have.status(201));",
+        "const body = pm.response.json();",
+        "pm.test('Asigna la categoría inicial', () => pm.expect(body.categoriaActual).to.eql('Colaborador'));"
+      ]}}],
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/perfiles" }
+    },
+    {
+      "name": "Error - Perfil duplicado (409)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Rechaza el perfil duplicado', () => pm.response.to.have.status(409));",
+        "pm.test('Informa el conflicto', () => pm.expect(pm.response.json().error).to.include('Ya existe'));"
+      ]}}],
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idUsuario\": \"{{userId}}\",\n  \"nombreUsuario\": \"smoke-user\",\n  \"role\": \"DONANTE\"\n}" }, "url": "{{baseUrl}}/perfiles" }
+    },
+    {
+      "name": "Error - Perfil inexistente (404)",
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+        "pm.collectionVariables.set('missingUserId', pm.variables.replaceIn('{{$guid}}'));"
+      ]}}, { "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Devuelve 404 para un perfil inexistente', () => pm.response.to.have.status(404));"
+      ]}}],
+      "request": { "method": "GET", "url": "{{baseUrl}}/perfiles/{{missingUserId}}" }
+    },
+    {
+      "name": "Error - Rango de fechas inválido (400)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Rechaza el rango de fechas inválido', () => pm.response.to.have.status(400));",
+        "pm.test('Informa el orden inválido del rango', () => pm.expect(pm.response.json().error).to.include('anterior'));"
+      ]}}],
+      "request": { "method": "GET", "url": "{{baseUrl}}/metricas/{{userId}}/periodo?desde=2026-02-01&hasta=2026-01-01" }
+    },
+    {
+      "name": "Error - Credenciales inválidas (401)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Rechaza las credenciales inválidas', () => pm.response.to.have.status(401));"
+      ]}}],
+      "request": {
+        "method": "GET",
+        "auth": { "type": "basic", "basic": [
+          { "key": "username", "value": "admin", "type": "string" },
+          { "key": "password", "value": "credencial-invalida", "type": "string" }
+        ]},
+        "url": "{{baseUrl}}/perfiles/{{userId}}"
+      }
+    },
+    {
+      "name": "Error - Admin-Id inexistente (403)",
+      "event": [{ "listen": "prerequest", "script": { "type": "javascript", "exec": [
+        "pm.collectionVariables.set('missingAdminId', pm.variables.replaceIn('{{$guid}}'));"
+      ]}}, { "listen": "test", "script": { "type": "javascript", "exec": [
+        "pm.test('Rechaza un Admin-Id inexistente', () => pm.response.to.have.status(403));",
+        "pm.test('Informa falta de permisos', () => pm.expect(pm.response.json().error).to.include('permisos'));"
+      ]}}],
+      "request": { "method": "GET", "header": [{ "key": "Admin-Id", "value": "{{missingAdminId}}" }], "url": "{{baseUrl}}/admin/categorias" }
+    },
+    {
+      "name": "7 - Consultar categorías como administrador válido",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Acepta un Admin-Id existente en donaciones', () => pm.response.to.have.status(200));",
+        "pm.test('Devuelve una lista de categorías', () => pm.expect(pm.response.json()).to.be.an('array'));"
+      ]}}],
+      "request": { "method": "GET", "header": [{ "key": "Admin-Id", "value": "{{adminId}}" }], "url": "{{baseUrl}}/admin/categorias" }
+    },
+    {
+      "name": "2 - Consultar perfil",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Recupera el perfil creado', () => pm.response.to.have.status(200));",
+        "pm.test('Devuelve smoke-user', () => pm.expect(pm.response.json().nombreUsuario).to.eql('smoke-user'));"
+      ]}}],
+      "request": { "method": "GET", "url": "{{baseUrl}}/perfiles/{{userId}}" }
+    },
+    {
+      "name": "3 - Registrar impacto",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Persiste el impacto', () => pm.response.to.have.status(200));",
+        "pm.test('Confirma la operación', () => pm.expect(pm.response.json()).to.eql(true));"
+      ]}}],
+      "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaEntrega\": \"{{fechaImpacto}}\",\n  \"cantidadBienes\": 3,\n  \"subCategoria\": \"Ropa\",\n  \"categoria\": \"Indumentaria\",\n  \"entidadBeneficiaria\": \"Fundación de prueba\",\n  \"estado\": \"ENTREGADA\"\n}" }, "url": "{{baseUrl}}/perfiles/donacion/{{userId}}" }
+    },
+    {
+      "name": "4 - Consultar métricas",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Incluye la donación del período', () => pm.response.to.have.status(200));",
+        "pm.test('Cuenta una donación', () => pm.expect(pm.response.json().cantidadDonaciones).to.eql(1));"
+      ]}}],
+      "request": { "method": "GET", "url": "{{baseUrl}}/metricas/{{userId}}/periodo?desde={{fechaConsulta}}&hasta={{fechaConsulta}}" }
+    },
+    {
+      "name": "5 - Consultar actividad",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Recupera la actividad', () => pm.response.to.have.status(200));",
+        "pm.test('Cuenta una donación histórica', () => pm.expect(pm.response.json().totalDonaciones).to.eql(1));"
+      ]}}],
+      "request": { "method": "GET", "url": "{{baseUrl}}/metricas/{{userId}}/actividad" }
+    },
+    {
+      "name": "6 - Eliminar perfil",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Elimina el perfil', () => pm.response.to.have.status(200));",
+        "pm.test('Confirma la eliminación', () => pm.expect(pm.response.json()).to.eql(true));"
+      ]}}],
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/perfiles/{{userId}}" }
+    }
+  ]
+}

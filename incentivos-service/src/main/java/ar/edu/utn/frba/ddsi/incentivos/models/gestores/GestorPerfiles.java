@@ -8,22 +8,28 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class GestorPerfiles {
   private final RepositorioDonaciones repositorioDonaciones;
   private final RepositorioCategorias repositorioCategorias;
+  private final RepositorioPerfiles repositorioPerfiles;
   private final DonacionClient donacionClient;
 
   public GestorPerfiles(RepositorioDonaciones repositorioDonaciones,
                         RepositorioCategorias repositorioCategorias,
+                        RepositorioPerfiles repositorioPerfiles,
                         DonacionClient donacionClient) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.repositorioCategorias = repositorioCategorias;
+    this.repositorioPerfiles = repositorioPerfiles;
     this.donacionClient = donacionClient;
   }
 
@@ -96,5 +102,52 @@ public class GestorPerfiles {
     ));
 
     return perfilesConMision;
+  }
+
+  @Transactional
+  public void actualizarMisionesPorCambioDeCategoria(
+      Categoria categoria,
+      Map<UUID, Integer> posicionesAnteriores
+  ) {
+    List<Perfil> perfiles = repositorioPerfiles.findAllByCategoriaActual(categoria);
+
+    Map<Integer, Mision> misionesPorPosicion = categoria.getCategoriaMisiones().stream()
+        .collect(java.util.stream.Collectors.toMap(
+            cm -> cm.getPosicion(),
+            cm -> cm.getMision()
+        ));
+
+    for (Perfil perfil : perfiles) {
+      if (perfil.getProgresoMisionActual() == null
+          || perfil.getProgresoMisionActual().getMision() == null) {
+        continue;
+      }
+
+      Mision misionActual = perfil.getProgresoMisionActual().getMision();
+      Integer posicionAnterior = posicionesAnteriores.get(misionActual.getIdMision());
+      if (posicionAnterior == null) {
+        continue;
+      }
+
+      Mision nuevaMision = misionesPorPosicion.get(posicionAnterior);
+      if (nuevaMision == misionActual
+          || (nuevaMision != null
+              && nuevaMision.getIdMision().equals(misionActual.getIdMision()))) {
+        continue;
+      }
+
+      MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
+      perfil.cambiarMision(nuevaMision, misionActual, contacto);
+    }
+
+    repositorioPerfiles.saveAll(perfiles);
+  }
+
+  @Transactional
+  public void reiniciarProgresoDeMision(UUID idMision) {
+    List<Perfil> perfiles = repositorioPerfiles.findAllByMisionActual(idMision);
+
+    perfiles.forEach(perfil -> perfil.getProgresoMisionActual().setProgreso(0));
+    repositorioPerfiles.saveAll(perfiles);
   }
 }

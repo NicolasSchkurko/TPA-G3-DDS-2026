@@ -12,7 +12,6 @@ import java.util.List;
 
 @Service
 public class GestorRanking {
-
     private final RepositorioPerfiles repositorioPerfiles;
 
     public GestorRanking(RepositorioPerfiles repositorioPerfiles) {

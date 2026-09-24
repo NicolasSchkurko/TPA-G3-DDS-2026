@@ -10,7 +10,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.Re
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,12 +22,6 @@ public class GestorMision {
         this.misionFactory = misionFactory;
     }
 
-    // ========== UTILIDADES ==========
-    public List<Mision> conseguirMisiones(List<UUID> idMisiones) {
-        // JPA maneja esto de forma nativa con una única consulta SQL (WHERE id IN (...))
-        return repositorio.findAllById(idMisiones);
-    }
-
     public Operacion conseguirOperacion(String tipoOperacion,
                                         Integer progresoObjetivo,
                                         Integer cantidad, String valor) {
@@ -39,16 +32,6 @@ public class GestorMision {
         return misionFactory.crearConstancia(cantidadTiempo, unidadTiempo);
     }
 
-    // ========== GET ==========
-    public List<Mision> obtenerTodas() {
-        return repositorio.findAll();
-    }
-
-    public Mision obtenerPorId(UUID id) {
-        return repositorio.findById(id).orElse(null);
-    }
-
-    // ========== CREATE ==========
     @Transactional
     public Mision crearMision(UUID idAdmin, String nomMision, String descripcion, String nomInsignia,
                               ReglaConstancia constancia, String atributo,
@@ -56,61 +39,41 @@ public class GestorMision {
         AtributoImpacto atributoImpacto = misionFactory.crearAtributoImpacto(atributo);
 
         Mision mision = misionFactory.crearMision(
-            idAdmin, nomMision, descripcion, nomInsignia,
-            constancia,
-            atributoImpacto,
-            operacion
+                idAdmin, nomMision, descripcion, nomInsignia,
+                constancia,
+                atributoImpacto,
+                operacion
         );
 
         return repositorio.save(mision);
     }
 
-    // ========== UPDATE ==========
     @Transactional
-    public Mision actualizarMision(Mision mision) {
-        if (mision.getIdMision() == null) {
-            return null;
-        }
-
-        Mision misionActual = repositorio.findById(mision.getIdMision()).orElse(null);
-        if (misionActual == null) {
-            return null;
-        }
-
+    public Mision actualizarMision(Mision misionActual, Mision misionModificada) {
         // Actualizar nombre de misión
-        if (mision.getNombreMision() != null) {
-            misionActual.setNombreMision(mision.getNombreMision());
+        if (misionModificada.getNombreMision() != null) {
+            misionActual.setNombreMision(misionModificada.getNombreMision());
         }
 
         // Actualizar descripción
-        if (mision.getDescripcion() != null) {
-            misionActual.setDescripcion(mision.getDescripcion());
+        if (misionModificada.getDescripcion() != null) {
+            misionActual.setDescripcion(misionModificada.getDescripcion());
         }
 
         // Actualizar insignia objetivo
-        if (mision.getInsigniaObjetivo() != null) {
+        if (misionModificada.getInsigniaObjetivo() != null) {
             Insignia insigniaActualizada = new Insignia(
-                mision.getInsigniaObjetivo().getNombre(),
-                mision.getDescripcion() != null ? mision.getDescripcion() : misionActual.getDescripcion()
+                    misionModificada.getInsigniaObjetivo().getNombre(),
+                    misionModificada.getDescripcion() != null ? misionModificada.getDescripcion() : misionActual.getDescripcion()
             );
             misionActual.setInsigniaObjetivo(insigniaActualizada);
         }
 
         // Actualizar regla de progreso (constancia y operación)
-        if (mision.getReglaDeProgreso() != null) {
-            misionActual.setReglaDeProgreso(mision.getReglaDeProgreso());
+        if (misionModificada.getReglaDeProgreso() != null) {
+            misionActual.setReglaDeProgreso(misionModificada.getReglaDeProgreso());
         }
 
         return repositorio.save(misionActual);
-    }
-
-    // ========== DELETE ==========
-    @Transactional
-    public Mision eliminarMision(UUID idMision) {
-        Mision m = repositorio.findById(idMision).orElse(null);
-        if (m != null) {
-            repositorio.delete(m);
-        }
-        return m;
     }
 }
