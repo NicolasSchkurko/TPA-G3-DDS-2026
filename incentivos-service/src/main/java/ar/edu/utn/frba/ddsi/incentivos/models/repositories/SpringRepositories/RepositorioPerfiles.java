@@ -35,6 +35,11 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     List<Perfil> findAllByCategoriaActual(Categoria categoria);
 
+    @Query("SELECT p FROM Perfil p " +
+        "JOIN p.progresoMisionActual pm " +
+        "WHERE pm.mision.idMision = :idMision")
+    List<Perfil> findAllByMisionActual(@Param("idMision") UUID idMision);
+
     @Query("SELECT p, COUNT(io) as total " +
         "FROM Perfil p JOIN p.insigniasObtenidas io " +
         "WHERE MONTH(io.fechaObtencion) = :mes AND YEAR(io.fechaObtencion) = :anio " +

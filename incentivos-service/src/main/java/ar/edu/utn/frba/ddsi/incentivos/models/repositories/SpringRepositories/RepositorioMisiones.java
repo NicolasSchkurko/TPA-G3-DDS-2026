@@ -30,4 +30,28 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
     // Buscar misiones que contengan una palabra clave en su nombre (ignorando mayúsculas/minúsculas)
     // Muy útil si quieres hacer un buscador en el frontend
     List<Mision> findByNombreMisionContainingIgnoreCase(String keyword);
+
+    default List<Mision> conseguirMisiones(List<UUID> idMisiones) {
+        if (idMisiones == null || idMisiones.isEmpty()) {
+            return List.of();
+        }
+
+        List<Mision> misiones = findAllById(idMisiones);
+        if (misiones.size() != idMisiones.size()) {
+            throw new IllegalArgumentException("Una o más misiones solicitadas no existen");
+        }
+        return misiones;
+    }
+
+    default Mision obtenerPorId(UUID id) {
+        return findById(id).orElse(null);
+    }
+
+    default Mision eliminarMision(UUID idMision) {
+        Mision m = findById(idMision).orElse(null);
+        if (m != null) {
+            delete(m);
+        }
+        return m;
+    }
 }
