@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -11,16 +12,6 @@ import java.util.UUID;
 @Repository
 public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
 
-    // NOTA: JpaRepository ya incluye por defecto y listos para usar en tus Gestores:
-    // - findById(UUID id)
-    // - findAll()
-    // - findAllById(Iterable<UUID> ids)
-    // - save(Mision mision)
-    // - delete(Mision mision)
-    // - deleteById(UUID id)
-
-    // Búsquedas personalizadas (Spring Data genera el SQL automáticamente al leer el nombre):
-
     // Buscar una misión específica por su nombre exacto
     Optional<Mision> findByNombreMision(String nombreMision);
 
@@ -28,7 +19,6 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
     List<Mision> findByIdAdmin(UUID idAdmin);
 
     // Buscar misiones que contengan una palabra clave en su nombre (ignorando mayúsculas/minúsculas)
-    // Muy útil si quieres hacer un buscador en el frontend
     List<Mision> findByNombreMisionContainingIgnoreCase(String keyword);
 
     default List<Mision> conseguirMisiones(List<UUID> idMisiones) {
@@ -53,5 +43,33 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
             delete(m);
         }
         return m;
+    }
+
+    default Mision actualizarMision(Mision misionActual, Mision misionModificada) {
+        // Actualizar nombre de misión
+        if (misionModificada.getNombreMision() != null) {
+            misionActual.setNombreMision(misionModificada.getNombreMision());
+        }
+
+        // Actualizar descripción
+        if (misionModificada.getDescripcion() != null) {
+            misionActual.setDescripcion(misionModificada.getDescripcion());
+        }
+
+        // Actualizar insignia objetivo
+        if (misionModificada.getInsigniaObjetivo() != null) {
+            Insignia insigniaActualizada = new Insignia(
+                misionModificada.getInsigniaObjetivo().getNombre(),
+                misionModificada.getDescripcion() != null ? misionModificada.getDescripcion() : misionActual.getDescripcion()
+            );
+            misionActual.setInsigniaObjetivo(insigniaActualizada);
+        }
+
+        // Actualizar regla de progreso (constancia y operación)
+        if (misionModificada.getReglaDeProgreso() != null) {
+            misionActual.setReglaDeProgreso(misionModificada.getReglaDeProgreso());
+        }
+
+        return save(misionActual);
     }
 }
