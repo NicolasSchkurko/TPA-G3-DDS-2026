@@ -27,11 +27,8 @@ public class RankingService {
   }
 
   public RankingDTO obtenerPuestoRankingActual(UUID idUsuario) {
-    RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
-                                      .orElseThrow(InexistenteException::new);
 
-    Ranking puesto = repoRankings.findPosicionEnRanking(rank.getIdRanking(), idUsuario)
-                                 .orElse(null);
+    Ranking puesto = repoRankings.obtenerPosicionActualDeUsuario(idUsuario);
 
     return puesto != null ? this.convertirRankingADTO(puesto) : null;
   }
@@ -55,28 +52,14 @@ public class RankingService {
         rank.getPeriodo());
   }
 
-  public RankingDTO convertirRankingADTO(Ranking ranking) {
-    return new RankingDTO(
-        ranking.getNombreUsuario(),
-        ranking.getPuesto(),
-        ranking.getMisionesCumplidas()
-    );
-  }
-
   @Transactional
-  public void crearRankingMensual(){
+  public RankingMesDTO crearRankingMensualActual(){
     YearMonth periodo = YearMonth.now().minusMonths(1);
-    if (repoRankings.findByPeriodo(periodo).isPresent()) {
-      throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
-    }
-
-    RankingMensual rankingCreado = generarRankingMensual(periodo);
-
-    repoRankings.save(rankingCreado);
+    return this.crearRankingMensual(periodo);
   }
 
   @Transactional
-  public RankingMesDTO crearRanking(YearMonth periodo) {
+  public RankingMesDTO crearRankingMensual(YearMonth periodo) {
     if (repoRankings.findByPeriodo(periodo).isPresent()) {
       throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
     }
@@ -133,5 +116,13 @@ public class RankingService {
     rankingDelMes.calcularYAgregarPosiciones(topPerfiles);
 
     return rankingDelMes;
+  }
+
+  private RankingDTO convertirRankingADTO(Ranking ranking) {
+    return new RankingDTO(
+        ranking.getNombreUsuario(),
+        ranking.getPuesto(),
+        ranking.getMisionesCumplidas()
+    );
   }
 }

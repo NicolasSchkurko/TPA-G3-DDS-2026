@@ -15,6 +15,6 @@ public class RankingScheduler {
     // Ejecuta el proceso el 1ro de cada mes a las 00:05 y genera el ranking del mes anterior
     @Scheduled(cron = "0 5 0 1 * ?")
     public void ejecutarRankingMensual() {
-        service.crearRankingMensual();
+        service.crearRankingMensualActual();
     }
 }

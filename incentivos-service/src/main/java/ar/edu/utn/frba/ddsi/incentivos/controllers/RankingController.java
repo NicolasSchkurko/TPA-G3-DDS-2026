@@ -39,7 +39,7 @@ public class RankingController {
   })
   @PostMapping
   public ResponseEntity<RankingMesDTO> crearRanking(@RequestBody CrearRankingDTO request) {
-    RankingMesDTO rankingCreado = service.crearRanking(request.getPeriodo());
+    RankingMesDTO rankingCreado = service.crearRankingMensual(request.getPeriodo());
     return ResponseEntity.ok(rankingCreado);
   }
 
