@@ -53,6 +53,7 @@ public class MetricasController {
     }
 
     // ========== ACTIVIDAD HISTÓRICA ==========
+    // TODO: paginacion
     @Operation(
         summary = "Obtener evolución histórica de actividad del perfil",
         description = "Retorna un registro completo de la evolución y actividad del usuario en el sistema, incluyendo donaciones, misiones completadas y cambios de categoría."
