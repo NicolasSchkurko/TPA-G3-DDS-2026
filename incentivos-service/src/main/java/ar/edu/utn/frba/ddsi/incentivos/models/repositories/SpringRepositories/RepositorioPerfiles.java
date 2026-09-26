@@ -28,7 +28,6 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     boolean existsByIdUsuario(UUID idUsuario);
 
-    //@Query("SELECT io.insignia FROM Perfil p JOIN p.insigniasObtenidas io WHERE p.idUsuario = :idUsuario")
     void deleteByIdUsuario(UUID idUsuario);
 
     Optional<Perfil> findByNombreUsuario(String nombreUsuario);
@@ -49,4 +48,10 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
     List<Object[]> calcularRankingMensual(@Param("mes") int mes, @Param("anio") int anio);
 
     Page<Perfil> findAll(Pageable pageable); // paginación
+
+    default void reiniciarProgresoDeMision(UUID idMision) {
+        List<Perfil> perfiles = findAllByMisionActual(idMision);
+        perfiles.forEach(perfil -> perfil.getProgresoMisionActual().setProgreso(0));
+        saveAll(perfiles);
+    }
 }

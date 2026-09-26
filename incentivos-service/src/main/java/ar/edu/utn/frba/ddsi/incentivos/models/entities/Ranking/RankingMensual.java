@@ -20,7 +20,6 @@ public class RankingMensual {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idRanking;
 
-    // Spring Data/Hibernate sabe convertir YearMonth automáticamente en versiones recientes
     @Column(nullable = false, unique = true)
     private YearMonth periodo;
 
@@ -35,5 +34,35 @@ public class RankingMensual {
     public void agregarPosicion(Ranking ranking) {
         this.posiciones.add(ranking);
         ranking.setRankingMensual(this);
+    }
+
+    public void calcularYAgregarPosiciones(List<Object[]> topPerfiles) {
+        int puestoActual = 1;
+        int indiceGral = 1;
+        Long misionesPrevias = -1L;
+
+        for (Object[] fila : topPerfiles) {
+            ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil perfil =
+                (ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil) fila[0];
+
+            Long totalMisiones = ((Number) fila[1]).longValue();
+
+            if (!totalMisiones.equals(misionesPrevias)) {
+                puestoActual = indiceGral;
+            }
+
+            Ranking posicion = new Ranking(
+                this,
+                perfil.getIdUsuario(),
+                perfil.getNombreUsuario(),
+                puestoActual,
+                totalMisiones
+            );
+
+            this.agregarPosicion(posicion);
+
+            misionesPrevias = totalMisiones;
+            indiceGral++;
+        }
     }
 }

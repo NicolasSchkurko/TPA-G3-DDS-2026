@@ -11,8 +11,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class AdminService {
     private final RepositorioMisiones repoMisiones;
     private final GestorSecuenciaCategoria gestorSecuencia;
     private final DonacionClient donacionClient;
-    private final GestorPerfiles gestorPerfiles;
+    private final GestorSincronizacionPerfiles gestorSincronizacion;
     private final MisionFactory misionFactory;
 
     public AdminService(RepositorioCategorias repoCategorias,
@@ -36,13 +36,13 @@ public class AdminService {
                         GestorSecuenciaCategoria gestorSecuencia,
                         MisionFactory misionFactory,
                         DonacionClient donacionClient,
-                        GestorPerfiles gestorPerfiles) {
+                        GestorSincronizacionPerfiles gestorSincronizacion) {
         this.repoCategorias = repoCategorias;
         this.repoMisiones = repoMisiones;
         this.gestorSecuencia = gestorSecuencia;
         this.misionFactory = misionFactory;
         this.donacionClient = donacionClient;
-        this.gestorPerfiles = gestorPerfiles;
+        this.gestorSincronizacion = gestorSincronizacion;
     }
 
     private void verificarPermisos(UUID idAdmin) {
@@ -109,7 +109,7 @@ public class AdminService {
             }
 
             categoriaActual.copiar(categoriaModificada);
-            gestorPerfiles.actualizarMisionesPorCambioDeCategoria(
+            gestorSincronizacion.actualizarMisionesPorCambioDeCategoria(
                 categoriaActual,
                 posicionesAnteriores
             );
@@ -202,7 +202,7 @@ public class AdminService {
 
         if (misionActual != null) {
             Mision actualizada = repoMisiones.actualizarMision(misionActual, mision);
-            gestorPerfiles.reiniciarProgresoDeMision(actualizada.getIdMision());
+            gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
             return misionToDTO(actualizada);
         }
 

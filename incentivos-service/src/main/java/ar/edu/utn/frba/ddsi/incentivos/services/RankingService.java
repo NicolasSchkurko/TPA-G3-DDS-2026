@@ -5,7 +5,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorRanking;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,20 +19,19 @@ import java.util.stream.Collectors;
 public class RankingService {
 
   private final RepositorioRankings repoRankings;
-  private final GestorRanking gestorRanking;
+  private final RepositorioPerfiles repoPerfiles;
 
-  public RankingService(RepositorioRankings repoRankings, GestorRanking gestorRanking) {
+  public RankingService(RepositorioRankings repoRankings, RepositorioPerfiles repoPerfiles) {
     this.repoRankings = repoRankings;
-    this.gestorRanking = gestorRanking;
+    this.repoPerfiles = repoPerfiles;
   }
 
-  public RankingDTO obtenerPuestoRankingActual(UUID idUsuario){
+  public RankingDTO obtenerPuestoRankingActual(UUID idUsuario) {
     RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
-            .orElseThrow(InexistenteException::new);
+                                      .orElseThrow(InexistenteException::new);
 
-    Ranking puesto = rank.getPosiciones().stream()
-            .filter(ranking -> ranking.getIdUsuario().equals(idUsuario))
-            .findFirst().orElse(null);
+    Ranking puesto = repoRankings.findPosicionEnRanking(rank.getIdRanking(), idUsuario)
+                                 .orElse(null);
 
     return puesto != null ? this.convertirRankingADTO(puesto) : null;
   }
@@ -64,26 +63,25 @@ public class RankingService {
     );
   }
 
-  //para el rankingScheduler
+  @Transactional
   public void crearRankingMensual(){
     YearMonth periodo = YearMonth.now().minusMonths(1);
     if (repoRankings.findByPeriodo(periodo).isPresent()) {
       throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
     }
 
-    RankingMensual rankingCreado = gestorRanking.generarYPersistirRankingMensual(periodo);
+    RankingMensual rankingCreado = generarRankingMensual(periodo);
 
     repoRankings.save(rankingCreado);
   }
 
-  //para pruebas de crear ranking
   @Transactional
   public RankingMesDTO crearRanking(YearMonth periodo) {
     if (repoRankings.findByPeriodo(periodo).isPresent()) {
       throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
     }
 
-    RankingMensual rankingCreado = gestorRanking.generarYPersistirRankingMensual(periodo);
+    RankingMensual rankingCreado = generarRankingMensual(periodo);
 
     repoRankings.save(rankingCreado);
 
@@ -110,17 +108,30 @@ public class RankingService {
     List<RankingMensual> rankings = repoRankings.findAll();
 
     return rankings.stream()
-        .map(this::convertirRankingMesADTO)
-        .collect(Collectors.toList());
+                   .map(this::convertirRankingMesADTO)
+                   .collect(Collectors.toList());
   }
 
   private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {
     return new RankingMesDTO(
         ranking.getIdRanking(),
         ranking.getPosiciones().stream()
-            .map(this::convertirRankingADTO)
-            .toList(),
+               .map(this::convertirRankingADTO)
+               .toList(),
         ranking.getPeriodo()
     );
+  }
+
+  private RankingMensual generarRankingMensual(YearMonth periodo) {
+    int mes = periodo.getMonthValue();
+    int anio = periodo.getYear();
+
+    List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(mes, anio);
+
+    RankingMensual rankingDelMes = new RankingMensual(periodo);
+
+    rankingDelMes.calcularYAgregarPosiciones(topPerfiles);
+
+    return rankingDelMes;
   }
 }
