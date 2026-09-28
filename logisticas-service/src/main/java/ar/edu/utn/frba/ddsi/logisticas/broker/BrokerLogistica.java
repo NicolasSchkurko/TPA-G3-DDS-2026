@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class BrokerLogistica {
-
+    //TODO usar rabbitmq
     private final Map<String, ServicioLogisticaAdapter> proveedores;
 
     public BrokerLogistica(List<ServicioLogisticaAdapter> listaProveedores) {

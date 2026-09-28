@@ -2,16 +2,19 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer;
 
 import java.util.UUID;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
 @Entity
-@Table(name = "chofer")
 @Getter
 @Setter
 @NoArgsConstructor
+@Table(name = "chofer")
 public class Chofer {
     @Id
     @Column(name = "id_chofer", nullable = false, updatable = false)

@@ -3,11 +3,10 @@ package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 @Component
 public class GestorCamiones {
@@ -17,26 +16,9 @@ public class GestorCamiones {
         this.repoCamiones = repoCamiones;
     }
 
-    public List<Camion> listarCamiones(){
-        return repoCamiones.findAll();
-    }
-
-    public Camion buscarCamion(String patente){
-        return repoCamiones.findById(patente)
+    public Camion actualizarCamion(String patente, Chofer nuevoChofer, CamionDTO dto){
+        Camion camionExistente = repoCamiones.findById(patente)
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-    }
-
-    public Camion buscarCamionPorIdChofer(UUID idchofer){
-        return repoCamiones.findByChofer_IdChofer(idchofer)
-                .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-    }
-
-    public void guardarCamion(Camion camion){
-        repoCamiones.save(camion);
-    }
-
-    public Camion actualizarCamion(String patente, CamionDTO dto, Chofer nuevoChofer) {
-        Camion camionExistente = buscarCamion(patente);
 
         camionExistente.setChofer(nuevoChofer);
         camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
@@ -44,31 +26,17 @@ public class GestorCamiones {
         camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
         camionExistente.setDisponible(dto.getDisponible());
 
-        guardarCamion(camionExistente);
+        repoCamiones.save(camionExistente);
         return camionExistente;
     }
 
     // --- MAPPERS ---
     public void resetearCamion(Camion camion){
-        repoCamiones.resetearCarga(camion);
-    }
-
-    public void eliminarCamion(String patente) {
-        Camion camion = buscarCamion(patente);
-        if(camion != null){
-            repoCamiones.deleteById(patente);
+        Optional<Camion> camionEncontrado = repoCamiones.findById(camion.getPatente());
+        if(camionEncontrado.isPresent()){
+            camionEncontrado.get().setCiudadDestinoActual(null);
+            camionEncontrado.get().resetearCargaOcupada();
+            repoCamiones.save(camionEncontrado.get());
         }
-    }
-
-    public void marcarDisponible(String patente) {
-        Camion camion = buscarCamion(patente);
-        camion.disponible();
-        guardarCamion(camion);
-    }
-
-    public void marcarOcupado(String patente) {
-        Camion camion = buscarCamion(patente);
-        camion.ocupado();
-        guardarCamion(camion);
     }
 }

@@ -8,7 +8,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,10 +60,7 @@ public class PlanificadorDeRutas {
                                          .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado con patente: " + patente));
 
       // 2. Instanciar la nueva Ruta
-      Ruta nuevaRuta = new Ruta();
-      nuevaRuta.setIdRuta(UUID.randomUUID());
-      nuevaRuta.setCamionAsignado(camion);
-      nuevaRuta.setFechaProgramada(LocalDate.now().plusDays(1)); // Se planifica para el día siguiente
+      Ruta nuevaRuta = new Ruta(camion); // Se planifica para el día siguiente
 
       // 3. Vincular donaciones.
       // Al llamar a agregarEntrega, la clase Ruta agrupa automáticamente por Parada/Entidad.
@@ -90,7 +86,6 @@ public class PlanificadorDeRutas {
       nuevaRuta.setEstado(EstadoRuta.PROGRAMADA);
       rutasGeneradas.add(nuevaRuta);
     }
-
     return rutasGeneradas;
   }
 }
