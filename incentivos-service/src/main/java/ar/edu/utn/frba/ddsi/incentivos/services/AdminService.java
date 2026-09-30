@@ -1,7 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
+import ar.edu.utn.frba.ddsi.incentivos.controllers.request.CategoriaFiltroRequest;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ConstanciaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -15,6 +19,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,11 +58,14 @@ public class AdminService {
         }
     }
 
-    public List<CategoriaDTO> obtenerCategorias(UUID idAdmin) {
+    public Page<CategoriaDTO> obtenerCategorias(UUID idAdmin, CategoriaFiltroRequest filtros, Pageable pageable) {
         verificarPermisos(idAdmin);
-        return repoCategorias.obtenerTodas().stream()
-                             .map(this::categoriaToDTO)
-                             .toList();
+        return repoCategorias.obtenerTodas(
+            filtros.nombre(),
+            filtros.posicionSecuencia(),
+            filtros.misionId(),
+            pageable
+        ).map(this::categoriaToDTO);
     }
 
     public CategoriaDTO obtenerCategoriaPorId(UUID idAdmin, UUID id) {
@@ -76,7 +86,7 @@ public class AdminService {
             misiones
         );
 
-        gestorSecuencia.desplazarParaCrear(categoria.getPosicionSecuencia());
+        gestorSecuencia.desplazarParaCrear(repoCategorias,categoria.getPosicionSecuencia());
         Categoria categoriaCreada = repoCategorias.save(categoria);
 
         return categoriaToDTO(categoriaCreada);
@@ -101,6 +111,7 @@ public class AdminService {
 
             if (categoriaModificada.getPosicionSecuencia() != null) {
                 gestorSecuencia.desplazarParaActualizar(
+                    repoCategorias,
                     categoriaActual.getPosicionSecuencia(),
                     categoriaModificada.getPosicionSecuencia(),
                     repoCategorias.count()
@@ -120,20 +131,18 @@ public class AdminService {
     }
 
     @Transactional
-    public List<CategoriaDTO> eliminarCategoria(UUID idAdmin, UUID id) {
+    public void eliminarCategoria(UUID idAdmin, UUID id) {
         verificarPermisos(idAdmin);
 
-        Categoria categoria = repoCategorias.findById(id).orElse(null);
+        Categoria categoria = repoCategorias.obtenerPorId(id);
         if (categoria == null) {
-            return List.of();
+            throw new EntityNotFoundException("No se encontró la categoría con ID: " + id);
         }
 
         Integer posicionLiberada = categoria.getPosicionSecuencia();
+
         repoCategorias.delete(categoria);
-        gestorSecuencia.desplazarParaEliminar(posicionLiberada);
-        return repoCategorias.obtenerTodas().stream()
-                             .map(this::categoriaToDTO)
-                             .toList();
+        gestorSecuencia.desplazarParaEliminar(repoCategorias,posicionLiberada);
     }
 
     public List<MisionDTO> obtenerMisiones(UUID idAdmin) {

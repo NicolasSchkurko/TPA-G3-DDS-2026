@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,16 +16,23 @@ import java.util.UUID;
 @Repository
 public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
 
-    Optional<Categoria> findByIdCategoria(UUID idCategoria);
-
-    List<Categoria> findByPosicionSecuenciaGreaterThanEqual(Integer nivel);
-
-    List<Categoria> findByPosicionSecuenciaBetween(Integer start, Integer end);
-
     List<Categoria> findAllByOrderByPosicionSecuenciaAsc();
 
-
     Optional<Categoria> findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(Integer posicionActual);
+
+    @Query("""
+        SELECT DISTINCT c FROM Categoria c
+        LEFT JOIN c.misiones m
+        WHERE (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre)
+          AND (:posicionSecuencia IS NULL OR c.posicionSecuencia = :posicionSecuencia)
+          AND (:misionId IS NULL OR m.id = :misionId)
+    """)
+    Page<Categoria> findAllByFiltros(
+        @Param("nombre") String nombre,
+        @Param("posicionSecuencia") Integer posicionSecuencia,
+        @Param("misionId") UUID misionId,
+        Pageable pageable
+    );
 
     @Modifying
     @Query("UPDATE Categoria c SET c.posicionSecuencia = c.posicionSecuencia + 1 WHERE c.posicionSecuencia >= :inicio AND c.posicionSecuencia <= :fin")
@@ -41,9 +50,13 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     @Query("UPDATE Categoria c SET c.posicionSecuencia = c.posicionSecuencia - 1 WHERE c.posicionSecuencia >= :inicio")
     void desplazarHaciaArribaDesde(@Param("inicio") Integer inicio);
 
-    // Metodos que enmascaran otros metodos solo para mejor legibilidad.
-    default List<Categoria> obtenerTodas() {
-        return this.findAllByOrderByPosicionSecuenciaAsc();
+
+    default Page<Categoria> obtenerTodas(String nombre, Integer posicionSecuencia, UUID misionId, Pageable pageable) {
+        String patronNombre = (nombre != null && !nombre.isBlank())
+                              ? "%" + nombre.trim().toLowerCase() + "%"
+                              : null;
+
+        return this.findAllByFiltros(patronNombre, posicionSecuencia, misionId, pageable);
     }
 
     default Categoria obtenerPorId(UUID id) {

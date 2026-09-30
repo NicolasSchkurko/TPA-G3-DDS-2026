@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
+import ar.edu.utn.frba.ddsi.incentivos.controllers.request.CategoriaFiltroRequest;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.AdminService;
@@ -8,6 +9,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,21 +34,27 @@ public class AdminController {
     // ========== CATEGORÍAS - GET ==========
     @Operation(
         summary = "Obtener todas las categorías",
-        description = "Retorna la lista completa de categorías disponibles en el sistema, ordenadas por secuencia."
+        description = "Retorna la lista paginada de categorías disponibles en el sistema, filtrable y ordenada por posición de secuencia."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Categorías obtenidas con éxito"),
         @ApiResponse(responseCode = "403", description = "No autorizado")
     })
     @GetMapping("/categorias")
-    public ResponseEntity<List<CategoriaDTO>> obtenerCategorias(
-        @Parameter(description = "UUID del administrador")
-        @RequestHeader("Admin-Id") UUID idAdmin) {
-        List<CategoriaDTO> categorias = service.obtenerCategorias(idAdmin);
+    public ResponseEntity<Page<CategoriaDTO>> obtenerCategorias(
+        @Parameter(description = "UUID del administrador", required = true)
+        @RequestHeader("Admin-Id") UUID idAdmin,
+
+        @ParameterObject @ModelAttribute CategoriaFiltroRequest filtros,
+
+        @ParameterObject
+        @PageableDefault(page = 0, size = 10, sort = "posicionSecuencia", direction = Sort.Direction.ASC)
+        Pageable pageable
+    ) {
+        Page<CategoriaDTO> categorias = service.obtenerCategorias(idAdmin, filtros, pageable);
         return ResponseEntity.ok(categorias);
     }
 
-    // TODO: PAGINACION
 
     @Operation(
         summary = "Obtener una categoría específica",
@@ -110,21 +122,23 @@ public class AdminController {
     // ========== CATEGORÍAS - DELETE ==========
     @Operation(
         summary = "Eliminar una categoría",
-        description = "Elimina una categoría del sistema y reordena la secuencia."
+        description = "Elimina una categoría existente y reacomoda la secuencia de las restantes."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Categoría eliminada con éxito"),
-        @ApiResponse(responseCode = "404", description = "Categoría no encontrada"),
-        @ApiResponse(responseCode = "403", description = "No autorizado")
+        @ApiResponse(responseCode = "204", description = "Categoría eliminada con éxito"),
+        @ApiResponse(responseCode = "403", description = "No autorizado"),
+        @ApiResponse(responseCode = "404", description = "Categoría no encontrada")
     })
     @DeleteMapping("/categorias/{id}")
-    public ResponseEntity<List<CategoriaDTO>> eliminarCategoria(
-        @Parameter(description = "UUID del administrador")
+    public ResponseEntity<Void> eliminarCategoria(
+        @Parameter(description = "UUID del administrador", required = true)
         @RequestHeader("Admin-Id") UUID idAdmin,
-        @Parameter(description = "UUID de la categoría a eliminar")
-        @PathVariable UUID id) {
-        List<CategoriaDTO> nuevaSecuencia = service.eliminarCategoria(idAdmin, id);
-        return ResponseEntity.ok(nuevaSecuencia);
+
+        @Parameter(description = "UUID de la categoría a eliminar", required = true)
+        @PathVariable UUID id
+    ) {
+        service.eliminarCategoria(idAdmin, id);
+        return ResponseEntity.noContent().build();
     }
 
     // ========== MISIONES - GET ==========
