@@ -21,10 +21,10 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/metricas")
 @Tag(name = "Métricas", description = "Endpoints para obtener métricas y análisis de donaciones y actividad de perfiles.")
-public class MetricasController {
+public class MetricaController {
     private final MetricasService service;
 
-    public MetricasController(MetricasService service) {
+    public MetricaController(MetricasService service) {
         this.service = service;
     }
 

@@ -15,13 +15,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class GestorSincronizacionPerfiles {
+public class SincronizacionPerfiles {
 
   private final RepositorioPerfiles repositorioPerfiles;
   private final DonacionClient donacionClient;
 
-  public GestorSincronizacionPerfiles(RepositorioPerfiles repositorioPerfiles,
-                                      DonacionClient donacionClient) {
+  public SincronizacionPerfiles(RepositorioPerfiles repositorioPerfiles,
+                                DonacionClient donacionClient) {
     this.repositorioPerfiles = repositorioPerfiles;
     this.donacionClient = donacionClient;
   }

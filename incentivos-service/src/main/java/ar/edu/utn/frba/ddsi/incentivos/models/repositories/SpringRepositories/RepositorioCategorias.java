@@ -21,12 +21,12 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     Optional<Categoria> findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(Integer posicionActual);
 
     @Query("""
-        SELECT DISTINCT c FROM Categoria c
-        LEFT JOIN c.misiones m
-        WHERE (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre)
-          AND (:posicionSecuencia IS NULL OR c.posicionSecuencia = :posicionSecuencia)
-          AND (:misionId IS NULL OR m.id = :misionId)
-    """)
+    SELECT DISTINCT c FROM Categoria c
+    LEFT JOIN c.categoriaMisiones cm
+    WHERE (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre)
+      AND (:posicionSecuencia IS NULL OR c.posicionSecuencia = :posicionSecuencia)
+      AND (:misionId IS NULL OR cm.mision.idMision = :misionId)
+""")
     Page<Categoria> findAllByFiltros(
         @Param("nombre") String nombre,
         @Param("posicionSecuencia") Integer posicionSecuencia,

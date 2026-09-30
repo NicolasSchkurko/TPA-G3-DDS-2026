@@ -15,8 +15,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSincronizacionPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SecuenciaCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import jakarta.persistence.EntityNotFoundException;
@@ -33,17 +33,17 @@ import java.util.UUID;
 public class AdminService {
     private final RepositorioCategorias repoCategorias;
     private final RepositorioMisiones repoMisiones;
-    private final GestorSecuenciaCategoria gestorSecuencia;
+    private final SecuenciaCategoria gestorSecuencia;
     private final DonacionClient donacionClient;
-    private final GestorSincronizacionPerfiles gestorSincronizacion;
+    private final SincronizacionPerfiles gestorSincronizacion;
     private final MisionFactory misionFactory;
 
     public AdminService(RepositorioCategorias repoCategorias,
                         RepositorioMisiones repoMisiones,
-                        GestorSecuenciaCategoria gestorSecuencia,
+                        SecuenciaCategoria gestorSecuencia,
                         MisionFactory misionFactory,
                         DonacionClient donacionClient,
-                        GestorSincronizacionPerfiles gestorSincronizacion) {
+                        SincronizacionPerfiles gestorSincronizacion) {
         this.repoCategorias = repoCategorias;
         this.repoMisiones = repoMisiones;
         this.gestorSecuencia = gestorSecuencia;
@@ -58,8 +58,7 @@ public class AdminService {
         }
     }
 
-    public Page<CategoriaDTO> obtenerCategorias(UUID idAdmin, CategoriaFiltroRequest filtros, Pageable pageable) {
-        verificarPermisos(idAdmin);
+    public Page<CategoriaDTO> obtenerCategorias(CategoriaFiltroRequest filtros, Pageable pageable) {
         return repoCategorias.obtenerTodas(
             filtros.nombre(),
             filtros.posicionSecuencia(),
@@ -68,8 +67,7 @@ public class AdminService {
         ).map(this::categoriaToDTO);
     }
 
-    public CategoriaDTO obtenerCategoriaPorId(UUID idAdmin, UUID id) {
-        verificarPermisos(idAdmin);
+    public CategoriaDTO obtenerCategoriaPorId(UUID id) {
         Categoria categoria = repoCategorias.obtenerPorId(id);
         return categoria != null ? categoriaToDTO(categoria) : null;
     }
@@ -145,15 +143,13 @@ public class AdminService {
         gestorSecuencia.desplazarParaEliminar(repoCategorias,posicionLiberada);
     }
 
-    public List<MisionDTO> obtenerMisiones(UUID idAdmin) {
-        verificarPermisos(idAdmin);
+    public List<MisionDTO> obtenerMisiones() {
         return repoMisiones.findAll().stream()
                            .map(this::misionToDTO)
                            .toList();
     }
 
-    public MisionDTO obtenerMisionPorId(UUID idAdmin, UUID id) {
-        verificarPermisos(idAdmin);
+    public MisionDTO obtenerMisionPorId( UUID id) {
         Mision mision = repoMisiones.obtenerPorId(id);
         return mision != null ? misionToDTO(mision) : null;
     }

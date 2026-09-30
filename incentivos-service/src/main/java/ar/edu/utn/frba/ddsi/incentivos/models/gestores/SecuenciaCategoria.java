@@ -2,12 +2,11 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Repository;
 
 @Component
-public class GestorSecuenciaCategoria {
+public class SecuenciaCategoria {
 
-  public GestorSecuenciaCategoria() {
+  public SecuenciaCategoria() {
   }
 
   public void desplazarParaCrear(RepositorioCategorias repo, Integer posicionNueva) {

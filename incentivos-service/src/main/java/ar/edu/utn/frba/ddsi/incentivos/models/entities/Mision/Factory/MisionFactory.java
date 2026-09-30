@@ -15,36 +15,75 @@ import java.util.UUID;
 public class MisionFactory {
     private final OperacionFactory operacionFactory;
 
-    public MisionFactory(OperacionFactory operacionFactory){
+    public MisionFactory(OperacionFactory operacionFactory) {
         this.operacionFactory = operacionFactory;
     }
 
-    public ReglaConstancia crearConstancia(Integer cantidadTiempo, String unidadTiempo){
+    public Mision crearMision(
+        UUID idAdmin,
+        String nombreMision,
+        String descripcion,
+        String nombreInsignia,
+        Integer cantidadTiempo,
+        String unidadTiempo,
+        String atributo,
+        String tipoOperacion,
+        Integer progresoObjetivo,
+        Integer cantidadOperacion,
+        String valorEsperado
+    ) {
+        ReglaConstancia constancia = crearConstancia(cantidadTiempo, unidadTiempo);
+        AtributoImpacto atributoImpacto = crearAtributoImpacto(atributo);
+        Operacion operacion = crearOperacion(
+            tipoOperacion,
+            progresoObjetivo,
+            cantidadOperacion,
+            valorEsperado
+        );
+
+        return crearMision(
+            idAdmin,
+            nombreMision,
+            descripcion,
+            nombreInsignia,
+            constancia,
+            atributoImpacto,
+            operacion
+        );
+    }
+
+    public ReglaConstancia crearConstancia(Integer cantidadTiempo, String unidadTiempo) {
+        if (cantidadTiempo == null || unidadTiempo == null || unidadTiempo.isBlank()) {
+            return null;
+        }
         ChronoUnit unidad = ChronoUnit.valueOf(unidadTiempo.toUpperCase(Locale.ROOT));
         return new ReglaConstancia(cantidadTiempo, unidad);
     }
 
-    public AtributoImpacto crearAtributoImpacto(String atributo){
+    public AtributoImpacto crearAtributoImpacto(String atributo) {
         return AtributoImpacto.valueOf(atributo.toUpperCase(Locale.ROOT));
     }
 
     public Operacion crearOperacion(String tipoOperacion,
                                     Integer progresoObjetivo,
-                                    Integer cantidad, String valor){
+                                    Integer cantidad,
+                                    String valor) {
         return operacionFactory.conseguirOperacion(
-                tipoOperacion, progresoObjetivo,
-                cantidad, valor
+            tipoOperacion,
+            progresoObjetivo,
+            cantidad,
+            valor
         );
     }
 
     public Mision crearMision(
-            UUID idAdmin,
-            String nombreMision,
-            String descripcion,
-            String nombreInsignia,
-            ReglaConstancia constancia,
-            AtributoImpacto atributo,
-            Operacion operacion
+        UUID idAdmin,
+        String nombreMision,
+        String descripcion,
+        String nombreInsignia,
+        ReglaConstancia constancia,
+        AtributoImpacto atributo,
+        Operacion operacion
     ) {
         Regla regla = new Regla(constancia, atributo, operacion);
         return new Mision(nombreMision, idAdmin, descripcion, nombreInsignia, regla);
