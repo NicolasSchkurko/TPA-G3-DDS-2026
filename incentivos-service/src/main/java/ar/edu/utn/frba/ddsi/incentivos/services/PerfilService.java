@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;

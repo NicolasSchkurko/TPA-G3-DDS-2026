@@ -2,7 +2,12 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,14 +17,35 @@ import java.util.UUID;
 @Repository
 public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
 
-    // Buscar una misión específica por su nombre exacto
-    Optional<Mision> findByNombreMision(String nombreMision);
+    @Query("""
+    SELECT m FROM Mision m
+    WHERE (:nombreMision IS NULL OR LOWER(m.nombreMision) LIKE :nombreMision)
+      AND (:insignia IS NULL OR LOWER(m.insigniaObjetivo.nombre) LIKE :insignia)
+      AND (:atributo IS NULL OR m.reglaDeProgreso.atributo = :atributo)
+    """)
 
-    // Buscar todas las misiones creadas por un administrador en particular
-    List<Mision> findByIdAdmin(UUID idAdmin);
+    Page<Mision> findAllByFiltros(
+        @Param("nombreMision") String nombreMision,
+        @Param("insignia") String insignia,
+        @Param("atributo") AtributoImpacto atributo,
+        Pageable pageable
+    );
 
-    // Buscar misiones que contengan una palabra clave en su nombre (ignorando mayúsculas/minúsculas)
-    List<Mision> findByNombreMisionContainingIgnoreCase(String keyword);
+    default Page<Mision> obtenerTodas(String nombreMision, String insigniaObjetivo, String atributoStr, Pageable pageable) {
+        String patronNombre = (nombreMision != null && !nombreMision.isBlank())
+                              ? "%" + nombreMision.trim().toLowerCase() + "%"
+                              : null;
+
+        String patronInsignia = (insigniaObjetivo != null && !insigniaObjetivo.isBlank())
+                                ? "%" + insigniaObjetivo.trim().toLowerCase() + "%"
+                                : null;
+
+        AtributoImpacto atributo = (atributoStr != null && !atributoStr.isBlank())
+                                   ? AtributoImpacto.valueOf(atributoStr.trim().toUpperCase())
+                                   : null;
+
+        return this.findAllByFiltros(patronNombre, patronInsignia, atributo, pageable);
+    }
 
     default List<Mision> conseguirMisiones(List<UUID> idMisiones) {
         if (idMisiones == null || idMisiones.isEmpty()) {
@@ -45,31 +71,4 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
         return m;
     }
 
-    default Mision actualizarMision(Mision misionActual, Mision misionModificada) {
-        // Actualizar nombre de misión
-        if (misionModificada.getNombreMision() != null) {
-            misionActual.setNombreMision(misionModificada.getNombreMision());
-        }
-
-        // Actualizar descripción
-        if (misionModificada.getDescripcion() != null) {
-            misionActual.setDescripcion(misionModificada.getDescripcion());
-        }
-
-        // Actualizar insignia objetivo
-        if (misionModificada.getInsigniaObjetivo() != null) {
-            Insignia insigniaActualizada = new Insignia(
-                misionModificada.getInsigniaObjetivo().getNombre(),
-                misionModificada.getDescripcion() != null ? misionModificada.getDescripcion() : misionActual.getDescripcion()
-            );
-            misionActual.setInsigniaObjetivo(insigniaActualizada);
-        }
-
-        // Actualizar regla de progreso (constancia y operación)
-        if (misionModificada.getReglaDeProgreso() != null) {
-            misionActual.setReglaDeProgreso(misionModificada.getReglaDeProgreso());
-        }
-
-        return save(misionActual);
-    }
 }

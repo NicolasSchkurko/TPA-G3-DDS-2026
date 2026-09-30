@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
+import ar.edu.utn.frba.ddsi.incentivos.controllers.request.MisionFiltroRequest;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.MisionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -7,6 +8,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,20 +31,24 @@ public class MisionController {
     this.service = service;
   }
 
-  // TODO: PAGINACION
   @Operation(
       summary = "Obtener todas las misiones",
-      description = "Retorna la lista completa de misiones disponibles en el sistema."
+      description = "Retorna la lista paginada y filtrable de misiones disponibles en el sistema."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Misiones obtenidas con éxito"),
       @ApiResponse(responseCode = "403", description = "No autorizado")
   })
   @GetMapping
-  public ResponseEntity<List<MisionDTO>> obtenerMisiones() {
-    return ResponseEntity.ok(service.obtenerMisiones());
-  }
+  public ResponseEntity<Page<MisionDTO>> obtenerMisiones(
+      @ParameterObject @ModelAttribute MisionFiltroRequest filtros,
 
+      @ParameterObject
+      @PageableDefault(page = 0, size = 10, sort = "nombreMision", direction = Sort.Direction.ASC)
+      Pageable pageable
+  ) {
+    return ResponseEntity.ok(service.obtenerMisiones(filtros, pageable));
+  }
   @Operation(
       summary = "Obtener una misión específica",
       description = "Retorna los detalles de una misión identificada por su UUID."

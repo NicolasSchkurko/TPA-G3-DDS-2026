@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
+import ar.edu.utn.frba.ddsi.incentivos.controllers.request.MisionFiltroRequest;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ConstanciaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
@@ -9,6 +10,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +35,13 @@ public class MisionService {
     this.validadorAdmin = validadorAdmin;
   }
 
-  public List<MisionDTO> obtenerMisiones() {
-    return repoMisiones.findAll().stream()
-                       .map(MisionDTO::desdeEntidad)
-                       .toList();
+  public Page<MisionDTO> obtenerMisiones(MisionFiltroRequest filtros, Pageable pageable) {
+    return repoMisiones.obtenerTodas(
+        filtros.nombreMision(),
+        filtros.insigniaObjetivo(),
+        filtros.atributo(),
+        pageable
+    ).map(MisionDTO::desdeEntidad);
   }
 
   public MisionDTO obtenerMisionPorId(UUID id) {
@@ -57,10 +63,11 @@ public class MisionService {
 
     return repoMisiones.findById(idMision).map(misionActual -> {
                          Mision misionModificada = construirMision(idAdmin, dto);
-                         misionModificada.setIdMision(idMision);
 
-                         Mision actualizada = repoMisiones.actualizarMision(misionActual, misionModificada);
+                         misionActual.actualizar(misionModificada);
+                         Mision actualizada = repoMisiones.save(misionActual);
                          gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
+
                          return actualizada;
                        })
                        .map(MisionDTO::desdeEntidad)

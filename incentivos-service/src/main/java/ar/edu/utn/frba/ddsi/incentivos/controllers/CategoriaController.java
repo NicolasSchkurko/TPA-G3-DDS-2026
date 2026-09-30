@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.controllers.request.CategoriaFiltroRequest;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
-import ar.edu.utn.frba.ddsi.incentivos.services.AdminService;
 import ar.edu.utn.frba.ddsi.incentivos.services.CategoriaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

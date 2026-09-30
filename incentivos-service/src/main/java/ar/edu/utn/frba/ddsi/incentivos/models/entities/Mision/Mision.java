@@ -41,4 +41,24 @@ public class Mision {
         this.reglaDeProgreso = regla;
     }
 
+    public void actualizar(Mision misionModificada) {
+        if (misionModificada.getNombreMision() != null) {
+            this.nombreMision = misionModificada.getNombreMision();
+        }
+
+        if (misionModificada.getDescripcion() != null) {
+            this.descripcion = misionModificada.getDescripcion();
+        }
+
+        if (misionModificada.getInsigniaObjetivo() != null && misionModificada.getInsigniaObjetivo().getNombre() != null) {
+            this.insigniaObjetivo = new Insignia(
+                misionModificada.getInsigniaObjetivo().getNombre(),
+                this.descripcion
+            );
+        }
+
+        if (misionModificada.getReglaDeProgreso() != null) {
+            this.reglaDeProgreso = misionModificada.getReglaDeProgreso();
+        }
+    }
 }
