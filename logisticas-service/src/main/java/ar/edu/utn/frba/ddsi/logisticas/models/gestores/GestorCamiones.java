@@ -16,15 +16,15 @@ public class GestorCamiones {
         this.repoCamiones = repoCamiones;
     }
 
-    public Camion actualizarCamion(String patente, Chofer nuevoChofer, CamionDTO dto){
+    public Camion actualizarCamion(String patente, Chofer nuevoChofer, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
         Camion camionExistente = repoCamiones.findById(patente)
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
 
         camionExistente.setChofer(nuevoChofer);
-        camionExistente.setCapacidadVolumen(dto.getCapacidadVolumen());
-        camionExistente.setAltura(dto.getAltura());
-        camionExistente.setCapacidadCarga(dto.getCapacidadCarga());
-        camionExistente.setDisponible(dto.getDisponible());
+        camionExistente.setCapacidadVolumen(capacidadVolumen);
+        camionExistente.setAltura(altura);
+        camionExistente.setCapacidadCarga(capacidadCarga);
+        camionExistente.setDisponible(disponible);
 
         repoCamiones.save(camionExistente);
         return camionExistente;

@@ -60,7 +60,7 @@ public class CamionService {
   public CamionDTO update(String patente, CamionDTO dto) {
     Chofer nuevoChofer = dto.getIdChofer() != null ? repoChoferes.findById(dto.getIdChofer())
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado")): null;
-    Camion camionExistente = gestorCamiones.actualizarCamion(patente, nuevoChofer, dto);
+    Camion camionExistente = gestorCamiones.actualizarCamion(patente, nuevoChofer, dto.getCapacidadVolumen(), dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
     return convertirADTO(camionExistente);
   }
 

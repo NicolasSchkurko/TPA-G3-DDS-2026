@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 @Repository
 public interface RepositorioEventoLogistica extends JpaRepository<EventoLogistica, Long> {
-  default List<EventoLogistica> findByIdGreaterThanOrderByFechaAsc(Long id) {
+  default List<EventoLogistica> findByIdGreaterThanOrderByIdAsc(Long id) {
     return this.findAll().stream()
                   .filter(e -> e.getId() > id)
                   // Al guardarse secuencialmente en la lista, el orden de fecha y de ID coinciden

@@ -17,7 +17,7 @@ public class EventoLogisticaService {
   }
 
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByFechaAsc((desdeId - 1))));
+    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc((desdeId - 1))));
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

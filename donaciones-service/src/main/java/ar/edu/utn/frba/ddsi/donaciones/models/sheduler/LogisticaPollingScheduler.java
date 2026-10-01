@@ -50,6 +50,7 @@ public class LogisticaPollingScheduler {
                 null,
                 EventoLogisticaResponseDTO.class
             );
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, ROUTING_KEY, SolicitudEventosDTO);
 
             // Extraemos la lista del envoltorio, verificando que no venga nulo
             if (response.getBody() != null && response.getBody().getEventos() != null) {
