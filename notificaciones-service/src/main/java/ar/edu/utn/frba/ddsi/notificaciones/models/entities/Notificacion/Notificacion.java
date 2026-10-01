@@ -5,12 +5,13 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Setter
 @Getter
-public class Notificacion {
+public class Notificacion implements Serializable {
     private UUID id = UUID.randomUUID();
     private Mensaje mensaje;
     private String direccionDeContacto;
@@ -20,7 +21,7 @@ public class Notificacion {
     private String tipoMedioDeContacto;
 
 
-    public Notificacion(String direccionDeContacto, Mensaje mensaje) {
+    public Notificacion(String direccionDeContacto, String tipoMedioDeContacto, Mensaje mensaje) {
         this.fechaCreacion = LocalDateTime.now();
         this.estado = EstadoNotificacion.PENDIENTE;
         this.direccionDeContacto = direccionDeContacto;
