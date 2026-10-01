@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
+import ar.edu.utn.frba.ddsi.donaciones.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.donaciones.dto.AsignarPropuestaRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
@@ -37,7 +38,7 @@ public class DonacionController {
       return ResponseEntity.notFound().build();
     }
     //enviar a logistica
-    rabbitTemplate.convertAndSend(DONACIONES_EXCHANGE, ROUTING_KEY_NUEVA_DONACION, donaciones);
+    rabbitTemplate.convertAndSend(RabbitMQConfig.DONACIONES_EXCHANGE, RabbitMQConfig.ROUTING_KEY_NUEVA_DONACION, donaciones);
     return ResponseEntity.ok(donaciones);
   }
 
