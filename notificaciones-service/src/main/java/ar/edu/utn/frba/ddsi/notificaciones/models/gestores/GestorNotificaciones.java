@@ -28,7 +28,7 @@ public class GestorNotificaciones {
 
         Notificacion notificacion = crearNotificacion(direccionDeContacto, asunto, cuerpo);
         notificacion.marcarPendiente();
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
         cola.add(notificacion);
 
     }
@@ -38,7 +38,7 @@ public class GestorNotificaciones {
 
         Mensaje mensaje = new Mensaje(asunto, cuerpo);
         Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
 
         return new Notificacion(direccionDeContacto, mensaje);
     }
@@ -54,7 +54,7 @@ public class GestorNotificaciones {
                 notificacion.marcarFallida();
                 cola.add(notificacion);
             }
-            repositorioNotificaciones.guardar(notificacion);
+            repositorioNotificaciones.save(notificacion);
         }
     }
 
