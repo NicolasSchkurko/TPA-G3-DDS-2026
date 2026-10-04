@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.gestores;
 
-import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
@@ -29,7 +28,7 @@ public class GestorNotificaciones {
 
         Notificacion notificacion = crearNotificacion(direccionDeContacto, asunto, cuerpo);
         notificacion.marcarPendiente();
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
         cola.add(notificacion);
 
     }
@@ -39,7 +38,7 @@ public class GestorNotificaciones {
 
         Mensaje mensaje = new Mensaje(asunto, cuerpo);
         Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
 
         return new Notificacion(direccionDeContacto, mensaje);
     }
@@ -49,13 +48,13 @@ public class GestorNotificaciones {
         Notificacion notificacion = cola.poll();
         if (notificacion != null) {
             try {
-                enviarNotificacion("sms", notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
+                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
                 notificacion.marcarEnviada();
             } catch (Exception e) {
                 notificacion.marcarFallida();
                 cola.add(notificacion);
             }
-            repositorioNotificaciones.guardar(notificacion);
+            repositorioNotificaciones.save(notificacion);
         }
     }
 
