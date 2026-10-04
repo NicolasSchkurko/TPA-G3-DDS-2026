@@ -4,20 +4,20 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorEventos;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
 public class EventoLogisticaService {
-  private final GestorEventos gestorEventos;
+  private final RepositorioEventoLogistica repoEventos;
 
-  public EventoLogisticaService(GestorEventos gestorEventos){
-    this.gestorEventos = gestorEventos;
+  public EventoLogisticaService(RepositorioEventoLogistica repoEventos){
+    this.repoEventos = repoEventos;
   }
 
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventoLogisticaResponseDTO(convertirEventosADTO(gestorEventos.buscarEventos(desdeId - 1)));
+    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc((desdeId - 1))));
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

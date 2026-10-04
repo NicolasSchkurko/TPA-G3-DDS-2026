@@ -3,37 +3,37 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class PlanificadorRutasService {
-    private final GestorRutas gestorRutas;
-    private final GestorChoferes gestorChoferes;
-    private final GestorItemEntrega gestorItemEntrega;
-    private final GestorCamiones gestorCamiones;
+    private final RepositorioRutas repoRutas;
+    private final RepositorioChoferes repoChoferes;
+    private final RepositorioItemEntrega repoItemEntrega;
+    private final RepositorioCamiones repoCamiones;
+    private final RepositorioParadas repoParadas;
     private final PlanificadorDeRutas planificadorDominio;
 
-    public PlanificadorRutasService(GestorRutas gestorRutas,
-                       GestorChoferes gestorChoferes,
-                       GestorItemEntrega gestorItemEntrega,
-                       GestorCamiones gestorCamiones,
+    public PlanificadorRutasService(RepositorioRutas repoRutas,
+                                    RepositorioChoferes repoChoferes,
+                                    RepositorioItemEntrega repoItemEntrega,
+                                    RepositorioCamiones repoCamiones,
+                                    RepositorioParadas repoParadas,
                        PlanificadorDeRutas planificadorDominio) {
-        this.gestorRutas = gestorRutas;
-        this.gestorChoferes = gestorChoferes;
-        this.gestorItemEntrega = gestorItemEntrega;
-        this.gestorCamiones = gestorCamiones;
+        this.repoRutas = repoRutas;
+        this.repoChoferes = repoChoferes;
+        this.repoItemEntrega = repoItemEntrega;
+        this.repoCamiones = repoCamiones;
+        this.repoParadas = repoParadas;
         this.planificadorDominio = planificadorDominio;
     }
 
@@ -53,28 +53,55 @@ public class PlanificadorRutasService {
         // 2. Extraer todos los IDs de donaciones del mapa
         List<UUID> todosLosIdsItems = asignacion.values().stream()
                 .flatMap(List::stream)
-                .collect(Collectors.toList());
+                .toList();
 
         List<Camion> camionesDb;
         List<ItemEntrega> itemsDb;
 
         // 3. Traer de la Base de Datos los camiones y los items necesarios
         try {
-            camionesDb = gestorCamiones.listarCamiones();
-            itemsDb = gestorItemEntrega.buscarItems(todosLosIdsItems);
+            camionesDb = repoCamiones.findAll();
+            itemsDb = todosLosIdsItems.stream()
+                    .map(id -> repoItemEntrega.findById(id)
+                            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")))
+                    .toList();
         } catch (Exception e) {
             throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
         }
 
         // 5. Pasar la responsabilidad al dominio para que instancie, agrupe en paradas y valide pesos
         List<Ruta> rutasGeneradas = planificadorDominio.procesarCallbackRutas(asignacion, camionesDb, itemsDb);
-
         // 6. Guardar el resultado final en la BD
         try {
-            rutasGeneradas.forEach(ruta -> ruta.setFechaProgramada(LocalDate.now().plusDays(1)));
-            gestorRutas.guardarRutas(rutasGeneradas);
+            for (Ruta ruta : rutasGeneradas) {
+
+                repoRutas.saveAndFlush(ruta);
+
+                for (Parada parada : ruta.getParadas()) {
+
+                    parada.setRuta(ruta);
+                    repoParadas.saveAndFlush(parada);
+
+                    for (ItemEntrega item : parada.getItems()) {
+                        item.setParada(parada);
+                        repoItemEntrega.saveAndFlush(item);
+                    }
+                }
+            }
+            System.out.println("INTENTANDO GUARDAR RUTAS...");
+
+            System.out.println("RUTAS Y PARADAS CREADAS");
             System.out.println("Se guardaron exitosamente " + rutasGeneradas.size() + " rutas nuevas.");
+
         } catch (Exception e) {
+            System.out.println("========================================");
+            System.out.println("ERROR AL GUARDAR RUTAS");
+            System.out.println("========================================");
+
+            e.printStackTrace();
+
+            System.out.println("========================================");
+
             throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);
         }
 
@@ -87,7 +114,7 @@ public class PlanificadorRutasService {
      */
     public List<Ruta> asignarChoferes(List<Ruta> rutas){
         List<Chofer> choferesDisponibles = new ArrayList<>(
-                gestorChoferes.listarChoferes()
+                repoChoferes.findAll()
                         .stream()
                         .filter(Chofer::isDisponible)
                         .toList()
@@ -105,11 +132,11 @@ public class PlanificadorRutasService {
                     choferElegido.ocupado(); // Bloqueamos al chofer
 
                     // Actualizamos estados
-                    gestorCamiones.guardarCamion(camion);
-                    gestorChoferes.guardarChofer(choferElegido);
+                    repoCamiones.save(camion);
+                    repoChoferes.save(choferElegido);
                 }
 
-                gestorRutas.guardarRuta(ruta);
+                repoRutas.saveAndFlush(ruta);
                 choferesDisponibles.remove(choferElegido);
             }
             return rutas;
@@ -124,11 +151,11 @@ public class PlanificadorRutasService {
                     camion.ocupado();
                     chofer.ocupado();
 
-                    gestorCamiones.guardarCamion(camion);
-                    gestorChoferes.guardarChofer(chofer);
+                    repoCamiones.save(camion);
+                    repoChoferes.save(chofer);
                 }
 
-                gestorRutas.guardarRuta(rutaElegida);
+                repoRutas.saveAndFlush(rutaElegida);
                 rutas.remove(rutaElegida);
                 rutasAsignadas.add(rutaElegida);
             }

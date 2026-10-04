@@ -39,18 +39,28 @@ public class Ruta {
     @Column(name = "url_seguimiento")
     private String urlSeguimiento; // Enlace al mapa interactivo para tracking en tiempo real
 
-    @OneToMany(mappedBy = "ruta", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Parada> paradas = new ArrayList<>();
+    @OneToMany(mappedBy = "ruta", orphanRemoval = true)
+    private List<Parada> paradas;
+
+    public Ruta(Camion camion){
+        this.camionAsignado = camion;
+        this.fechaProgramada = LocalDate.now().plusDays(1);
+        this.paradas = new ArrayList<>();
+    }
 
     // Agrupa por entidad: si ya hay una Parada para esa entidad en esta ruta, se agrega al listado
     public void agregarEntrega(ItemEntrega item) {
         paradas.stream()
-               .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
-               .findFirst()
-               .ifPresentOrElse(
-                   parada -> parada.agregarItem(item),
-                   () -> paradas.add(new Parada(item))
-               );
+                .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
+                .findFirst()
+                .ifPresentOrElse(
+                        parada -> parada.agregarItem(item),
+                        () -> {
+                            Parada parada = new Parada(item);
+                            parada.setRuta(this);
+                            paradas.add(parada);
+                        }
+                );
     }
 
     // Todos los items que lleva el camión en esta ruta, sin importar en qué parada van.

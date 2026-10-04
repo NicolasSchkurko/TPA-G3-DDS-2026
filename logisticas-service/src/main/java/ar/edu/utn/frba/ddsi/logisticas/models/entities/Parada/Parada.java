@@ -36,14 +36,15 @@ public class Parada {
     @JoinColumn(name = "id_entidad_beneficiaria", referencedColumnName = "id_entidad_beneficiaria", nullable = false)
     private Entidad entidadDestino; //quedo raro porque hay un metodo que te da la entidad pero creo que es necesario pala la DB
 
-    @OneToMany(mappedBy = "parada", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "parada")
     private List<ItemEntrega> items = new ArrayList<>();
 
     // Se crea siempre a partir de un primer item y su dirección
     public Parada(ItemEntrega primerItem) {
         Entidad entidad = primerItem.getEntidadDestino();
+        this.entidadDestino = entidad;
         this.direccion = entidad.getDireccionDestino();
-        this.items.add(primerItem);
+        this.agregarItem(primerItem);
     }
 
     public void agregarItem(ItemEntrega item) {

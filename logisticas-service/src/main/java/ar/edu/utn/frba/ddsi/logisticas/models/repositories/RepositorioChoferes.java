@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import org.springframework.data.jpa.repository.JpaRepository;

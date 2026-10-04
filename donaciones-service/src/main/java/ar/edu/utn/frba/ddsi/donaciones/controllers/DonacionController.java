@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
+import ar.edu.utn.frba.ddsi.donaciones.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.donaciones.dto.AsignarPropuestaRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
@@ -8,6 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,18 +22,23 @@ import java.util.UUID;
 public class DonacionController {
 
   private final DonacionService donacionService;
+  private final RabbitTemplate rabbitTemplate;
 
-  public DonacionController(DonacionService donacionService) {
+  public DonacionController(DonacionService donacionService, RabbitTemplate rabbitTemplate) {
     this.donacionService = donacionService;
+    this.rabbitTemplate = rabbitTemplate;
   }
 
   @Operation(summary = "Crear una Donación")
   @PostMapping("/formulario")
   public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
     List<DonacionDTO> donaciones = donacionService.procesarFormulario(request);
+
     if (donaciones == null) {
       return ResponseEntity.notFound().build();
     }
+    //enviar a logistica
+    rabbitTemplate.convertAndSend(RabbitMQConfig.DONACIONES_EXCHANGE, RabbitMQConfig.ROUTING_KEY_NUEVA_DONACION, donaciones);
     return ResponseEntity.ok(donaciones);
   }
 

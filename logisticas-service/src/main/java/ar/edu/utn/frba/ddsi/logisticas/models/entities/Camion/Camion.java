@@ -4,33 +4,33 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "camion")
 @Getter
 @Setter
 @NoArgsConstructor
+@Table(name = "camion")
 public class Camion {
     @ManyToOne
     @JoinColumn(name = "id_chofer", referencedColumnName = "id_chofer")
     private Chofer chofer;
 
     @Id
-    @Column(name = "patente", length = 20)
+    @Column(name = "patente", length = 20, nullable = false)
     private String patente;
 
-    @Column(name = "capacidad_volumen_m3")
+    @Column(name = "capacidad_volumen_m3", nullable = false)
     private Double capacidadVolumen;
 
-    @Column(name = "altura_m")
+    @Column(name = "altura_m", nullable = false)
     private Double altura;
 
-    @Column(name = "capacidad_carga_kg")
+    @Column(name = "capacidad_carga_kg", nullable = false)
     private Double capacidadCarga;
 
-    @Column(name = "disponible")
+    @Column(name = "disponible", nullable = false)
     private Boolean disponible;
 
     @Column(name = "peso_ocupado_kg")

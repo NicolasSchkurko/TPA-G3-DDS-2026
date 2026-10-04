@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -19,11 +20,11 @@ public class GestorPublicacionEventos {
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
-    private final GestorEventos gestorEventos;
+    private final RepositorioEventoLogistica repoEventos;
     private final ObjectMapper objectMapper;
 
-    public GestorPublicacionEventos(GestorEventos gestorEventos, ObjectMapper objectMapper) {
-        this.gestorEventos = gestorEventos;
+    public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos, ObjectMapper objectMapper) {
+        this.repoEventos = repoEventos;
         this.objectMapper = objectMapper;
     }
 
@@ -50,7 +51,7 @@ public class GestorPublicacionEventos {
         evento.setPayloadJson(serializar(payload));
 
         ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
-        gestorEventos.guardarEvento(evento);
+        repoEventos.save(evento);
 
         return ruta;
     }
@@ -66,7 +67,7 @@ public class GestorPublicacionEventos {
             evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
 
             item.getEventos().add(evento);
-            gestorEventos.guardarEvento(evento);
+            repoEventos.save(evento);
         }
         return item;
     }
@@ -80,7 +81,7 @@ public class GestorPublicacionEventos {
         evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
 
         item.getEventos().add(evento);
-        gestorEventos.guardarEvento(evento);
+        repoEventos.save(evento);
 
         return item;
     }
@@ -93,7 +94,7 @@ public class GestorPublicacionEventos {
         );
 
         item.getEventos().add(evento);
-        gestorEventos.guardarEvento(evento);
+        repoEventos.save(evento);
 
         return item;
     }
