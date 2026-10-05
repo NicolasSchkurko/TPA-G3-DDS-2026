@@ -1,25 +1,30 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
+import ar.edu.utn.frba.ddsi.donaciones.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.BienDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO.from;
 
 @Service
 public class DonacionService {
@@ -31,11 +36,12 @@ public class DonacionService {
   private final GestorBienes gestorBienes;
   private final NotificacionesClient notificacionesClient;
   private final GestorNecesidades gestorNecesidades;
+  private final RabbitTemplate rabbitTemplate;
 
   public DonacionService(GestorEntidadesBeneficiarias gestorEntidades, GestorDonantes gestorDonantes,
                          GestorDonaciones gestorDonaciones, GestorFormulario gestorFormulario,
                          GestorMatchmaking gestorMatchmaking, GestorBienes gestorBienes,
-                         NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades) {
+                         NotificacionesClient notificacionesClient, GestorNecesidades gestorNecesidades, RabbitTemplate rabbitTemplate) {
     this.gestorEntidades = gestorEntidades;
     this.gestorDonantes = gestorDonantes;
     this.gestorDonaciones = gestorDonaciones;
@@ -43,7 +49,8 @@ public class DonacionService {
     this.gestorMatchmaking = gestorMatchmaking;
     this.gestorBienes = gestorBienes;
     this.notificacionesClient = notificacionesClient;
-    this.gestorNecesidades=gestorNecesidades;
+    this.gestorNecesidades = gestorNecesidades;
+    this.rabbitTemplate = rabbitTemplate;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -107,6 +114,9 @@ public class DonacionService {
     gestorNecesidades.agregarDonacionANecesidad(propuestaAsignacion.getNecesidad().getId(), donacion);
     gestorMatchmaking.eliminarResultado(donacionId);
     notificarAsignacion(donacion);
+    List<BienResumenDTO> resumenes = donacion.getBienes().stream().map(BienResumenDTO::from).toList();
+    EntregaDTO entrega = new EntregaDTO(donacion.getBienes().stream().map(Bien::getId).toList(), resumenes.stream().map(this::toBienDTO).toList(), from(donacion.getEntidad().getDireccion()));
+    rabbitTemplate.convertAndSend(RabbitMQConfig.DONACIONES_EXCHANGE, RabbitMQConfig.ROUTING_KEY_NUEVA_DONACION, entrega);
   }
 
   private void notificarAsignacion(Donacion donacion) {
@@ -129,5 +139,9 @@ public class DonacionService {
         notificacionesClient.enviarNotificacion(notifDonante);
       }
     } catch (Exception e) { System.err.println("Error al enviar notificaciones asíncronas: " + e.getMessage()); }
+  }
+
+  private BienDTO toBienDTO(BienResumenDTO bien){
+    return new BienDTO(bien.getCantidad(), bien.getUnidadDeMedida(), null, null, null, null, null);
   }
 }

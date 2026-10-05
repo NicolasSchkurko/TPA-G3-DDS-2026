@@ -30,4 +30,3 @@ public abstract class Bien {
         return this.urlFoto;
     }
 }
-

@@ -13,6 +13,7 @@ public class RabbitMQConfig {
 
     public static final String LOGISTICAS_EXCHANGE = "logisticas.exchange";
     public static final String SOLICITUD_EVENTOS_QUEUE = "logisticas.solicitud.eventos.queue";
+    public static final String RESPUESTA_EVENTOS_QUEUE = "logisticas.eventos.respuesta.queue";
     public static final String ROUTING_KEY_SOLICITUD_EVENTOS = "logisticas.solicitud.eventos";
     public static final String ROUTING_KEY_RESPUESTA_EVENTOS = "logisticas.eventos.respuesta";
 
@@ -44,6 +45,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingSolicitudEventos(Queue solicitudEventosQueue, TopicExchange donacionesExchange) {
         return BindingBuilder.bind(solicitudEventosQueue).to(donacionesExchange).with(ROUTING_KEY_SOLICITUD_EVENTOS);
+    }
+
+    @Bean
+    public Queue respuestaEventosQueue(){
+        return new Queue(RESPUESTA_EVENTOS_QUEUE, true);
+    }
+
+    @Bean
+    public Binding bindingRespuestaEventos(Queue respuestaEventosQueue, TopicExchange logisticasExchange) {
+        return BindingBuilder.bind(respuestaEventosQueue).to(logisticasExchange).with(ROUTING_KEY_RESPUESTA_EVENTOS);
     }
 
     @Bean

@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.RabbitMQ;
 
 import ar.edu.utn.frba.ddsi.logisticas.config.RabbitMQConfig;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.PeticionEntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -15,7 +15,7 @@ public class DonacionListener {
     }
 
     @RabbitListener(queues = RabbitMQConfig.NUEVAS_DONACIONES_QUEUE)
-    public void recibirDonacionParaEntregar(PeticionEntregaDTO peticion) {
+    public void recibirDonacionParaEntregar(EntregaDTO peticion) {
         try {
             entregaService.procesarPeticion(peticion);
         } catch (Exception e) {

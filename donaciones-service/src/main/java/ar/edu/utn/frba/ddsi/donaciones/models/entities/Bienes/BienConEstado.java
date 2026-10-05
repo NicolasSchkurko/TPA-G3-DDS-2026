@@ -19,4 +19,5 @@ public class BienConEstado extends Bien {
         return "BienConEstado{descripcion=" + descripcion + ", subcategoria=" + subcategoria + ", urlFoto=" + urlFoto + ", cantidad=" + peso + ", unidadUtilizada=" + unidadUtilizada + ", usado=" + usado + '}';
     }
 
+
 }

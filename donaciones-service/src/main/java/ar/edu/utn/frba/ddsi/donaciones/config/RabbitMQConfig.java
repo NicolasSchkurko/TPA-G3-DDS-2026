@@ -46,8 +46,18 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding bindingSolicitudEventos(Queue solicitudEventosQueue, TopicExchange donacionesExchange) {
-        return BindingBuilder.bind(solicitudEventosQueue).to(donacionesExchange).with(ROUTING_KEY_SOLICITUD_EVENTOS);
+    public Binding bindingSolicitudEventos(Queue solicitudEventosQueue, TopicExchange logisticasExchange) {
+        return BindingBuilder.bind(solicitudEventosQueue).to(logisticasExchange).with(ROUTING_KEY_SOLICITUD_EVENTOS);
+    }
+
+    @Bean
+    public Queue respuestaEventosQueue(){
+        return new Queue(RESPUESTA_EVENTOS_QUEUE, true);
+    }
+
+    @Bean
+    public Binding bindingRespuestaEventos(Queue respuestaEventosQueue, TopicExchange logisticasExchange) {
+        return BindingBuilder.bind(respuestaEventosQueue).to(logisticasExchange).with(ROUTING_KEY_RESPUESTA_EVENTOS);
     }
 
     @Bean

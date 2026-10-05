@@ -1,13 +1,12 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.sheduler;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
+
 import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
