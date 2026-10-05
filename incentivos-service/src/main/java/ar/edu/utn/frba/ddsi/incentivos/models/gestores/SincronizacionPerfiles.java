@@ -1,8 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
-import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -15,15 +13,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class GestorSincronizacionPerfiles {
+public class SincronizacionPerfiles {
 
   private final RepositorioPerfiles repositorioPerfiles;
-  private final DonacionClient donacionClient;
 
-  public GestorSincronizacionPerfiles(RepositorioPerfiles repositorioPerfiles,
-                                      DonacionClient donacionClient) {
+  // Ya no depende de DonacionClient: antes pedia el contacto del donante una vez por
+  // perfil dentro del bucle y con la transaccion abierta (punto 12). Ahora el evento
+  // lleva el idUsuario y NotificacionClient resuelve el contacto en AFTER_COMMIT.
+  public SincronizacionPerfiles(RepositorioPerfiles repositorioPerfiles) {
     this.repositorioPerfiles = repositorioPerfiles;
-    this.donacionClient = donacionClient;
   }
 
   @Transactional
@@ -36,7 +34,8 @@ public class GestorSincronizacionPerfiles {
     Map<Integer, Mision> misionesPorPosicion = categoria.getCategoriaMisiones().stream()
                                                         .collect(Collectors.toMap(
                                                             cm -> cm.getPosicion(),
-                                                            cm -> cm.getMision()
+                                                            cm -> cm.getMision(),
+                                                            (primera, segunda) -> primera
                                                         ));
 
     for (Perfil perfil : perfiles) {
@@ -58,8 +57,12 @@ public class GestorSincronizacionPerfiles {
         continue;
       }
 
-      MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
-      perfil.cambiarMision(nuevaMision, misionActual, contacto);
+      // Sin llamada a ningun servicio externo. Antes pedia el contacto con la
+      // transaccion abierta y una vez por donante afectado, en un bucle: con 500
+      // transaccion abierta y una vez por donante afectado, en un bucle: con 500
+      // retenidas (punto 12). Ahora el evento lleva el idUsuario y el listener resuelve
+      // el contacto en AFTER_COMMIT.
+      perfil.cambiarMision(nuevaMision, misionActual);
     }
 
     repositorioPerfiles.saveAll(perfiles);

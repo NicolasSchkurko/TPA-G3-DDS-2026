@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Entity;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -8,6 +9,8 @@ import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -26,7 +29,23 @@ public class CantidadCoincidencias extends Operacion {
         this.valorEsperado = valorEsperado;
     }
     @Override
-    public Boolean calcularProgreso(Object valorAtributo) {
-        return valorEsperado.asText().equals(valorAtributo.toString());
+    public Boolean calcularProgreso(Object valorAtributo, ProgresoDelDonante donante) {
+        if (valorEsperado == null || valorAtributo == null) {
+            return false;
+        }
+        return valorEsperado.asText().equalsIgnoreCase(valorAtributo.toString().trim());
+    }
+
+    /**
+     * {@code valorEsperado} sí se compara: cambiar de "ENTREGADA" a "RECIBIDA" cambia por
+     * completo qué donaciones cuentan, así que lo acumulado deja de servir. El
+     * {@code equals} de {@code JsonNode} compara la estructura, no la referencia, así que
+     * dos TextNode con el mismo texto dan {@code true}.
+     */
+    @Override
+    public boolean esEquivalenteA(Operacion otra) {
+        return super.esEquivalenteA(otra)
+               && otra instanceof CantidadCoincidencias otraCoincidencias
+               && Objects.equals(valorEsperado, otraCoincidencias.valorEsperado);
     }
 }

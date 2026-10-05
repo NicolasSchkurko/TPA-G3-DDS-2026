@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
@@ -15,8 +14,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -37,8 +37,21 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @JoinColumn(name = "categoria_id")
     private Categoria categoriaActual;
 
+    /**
+     * Insignias que ya tiene este donante.
+     *
+     * <p>Es un {@code Set} y no una {@code List} para que la misma insignia no se pueda
+     * guardar dos veces (punto 28). El seed pone una misma misión en dos categorías, así
+     * que un donante que la complete en una y depois cambie de categoría la vuelve a
+     * completar: con una lista guardaba la insignia dos veces, disparaba dos veces el
+     * evento de misión completada y el ranking le puntuaba doble.
+     *
+     * <p>La deduplicación depende de que {@link InsigniaObtenida} tenga
+     * {@code equals}/{@code hashCode} por (perfil, insignia); sin eso el {@code Set}
+     * compararía por identidad y no reconocería nada.
+     */
     @OneToMany(mappedBy = "perfil", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InsigniaObtenida> insigniasObtenidas;
+    private Set<InsigniaObtenida> insigniasObtenidas;
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private ProgresoMision progresoMisionActual;
@@ -47,7 +60,9 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         this.idUsuario = idUsuario;
         this.nombreUsuario = nombreUsuario;
         this.categoriaActual = null;
-        this.insigniasObtenidas = new ArrayList<>();
+        // LinkedHashSet para no perder el orden de obtención: se expone en el perfil y en
+        // el historial, y un HashSet daría un orden arbitrario entre reinicios.
+        this.insigniasObtenidas = new LinkedHashSet<>();
         this.progresoMisionActual = null;
     }
 
@@ -56,6 +71,14 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
             progresoMisionActual.evaluarConstancia(donaciones, LocalDateTime.now());
     }
 
+    /**
+     * Hace progresar la misión con una donación.
+     *
+     * @return {@code true} si con esto el donante completó la misión, así que hay que
+     *         asignarle la siguiente. Ojo: devuelve {@code true} también cuando la
+     *         insignia ya la tenía de antes, porque en ese caso igual tiene que avanzar de
+     *         misión. Lo que no se repite es el guardado de la insignia ni la notificación.
+     */
     public Boolean progresarMision(ImpactoDonacion donacion,
                                    List<ImpactoDonacion> donaciones){
         if (progresoMisionActual == null) return false;
@@ -63,23 +86,37 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         Mision misionAnterior = progresoMisionActual.getMision();
         Insignia insignia = progresoMisionActual.progresarMision(donacion, donaciones);
 
-        if (insignia != null) {
-            this.insigniasObtenidas.add(new InsigniaObtenida(this, insignia));
+        if (insignia == null) {
+            return false;
+        }
 
-            registerEvent(new MisionCompletada(
-                    misionAnterior != null ? misionAnterior.getNombreMision() : null,
-                    insignia.getNombre(),
-                    this.idUsuario,
-                    this.nombreUsuario,
-                    donacion
-            ));
-
+        // El Set decide si la insignia es nueva. Si ya la tenia, el donante completo esta
+        // mision en otra categoria: se'avanza igual, pero no hay insignia que guardar ni
+        // evento que mandar, porque recibir dos veces la misma notificacion y la misma
+        // publicacion seria el bug (punto 28).
+        boolean esNueva = insigniasObtenidas.add(new InsigniaObtenida(this, insignia));
+        if (!esNueva) {
             return true;
         }
-        return false;
+
+        registerEvent(new MisionCompletada(
+                misionAnterior != null ? misionAnterior.getNombreMision() : null,
+                insignia.getNombre(),
+                this.idUsuario,
+                this.nombreUsuario,
+                donacion
+        ));
+
+        return true;
     }
 
-    public void cambiarMision(Mision misionNueva, Mision misionAnterior, MedioContacto contacto) {
+    /**
+ * Asigna una misión nueva y, si corresponde, avisa que cambió.
+ *
+ * <p>No pide el contacto: el evento lleva el {@code idUsuario} y el listener lo resuelve
+     * en {@code AFTER_COMMIT}, fuera de la transacción (punto 12).
+ */
+public void cambiarMision(Mision misionNueva, Mision misionAnterior) {
         if (misionNueva == null) {
             this.progresoMisionActual = null;
             return;
@@ -93,16 +130,15 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     misionAnterior.getInsigniaObjetivo().getNombre(),
                     this.nombreUsuario,
                     this.idUsuario,
-                    contacto,
                     misionNueva.getNombreMision()
             ));
         }
     }
 
+    /** Igual que {@link #cambiarMision}: el contacto lo resuelve el listener. */
     public void cambiarCategoria(Categoria categoriaNueva,
                                  Categoria categoriaAnterior,
-                                 Mision misionAnterior,
-                                 MedioContacto contacto) {
+                                 Mision misionAnterior) {
         this.categoriaActual = categoriaNueva;
 
         Mision primeraMision = categoriaNueva != null ? categoriaNueva.primeraMision() : null;
@@ -113,7 +149,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     categoriaAnterior.getNombre(),
                     categoriaNueva.getNombre(),
                     this.nombreUsuario,
-                    contacto
+                    this.idUsuario
             ));
         }
 
@@ -123,7 +159,6 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     misionAnterior.getInsigniaObjetivo().getNombre(),
                     this.nombreUsuario,
                     this.idUsuario,
-                    contacto,
                     primeraMision.getNombreMision()
             ));
         }

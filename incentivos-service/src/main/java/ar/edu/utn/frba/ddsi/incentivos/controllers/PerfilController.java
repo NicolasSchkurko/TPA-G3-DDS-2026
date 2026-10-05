@@ -2,24 +2,30 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.PerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
+import jakarta.validation.Valid;
+import java.util.UUID;
+
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/perfiles")
+@RequestMapping("/api/perfiles")
 @Tag(name = "Gestión de Perfiles e Incentivos", description = "Endpoints para consultar métricas, misiones, insignias y rankings de los perfiles de colaboradores.")
 public class PerfilController {
     private final PerfilService perfilService;
@@ -38,7 +44,7 @@ public class PerfilController {
         @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes")
     })
     @PostMapping
-    public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
+    public ResponseEntity<PerfilDTO> crearPerfil(@Valid @RequestBody PerfilDonanteDTO dto) {
         PerfilDTO nuevo = perfilService.crearPerfil(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -58,8 +64,7 @@ public class PerfilController {
     public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
             @Parameter(description = "UUID del usuario asociado al perfil")
             @PathVariable UUID idUsuario) {
-        PerfilDTO perfil = perfilService.buscarPorIdUsuario(idUsuario);
-        return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
+        return ResponseEntity.ok(perfilService.buscarPorIdUsuario(idUsuario));
     }
 
     @Operation(
@@ -77,26 +82,56 @@ public class PerfilController {
         MisionPerfilDTO mision = perfilService.obtenerMisionPorIdUsuario(idUsuario);
         return ResponseEntity.ok(mision);
     }
-
-    // TODO: PAGINACION
-
     @Operation(
         summary = "Listar insignias obtenidas",
-        description = "Retorna la colección de medallas y logros desbloqueados históricamente por el colaborador."
+        description = "Retorna la colección paginada de medallas y logros desbloqueados históricamente por el colaborador."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Listado de insignias recuperado con éxito"),
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
     @GetMapping("/{idUsuario}/insignias")
-    public ResponseEntity<List<InsigniaDTO>> obtenerInsigniasPerfil(
+    public ResponseEntity<Page<InsigniaDTO>> obtenerInsigniasPerfil(
             @Parameter(description = "UUID del usuario asociado al perfil")
-            @PathVariable UUID idUsuario) {
-        List<InsigniaDTO> insignias = perfilService.obtenerInsigniasPorIdUsuario(idUsuario);
-        return ResponseEntity.ok(insignias);
+            @PathVariable UUID idUsuario,
+            @ParameterObject
+            @PageableDefault(page = 0, size = 10, sort = "fechaObtencion", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(perfilService.obtenerInsigniasPorIdUsuario(idUsuario, pageable));
     }
 
-    // TODO: PAGINACION
+    // ========== PÚBLICO (sin autenticación) ==========
+
+    /**
+     * Único endpoint del servicio abierto (punto 8), y vive acá con los demás de perfiles
+     * en vez de en un controller aparte.
+     *
+     * <p>El path no colisiona con el {@code GET /{idUsuario}} de más arriba: este tiene
+     * tres segmentos con un literal al final, y aquel tiene dos. La diferencia es que el de
+     * arriba responde con un {@code PerfilDTO} completo y este no.
+     *
+     * <p>Lo que sale de acá es visible sin credenciales, así que devuelve un DTO propio y
+     * acotado: nombre de usuario y nombre de categoría, nada más. Ni misión vigente, ni
+     * insignias, ni identificadores internos.
+     *
+     * <p>El {@code permitAll()} está en {@code SecurityConfig}, como una regla por método
+     * y ruta: solo el GET de ese path. No un prefijo, que abriría de más cualquier cosa
+     * que se agregara después.
+     */
+    @Operation(
+        summary = "Consultar la categoría actual de un donante (público)",
+        description = "Devuelve el nombre de usuario y el nombre de su categoría actual, que es lo que el enunciado declara visible públicamente. No expone misión vigente, insignias ni identificadores internos. No requiere autenticación."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Perfil público obtenido con éxito"),
+        @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
+    })
+    @GetMapping("/{idUsuario}/publico")
+    public ResponseEntity<PerfilPublicoDTO> consultarPerfilPublico(
+        @Parameter(description = "UUID del donante")
+        @PathVariable UUID idUsuario) {
+        return ResponseEntity.ok(perfilService.obtenerPerfilPublico(idUsuario));
+    }
 
     // ========== ACTUALIZAR ==========
     @Operation(
@@ -105,18 +140,15 @@ public class PerfilController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil impactado y actualizado con éxito"),
+        @ApiResponse(responseCode = "400", description = "Datos de la donación inválidos o faltantes"),
         @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
     })
     @PatchMapping("/donacion/{idUsuario}")
     public ResponseEntity<Boolean> progresarPerfil(
             @Parameter(description = "UUID del usuario que realizó la donación")
             @PathVariable UUID idUsuario,
-            @RequestBody ImpactoDonacionDTO dto) {
-        Boolean actualizado = perfilService.actualizarPerfilImpacto(idUsuario, dto);
-        if (actualizado == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(actualizado);
+            @Valid @RequestBody ImpactoDonacionDTO dto) {
+        return ResponseEntity.ok(perfilService.actualizarPerfilImpacto(idUsuario, dto));
     }
 
     @Operation(
@@ -133,10 +165,7 @@ public class PerfilController {
         @Parameter(description = "UUID del perfil a actualizar")
         @PathVariable UUID id,
         @RequestBody PerfilDTO perfil) {
-        PerfilDTO actualizado = perfilService.actualizarDatosPerfil(id, perfil);
-        return actualizado == null
-               ? ResponseEntity.notFound().build()
-               : ResponseEntity.ok(actualizado);
+        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(id, perfil));
     }
 
     // ========== ELIMINAR ==========
@@ -150,8 +179,8 @@ public class PerfilController {
     })
     @DeleteMapping("/{idUsuario}")
     public ResponseEntity<Boolean> eliminarPerfil(
-            @Parameter(description = "UUID del perfil a eliminar")
-            @PathVariable UUID idUsuario) {
+        @Parameter(description = "UUID del perfil a eliminar")
+        @PathVariable UUID idUsuario) {
         Boolean eliminado = perfilService.eliminarPerfil(idUsuario);
         return ResponseEntity.ok(eliminado);
     }

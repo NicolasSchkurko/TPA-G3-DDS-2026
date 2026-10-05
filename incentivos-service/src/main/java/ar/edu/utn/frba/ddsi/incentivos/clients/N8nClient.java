@@ -1,8 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioPublicacionException;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,29 +25,43 @@ public class N8nClient {
         this.repositorio = repositorio;
     }
 
+    /**
+     * Publica en n8n que el donante ganó una insignia.
+     *
+     * <p><b>No relanza.</b> Este listener corre dentro del {@code afterCommit} de la
+     * transacción, que Spring invoca sin try/catch
+     * ({@code TransactionSynchronizationUtils.invokeAfterCommit}): si la excepción sale de
+     * acá, sube por el {@code processCommit}, sale del {@code @Transactional} y llega al
+     * handler HTTP. O sea que el donante recibía un 500 **aunque la transacción ya se
+     * hubiera confirmado**, la donación estuviera guardada y la insignia otorgada. Con ese
+     * 500, {@code donaciones-service} reintenta y la segunda pasada vuelve a sumar
+     * progreso, que es el punto 14.
+     *
+     * <p>Por eso la falla se registra y queda en pendientes para reintentar, en vez de
+     * propagarse. Es la misma asimetría que ya estaba resuelta en
+     * {@link NotificacionClient}, cuyo helper privado captura la excepción y solo loguea.
+     */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publicarInsignia(MisionCambiada event)
-            throws EnvioPublicacionException {
+    public void publicarInsignia(MisionCompletada event) {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(
                 "formato circulo, diseño estrella, color dorado, " +
-                        "en el centro debe decir " + event.insigniaAnterior(),
+                        "en el centro debe decir " + event.insigniaObtenida(),
                 "felicidades a " + event.nombreUsuario() +
-                        ", por ganar la insignia " + event.insigniaAnterior() +
+                        ", por ganar la insignia " + event.insigniaObtenida() +
                         " tras haber completado la mision " + event.misionAnterior(),
                 "discord",
                 event.nombreUsuario(),
                 event.idUsuario()
         );
+
         try {
-            restTemplate.postForEntity(
-                    n8nUrl, publicar, void.class);
+            restTemplate.postForEntity(n8nUrl, publicar, void.class);
             log.info("Publicacion exitosa en {}",
                     publicar.getRedSocial());
         } catch (Exception e) {
-            log.error("Error al publicar en {}, guardando en pendientes",
+            log.error("Error al publicar en {}, queda en pendientes para reintentar",
                     publicar.getRedSocial(), e);
             repositorio.guardar(publicar);
-            throw new EnvioPublicacionException(publicar);
         }
     }
 }
