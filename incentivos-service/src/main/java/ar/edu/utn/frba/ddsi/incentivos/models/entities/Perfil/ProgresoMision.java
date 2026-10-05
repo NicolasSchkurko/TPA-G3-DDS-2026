@@ -178,6 +178,15 @@ public class ProgresoMision implements ProgresoDelDonante {
         return null;
     }
 
+    /**
+     * Deja el avance en cero: contador y valores observados. Se usa cuando la racha se
+     * rompe y también cuando el admin cambia el criterio de la misión (punto 15), así que
+     * las dos cosas tienen que caer juntas o el avance queda a medias.
+     */
+public void reiniciarProgreso() {
+        reiniciar();
+    }
+
     private void reiniciar() {
         progreso = 0;
         limpiarValoresObservados();

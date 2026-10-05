@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
         return respuesta(HttpStatus.CONFLICT, exception.getMessage());
     }
 
+    @ExceptionHandler(ConflictoException.class)
+    public ResponseEntity<Map<String, String>> manejarConflicto(
+            ConflictoException exception) {
+        return respuesta(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
     @ExceptionHandler(DatosInvalidosException.class)
     public ResponseEntity<Map<String, String>> manejarDatosInvalidos(
             DatosInvalidosException exception) {

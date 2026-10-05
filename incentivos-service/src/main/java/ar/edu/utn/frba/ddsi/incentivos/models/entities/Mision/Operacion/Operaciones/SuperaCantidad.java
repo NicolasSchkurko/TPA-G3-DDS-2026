@@ -13,6 +13,12 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SuperaCantidad extends Operacion {
     //hacer 5 donaciones de al menos 4 bienes cada una
+    //
+    // OJO: este campo NO se compara en esEquivalenteA, a diferencia de los de las otras
+    // operaciones. Subir el minimo exigido no invalida lo que el donante ya acredito: una
+    // donacion de 5 bienes seguia contando antes y sigue contando ahora, aunque el minimo
+    // pase de 4 a 6. Si se comparara, un retoque en el umbral le borraria el progreso a
+    // todos los que estaban en la mision.
     private Integer cantidadEsperada;
 
     public SuperaCantidad(Integer progresoObjetivo,

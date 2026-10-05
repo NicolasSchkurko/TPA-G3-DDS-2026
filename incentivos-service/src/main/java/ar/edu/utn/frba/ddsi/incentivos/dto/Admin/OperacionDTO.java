@@ -51,9 +51,16 @@ public class OperacionDTO {
                 coincidencias.getProgresoObjetivo(),
                 // String.valueOf de un null devuelve el texto "null", no null.
                 // Para una coincidencia sin valor esperado lo correcto es null.
+                //
+                // Y hay que usar asText() y no toString(): valorEsperado es un JsonNode,
+                // y toString() devuelve la representacion JSON, o sea "ENTREGADA" CON
+                // comillas. Con eso el flujo GET -> PUT del panel de admin guardaba el
+                // valor entrecomillado, ninguna donacion con estado ENTREGADA volvia a
+                // coincidir, y como la regla dejaba de ser equivalente, cada edicion
+                // reiniciaba el progreso de todos los donantes de la mision.
                 coincidencias.getValorEsperado() == null
                     ? null
-                    : String.valueOf(coincidencias.getValorEsperado()),
+                    : coincidencias.getValorEsperado().asText(),
                 null
             );
         }

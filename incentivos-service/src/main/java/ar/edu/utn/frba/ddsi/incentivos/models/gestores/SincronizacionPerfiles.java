@@ -36,7 +36,8 @@ public class SincronizacionPerfiles {
     Map<Integer, Mision> misionesPorPosicion = categoria.getCategoriaMisiones().stream()
                                                         .collect(Collectors.toMap(
                                                             cm -> cm.getPosicion(),
-                                                            cm -> cm.getMision()
+                                                            cm -> cm.getMision(),
+                                                            (primera, segunda) -> primera
                                                         ));
 
     for (Perfil perfil : perfiles) {

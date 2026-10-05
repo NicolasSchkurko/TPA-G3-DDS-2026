@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Objects;
+
 @Getter
 @Setter
 @Entity
@@ -21,6 +23,20 @@ public class ValoresDistintos extends Operacion {
     // todos los donantes. Al tercero en donar, la mision ya figuraba completa para los
     // tres y se otorgaba una insignia que dos no se habian ganado.
     private Integer cantValoresDistintos;
+
+    /**
+     * Acá sí se compara {@code cantValoresDistintos}, al revés que en
+     * {@code SuperaCantidad}: cambiar cuántos valores distintos se piden cambia lo que el
+     * donante tiene que haber hecho, así que lo que acumuló deja de servir. Bajarlo es
+     * un caso particular: el donante no pierde lo que ya vio, solo que ahora puede
+     * completar antes. Por eso el reinicio se hace igual y el avance real no se borra.
+     */
+    @Override
+    public boolean esEquivalenteA(Operacion otra) {
+        return super.esEquivalenteA(otra)
+               && otra instanceof ValoresDistintos otraDistintos
+               && Objects.equals(cantValoresDistintos, otraDistintos.cantValoresDistintos);
+    }
 
     public ValoresDistintos(Integer progresoObjetivo,
                             Integer cantidad) {

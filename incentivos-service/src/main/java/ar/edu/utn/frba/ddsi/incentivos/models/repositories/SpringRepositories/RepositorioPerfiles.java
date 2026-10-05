@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.InsigniaObtenida;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 
 import java.util.List;
@@ -31,6 +32,21 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
     Optional<ProgresoMision> obtenerProgresoMisionPorIdUsuario(@Param("idUsuario") UUID idUsuario);
 
     boolean existsByIdUsuario(UUID idUsuario);
+
+    // ===== Conteos para decidir si un borrado es seguro (punto 18) =====
+    //
+    // Sin esto, borrar una categoría con donantes o una misión ya completada revienta por
+    // violación de FK y el cliente recibe un 500 opaco. Con esto se puede contestarle un
+    // 409 diciendo exactamente cuántas referencias lo bloquean.
+
+    /** Donantes que tienen esta categoría como categoría actual. */
+    long countByCategoriaActual(Categoria categoria);
+
+    /** Donantes que están actualmente haciendo esta misión. */
+    long countByProgresoMisionActualMision(Mision mision);
+
+    /** Donantes que ya obtuvieron la insignia de la misión. */
+    long countByInsigniasObtenidasInsignia(Insignia insignia);
 
     void deleteByIdUsuario(UUID idUsuario);
 
@@ -79,9 +95,22 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
         Pageable pageable
     );
 
+    /**
+     * Reinicia el avance de todos los que están en una misión, porque su criterio de
+     * completado cambió.
+     *
+     * <p>Hay que limpiar también los valores observados, no solo el contador: desde el
+     * punto 11 las reglas de "N valores distintos" llevan su propio avance en
+     * {@code ProgresoMision.valoresObservados}. Si solo se pone el contador en 0, al
+     * subir de 3 a 5 categorías distintas el donante conserva las 3 que ya había visto y
+     * solo necesita 2 nuevas en lugar de 5.
+     *
+     * <p>Delega en el agregado en vez de tocar campos sueltos, que es justamente lo que
+     * hace {@code setProgreso} desde acá.
+     */
     default void reiniciarProgresoDeMision(UUID idMision) {
         List<Perfil> perfiles = findAllByMisionActual(idMision);
-        perfiles.forEach(perfil -> perfil.getProgresoMisionActual().setProgreso(0));
+        perfiles.forEach(perfil -> perfil.getProgresoMisionActual().reiniciarProgreso());
         saveAll(perfiles);
     }
 }

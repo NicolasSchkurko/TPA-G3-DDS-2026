@@ -5,13 +5,17 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ConstanciaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ReglaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.ConflictoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,15 +27,21 @@ import java.util.UUID;
 @Service
 public class MisionService {
   private final RepositorioMisiones repoMisiones;
+  private final RepositorioPerfiles repoPerfiles;
+  private final RepositorioCategorias repoCategorias;
   private final MisionFactory misionFactory;
   private final SincronizacionPerfiles gestorSincronizacion;
   private final ValidadorAdmin validadorAdmin;
 
   public MisionService(RepositorioMisiones repoMisiones,
+                       RepositorioPerfiles repoPerfiles,
+                       RepositorioCategorias repoCategorias,
                        MisionFactory misionFactory,
                        SincronizacionPerfiles gestorSincronizacion,
                        ValidadorAdmin validadorAdmin) {
     this.repoMisiones = repoMisiones;
+    this.repoPerfiles = repoPerfiles;
+    this.repoCategorias = repoCategorias;
     this.misionFactory = misionFactory;
     this.gestorSincronizacion = gestorSincronizacion;
     this.validadorAdmin = validadorAdmin;
@@ -71,9 +81,16 @@ public class MisionService {
     return repoMisiones.findById(idMision).map(misionActual -> {
                          Mision misionModificada = construirMision(idAdmin, dto);
 
-                         misionActual.actualizar(misionModificada);
+                         boolean cambioElCriterio = misionActual.actualizar(misionModificada);
                          Mision actualizada = repoMisiones.save(misionActual);
-                         gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
+
+                         // Solo se borra el avance si cambió lo que el donante tiene que
+                         // cumplir. Antes se hacía siempre, y con eso retocar la
+                         // descripción de una misión le costaba el progreso a todos los
+                         // que estaban por completarla, sin aviso (punto 15).
+                         if (cambioElCriterio) {
+                           gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
+                         }
 
                          return actualizada;
                        })
@@ -81,10 +98,47 @@ public class MisionService {
                        .orElseThrow(InexistenteException::new);
   }
 
+  /**
+   * Borra una misión, salvo que alguien la haya completado o la esté haciendo.
+   *
+   * <p>Antes no había ninguna guarda: {@code Mision.insigniaObjetivo} tiene cascada, así
+   * que al borrar la misión se iba también su insignia, pero
+   * {@code InsigniaObtenida.insignia} es un {@code ManyToOne} sin cascada y reventaba por
+   * FK. O sea que no se podía borrar una misión que alguien ya había completado y el
+   * error era un 500 sin explicación. Y si la misión no existía, el controller respondía
+   * 204 igual (punto 18).
+   */
   @Transactional
   public void eliminarMision(UUID idAdmin, UUID idMision) {
     validadorAdmin.verificarPermisos(idAdmin);
-    repoMisiones.eliminarMision(idMision);
+
+    Mision mision = repoMisiones.findById(idMision)
+                                .orElseThrow(() -> new InexistenteException(
+                                        "No se encontró la misión con ID: " + idMision));
+
+    long haciendo = repoPerfiles.countByProgresoMisionActualMision(mision);
+    if (haciendo > 0) {
+      throw new ConflictoException("La misión '" + mision.getNombreMision() + "' no se puede borrar: "
+              + haciendo + " donante(s) están haciendo esa misión.");
+    }
+
+    long yaLaCompletaron = repoPerfiles.countByInsigniasObtenidasInsignia(mision.getInsigniaObjetivo());
+    if (yaLaCompletaron > 0) {
+      throw new ConflictoException("La misión '" + mision.getNombreMision() + "' no se puede borrar: "
+              + yaLaCompletaron + " donante(s) ya obtuvieron su insignia.");
+    }
+
+    // CategoriaMision es el lado propietario y no tiene cascada, asi que la referencia
+    // tiene que soltarse antes del delete. Sin esto, borrar cualquier mision que pertenezca
+    // a una categoria revienta por FK y el endpoint documentado como 204 nunca podia
+    // responder 204.
+    List<Categoria> categoriasConLaMision = repoCategorias.findAllByCategoriaMisionesMision(mision);
+    categoriasConLaMision.forEach(categoria -> {
+      categoria.eliminarMision(mision);
+      repoCategorias.save(categoria);
+    });
+
+    repoMisiones.delete(mision);
   }
 
   /**
