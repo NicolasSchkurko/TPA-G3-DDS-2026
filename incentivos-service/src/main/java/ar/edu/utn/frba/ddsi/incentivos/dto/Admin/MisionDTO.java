@@ -40,10 +40,10 @@ public class MisionDTO {
     }
 
     /**
- * Proyecta una misión a DTO. Es null-safe en toda la cadena: una sola misión con la
- * regla incompleta no puede romper el listado completo de misiones, que es lo que
- * pasaba antes con un {@code NullPointerException} a mitad del {@code map}.
- */
+     * Proyecta una misión a DTO. Es null-safe en toda la cadena: una sola misión con la
+     * regla incompleta no puede romper el listado completo de misiones, que es lo que
+     * pasaba antes con un {@code NullPointerException} a mitad del {@code map}.
+     */
     public static MisionDTO desdeEntidad(Mision mision) {
         if (mision == null) {
             return null;

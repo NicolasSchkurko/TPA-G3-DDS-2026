@@ -1,10 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Perfil;
 
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
 
 /**
  * Datos de un perfil donante. Se usa como cuerpo de {@code PUT /api/perfiles/{id}} y

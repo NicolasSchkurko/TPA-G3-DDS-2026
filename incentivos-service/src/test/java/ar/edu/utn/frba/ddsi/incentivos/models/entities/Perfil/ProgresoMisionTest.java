@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -10,16 +12,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImp
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 @DisplayName("ProgresoMision: avance y evaluacion de constancia")
 class ProgresoMisionTest {
@@ -31,8 +30,8 @@ class ProgresoMisionTest {
     }
 
     private static ImpactoDonacion donacion(LocalDateTime fecha, Integer bienes, String estado) {
-        return new ImpactoDonacion(
-                "Fundacion", bienes, fecha, "ALIMENTOS", "MERCEARIA", estado, UUID.randomUUID());
+        return new ImpactoDonacion(UUID.randomUUID(), UUID.randomUUID(),
+                "Fundacion", bienes, fecha, "ALIMENTOS", "MERCEARIA", estado);
     }
 
     @Test
@@ -93,7 +92,7 @@ class ProgresoMisionTest {
                 donacion(marzo.plusMonths(1), 1, "ENTREGADA"),
                 donacion(marzo.plusMonths(2), 1, "ENTREGADA")
         );
-        racha.forEach(d -> d.setHizoProgresarMision(true));
+        racha.forEach(d -> d.registrarProgresoEn(null, true));
 
         progreso.evaluarConstancia(racha, marzo.plusMonths(2));
         assertThat(progreso.getProgreso()).isEqualTo(3);
@@ -105,26 +104,26 @@ class ProgresoMisionTest {
 
     @Test
     @DisplayName("la constancia ignora las donaciones que no hicieron progresar la mision")
-    void laConstanciaIgnoraDonacionesQueNoProgressaron() {
+    void laConstanciaIgnoraDonacionesQueNoProgresaron() {
         ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,
                 new CantidadCoincidencias(2, MAPPER.valueToTree("ENTREGADA"))
         );
-        ProgresoMision progreso = new ProgresoMision(mision(regla, "Constante"));
+        final ProgresoMision progreso = new ProgresoMision(mision(regla, "Constante"));
 
         LocalDateTime marzo = LocalDateTime.of(2026, 3, 10, 10, 0);
-        List<ImpactoDonacion> donations = List.of(
+        List<ImpactoDonacion> donaciones = List.of(
                 donacion(marzo, 1, "ENTREGADA"),
                 donacion(marzo.plusMonths(1), 1, "ENTREGADA"),
                 donacion(marzo.plusMonths(2), 1, "CANCELADA")
         );
-        donations.getFirst().setHizoProgresarMision(true);
-        donations.get(1).setHizoProgresarMision(true);
-        donations.get(2).setHizoProgresarMision(false);
+        donaciones.getFirst().registrarProgresoEn(null, true);
+        donaciones.get(1).registrarProgresoEn(null, true);
+        donaciones.get(2).registrarProgresoEn(null, false);
 
-        progreso.evaluarConstancia(donations, marzo.plusMonths(2));
+        progreso.evaluarConstancia(donaciones, marzo.plusMonths(2));
 
         assertThat(progreso.getProgreso()).isEqualTo(2);
     }
@@ -145,14 +144,16 @@ class ProgresoMisionTest {
     @Test
     @DisplayName("estaCompleta consulta a la operacion de la regla")
     void estaCompletaConsultaALaOperacion() {
+        // La regla pide 2 donaciones de al menos 1 bien, así que se avanza con donaciones
+        // reales en vez de con un setter.
         Regla regla = new Regla(null, AtributoImpacto.CANTIDAD_BIENES, new SuperaCantidad(2, 1));
         ProgresoMision progreso = new ProgresoMision(mision(regla, "Habil"));
-        progreso.setProgreso(2);
 
-        assertThat(progreso.estaCompleta()).isTrue();
-
-        progreso.setProgreso(1);
+        progreso.progresarMision(donacion(LocalDateTime.of(2026, 3, 1, 10, 0), 3, "ENTREGADA"), List.of());
         assertThat(progreso.estaCompleta()).isFalse();
+
+        progreso.progresarMision(donacion(LocalDateTime.of(2026, 3, 2, 10, 0), 3, "ENTREGADA"), List.of());
+        assertThat(progreso.estaCompleta()).isTrue();
     }
 
     @Nested
@@ -170,9 +171,8 @@ class ProgresoMisionTest {
         }
 
         private ImpactoDonacion donacionDeCategoria(LocalDateTime fecha, String categoria) {
-            return new ImpactoDonacion(
-                    "Fundacion", 1, fecha, categoria, "MERCEARIA", "ENTREGADA",
-                    UUID.randomUUID()
+            return new ImpactoDonacion(UUID.randomUUID(), UUID.randomUUID(),
+                    "Fundacion", 1, fecha, categoria, "MERCEARIA", "ENTREGADA"
             );
         }
 
@@ -235,8 +235,9 @@ class ProgresoMisionTest {
             ProgresoMision progreso = new ProgresoMision(misionDeCategorias());
 
             ImpactoDonacion sinCategoria = new ImpactoDonacion(
+                    UUID.randomUUID(), UUID.randomUUID(),
                     "Fundacion", 1, LocalDateTime.of(2026, 3, 1, 10, 0),
-                    null, null, "ENTREGADA", UUID.randomUUID()
+                    null, null, "ENTREGADA"
             );
             progreso.progresarMision(sinCategoria, List.of());
 

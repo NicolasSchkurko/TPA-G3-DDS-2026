@@ -2,18 +2,26 @@ package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.client.RestTemplate;
 
+/**
+ * Avisa a {@code notificaciones-service}, y escucha los eventos del servicio para
+ * notificarle al donante lo que le pasa.
+ *
+ * <p>Los tres listeners corren en {@code AFTER_COMMIT} a propósito: notificar antes de que
+ * la transacción confirme puede avisarle al donante de una insignia que después no se
+ * guardó.
+ */
 @Slf4j
 @Service
 public class NotificacionClient {
@@ -33,6 +41,13 @@ public class NotificacionClient {
         this.repositorioPendientes = repositorioPendientes;
     }
 
+    /**
+     * Manda la notificación y, si falla, la guarda en la cola de pendientes.
+     *
+     * @throws EnvioNotificacionException si el envío falla. Quien llama desde un listener
+     *                                    lo captura y solo loguea, porque el error ya
+     *                                    quedó registrado en la cola de pendientes.
+     */
     public void enviarNotificacion(PerfilNotificacionDTO dto)
             throws EnvioNotificacionException {
         try {
@@ -46,6 +61,7 @@ public class NotificacionClient {
         }
     }
 
+    /** Le avisa al donante que terminó una misión y qué insignia ganó. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarMisionCompletada(MisionCompletada event) {
         enviar(
@@ -74,6 +90,12 @@ public class NotificacionClient {
                crearMensajeMision(event.misionAnterior(), event.misionNueva()));
     }
 
+    /**
+     * Le avisa al donante que subió de categoría, contando desde cuál venía.
+     *
+     * <p>El contacto se resuelve acá y no en el evento, igual que en
+     * {@link #notificarMisionCompletada}: esta transacción ya cerró.
+     */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioCategoria(CategoriaNuevaPublicar event) {
         enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),

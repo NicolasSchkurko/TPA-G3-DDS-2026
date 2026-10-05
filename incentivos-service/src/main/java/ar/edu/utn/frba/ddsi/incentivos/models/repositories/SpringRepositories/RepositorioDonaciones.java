@@ -1,16 +1,22 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Consultas sobre las donaciones, que es la fuente de la que se calcula todo el progreso.
+ *
+ * <p>Los impactos de donación los copia {@code donaciones-service} cuando una donación se
+ * entrega. Los métodos que filtran por rango de fechas son los que usan las métricas y el
+ * cálculo de constancia, que necesita los meses calendario.
+ */
 @Repository
 public interface RepositorioDonaciones
         extends JpaRepository<ImpactoDonacion, UUID> {

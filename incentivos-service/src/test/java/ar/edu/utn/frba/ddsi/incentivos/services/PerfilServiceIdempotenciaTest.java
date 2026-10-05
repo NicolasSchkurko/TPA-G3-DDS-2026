@@ -1,20 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -22,6 +7,19 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * La ingesta de donaciones tiene que ser idempotente (punto 14).
@@ -54,8 +52,7 @@ class PerfilServiceIdempotenciaTest {
         service = new PerfilService(
                 repoPerfiles,
                 mock(RepositorioCategorias.class),
-                repoDonaciones,
-                mock(DonacionClient.class)
+                repoDonaciones
         );
     }
 
@@ -74,9 +71,9 @@ class PerfilServiceIdempotenciaTest {
     /** La fila que quedó guardada la primera vez. */
     private ImpactoDonacion donacionGuardada(boolean completoMision) {
         ImpactoDonacion donacion = new ImpactoDonacion(
-                "Fundacion", 4, FECHA, "INDUMENTARIA", "ROPA", "ENTREGADA", USUARIO);
-        donacion.setIdDonacion(ID_DONACION);
-        donacion.setCompletMision(completoMision);
+                ID_DONACION, USUARIO,
+                "Fundacion", 4, FECHA, "INDUMENTARIA", "ROPA", "ENTREGADA");
+        donacion.registrarSiCompletoMision(completoMision);
         return donacion;
     }
 
@@ -91,7 +88,7 @@ class PerfilServiceIdempotenciaTest {
         when(repoDonaciones.findById(ID_DONACION))
                 .thenReturn(Optional.of(donacionGuardada(true)));
 
-        Boolean resultado = service.actualizarPerfilImpacto(USUARIO, dto());
+        boolean resultado = service.actualizarPerfilImpacto(USUARIO, dto());
 
         // Lo importante es que no se guarda una segunda vez ni se toca el perfil: si se
         // reprocesara, volvería a aplicar la regla y el progreso quedaría inflado.
@@ -105,7 +102,7 @@ class PerfilServiceIdempotenciaTest {
     void elReintentoDevuelveElMismoResultado() {
         when(repoDonaciones.findById(ID_DONACION))
                 .thenReturn(Optional.of(donacionGuardada(true)));
-        Boolean primeraVez = service.actualizarPerfilImpacto(USUARIO, dto());
+        boolean primeraVez = service.actualizarPerfilImpacto(USUARIO, dto());
 
         when(repoDonaciones.findById(ID_DONACION))
                 .thenReturn(Optional.of(donacionGuardada(true)));
@@ -122,7 +119,7 @@ class PerfilServiceIdempotenciaTest {
         when(repoDonaciones.findById(ID_DONACION))
                 .thenReturn(Optional.of(donacionGuardada(false)));
 
-        Boolean resultado = service.actualizarPerfilImpacto(USUARIO, dto());
+        boolean resultado = service.actualizarPerfilImpacto(USUARIO, dto());
 
         assertThat(resultado).isFalse();
         verify(repoDonaciones, never()).save(any());

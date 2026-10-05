@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.n8n;
 
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.UUID;
 
 @Getter
 @Setter

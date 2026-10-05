@@ -1,12 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Perfil;
 
 import jakarta.validation.constraints.NotNull;
+import java.time.YearMonth;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.YearMonth;
 
 @Getter
 @Setter

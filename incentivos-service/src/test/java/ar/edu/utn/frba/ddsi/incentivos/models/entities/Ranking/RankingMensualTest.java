@@ -1,21 +1,20 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 @DisplayName("RankingMensual: calculo de posiciones")
 class RankingMensualTest {
 
     private static Object[] fila(String nombre, long misiones) {
         Perfil perfil = new Perfil(UUID.randomUUID(), nombre);
-        return new Object[]{perfil, misiones};
+        return new Object[] {perfil, misiones};
     }
 
     private static List<Ranking> puestos(RankingMensual ranking) {

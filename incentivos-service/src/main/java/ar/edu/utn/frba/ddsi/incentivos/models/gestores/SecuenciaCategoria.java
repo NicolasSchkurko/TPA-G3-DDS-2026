@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 /**
  * Mantiene la secuencia de posiciones de las categorías sin huecos ni repeticiones.
@@ -23,9 +22,6 @@ import java.util.List;
  */
 @Component
 public class SecuenciaCategoria {
-
-    public SecuenciaCategoria() {
-    }
 
     /**
      * Deja libre la posición pedida, bajando una posición todas las que están de ahí para

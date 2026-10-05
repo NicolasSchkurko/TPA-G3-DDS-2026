@@ -2,12 +2,11 @@ package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter

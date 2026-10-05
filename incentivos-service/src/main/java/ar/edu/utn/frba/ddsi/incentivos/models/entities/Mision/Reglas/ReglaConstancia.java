@@ -1,19 +1,28 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-//chrono me permitiria utilizar mas periodos de tiempo
-//pero se tendria que cambiar de ImpactoDonacion y del servicio de donaciones
-//por ser LocalDate, asi que sera una limitacion del servicio
-//este chrono solo podra usar: minutos-horas-dias-semanas-meses-años
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+/**
+ * La condición de tiempo de una regla: "una donación cada {@code cantidad}
+ * {@code unidadTiempo}".
+ *
+ * <p>{@code ChronoUnit} permite minutos, horas, días, semanas, meses y años. En la
+ * práctica solo meses y días son útiles, porque {@code ImpactoDonacion} guarda la fecha
+ * como {@code LocalDateTime} y la unidad tiene que ser una que el servicio de donaciones
+ * pueda mandar.
+ *
+ * <p>No tiene setters: la constancia se define al crear la misión.
+ */
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 public class ReglaConstancia {

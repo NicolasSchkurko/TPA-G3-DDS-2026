@@ -3,35 +3,47 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+/**
+ * Qué tiene que cumplir el donante para completar una misión: sobre qué atributo de la
+ * donación se lo mide ({@link AtributoImpacto}), con qué operación, y qué condición de
+ * tiempo tiene que cumplirse.
+ *
+ * <p>No tiene setters: la regla se construye entera con la misión, y después solo se
+ * reemplaza por otra cuando el admin cambia el criterio (punto 15).
+ */
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 public class Regla {
-    //que sea capaz de hacer una mision tipo:
-//hacer x cantidad de x tipo de donaciones por x cant de tiempo
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idRegla;
 
     @OneToOne(cascade = CascadeType.ALL, optional = true)
     @JoinColumn(name = "constancia_id")
-    private ReglaConstancia constancia; //puede ser null
+    private ReglaConstancia constancia; // puede ser null
 
     @Enumerated(EnumType.STRING)
-    private AtributoImpacto atributo; //atributo de ImpactoDonacion
+    private AtributoImpacto atributo; // atributo de ImpactoDonacion
 
     @OneToOne(cascade = CascadeType.ALL, optional = false)
     @JoinColumn(name = "operacion_id", nullable = false)
-    private Operacion operacion; //define relacion entre atributo y lista donaciones
+    private Operacion operacion; // define relacion entre atributo y lista donaciones
 
     public Regla(
             ReglaConstancia constancia,
@@ -43,11 +55,18 @@ public class Regla {
         this.operacion = operacion;
     }
 
-    public Boolean estaCompleta(Integer progreso, ProgresoDelDonante donante) {
+    /**
+     * Si el avance acumulado ya cumple el objetivo.
+     *
+     * <p>Es una delegación a la operación: la regla no sabe contar, solo le pasa lo que
+     * tiene.
+     */
+    public boolean estaCompleta(Integer progreso, ProgresoDelDonante donante) {
         return operacion.estaCompleta(progreso, donante);
     }
 
-    public Object aplicar(ImpactoDonacion donacion){
+    /** El valor del atributo que mira esta regla, tomado de la donación. */
+    public Object aplicar(ImpactoDonacion donacion) {
         return switch (atributo) {
             case ESTADO -> donacion.getEstado();
             case CATEGORIA -> donacion.getCategoria();
@@ -58,7 +77,8 @@ public class Regla {
         };
     }
 
-    public Boolean operar(Object valorAtributo, ProgresoDelDonante donante){
+    /** Si esta donación aporta al avance del donante según la operación de la regla. */
+    public boolean operar(Object valorAtributo, ProgresoDelDonante donante) {
         return operacion.calcularProgreso(valorAtributo, donante);
     }
 

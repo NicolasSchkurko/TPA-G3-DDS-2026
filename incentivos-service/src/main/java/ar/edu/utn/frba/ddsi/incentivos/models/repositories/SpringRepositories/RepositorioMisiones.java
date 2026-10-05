@@ -4,6 +4,12 @@ import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,23 +17,23 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
+/**
+ * Consultas sobre las misiones.
+ *
+ * <p>El método {@code default conseguirMisiones} es lo que garantiza el orden del admin:
+ * {@code findAllById} no tiene {@code ORDER BY}, así que la base puede devolver las ids en
+ * el orden que quiera y el donante arrancaría en una misión distinta de la primera del
+ * programa (punto 27).
+ */
 @Repository
 public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
 
     @Query("""
-    SELECT m FROM Mision m
-    WHERE (:nombreMision IS NULL OR LOWER(m.nombreMision) LIKE :nombreMision)
-      AND (:insignia IS NULL OR LOWER(m.insigniaObjetivo.nombre) LIKE :insignia)
-      AND (:atributo IS NULL OR m.reglaDeProgreso.atributo = :atributo)
-    """)
+            SELECT m FROM Mision m
+            WHERE (:nombreMision IS NULL OR LOWER(m.nombreMision) LIKE :nombreMision)
+              AND (:insignia IS NULL OR LOWER(m.insigniaObjetivo.nombre) LIKE :insignia)
+              AND (:atributo IS NULL OR m.reglaDeProgreso.atributo = :atributo)
+            """)
 
     Page<Mision> findAllByFiltros(
         @Param("nombreMision") String nombreMision,
@@ -36,7 +42,12 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
         Pageable pageable
     );
 
-    default Page<Mision> obtenerTodas(String nombreMision, String insigniaObjetivo, String atributoStr, Pageable pageable) {
+    default Page<Mision> obtenerTodas(
+        String nombreMision,
+        String insigniaObjetivo,
+        String atributoStr,
+        Pageable pageable
+    ) {
         String patronNombre = (nombreMision != null && !nombreMision.isBlank())
                               ? "%" + nombreMision.trim().toLowerCase() + "%"
                               : null;

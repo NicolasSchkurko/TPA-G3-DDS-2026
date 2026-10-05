@@ -1,6 +1,14 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,15 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 @DisplayName("DonacionClient: integracion con el servicio de donaciones")
 class DonacionClientTest {
@@ -93,7 +92,7 @@ class DonacionClientTest {
     @Test
     @DisplayName("normaliza la URL base aunque termine con barras")
     void normalizaLaUrlBase() throws Exception {
-        givenBaseUrl(BASE_URL + "///");
+        givenBaseUrl(BASE_URL + "/// ");
         UUID idUsuario = UUID.randomUUID();
 
         server.expect(requestTo(BASE_URL + "/api/personas/" + idUsuario + "/medios-contacto"))

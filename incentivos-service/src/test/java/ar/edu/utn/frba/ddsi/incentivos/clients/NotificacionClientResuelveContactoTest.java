@@ -1,29 +1,26 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * El contacto del donante ya no viaja resuelto en el evento: lo resuelve el listener
@@ -101,7 +98,7 @@ class NotificacionClientResuelveContactoTest {
                         new CantidadCoincidencias(1, MAPPER.valueToTree("ENTREGADA"))));
 
         Perfil perfil = new Perfil(USUARIO, "Ana");
-        perfil.setProgresoMisionActual(new ProgresoMision(racha));
+        perfil.cambiarMision(racha, null);
 
         perfil.cambiarMision(completitud, racha);
 

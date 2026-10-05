@@ -1,61 +1,70 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.CategoriaBaseInexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilExistenteException;
-
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.InsigniaObtenida;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
+/**
+ * Alta, consulta y edición de perfiles de donante, y aplicación del progreso de las
+ * misiones.
+ *
+ * <p>Es el servicio que concentra las reglas de progresión: cuándo una donación suma, cuándo
+ * la misión se completa, cuándo al donante le toca la siguiente y cuándo sube de categoría.
+ * Casi todo eso vive en el agregado {@code Perfil}, no acá: este servicio carga, delega y
+ * guarda.
+ */
 @Slf4j
 @Service
 public class PerfilService {
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioDonaciones repositorioDonaciones;
-    private final DonacionClient donacionClient;
 
     public PerfilService(RepositorioPerfiles repositorioPerfiles,
                          RepositorioCategorias repositorioCategorias,
-                         RepositorioDonaciones repositorioDonaciones,
-                         DonacionClient donacionClient) {
+                         RepositorioDonaciones repositorioDonaciones) {
         this.repositorioPerfiles = repositorioPerfiles;
         this.repositorioCategorias = repositorioCategorias;
         this.repositorioDonaciones = repositorioDonaciones;
-        this.donacionClient = donacionClient;
     }
 
-    //para misionesScheduler
+    /**
+     * Recalcula la racha de todos los que están en una misión con constancia.
+     *
+     * <p>Lo llama el scheduler: la racha caduca por el paso del tiempo, no por una
+     * donación, así que sin esta pasada un donante que dejó de donar queda con el avance
+     * congelado y la misión nunca aparece como pendiente.
+     */
     @Transactional
-    public void evaluarConstanciaPerfiles(){
+    public void evaluarConstanciaPerfiles() {
         List<Perfil> perfilesConMision = repositorioPerfiles.buscarPerfilesConMisionQueRequiereConstancia();
 
         perfilesConMision.forEach(perfil -> perfil.verificarProgresoMision(
@@ -67,8 +76,20 @@ public class PerfilService {
         repositorioPerfiles.saveAll(perfilesConMision);
     }
 
-    // ========== CREAR ==========
+    /**
+     * Crea el perfil de un donante y lo deja listo para empezar: categoría base y primera
+     * misión.
+     *
+     * <p>Se verifica que el donante no tenga perfil antes de armar nada, así el error de
+     * duplicado no deja un agregado a medio construir.
+     */
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
+        // Se chequea antes de armar nada: si el donante ya existe, no tiene sentido
+        // resolver la categoría base ni tocar la base de datos.
+        if (repositorioPerfiles.existsByIdUsuario(dto.getIdUsuario())) {
+            throw new PerfilExistenteException(dto.getIdUsuario());
+        }
+
         Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
 
         Categoria categoriaBase = repositorioCategorias.findAllByOrderByPosicionSecuenciaAsc().stream()
@@ -76,22 +97,13 @@ public class PerfilService {
                                                        .orElseThrow(() -> new CategoriaBaseInexistenteException(
                                                            "No existe la categoría base configurada"));
 
-        nuevo.setCategoriaActual(categoriaBase);
+        // El agregado arma su propio estado inicial: categoría y primera misión.
+        nuevo.iniciarEn(categoriaBase);
 
-        if (categoriaBase.primeraMision() != null) {
-            nuevo.setProgresoMisionActual(new ProgresoMision(categoriaBase.primeraMision()));
-        }
-
-        if (repositorioPerfiles.existsByIdUsuario(nuevo.getIdUsuario())) {
-            throw new PerfilExistenteException(nuevo.getIdUsuario());
-        }
-
-        nuevo = repositorioPerfiles.save(nuevo);
-
-        return convertirPerfilADTO(nuevo);
+        return convertirPerfilADTO(repositorioPerfiles.save(nuevo));
     }
 
-    // ========== BUSCAR ==========
+    /** El perfil completo de un donante, con su categoría y su misión en curso. */
     @Transactional(readOnly = true)
     public PerfilDTO buscarPorIdUsuario(UUID idUsuario) {
         Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
@@ -102,6 +114,12 @@ public class PerfilService {
         return convertirPerfilADTO(p);
     }
 
+    /**
+     * Las insignias que ya obtuvo un donante, paginadas.
+     *
+     * <p>Se consulta sobre {@code InsigniaObtenida} y no sobre la insignia pelada, porque
+     * el orden es por fecha de obtención y esa fecha solo existe en la tabla intermedia.
+     */
     @Transactional(readOnly = true)
     public Page<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario, Pageable pageable) {
         if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
@@ -112,6 +130,12 @@ public class PerfilService {
                                   .map(obtenida -> convertirInsigniaADTO(obtenida.getInsignia()));
     }
 
+    /**
+     * La misión que el donante tiene en curso, con cuánto lleva recorrido.
+     *
+     * <p>Un perfil recién creado ya tiene misión, así que la única forma de que no haya es
+     * que el donante no exista, y en ese caso es 404.
+     */
     @Transactional(readOnly = true)
     public MisionPerfilDTO obtenerMisionPorIdUsuario(UUID idUsuario) {
         ProgresoMision progreso = repositorioPerfiles.obtenerProgresoMisionPorIdUsuario(idUsuario)
@@ -165,7 +189,7 @@ public class PerfilService {
      * y el 400 es preferible a guardar una fila imposible de deduplicar.
      */
     @Transactional
-    public Boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
+    public boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         if (idUsuario == null) {
             throw new DatosInvalidosException("El ID del usuario no puede ser nulo");
         }
@@ -184,9 +208,9 @@ public class PerfilService {
         Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
                                       .orElseThrow(InexistenteException::new);
 
-        Boolean perfilActualizado = this.progresarPerfil(p, donacion);
+        boolean perfilActualizado = this.progresarPerfil(p, donacion);
         // Se guarda para poder repetir la misma respuesta ante un reintento.
-        donacion.setCompletMision(perfilActualizado);
+        donacion.registrarSiCompletoMision(perfilActualizado);
 
         repositorioPerfiles.save(p);
         repositorioDonaciones.save(donacion);
@@ -194,7 +218,14 @@ public class PerfilService {
         return perfilActualizado;
     }
 
-    private Boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
+    /**
+     * Aplica una donación al perfil y, si completó la misión, le pasa la siguiente.
+     *
+     * @return {@code true} si el donante completó la misión con esta donación. Es lo que
+     *         viaja en la respuesta y lo que queda guardado en la fila para poder repetir la
+     *         misma ante un reintento (punto 14).
+     */
+    private boolean progresarPerfil(Perfil perfil, ImpactoDonacion donacion) {
         List<ImpactoDonacion> donaciones = List.of();
         Mision misionActual = perfil.getProgresoMisionActual() == null
                               ? null
@@ -207,7 +238,7 @@ public class PerfilService {
                     misionActual.getIdMision());
         }
 
-        Boolean misionCompletada = perfil.progresarMision(donacion, donaciones);
+        boolean misionCompletada = perfil.progresarMision(donacion, donaciones);
         if (!misionCompletada || misionActual == null) {
             return misionCompletada;
         }
@@ -217,19 +248,19 @@ public class PerfilService {
     }
 
     /**
- * Le pasa al donante la siguiente misión de su secuencia, que puede ser de la misma
- * categoría o de la siguiente.
- *
- * <p><b>Acá no se llama a ningún servicio externo</b> (punto 12). Antes sí: pedía el
- * contacto a {@code donaciones-service} para meterlo en el evento, y lo hacía con la
- * transacción abierta, reteniendo una conexión del pool durante la llamada. Ahora el evento
- * lleva el {@code idUsuario} y el listener resuelve el contacto en {@code AFTER_COMMIT},
- * que es exactamente para lo que existe esa fase.
- */
-private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
+     * Le pasa al donante la siguiente misión de su secuencia, que puede ser de la misma
+     * categoría o de la siguiente.
+     *
+     * <p><b>Acá no se llama a ningún servicio externo</b> (punto 12). Antes sí: pedía el
+     * contacto a {@code donaciones-service} para meterlo en el evento, y lo hacía con la
+     * transacción abierta, reteniendo una conexión del pool durante la llamada. Ahora el evento
+     * lleva el {@code idUsuario} y el listener resuelve el contacto en {@code AFTER_COMMIT},
+     * que es exactamente para lo que existe esa fase.
+     */
+    private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
         Categoria categoriaActual = perfil.getCategoriaActual();
         if (categoriaActual == null) {
-            perfil.setProgresoMisionActual(null);
+            perfil.finalizarSecuencia();
             return;
         }
 
@@ -247,9 +278,16 @@ private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
             return;
         }
 
-        perfil.setProgresoMisionActual(null);
+        // Se agotó la secuencia: no hay más categorías ni más misiones que ofrecerle.
+        perfil.finalizarSecuencia();
     }
 
+    /**
+     * Cambia el nombre de usuario del donante.
+     *
+     * <p>Solo el nombre: la categoría y la misión las mueve el avance, no el usuario. Un
+     * nombre vacío se ignora en vez de dejar el perfil sin nombre.
+     */
     @Transactional
     public PerfilDTO actualizarDatosPerfil(UUID idUsuario, PerfilDTO dto) {
         if (idUsuario == null) {
@@ -260,7 +298,7 @@ private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
                                       .orElseThrow(InexistenteException::new);
 
         if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
-            p.setNombreUsuario(dto.getNombreUsuario());
+            p.cambiarNombre(dto.getNombreUsuario());
         }
 
         Perfil actualizado = repositorioPerfiles.save(p);
@@ -291,17 +329,23 @@ private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
         );
     }
 
-    public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion) {
-        ImpactoDonacion entidad = new ImpactoDonacion(
+    /**
+     * Traduce el DTO de la donación a la entidad.
+     *
+     * <p>El {@code idDonacion} va en el constructor y no en un setter aparte: es la
+     * primary key que hace idempotente la ingesta (punto 14), así que conviene que sea
+     * parte de construir la entidad y no algo que se pueda olvidar después.
+     */
+    public ImpactoDonacion convertirDTO(UUID idUsuario, ImpactoDonacionDTO donacion) {
+        return new ImpactoDonacion(
+            donacion.getIdDonacion(),
+            idUsuario,
             donacion.getEntidadBeneficiaria(),
             donacion.getCantidadBienes(),
             donacion.getFechaEntrega(),
             donacion.getCategoria(),
             donacion.getSubCategoria(),
-            donacion.getEstado(),
-            id);
-        entidad.setIdDonacion(donacion.getIdDonacion());
-        return entidad;
+            donacion.getEstado());
     }
 
     /**
@@ -339,6 +383,7 @@ private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
         );
     }
 
+    /** Traduce la entidad de insignia al DTO que ve el cliente. */
     public InsigniaDTO convertirInsigniaADTO(Insignia insignia) {
         return new InsigniaDTO(
             insignia.getNombre(),
@@ -348,12 +393,19 @@ private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
     }
 
     // ========== ELIMINAR ==========
+    /**
+     * Borra el perfil del donante.
+     *
+     * <p>Devuelve {@code void} y no {@code Boolean}: antes devolvía siempre {@code true} o
+     * lanzaba, así que el valor de retorno no le decía nada a nadie. El 404 va por
+     * excepción ({@link InexistenteException}), que es lo que permite que el handler lo
+     * traduzca.
+     */
     @Transactional
-    public Boolean eliminarPerfil(UUID idUsuario) {
+    public void eliminarPerfil(UUID idUsuario) {
         if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
             throw new InexistenteException();
         }
         repositorioPerfiles.deleteByIdUsuario(idUsuario);
-        return true;
     }
 }

@@ -1,6 +1,13 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
@@ -11,26 +18,15 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.Re
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
-import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mockito;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * Las escrituras de administración tienen que exigir administrador (punto 21) y el perfil
@@ -40,7 +36,6 @@ import static org.mockito.Mockito.when;
 class AdministracionYPerfilPublicoTest {
 
     private static final UUID ADMIN = UUID.randomUUID();
-    private static final UUID OTRO = UUID.randomUUID();
 
     private RepositorioRankings repoRankings;
     private ValidadorAdmin validadorAdmin;
@@ -133,8 +128,7 @@ class AdministracionYPerfilPublicoTest {
             perfilService = new PerfilService(
                     repoPerfiles,
                     mock(RepositorioCategorias.class),
-                    mock(RepositorioDonaciones.class),
-                    mock(DonacionClient.class));
+                    mock(RepositorioDonaciones.class));
         }
 
         @Test
@@ -144,7 +138,7 @@ class AdministracionYPerfilPublicoTest {
             Categoria categoria = new Categoria("Transformador", null, 1, List.of());
 
             Perfil perfil = new Perfil(idUsuario, "Ana");
-            perfil.setCategoriaActual(categoria);
+            perfil.iniciarEn(categoria);
             when(repoPerfiles.findByIdUsuario(idUsuario)).thenReturn(Optional.of(perfil));
 
             PerfilPublicoDTO dto = perfilService.obtenerPerfilPublico(idUsuario);

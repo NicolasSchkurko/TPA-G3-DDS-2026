@@ -1,16 +1,19 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje;
 
 import lombok.Getter;
-import lombok.Setter;
 
+/**
+ * Un medio de contacto del donante. Es un valor, no una entidad: se construye entero y no
+ * se modifica, así que no tiene setters.
+ */
 @Getter
-@Setter
 public class MedioContacto {
-    private String medioDeContacto;
-    private String direccionContacto;
 
-    public MedioContacto(String medio, String direc){
-        this.direccionContacto = direc;
+    private final String medioDeContacto;
+    private final String direccionContacto;
+
+    public MedioContacto(String medio, String direccion) {
         this.medioDeContacto = medio;
+        this.direccionContacto = direccion;
     }
 }

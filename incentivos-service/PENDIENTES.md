@@ -32,10 +32,15 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 18 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
 | 19 | 4 | `common-lib` es código muerto |
 | 20 | 9 | No es un faltante: es una decisión de arquitectura |
+| 21 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
 
 El punto 36 va después del punto 1 a propásito: el 1 es determinista (basta conocer un UUID
 de admin para sufrir el daño), mientras que el 36 necesita que dos peticiones coincidan en
 el tiempo. A igual impacto, el daño que se puede provocar sin condiciones va primero.
+
+El punto 23 no aparece en la tabla porque está en la sección de su propio detalle más
+abajo, y tampoco cuenta como "abierto a medias": su parte grande se hizo y lo que queda
+son tres cosas anotadas.
 ---
 
 ---
@@ -637,58 +642,6 @@ transacción va a fallar con `LazyInitializationException` en runtime, no al com
 colección necesita `@Transactional(readOnly = true)`.
 ---
 
-## 23. Higiene: código muerto, logs a `System.err` y setters públicos
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** varios
-
-Nada de esto rompe nada hoy, pero son cosas que hacen más difícil el trabajo del que
-sigue.
-
-**Código muerto, verificado por grep:**
-
-- Eventos que nadie publica ni escucha: `CategoriaCambiada`, `UltimaMisionCategoria`,
-  `ResultadosRanking`, `GenerarRanking`. Cuatro records completos que no hacen nada.
-- `RepositorioPerfiles.findByNombreUsuario` no se usa en ningún lado.
-- `Categoria.esUltimaMision` solo aparece en los tests, nunca en producción. O sea que
-  el test le está dando cobertura a algo que el servicio nunca llama.
-- `RepositorioPerfiles.reiniciarProgresoDeMision` es un `default` que carga todos los
-  perfiles y hace `saveAll`: es lógica de negocio escrita dentro de una interfaz de
-  repositorio, y `SincronizacionPerfiles.reiniciarProgresoDeMision` solo lo reenvía.
-- `SincronizacionPerfiles` tiene un comentario que dice "aca quiza si haria una
-  interface para repo" (`MetricasService.java:38`) y `ProgresoMision.java:94-95` tiene un
-  comentario sobre `PosicionRanking` que ya no aplica.
-
-**Logging inconsistente:** `DonacionClient` usa `System.err.println` en tres lugares
-(líneas 47, 65, 69) mientras el resto del proyecto usa `@Slf4j`. Peor: imprime solo
-`e.getMessage()`, **sin stack trace**, así que cuando una integración falla no queda
-rastro de dónde vino el problema.
-
-**Falta el `@Tag` en `RankingController`:** es el único controller sin anotación de tag,
-así que sus endpoints no aparecen agrupados en el Swagger.
-
-**Setters públicos en el agregado:** `Perfil`, `ProgresoMision`, `Mision`, `Categoria`,
-`Operacion` y las subclases de `Operacion` tienen `@Setter`. Eso permite que desde
-cualquier lado se llame a `perfil.setCategoriaActual(...)` o
-`progresoMisionActual.setProgreso(0)` y se esquiven los eventos de dominio. En un
-agregado DDD, las transiciones tienen que pasar por los métodos de negocio: `cambiarCategoria`,
-`cambiarMision`, `progresarMision`. `PerfilService` ya usa setters en dos lugares
-(`setProgresoMisionActual(null)`), lo que confirma que la encapsulación no está
-realmente vigente.
-
-**Booleanos envueltos:** `PerfilService.progresarPerfil`, `actualizarPerfilImpacto` y
-`eliminarPerfil` devuelven `Boolean` en vez de `void` o `boolean`. El controller
-`progresarPerfil` compara contra `null` para decidir el 404, lo que sugiere que en
-algún momento se consideró devolver null. `void` con excepciones expresses sería más
-claro.
-
-**Propuesta:** borrar el código muerto (o, si `GenerarRanking` y `ResultadosRanking`
-alcance a usarse, terminar de conectarlos), pasar `DonacionClient` a `@Slf4j` con
-stack trace, agregar el `@Tag` faltante, sacar `@Setter` de las entidades y dejar
-setters solo donde hacen falta para JPA, y cambiar los `Boolean` de retorno por `void`.
----
-
 ## 4. `common-lib` está en el repositorio pero no en el build
 
 **Estado:** abierto
@@ -731,6 +684,312 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
 - Si alguna vez hace falta distinguir "la entidad recibió" de "logística entregó", esa
   distinción no puede viajar por el atajo de Donaciones y sí exigiría un contrato propio.
   Queda anotado por si el alcance del TP cambia.
+---
+
+## 37. La config de Checkstyle no se comparte: vive solo en `.idea/`
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `incentivos-service/config/checkstyle/checkstyle.xml`, `pom.xml`,
+`gen-checkstyle.ps1`, `run-checkstyle.ps1`
+
+La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta**. El build no
+tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las reglas y
+el único que las aplica es el plugin de IntelliJ, que la lee desde `.idea/checkstyle-idea.xml`.
+Y como `.idea/` está en `.gitignore`, ni siquiera el archivo que le dice al IDE dónde está la
+config se comparte: eso queda solo en la máquina de quien la configuró.
+
+Eso tiene dos consecuencias:
+
+1. Quien clone el repo y ejecute `mvn test` no recibe ninguna señal de estilo. Solo lo ve
+   quien abre el proyecto en IntelliJ con el plugin instalado.
+2. Todo lo que el plugin de IntelliJ marca como `Warning` aparece en el panel de Problems
+   junto a las inspecciones propias del IDE, y el panel no distingue de dónde salió cada
+   cosa. Por eso el número que se ve no es comparable con el que da la config por separado.
+
+**Se probó agregar el plugin de Maven al `pom.xml` y no va.** Rompe `mvn verify` en una
+máquina sin internet: además de `maven-reporting`, `doxia` y `plexus`, el plugin necesita
+`com.puppycrawl:checkstyle`, y ninguno de esos artifacts está en el `.m2` local. Un build
+que falla por una dependencia que no se puede bajar es peor que un build que no valida
+estilo, así que el `pom.xml` quedó sin el plugin y con un comentario que explica por qué.
+
+Lo que sí quedó es `run-checkstyle.ps1` en la raíz del repo, que corre **la misma
+configuración** con el jar de Checkstyle que ya trae el plugin de IntelliJ. No necesita Maven
+ni internet:
+
+```powershell
+.\run-checkstyle.ps1
+```
+
+Por dentro el script arma el classpath con los jars de
+`%APPDATA%\JetBrains\<versión>\plugins\checkstyle-idea\checkstyle\lib`. O sea que depende
+de que el plugin de IntelliJ esté instalado; para correrlo en un CI hay que bajar Checkstyle
+por otra vía.
+
+**Lo que falta para que la validación llegue al build**, en una máquina con acceso a Maven
+Central:
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-checkstyle-plugin</artifactId>
+    <version>3.5.0</version>
+    <configuration>
+        <configLocation>config/checkstyle/checkstyle.xml</configLocation>
+        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+        <violationSeverity>warning</violationSeverity>
+        <consoleOutput>true</consoleOutput>
+        <failOnViolation>true</failOnViolation>
+    </configuration>
+    <executions>
+        <execution>
+            <id>validar-estilo</id>
+            <phase>verify</phase>
+            <goals><goal>check</goal></goals>
+        </execution>
+    </executions>
+</plugin>
+```
+
+`violationSeverity=warning` porque la config deja casi todo en `info` a propósito (ver abajo):
+solo las 16 reglas que detectan defectos reales quedan en `warning`, y solo esas hacen
+fallar el build. `includeTestSourceDirectory=false` porque la config silencia los
+`MissingJavadoc*` en tests de todas formas. Y fase `verify` y no `test` para no frenar el
+ciclo rápido.
+
+### El detalle de por qué el panel del IDE marcaba "447 errores"
+
+Con la config de Google por defecto, el panel marcaba 447 errores y 2.087 warnings. Casi
+ninguno era un problema del código. De dónde venían:
+
+| Origen | Cuántos | Qué eran |
+|---|---|---|
+| `config/checkstyle/checkstyle.xml` | ~400 | El IDE valida el XML contra el DTD de Checkstyle, que no tiene descargado, así que marca "Element type must be declared" en cada etiqueta |
+| `PENDIENTES.md` | ~20 | Los bloques de código Java del Markdown, parseados como Java |
+| Archivos `.java` | 3 | Reales, y de los tres dos estaban en el javadoc nuevo (ver abajo) |
+
+Los dos primeros se arreglan en el IDE, no en el código: en el error de `checkstyle.xml`,
+"Accept" el DTD en el aviso, o en *Settings > Languages & Frameworks > Schemas and DTDs*
+agregar `https://checkstyle.org/dtds/configuration_1_3.dtd`. Para el `.md`, el problema es
+que el inspector de Java está activo sobre todo el árbol y no solo sobre `src/`.
+
+Los tres de Java sí eran reales, y eran del javadoc que se escribió en este punto:
+`{@link Operacion}` y `{@link AtributoImpacto}` apuntan a clases de otro paquete que no
+están importadas, así que el IDE no las resolvía. Se cambiaron a `{@code ...}`.
+
+**Nota sobre `gen-checkstyle.ps1`:** existe porque `checkstyle.xml` es el Google Checks de
+upstream con parches encima, y a mano esos parches se pierden en el primer merge. El script
+aplica los mismos parches sobre `google_checks.xml` del jar de Checkstyle y regenera el
+archivo. Si algún día se actualiza Checkstyle, hay que volver a correrlo y revisar el diff.
+
+Dos trampas que ya costaron tiempo y quedaron comentadas en el script:
+
+1. Si el XML perde el `<?xml?>` o el `DOCTYPE`, Checkstyle **no parsea nada y sale con 0
+   findings sin avisar**. Un "todo limpio" así no vale nada, por eso `run-checkstyle.ps1`
+   chequea el texto crudo en busca de `CheckstyleException` antes de contar.
+2. Al parchar con regex, `(?m)^\s*` captura también los saltos de línea anteriores (porque
+   `\s` matchea `\n`), y al reinsertar el texto se duplican líneas hasta romper el XML. Hay
+   que usar `[ \t]*`.
+
+### Cómo se hizo la config "menos rompebolas"
+
+Google pone **todas** sus reglas en `warning`. Con 3.550 findings, el panel del IDE los
+mezcla con los de cualquier otra inspección y el problema real se pierde de vista entre las
+preferencias de formato.
+
+La config del proyecto invierte eso: **todo en `info` por defecto, y solo 16 reglas en
+`warning`**, las que detectan defectos y no cuestiones de gusto:
+
+`AvoidStarImport`, `EqualsHashCode`, `FallThrough`, `FileTabCharacter`, `IllegalCatch`,
+`IllegalImport`, `MissingOverride`, `MissingSwitchDefault`, `MultipleVariableDeclarations`,
+`NeedBraces`, `OneStatementPerLine`, `RedundantImport`, `SimplifyBooleanExpression`,
+`SimplifyBooleanReturn`, `StringLiteralEquality`, `UnusedImports`, `VisibilityModifier`,
+`VariableDeclarationUsageDistance`, `WhitespaceAfter`, `WhitespaceAround`.
+
+Lo que sigue escribiendo sobre diseño —`Indentation`, `LineLength`, `PackageName`,
+`AbbreviationAsWordInName`, `MissingJavadoc*`, `CustomImportOrder`, `TextBlock...`— queda en
+`info`: documentado y validado, pero no interrumpe. Así el panel muestra solo lo que hay que
+arreglar.
+
+El `violationSeverity=warning` del plugin de Maven (arriba, cuando se pueda agregar) está en
+sintonia con esto: el build tampoco falla por preferencias de formato.
+
+### Lo que encontró el panel y sí era código muerto
+
+Los warnings del panel no eran todos de estilo. Estos sí son defectos, y se corregieron:
+
+- **`PerfilService` inyectaba `DonacionClient` y no lo usaba.** Era residuo del punto 12:
+  cuando el contacto pasó a resolverse en el `AFTER_COMMIT` del listener, el servicio dejó de
+  necesitarlo pero el campo, el import y el parámetro del constructor se quedaron. Con la
+  inyección de por constructor, un parámetro que no se usa es ruido que además esconde que
+  la dependencia ya no existe. Se sacaron el campo y el parámetro, y de los tres tests que
+  lo pasaban.
+- **`MedioContactoDTO` y `EnvioPublicacionException` no las referenciaba nadie.** Las dos
+  se auto-referencian y nada más. `DonacionClient.obtenerContactoPersona` devuelve la entidad
+  `MedioContacto`, no el DTO, así que `MedioContactoDTO` quedó huérfana cuando se dejó de
+  deserializar a mano. `EnvioPublicacionException` nunca se lanzó: desde que el listener de
+  n8n no relanza (punto 13), no hay quién la lance. Se borraron las dos.
+- **Siete imports sin usar**, en `RepositorioMisiones`, `PerfilService` y cinco archivos de
+  test.
+- **La red de seguridad de encapsulación tenía cuatro entidades sin cubrir.** El
+  `EntidadesSinSettersTest` tenía la lista de entidades duplicada: un `@ValueSource` con
+  nueve clases que era el que corría, y un campo `ENTIDADES` con trece que no se usaba para
+  nada. Las cuatro de la diferencia —`ImpactoDonacion`, `CategoriaMision`, `ReglaConstancia`
+  y `Operacion`— no estabanjutadas por esa desincronización, no por una decisión. Ahora hay
+  una sola lista, con `@MethodSource`, y los dos casos con motivo para quedar afuera
+  (`Operacion` por abstracta, `ImpactoDonacion` por su setter de `idDonacion`) salen por un
+  filtro explícito y cada uno tiene su propio test. Los tests subieron de 208 a 210.
+- Campos y parámetros sin usar en tests: `OTRO`, `ENTIDADES`, `MISION_FACTORY`, `CONTACTO`.
+
+---
+
+## 23. Higiene del código: setters, logs, nombres y código muerto
+
+**Estado:** abierto (queda la parte de fondo)
+**Severidad:** muy baja
+**Archivos:** varios
+
+Es el punto que nunca se cierra del todo: siempre queda algo por limpiar. Se hizo la parte
+que estaba más clara y se bajó al fondo de la lista a propósito, pero sigue abierto porque
+el resto es mantenimiento de cada tanda.
+
+### Lo que se corrigió
+
+**Convenciones de estilo, que las tenía pendientes desde antes de este punto.** El proyecto
+nunca venía complying con Google Java Style, que es lo que el plugin de Checkstyle de
+IntelliJ trae por defecto. El código usaba indentación de 4 espacios donde Google pide 2,
+los paquetes se llamaban `dto.Admin` y `dto.Persona`, y `CategoriaDTO` violaba la regla de
+abreviaturas. Con la config por defecto eso son casi 4000 warnings que nadie iba a leer.
+
+Los defectos **que sí son defectos** se corrigieron: tabs, llaves faltantes, imports con
+comodín, `//` pegado al texto, operadores al final de línea, variables declaradas lejos de
+su uso, statements duplicados, y dos archivos cuya indentación había quedado ilegible
+(`MisionService.actualizarMision` y `SincronizacionPerfiles` tenían el cuerpo del lambda
+sangrado a 27 y 169 columnas).
+
+Para el resto se agregó `incentivos-service/config/checkstyle/checkstyle.xml`: el Google
+Checks de Checkstyle 14.1.0 con las convenciones del proyecto declaradas explícitamente
+(indentación de 4, abreviaturas de hasta 3 letras, `dto.Admin` permitido, camelCase en
+castellano permitido, javadoc solo en métodos públicos de 3 líneas o más). Es una copia
+del upstream y no un archivo propio a propósito: se regenera con `gen-checkstyle.ps1` de
+la raíz del repo y se puede comparar contra el original con `diff` para ver exactamente qué
+se tocó.
+
+Dos reglas se silencian por ubicación y no globalmente, y las dos tienen el motivo anotado
+en el archivo:
+
+- `TextBlockGoogleStyleFormatting` en `**/repositories/**`: el módulo no es configurable en
+  14.1.0 (no tiene la propiedad `openingQuotesOnNewLine`), y cumplirlo obliga a tres
+  líneas de ceremonia por cada JPQL.
+- Los `MissingJavadoc*` en DTO, repositorios y tests, donde el nombre ya describe de qué se
+  trata.
+
+Lo que **no** se tocó son las reglas que detectan defectos reales: `NeedBraces`,
+`AvoidStarImport`, `FileTabCharacter`, `OperatorWrapNL`,
+`VariableDeclarationUsageDistance`, `EqualsHashCode`, `MissingSwitchDefault`, `FallThrough`
+e `IllegalCatch` siguen igual que en Google.
+
+Al final se escribió el javadoc que faltaba en las 39 clases y 43 métodos de la capa de
+dominio (servicios, controllers, entidades, factories, handlers y schedulers), con lo que
+el módulo queda en **0 errores y 0 warnings**.
+
+**Código muerto borrado:**
+
+- Cuatro eventos que nadie publica ni escucha: `CategoriaCambiada`,
+  `UltimaMisionCategoria`, `ResultadosRanking` y `GenerarRanking`.
+- `RepositorioPerfiles.findByNombreUsuario`, sin un solo uso.
+- `Categoria.esUltimaMision`: solo lo llamaban los tests, o sea que el test le daba
+  cobertura a algo que el servicio nunca ejecuta. Se sustituyó por la pregunta que sí
+  importa de verdad, que es si `siguienteMision` devuelve `null`.
+- `RepositorioPerfiles.reiniciarProgresoDeMision`, que era un `default` con lógica de
+  negocio dentro de una interfaz de repositorio. Ahora la lógica está en
+  `SincronizacionPerfiles`, que es donde estaba el reenvío que no hacía nada.
+
+**Setters fuera de las entidades.** Este era el que de verdad importaba. `Perfil`,
+`ProgresoMision`, `Mision`, `Categoria`, `CategoriaMision`, `Insignia`, `Regla`,
+`ReglaConstancia`, las tres `Operacion`, `Ranking`, `RankingMensual`, `InsigniaObtenida`,
+`ImpactoDonacion` y `MedioContacto` ya no tienen `@Setter`. Cada estado que se escribe
+desde afuera pasa ahora por un método que dice qué está pasando:
+
+- `Perfil`: `iniciarEn`, `finalizarSecuencia`, `cambiarNombre`, y las que ya existían
+  (`cambiarMision`, `cambiarCategoria`, `progresarMision`).
+- `ProgresoMision`: `reiniciarProgreso`, `registrarValorObservado` y
+  `limpiarValoresObservados`.
+- `ImpactoDonacion`: `registrarProgresoEn(idMision, hizoProgresar)` y
+  `registrarSiCompletoMision(completo)`. El `idDonacion` pasó al constructor, que es
+  donde debería estar: es la primary key del punto 14 y no quiero que quede como algo que
+  se pueda olvidar.
+- `Categoria`: `agregarMision`, `eliminarMision`, `moverAPosicion`, y `copiar` que pasó a
+  llamarse `actualizarCon` (decir "copiar" de otra categoría no es una copia:
+  reconstruye la secuencia y recalcula las posiciones).
+- `Insignia`: `actualizar(nombre, descripcion)`, que es lo que necesita la insignia
+  objetivo cuando el admin edita la misión.
+- `Ranking` y `RankingMensual` quedaron inmutables: el período de un ranking publicado no
+  se edita.
+
+El motivo no es estético: con setters públicos `PerfilService` podía llamar
+`setProgresoMisionActual(...)` y saltearse los eventos de dominio. El donante avanzaba de
+misión y no se publicaba `MisionCambiada`, así que no le llegaban ni la notificación ni la
+publicación. `EntidadesSinSettersTest` deja esto fijo: si alguien vuelve a poner un setter,
+falla el test y no tres meses después cuando alguien lo use sin querer.
+
+**Logging.** `DonacionClient` pasó a `@Slf4j`. Además de dejar de imprimir a `System.err`
+mientras el resto del proyecto usa SLF4J, ahora manda el stack trace completo: antes se
+imprimía solo `e.getMessage()`, así que cuando una integración fallaba no quedaba rastro de
+dónde había venido el problema. El 4xx de `verificarAdmin` sigue siendo un `warn` sin stack
+trace a propósito (es "este id no es de un admin", no un problema de infraestructura) y el
+resto pasa a `error` con stack trace.
+
+**Nombres.**
+
+- `copiar` pasó a `actualizarCon`, y `convertirDTO` a `convertirImpactoDonacion`: sonaba a
+  "convertir a DTO" pero hacía lo contrario, de DTO a entidad.
+- `manageTipoInvalido` pasó a `manejarTipoInvalido`: estaba en inglés entre handlers que
+  todos se llaman "manejar...".
+- `SecuenciaCategoria` tenía un constructor vacío, y `Perfil.verificarProgresoMision` un
+  `if` sin llaves que además ocultaba que el cuerpo entero está en una sola línea.
+- Comentarios que ya no aplican: el "aca quiza si haria una interface para repo" de
+  `MetricasService`, la nota sobre `PosicionRanking` en `ProgresoMision` y el
+  `"la donacion se"` a medio escribir.
+
+**Booleanos envueltos.** `Operacion`, `Regla` y las subclases devuelven `boolean` en vez de
+`Boolean`: un `Boolean` de retorno invita a que alguien compare contra `null` sin querer. Lo
+mismo con `Perfil.progresarMision` y `PerfilService.actualizarPerfilImpacto`.
+
+`eliminarPerfil` y `eliminarRanking` pasaron a `void`: devolvían `true` o lanzaban, así que
+el valor de retorno no le decía nada a nadie. El 404 va por `InexistenteException`, que es lo
+que el handler traduce.
+
+Se conservan `Boolean` en dos lugares a propósito: las columnas `hizoProgresarMision` y
+`completMision`, que son nullable en la base y pueden venir en `null` de filas viejas, y el
+`ResponseEntity<Boolean>` del controller, que es el contrato con `donaciones-service`.
+
+**Warnings del compilador.** Se activó `-Xlint:all` en el `pom.xml` de `incentivos-service` y
+se dejaron en cero: `serialVersionUID` en las siete excepciones, `transient` en los dos
+campos de `EnvioNotificacionException` y `EnvioPublicacionException` que guardan DTOs no
+serializables, y el `this-escape` del constructor de `Categoria`.
+
+El del `this-escape` está suprimido con `@SuppressWarnings` y no "arreglado", y vale la pena
+decir por qué: para armar `CategoriaMision` hay que pasarle la categoría, así que
+inevitablemente se entrega `this` antes de terminar de construir. Es seguro porque
+`CategoriaMision` solo guarda la referencia, y no hay forma de hacerlo al revés sin un
+setter, que es justo lo que se sacó.
+
+### Lo que queda abierto
+
+1. **`ValidadorAdmin.verificarPermisos` sigue llamando a `donaciones-service` dentro de la
+   transacción.** Es la última llamada HTTP que quedó dentro de una transacción (el resto se
+   sacaron en el punto 12). Se dejó así porque son operaciones de administración de baja
+   frecuencia y acotadas por los timeouts, pero sacarla exige partir la validación en otra
+   clase: llamar a un método `@Transactional` desde la misma clase no pasa por el proxy.
+2. **`ReglaConstancia.unidadTiempo` es un `java.time.temporal.ChronoUnit` persistido como
+   string.** Es un enum de la JDK y no del dominio, y no hay garantía de que sus constantes
+   se mantengan estables entre versiones de Java. Un `UnidadTiempo` propio con `MESES` y
+   `DIAS` sería más seguro.
+3. **No hay ni un test de persistencia.** No hay H2 ni `@DataJpaTest`, así que todos los
+   tests son unitarios con Mockito y ninguno valida un mapping JPA: una `@Column` mal escrita
+   o un `orphanRemoval` que falta no se detectan hasta que la aplicación arranca contra
+   MySQL. Es el hueco más grande que queda de la suite.
 ---
 
 # Corregidos

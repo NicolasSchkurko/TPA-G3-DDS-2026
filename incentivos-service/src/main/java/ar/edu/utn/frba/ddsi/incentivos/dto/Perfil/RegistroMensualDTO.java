@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Perfil;
 
+import java.time.YearMonth;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.time.YearMonth;
 
 @Getter
 @Setter
@@ -14,7 +13,7 @@ public class RegistroMensualDTO {
     private Long cantidadDonaciones;
     private Long cantidadOrganizacionesAyudadas;
 
-    public RegistroMensualDTO(YearMonth periodo, Long cantidadDonaciones, Long cantidadOrganizacionesAyudadas){
+    public RegistroMensualDTO(YearMonth periodo, Long cantidadDonaciones, Long cantidadOrganizacionesAyudadas) {
         this.periodo = periodo;
         this.cantidadDonaciones = cantidadDonaciones;
         this.cantidadOrganizacionesAyudadas = cantidadOrganizacionesAyudadas;

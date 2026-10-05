@@ -6,10 +6,16 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacio
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.client.RestTemplate;
 
+/**
+ * Publica en n8n cuando un donante gana una insignia, para que se comparta en redes.
+ *
+ * <p>n8n es un flujo externo al que no le podemos exigir disponibilidad: si está caído, la
+ * insignia ya está guardada y hay que avisar igual. Por eso este listener no relanza.
+ */
 @Slf4j
 @Service
 public class N8nClient {
@@ -44,11 +50,9 @@ public class N8nClient {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publicarInsignia(MisionCompletada event) {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(
-                "formato circulo, diseño estrella, color dorado, " +
-                        "en el centro debe decir " + event.insigniaObtenida(),
-                "felicidades a " + event.nombreUsuario() +
-                        ", por ganar la insignia " + event.insigniaObtenida() +
-                        " tras haber completado la mision " + event.misionAnterior(),
+            "en el centro debe decir " + event.insigniaObtenida(),
+            ", por ganar la insignia " + event.insigniaObtenida()
+                + " tras haber completado la mision " + event.misionAnterior(),
                 "discord",
                 event.nombreUsuario(),
                 event.idUsuario()

@@ -15,10 +15,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.UniqueConstraint;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -27,6 +23,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * El avance de <b>un</b> donante en <b>una</b> misión.
@@ -39,7 +37,6 @@ import java.util.UUID;
  */
 @Entity
 @Getter
-@Setter
 @NoArgsConstructor
 public class ProgresoMision implements ProgresoDelDonante {
 
@@ -120,9 +117,11 @@ public class ProgresoMision implements ProgresoDelDonante {
     public void evaluarConstancia(List<ImpactoDonacion> donaciones,
                                    LocalDateTime fechaEvaluacion) {
         ReglaConstancia constancia = mision.getReglaDeProgreso().getConstancia();
-        if (constancia == null) return;
+        if (constancia == null) {
+            return;
+        }
         if (donaciones.isEmpty()) {
-            reiniciar();
+            reiniciarProgreso();
             return;
         }
 
@@ -134,7 +133,7 @@ public class ProgresoMision implements ProgresoDelDonante {
                 .toList();
 
         if (donacionesQueProgresaron.isEmpty()) {
-            reiniciar();
+            reiniciarProgreso();
             return;
         }
 
@@ -144,7 +143,7 @@ public class ProgresoMision implements ProgresoDelDonante {
 
         if (fechaEvaluacion.isAfter(limite)) {
             // La racha caduco: el donante arranca de cero.
-            reiniciar();
+            reiniciarProgreso();
             return;
         }
 
@@ -175,23 +174,48 @@ public class ProgresoMision implements ProgresoDelDonante {
         progreso = mesesConsecutivos;
     }
 
+    /**
+     * Si el avance acumulado cumple el objetivo de la misión.
+     *
+     * <p>Además de consultar, esto recalcula la constancia: la racha de meses depende de
+     * las donaciones, así que no se puede responder solo mirando el contador guardado.
+     */
     public boolean estaCompleta() {
         return mision.getReglaDeProgreso().estaCompleta(progreso, this);
     }
 
+    /**
+     * Aplica la regla de la misión a una donación y deja el resultado registrado en la
+     * propia donación.
+     *
+     * <p>Se registra en la fila y no solo en el contador del donante porque hace falta
+     * después: al reconstruir una racha, la constancia cuenta solo las donaciones que
+     * efectivamente movieron el avance (punto 26).
+     *
+     * @return si esta donación hizo progresar la misión.
+     */
     public boolean evaluarProgreso(ImpactoDonacion donacion) {
-        donacion.setIdMision(mision.getIdMision());
         Object valorAtributo = mision.getReglaDeProgreso().aplicar(donacion);
         boolean hizoProgresar = mision.getReglaDeProgreso().operar(valorAtributo, this);
-        donacion.setHizoProgresarMision(hizoProgresar);
+
+        donacion.registrarProgresoEn(mision.getIdMision(), hizoProgresar);
+
         return hizoProgresar;
     }
 
-    // Se ha removido PosicionRanking de los parámetros.
-    // Esa actualización debe manejarse mediante un EventListener que escuche MisionCompletada.
+    /**
+     * Aplica una donación al avance y devuelve la insignia si con esto se completó la
+     * misión.
+     *
+     * <p>El avance va por dos caminos distintos según la regla. Con constancia lo decide
+     * {@link #evaluarConstancia}, que cuenta meses calendario y no donations; sin ella, un
+     * avance por donation.
+     *
+     * @return la insignia a otorgar, o {@code null} si la misión sigue sin completarse.
+     */
     public Insignia progresarMision(ImpactoDonacion donacion,
                                     List<ImpactoDonacion> donaciones) {
-        boolean hizoProgresar = evaluarProgreso(donacion); //la donacion se
+        boolean hizoProgresar = evaluarProgreso(donacion);
 
         if (mision.getReglaDeProgreso().getConstancia() != null) {
             List<ImpactoDonacion> donacionesEvaluar = new ArrayList<>(donaciones);
@@ -213,11 +237,7 @@ public class ProgresoMision implements ProgresoDelDonante {
      * rompe y también cuando el admin cambia el criterio de la misión (punto 15), así que
      * las dos cosas tienen que caer juntas o el avance queda a medias.
      */
-public void reiniciarProgreso() {
-        reiniciar();
-    }
-
-    private void reiniciar() {
+    public void reiniciarProgreso() {
         progreso = 0;
         limpiarValoresObservados();
     }

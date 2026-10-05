@@ -5,14 +5,20 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFact
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * Siembra el programa base de categorías y misiones la primera vez que arranca el
+ * servicio, en una base vacía.
+ *
+ * <p>{@code @Order(1)} lo hace correr primero: las categorías son la raíz de la que cuelga
+ * todo lo demás.
+ */
 @Component
 @Order(1)
 public class InicializadorCategorias implements CommandLineRunner {
@@ -89,11 +95,12 @@ public class InicializadorCategorias implements CommandLineRunner {
 
         Categoria colaborador = new Categoria("Colaborador", null, 1, new ArrayList<>());
         Categoria sostenedor = new Categoria("Sostenedor", null, 2, new ArrayList<>());
-        Categoria transformador = new Categoria("Transformador", null, 3, new ArrayList<>());
+        final Categoria transformador = new Categoria("Transformador", null, 3, new ArrayList<>());
 
         colaborador.agregarMision(misionPrimera);
         sostenedor.agregarMision(misionRacha);
         sostenedor.agregarMision(misionHabilDonador);
+
         transformador.agregarMision(misionRacha);
         transformador.agregarMision(misionCompletitud);
         transformador.agregarMision(misionHabilDonador);

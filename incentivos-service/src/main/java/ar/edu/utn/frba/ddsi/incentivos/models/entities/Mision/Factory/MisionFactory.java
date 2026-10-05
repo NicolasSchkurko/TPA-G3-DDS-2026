@@ -6,8 +6,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import org.springframework.stereotype.Component;
-
 import java.text.Normalizer;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
@@ -15,7 +13,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
+/**
+ * Arma una {@link Mision} completa a partir de los campos sueltos que manda el admin.
+ *
+ * <p>Existe para que el controller y el servicio no tengan que saber qué hace falta para
+ * dejar una misión consistente: regla de constancia, atributo, tipo de operación y los
+ * parámetros de cada uno. También es el lugar donde se valida el texto que viene del JSON,
+ * que es texto libre.
+ */
 @Component
 public class MisionFactory {
     private final OperacionFactory operacionFactory;
@@ -62,6 +69,16 @@ public class MisionFactory {
         return Map.copyOf(unidades);
     }
 
+    /**
+     * Arma la misión completa desde los once campos sueltos del DTO del admin.
+     *
+     * <p>La constancia es opcional: si no viene cantidad ni unidad, la misión no exige
+     * ventana temporal. Si viene solo una de las dos, es un error y no una ausencia, porque
+     * "3" sin unidad no significa nada.
+     *
+     * @throws DatosInvalidosException si algún texto no corresponde a un valor válido, o
+     *                               si falta la mitad de la ventana temporal.
+     */
     public Mision crearMision(
         UUID idAdmin,
         String nombreMision,
@@ -96,6 +113,24 @@ public class MisionFactory {
     }
 
     /**
+     * La sobrecarga que recibe la regla ya armada. La de arriba existe para no obligar
+     * a quien llama a construir un {@code ReglaConstancia} y una {@code Operacion}: la
+     * regla se construye aca a partir de los parametros.
+     */
+    public Mision crearMision(
+        UUID idAdmin,
+        String nombreMision,
+        String descripcion,
+        String nombreInsignia,
+        ReglaConstancia constancia,
+        AtributoImpacto atributo,
+        Operacion operacion
+    ) {
+        Regla regla = new Regla(constancia, atributo, operacion);
+        return new Mision(nombreMision, idAdmin, descripcion, nombreInsignia, regla);
+    }
+
+    /**
      * La constancia es opcional: si no viene cantidad o unidad, la misión no exige
      * ventana temporal. Si viene solo una de las dos, es un error y no una ausencia de
      * constancia, así que se rechaza en vez de ignorarse.
@@ -121,6 +156,13 @@ public class MisionFactory {
         return new ReglaConstancia(cantidadTiempo, unidad);
     }
 
+    /**
+     * Traduce el texto del atributo a su valor del enum.
+     *
+     * <p>Si el texto viene vacío o no corresponde a ningún valor, lanza
+     * {@link DatosInvalidosException} con la lista de lo aceptado, que es 400 con un mensaje
+     * útil en vez de un 500 por un {@code valueOf} que revienta.
+     */
     public AtributoImpacto crearAtributoImpacto(String atributo) {
         if (atributo == null || atributo.isBlank()) {
             throw new DatosInvalidosException(
@@ -139,6 +181,13 @@ public class MisionFactory {
         }
     }
 
+    /**
+     * Traduce el texto del tipo de operación a la implementación correspondiente.
+     *
+     * <p>No hace nada más que delegar en {@link OperacionFactory}, que es quien tiene el
+     * {@code switch}. Está acá para que la cadena quede entera dentro de la factory de la
+     * misión.
+     */
     public Operacion crearOperacion(String tipoOperacion,
                                     Integer progresoObjetivo,
                                     Integer cantidad,
@@ -149,19 +198,6 @@ public class MisionFactory {
             cantidad,
             valor
         );
-    }
-
-    public Mision crearMision(
-        UUID idAdmin,
-        String nombreMision,
-        String descripcion,
-        String nombreInsignia,
-        ReglaConstancia constancia,
-        AtributoImpacto atributo,
-        Operacion operacion
-    ) {
-        Regla regla = new Regla(constancia, atributo, operacion);
-        return new Mision(nombreMision, idAdmin, descripcion, nombreInsignia, regla);
     }
 
     /**

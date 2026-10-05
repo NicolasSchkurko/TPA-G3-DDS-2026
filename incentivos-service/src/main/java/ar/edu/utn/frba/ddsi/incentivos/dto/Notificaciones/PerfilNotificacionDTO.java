@@ -15,7 +15,7 @@ public class PerfilNotificacionDTO {
     public PerfilNotificacionDTO(String medioDeContacto,
                             String direccionContacto,
                                  String cuerpoMensaje,
-                                 String asuntoMensaje){
+                                 String asuntoMensaje) {
         this.medioDeContacto = medioDeContacto;
         this.direccionContacto = direccionContacto;
         this.cuerpoMensaje = cuerpoMensaje;

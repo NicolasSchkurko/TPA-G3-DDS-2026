@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDate;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,12 +17,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.UUID;
-
+/**
+ * Endpoints de métricas agregadas: totales por período y evolución histórica de un
+ * donante.
+ *
+ * <p>Todos son de solo lectura y todos agregan sobre los impactos de donación que copió
+ * {@code donaciones-service}; nada de esto se calcula al vuelo contra la base de otro
+ * servicio.
+ */
 @RestController
 @RequestMapping("/api/metricas")
-@Tag(name = "Métricas", description = "Endpoints para obtener métricas y análisis de donaciones y actividad de perfiles.")
+@Tag(name = "Métricas",
+        description = "Endpoints para obtener métricas y análisis de donaciones y actividad de perfiles.")
 public class MetricaController {
     private final MetricasService service;
 

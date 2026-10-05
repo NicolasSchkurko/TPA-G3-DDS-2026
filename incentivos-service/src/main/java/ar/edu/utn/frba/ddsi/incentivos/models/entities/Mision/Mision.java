@@ -2,15 +2,26 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-import java.util.UUID;
-
+/**
+ * Una misión del programa: qué hay que hacer, con qué regla se cuenta y qué insignia
+ * otorga al completarla.
+ *
+ * <p>Es dueño de su insignia objetivo (cascade) pero solo referencia su regla, que viene
+ * armada desde la factory. Cada misión crea su propia fila de insignia, así que el mismo
+ * nombre puede repetirse entre misiones sin chocar.
+ */
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 public class Mision {
@@ -71,12 +82,7 @@ public class Mision {
             // el texto de la misión.
             String descripcionNueva = insigniaNueva.getDescripcion();
 
-            if (!nombreNuevo.equals(this.insigniaObjetivo.getNombre())) {
-                this.insigniaObjetivo.setNombre(nombreNuevo);
-            }
-            if (descripcionNueva != null) {
-                this.insigniaObjetivo.setDescripcion(descripcionNueva);
-            }
+            this.insigniaObjetivo.actualizar(nombreNuevo, descripcionNueva);
         }
 
         Regla reglaModificada = misionModificada.getReglaDeProgreso();

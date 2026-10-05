@@ -20,7 +20,7 @@ public class ConstanciaDTO {
     private String unidadTiempo;
 
     public ConstanciaDTO(Integer cant,
-                         String unidad){
+                         String unidad) {
         this.cantidad = cant;
         this.unidadTiempo = unidad;
     }
