@@ -30,6 +30,7 @@ public class ImpactoDonacionDTO {
     private Integer cantidadBienes;
 
     private String subCategoria;
+    @NotBlank(message = "La donación requiere una categoría")
     private String categoria;
 
     @NotBlank(message = "La donación requiere una entidad beneficiaria")

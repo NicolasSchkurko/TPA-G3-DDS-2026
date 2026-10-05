@@ -5,13 +5,16 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,7 +22,9 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -48,27 +53,38 @@ public class ProgresoMision implements ProgresoDelDonante {
 
     /**
      * Valores del atributo de la regla que este donante ya vio. Los necesitan las reglas
-     * del tipo "N valores distintos". Con {@code orphanRemoval} se van con el progreso:
-     * si se cambia de misión, las filas quedan huérfanas y se borran.
+     * del tipo "N valores distintos".
+     *
+     * <p>Es un {@code Set} a propósito: que el mismo valor no cuente dos veces lo
+     * garantiza el tipo. La restricción única sobre {@code (progreso_mision_id, valor)}
+     * también lo garantiza a nivel base de datos.
+     *
+     * <p>Es {@code LAZY} por defecto. Todos sus usos corren dentro de transacciones
+     * ({@code calcularProgreso}, {@code estaCompleta} y {@code evaluarConstancia}), así
+     * que no hay riesgo de LazyInitializationException.
      */
-    @OneToMany(mappedBy = "progresoMision", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ValorObservado> valoresObservados = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(
+            name = "valor_observado",
+            joinColumns = @JoinColumn(name = "progreso_mision_id"),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_valor_observado_progreso_valor",
+                    columnNames = {"progreso_mision_id", "valor"}))
+    @Column(name = "valor", nullable = false, length = 512)
+    private Set<String> valoresObservados = new LinkedHashSet<>();
 
     public ProgresoMision(Mision mision) {
         this.mision = mision;
         this.progreso = 0;
     }
 
+    /**
+     * {@code Set.add} devuelve {@code true} solo si el valor era nuevo, que es justo
+     * lo que promete este método.
+     */
     @Override
     public boolean registrarValorObservado(String valor) {
-        boolean esNuevo = valoresObservados.stream()
-                .noneMatch(observado -> observado.getValor().equals(valor));
-
-        if (esNuevo) {
-            valoresObservados.add(new ValorObservado(this, valor));
-        }
-
-        return esNuevo;
+        return valoresObservados.add(valor);
     }
 
     @Override
