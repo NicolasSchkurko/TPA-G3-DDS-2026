@@ -15,28 +15,30 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
 | 3 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 4 | 22 | N+1 y tablas enteras en memoria |
-| 5 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 6 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 7 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 8 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 9 | 2 | El podio sale truncado sin avisar |
-| 10 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 11 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 12 | 34 | Dos guardas que el código dice tener y no tiene |
-| 13 | 23 | Higiene: código muerto, logs, encapsulación |
-| 14 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 15 | 4 | `common-lib` es código muerto |
-| 16 | 9 | No es un faltante: es una decisión de arquitectura |
-| 17 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
+| 4 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 5 | 24 | La insignia no tiene descripción propia: es texto derivado |
+| 6 | 2 | El podio sale truncado sin avisar |
+| 7 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
+| 8 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
+| 9 | 34 | Dos guardas que el código dice tener y no tiene |
+| 10 | 23 | Higiene: código muerto, logs, encapsulación |
+| 11 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
+| 12 | 4 | `common-lib` es código muerto |
+| 13 | 9 | No es un faltante: es una decisión de arquitectura |
+| 14 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
 
 El punto 23 no aparece en la tabla porque está en la sección de su propio detalle más
 abajo, y tampoco cuenta como "abierto a medias": su parte grande se hizo y lo que queda
 son tres cosas anotadas.
 
-Los puntos 25, 36, 17 y 30 estén la tabla hasta la tanda del 2026-10-05, que los cerró
-juntos: los cuatro eran fallos de progresión del donante y ninguno se manifestaba solo.
-Ver [la sección de esa tanda](#253617--30-progresin-del-donante--corregidos).
+Los puntos 25, 36, 17 y 30 estuvieron en la tabla hasta la tanda del 2026-10-05, que los
+cerró juntos: los cuatro eran fallos de progresión del donante y ninguno se manifestaba
+solo. Ver [esa tanda](#253617--30-progresin-del-donante--corregidos).
+
+Los puntos 22, 31 y 32 se cerraron en la tanda siguiente. El 31 y el 32 no tenían nada que
+ver entre sí, pero los dos hablan de lo mismo: **un dato inválido que entraba sin
+que nadie lo revisara y después rompía algo lejos de donde entró**. Ver
+[esa tanda](#223132--consultas-y-datos-que-entran-sin-revisar--corregidos).
 
 ---
 
@@ -156,100 +158,7 @@ vigente, porque esa integración no está cubierta por el requisito de asincron�
 **Propuesta para n8n:** tabla de outbox transaccional + scheduler de reintento con backoff
 exponencial.
 
-## 22. Consultas N+1 y cargadas completas en memoria
 
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/PerfilService.java:49-60`,
-`services/MetricasService.java:30-60`,
-`models/gestores/SincronizacionPerfiles.java:61`,
-`models/repositories/SpringRepositories/RepositorioRankings.java`,
-`models/entities/Perfil/InsigniaObtenida.java:27-29`
-
-Cuatro problemas de escalabilidad, todos con la misma raíz: se traen tablas enteras al
-heap en lugar de resolver en SQL.
-
-1. **`evaluarConstanciaPerfiles`** (el scheduler diario) carga **todos** los perfiles con
-   misión de constancia en una lista, y por cada uno lanza una consulta de donaciones.
-   Con 10.000 perfiles son 10.001 consultas y toda la colección en memoria. Debería ser
-   un `UPDATE` en lote o paginado por bloques.
-2. **`obtenerEvolucionHistorica`** lee todas las donating del usuario para agrupar por
-   mes en Java. Debería ser un `SELECT year_month, COUNT(*), COUNT(DISTINCT entidad)`
-   agrupado en la base.
-3. **`SincronizacionPerfiles`** llama a `obtenerContactoPersona` **una vez por
-   donante** afectado, en un bucle, dentro de la transacción. Reordenar las misiones de
-   una categoría con 500 donantes son 500 llamadas HTTP secuenciales.
-4. **`obtenerHistorialRankings`** devuelve `Page<RankingMesDTO>` donde cada elemento
-   materializa `posiciones` → 1 consulta por ranking. Y `InsigniaObtenida.insignia` es
-   `@ManyToOne(fetch = EAGER)`, así que la paginación de insignias hace 1 consulta por
-   insignia de la página.
-
-Aparte, `calcularRankingMensual` filtra con `MONTH(fechaObtencion) = :mes AND
-YEAR(fechaObtencion) = :anio`. Las funciones sobre la columna impiden el uso de índices:
-es un full scan de `insignias_obtenidas` cada mes. Debería ser un rango
-`fechaObtencion >= :inicio AND fechaObtencion < :fin`, que sí es sargable.
-
-**Propuesta:** un `@EntityGraph` para las relaciones que se usan en las lecturas,
-`@Query` de agregación para las métricas, paginación por lotes para los schedulers, y
-un `INSERT ... SELECT` para el contacto en lugar del bucle. Agregar índices explícitos
-sobre `insignias_obtenidas(fechaObtencion)` y `progreso_mision`.
-
-## 31. `desplazarParaActualizar` descarta la posición pedida en silencio y el service la aplica igual
-
-**Estado:** abierto
-**Severidad:** media
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `models/gestores/SecuenciaCategoria.java:57-59`,
-`services/CategoriaService.java:110-128`, `dto/Admin/CategoriaDTO.java`
-
-El gestor sale sin hacer nada si la posición está fuera de rango:
-
-```java
-if (posicionMaxima == null || posicionNueva < 1 || posicionNueva > posicionMaxima) {
-    return;                       // retorno silencioso
-}
-```
-
-Pero el caller **igual escribe la posición pedida**, así que la secuencia queda con huecos
-y el invariante "sin huecos" que el propio gestor declara queda roto:
-
-- Secuencia `1..5`, `PUT` con `posicionSecuencia: 10` → `10 > 5` → sin desplazamiento →
-  queda `1,2,3,4,5,10`. Un `desplazarHaciaArribaDesde(6)` posterior tampoco lo cierra.
-- `posicionSecuencia: 0` → `0 < 1` → sin desplazamiento → categoría en posición 0. Peor:
-  `crearPerfil` elige la categoría base con
-  `findAllByOrderByPosicionSecuenciaAsc().findFirst()`, así que **todos los donantes
-  nuevos pasan a arrancar en esa categoría** en lugar de en la base.
-
-`CategoriaDTO.posicionSecuencia` no tiene `@Positive` ni `@Min(1)`, al contrario que
-`ConstanciaDTO.cantidad` y `OperacionDTO.progresoObjetivo`, que sí lo tienen. Nada impide
-pedir un valor fuera de rango.
-
-**Arreglo:** `@Min(1)` en el DTO y que el service lance 400 cuando la posición está fuera
-de rango, en vez de perder el pedido en silencio.
-
----
-
-## 32. Se aceptan rankings de períodos futuros y eso rompe el ranking "actual"
-
-**Estado:** abierto
-**Severidad:** media
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `services/RankingService.java:87-102,113-119`,
-`models/repositories/SpringRepositories/RepositorioRankings.java:20,25-31`
-
-`crearRankingMensual` valida que el período no exista, pero **no valida que no sea
-futuro**. Y "el ranking actual" se resuelve con `findFirstByOrderByPeriodoDesc()`, o sea el
-período más alto existente.
-
-**Escenario de fallo:** `POST /api/rankings {"periodo":"2030-01"}` → 200 con un ranking
-vacío (nadie tiene insignias en 2030). A partir de ahí `GET /api/rankings/actual` devuelve
-la lista vacía y `GET /api/rankings/{id}/puestoRanking` responde **404 para todos los
-usuarios**, aunque el ranking real exista. Queda roto hasta que alguien borre el ranking
-futuro. El mes en curso tiene el mismo problema: siempre sale vacío.
-
-**Arreglo:** rechazar con 400 los períodos `>= YearMonth.now()`.
-
----
 
 ## 33. `SUPERA_CANTIDAD` usa `>=` donde el dominio pide "supera"
 
@@ -434,6 +343,13 @@ transacción va a fallar con `LazyInitializationException` en runtime, no al com
 
 **Regla:** todo método de lectura que llame a un `...DTO.desdeEntidad(...)` sobre una
 colección necesita `@Transactional(readOnly = true)`.
+
+**Relación nueva que hay que tener en cuenta desde el punto 22:**
+`InsigniaObtenida.insignia` pasó de `EAGER` a `LAZY`. No es una relación más que "está
+perezosamente": `convertirPerfilADTO` lee `io.getInsignia().getNombre()`, así que cualquier
+lectura del perfil tiene que traerla. Hoy lo cubre el `@EntityGraph` de `findByIdUsuario` y
+el de `paginaInsigniasPorIdUsuario`, pero un endpoint nuevo que mapee un perfil por otro
+camino va a necesitar el suyo.
 ---
 
 ## 4. `common-lib` está en el repositorio pero no en el build
@@ -1342,3 +1258,168 @@ sí se hizo fue cubrir las dos mitades que se pueden:
 
 Tests: `PerfilServiceAltaTest`, `PerfilServiceConcurrenciaTest`, `OrphanRemovalTest`,
 `SincronizacionPerfilesMisionRemovidaTest`.
+
+---
+
+## 22 + 31 + 32. Consultas y datos que entran sin revisar - corregidos
+
+Tres puntos que no tienen nada que ver entre sí: uno era de rendimiento, los otros dos de
+validación. Se cerraron juntos porque el 31 y el 32 hablan de lo mismo desde dos ángulos
+distintos, y conviene tenerlos juntos para no volver a meter la mitad.
+
+### 31. Una posición fuera de rango es un 400, no un "no hacer nada"
+
+`SecuenciaCategoria.desplazarParaActualizar` se salía en silencio con un `return` cuando la
+posición pedida estaba fuera de rango, y el caller **igual escribía la posición pedida**.
+El invariante "sin huecos" que la propia clase declara en su javadoc quedaba roto, y la
+respuesta al admin era un 200.
+
+| Lo que pasaba | Lo que pasa ahora |
+|---|---|
+| Secuencia `1..5` + `posicionSecuencia: 10` → queda `1,2,3,4,5,10` | 400 diciendo que el rango válido es 1 a 5 |
+| `posicionSecuencia: 0` → la categoría queda en 0 | 400, y `@Min(1)` en el DTO lo corta antes de llegar al service |
+| Igual en el alta: `desplazarHaciaAbajoDesde(10)` no movía nada y la categoría se guardaba en la 10 | 400 también en el alta |
+
+**El detalle que no estaba en el punto y sí importa: el rango distinto entre alta y
+edición.**
+
+- En el **alta** el rango es `[1, max + 1]`: la categoría nueva va a ser la sexta de cinco, así
+  que la última posición posible es la 6.
+- En la **edición** el rango es `[1, max]`: el número de categorías no cambia, así que la 6
+  no existe. Admitirla dejaba `1,_,3,4,5,6` — la de la 2 se iba a la 6 y las del medio no
+  corrían —, que es exactamente el hueco que el punto viene a cerrar. Se verificó con un
+  test propio (`enLaEdicionLaSextaNoVale`).
+
+`posicionSecuencia: 0` era el caso peor de todos, y no por ser inválido: como la categoría
+base del programa es la de posición más baja, **una categoría en 0 hacía que todos los
+donantes nuevos arrancaran en ella** en vez de en la base.
+
+También se cambió la firma de `desplazarParaCrear`, que ahora recibe el máximo de la
+secuencia como el otro método, para poder validar.
+
+### 32. No se publica el ranking de un período sin cerrar
+
+El daño real no era el ranking futuro, era lo que hacía con el resto del servicio. "El
+ranking actual" se resolvía con `findFirstByOrderByPeriodoDesc()`, o sea el período más alto
+existente, así que un solo `POST /api/rankings {"periodo":"2030-01"}` dejaba:
+
+- `GET /api/rankings/actual` devolviendo la lista vacía;
+- `GET /api/rankings/{id}/puestoRanking` respondiendo **404 para todos los usuarios**, aunque
+  el ranking verdadero estuviera ahí.
+
+Y quedaba así hasta que alguien borraba el ranking futuro a mano. El mes en curso pasaba lo
+mismo, con la diferencia de que **se rompía solo**: siempre sale vacío porque el mes no
+terminó.
+
+Dos cambios, y el segundo es el que importa más:
+
+1. `RankingService.generarYGuardar` rechaza con 400 cualquier período `>= YearMonth.now()`. El
+   control va **adentro de `generarYGuardar` y no en `crearRankingMensual`** porque el
+   scheduler entra por el mismo camino y también tiene que respetarlo.
+2. `RepositorioRankings` ahora resuelve "el actual" con
+   `findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth.now())`. Con esto, los rankings que
+   **ya quedaron** en una base de desarrollo tampoco rompen el "actual". Es defensa en
+   profundidad: el filtro por período vive en la consulta, no solo en la validación del alta.
+
+`findFirstByOrderByPeriodoDesc` se eliminó. Un test comprueba que no exista, para que no
+vuelva a estar disponible por costumbre.
+
+### 22. Las consultas de las tablas grandes
+
+Era el punto más grande de los tres y el único donde nada se rompía: los resultados daban
+correctos y lo único que pasaba es que la base hacía muchísimo trabajo de más. Con datos de
+desarrollo no se nota; con datos reales es la diferencia entre milisegundos y minutos.
+
+**Lo que ya estaba resuelto y no se tocó:** el sub-punto de `SincronizacionPerfiles` pedir el
+contacto por donante ya lo había cerrado el punto 12. Los usos que quedan de
+`obtenerContactoPersona` están en `NotificacionClient`, en `AFTER_COMMIT`, que es donde
+deben estar.
+
+**`calcularRankingMensual`: el filtro era no sargable.** Aplicaba
+`MONTH(fechaObtencion) = :mes AND YEAR(fechaObtencion) = :anio`, y con funciones sobre la
+columna en el `WHERE` la base no puede usar el índice: tiene que evaluar la función sobre
+cada fila antes de comparar. El ranking se genera todos los meses, así que era un recorrido
+completo de `insignias_obtenidas` cada mes. Ahora el filtro es un rango semiabierto
+(`>= inicio AND < fin`) y la consulta recibe `LocalDateTime`, no mes y año. Es semiabierto a
+propósito: con `<= fin` habría que sumar un instante al último día del mes, y el error de un
+día al final del período es justo el que hace que un mes aparezca con una infracción de más.
+
+**`obtenerEvolucionHistorica`: el agrupado se hace en la base.** Traía *todas* las donaciones
+del donante y agrupaba por mes con un `groupingBy`: un donante con 500 donaciones cargaba
+500 filas enteras para devolver cinco números. Ahora hay dos consultas agregadas, una por
+mes y otra de totales, porque son dos preguntas distintas —meter el total en la consulta con
+`GROUP BY` por mes devolvería un total por mes, no el de la historia—.
+
+El `COUNT(DISTINCT)` lleva un `CASE WHEN TRIM(entidadBeneficiaria) <> ''` porque el código
+anterior en Java filtraba nulos y vacíos antes de contar, y un `COUNT(DISTINCT columna)` a
+secas cuenta la cadena vacía como una organización más. El `TRIM` además corrige un
+sobreconteo: `"Fundacion"` y `"Fundacion "` ahora son la misma.
+
+**N+1 que se fueron:**
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| `obtenerHistorialRankings` | 1 consulta por ranking de la página (20 → 21) | `@EntityGraph` en `findAllByOrderByPeriodoDesc` |
+| `paginaInsigniasPorIdUsuario` | `InsigniaObtenida.insignia` era `EAGER`: 1 consulta por insignia (20 → 21) | `insignia` pasó a `LAZY` + `@EntityGraph` en la paginación |
+| `buscarPerfilesConMisionQueRequiereConstancia` | el `JOIN` sin `FETCH` dejaba 2 proxies por perfil: con 10.000 perfiles, 20.000 consultas extra | `JOIN FETCH` de progreso, misión y regla |
+
+**`evaluarConstanciaPerfiles` va por bloques.** Antes traía todos los perfiles y los
+guardaba juntos: con 10.000 perfiles eran 10.000 objetos `Perfil` vivos en la sesión. Ahora
+son bloques de 500 y **cada bloque es una transacción propia** con `TransactionTemplate`: es
+lo que hace que libere memoria de verdad, porque con un `@Transactional` único la sesión
+seguiría acumulando lo ya procesado y paginar el `SELECT` no evita el crecimiento del
+persistence context.
+
+El corte es por offset y **por eso el orden importa**: `Sort.by("idUsuario")`, que es único.
+Paginar por offset sin `ORDER BY` no es estable —la base puede devolver las mismas filas en
+distintos órdenes entre consultas— y con eso algunos perfiles se procesan dos veces y otros
+se saltan sin que ninguna excepción avise.
+
+**Índices agregados**, con `ddl-auto=update` se crean solos:
+
+| Tabla | Índice | Para qué consulta |
+|---|---|---|
+| `impacto_donacion` | `(id_usuario, fecha_entrega)` | evolución mensual y resumen por rango |
+| `impacto_donacion` | `(id_usuario, id_mision, fecha_entrega)` | cálculo de constancia |
+| `insignias_obtenidas` | `(insignia_id)` | detalle de una insignia |
+| `insignias_obtenidas` | `(perfil_id, fecha_obtencion)` | paginación de insignias de un donante |
+| `insignias_obtenidas` | `(fecha_obtencion)` | ranking mensual, que filtra por fecha sin saber de qué perfil |
+
+El de la paginación tiene el orden de columnas a propósito: con `fecha_obtencion` primero, la
+base puede filtrar por perfil pero igual tiene que ordenar por fecha, que es la parte cara.
+Y el de `fecha_obtencion` a secas existe porque el ranking agrupa por donante sobre todo el
+mes: no sabe todavía de qué perfil se trata, así que los otros dos no le sirven.
+
+**Decisiones conscientes y deuda que quedó:**
+
+1. **La consulta de las donaciones por donante sigue siendo una por perfil.** Cada perfil
+   necesita las de *su* misión, y una consulta con las dos colecciones cruzadas da un
+   producto cartesiano. Se dejó así a propósito: es un compromiso, no un descuido. Cuando
+   haya datos reales se verá si el número de consultas justifica una consulta agregada por
+   usuario y misión.
+2. **Los índices son declaraciones, no un plan de ejecución.** Sin H2 o una base de prueba no
+   hay forma de hacer un `EXPLAIN` que confirme que la base los usa. El test comprueba que
+   estén declarados y con las columnas correctas, no queSirvan.
+3. `ddl-auto=update` los crea, pero **no limpia los que sobren ni verifica que existieran**.
+   En una base ya creada, los índices nuevos aparecen en el próximo arranque; en producción
+   esto debería ser una migración.
+
+**Un riesgo que el propio arreglo introdujo, y cómo se cubrió.** Pasar
+`InsigniaObtenida.insignia` de `EAGER` a `LAZY` es correcto para el rendimiento, pero agrega
+una relación más que hay que tener cargada. `convertirPerfilADTO` lee
+`io.getInsignia().getNombre()`, así que sin nada más ese mapeo se habría comido un
+`LazyInitializationException` si se lo llamaba fuera de la transacción. Se cubrió con
+`@EntityGraph` en `findByIdUsuario`, que además evita dos consultas por donante. **Es
+justo el riesgo del punto 6 apareciendo en un lado nuevo**: cada relación que pasa a `LAZY`
+mueve el problema al que la lee.
+
+### Tests de la tanda
+
+`SecuenciaCategoriaRangoTest` es el que vale la pena mirar del punto 31: no usa un mock con
+`verify` sino un repositorio simulado que **aplica los desplazamientos de verdad sobre el
+estado**, y compara la secuencia resultante contra `1..N`. Con `verify` se comprobaría que
+se llamó al `desplazar` correcto, no que el resultado sea una secuencia válida, que es el
+invariante roto.
+
+Tests: `SecuenciaCategoriaRangoTest`, `RankingServicePeriodoTest`,
+`RendimientoConsultasTest`.

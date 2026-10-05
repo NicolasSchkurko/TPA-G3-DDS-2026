@@ -150,7 +150,7 @@ class CategoriaServiceTest {
 
             service.agregarCategoria(ADMIN, dto("Plata", 3));
 
-            verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3);
+            verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3, gestorSecuencia.posicionMaxima(repoCategorias));
         }
     }
 }

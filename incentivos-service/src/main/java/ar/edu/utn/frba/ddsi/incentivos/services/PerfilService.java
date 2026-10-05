@@ -31,6 +31,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -57,6 +60,18 @@ public class PerfilService {
      * carrera puntual en un error para el donante.
      */
     private static final int MAX_INTENTOS_CONCURRENCIA = 3;
+
+    /**
+     * Cuántos perfiles recalcula por bloque la pasada de constancia (punto 22).
+     *
+     * <p>Quinientos es un número arbitrario, elegido por un criterio concreto: es
+     * suficientemente chico para que el bloque entre cómodo en el heap por mucho que
+     * crezca la base, y suficientemente grande para que el costo de abrir una transacción
+     * por bloque sea despreciable frente al trabajo de la consulta de donaciones. Con
+     * bloques de cinco, una pasada de 10.000 perfiles abriría 2.000 transacciones; con
+     * bloques de 50.000, el pico de memoria volvería a ser el problema original.
+     */
+    private static final int TAMANO_BLOQUE_CONSTANCIA = 500;
 
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioCategorias repositorioCategorias;
@@ -85,18 +100,74 @@ public class PerfilService {
      * <p>Lo llama el scheduler: la racha caduca por el paso del tiempo, no por una
      * donación, así que sin esta pasada un donante que dejó de donar queda con el avance
      * congelado y la misión nunca aparece como pendiente.
+     *
+     * <p><b>Va por bloques y no de una sola vez</b> (punto 22). Antes se traían todos los
+     * perfiles con constancia de golpe y se guardaban todos juntos: con 10.000 perfiles eran
+     * 10.000 objetos {@code Perfil}, cada uno con su progreso y su misión vivos, más la
+     * sesión de Hibernate conteniendo todo eso. Ahora se procesa de a bloques y cada bloque
+     * se guarda y se libera antes de pedir el siguiente, así que el pico de memoria no
+     * depende del tamaño de la base.
+     *
+     * <p><b>El bloque es una transacción propia</b>, y no un recorte dentro de la misma
+     * transacción grande. Es lo que hace que libere memoria de verdad: con un único
+     * {@code @Transactional} de principio a fin, la sesión sigue acumulando las entidades
+     * ya procesadas y paginar el SELECT no evita el crecimiento del persistence context.
+     *
+     * <p>Sobre las consultas: la de los perfiles trae la misión y la regla en la misma ida
+     * (ver {@code buscarPerfilesConMisionQueRequiereConstancia}), así que no hay N+1 de esas.
+     * La de las donaciones de cada perfil sigue siendo una por donante, porque cada uno
+     * necesita las de <em>su</em> misión y una consulta con las dos colecciones cruzadas da
+     * un producto cartesiano. Dejarla así es un compromiso consciente, no un descuido:
+     * cuando haya datos reales se verá si el número de consultas justifica una consulta
+     * agregada por usuario y misión.
+     *
+     * <p><b>El corte es por offset y por eso el orden importa.</b> Paginar por offset sobre
+     * una consulta sin {@code ORDER BY} no es estable: la base puede devolver las mismas
+     * filas en órdenes distintos entre consultas, y con eso algunos perfiles se procesan
+     * dos veces y otros se saltan sin que ninguna excepción avise. El sort es por
+     * {@code idUsuario}, que es único y no cambia durante la pasada —el filtro es "tener una
+     * misión con regla de constancia", y recalcular la racha no cambia ni la misión ni la
+     * regla, así que el conjunto es estable—.
      */
-    @Transactional
     public void evaluarConstanciaPerfiles() {
-        List<Perfil> perfilesConMision = repositorioPerfiles.buscarPerfilesConMisionQueRequiereConstancia();
+        Pageable corte = PageRequest.of(0, TAMANO_BLOQUE_CONSTANCIA, Sort.by("idUsuario"));
+        int bloque = 0;
 
-        perfilesConMision.forEach(perfil -> perfil.verificarProgresoMision(
-            repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
-                perfil.getIdUsuario(),
-                perfil.getProgresoMisionActual().getMision().getIdMision())
+        while (true) {
+            List<Perfil> perfilesDelBloque = repositorioPerfiles
+                    .buscarPerfilesConMisionQueRequiereConstancia(corte)
+                    .getContent();
+
+            if (perfilesDelBloque.isEmpty()) {
+                return;
+            }
+
+            transactionTemplate.executeWithoutResult(estado ->
+                    recalcularConstanciaDe(perfilesDelBloque));
+
+            log.debug("Bloque {} de constancia: {} perfiles recalculados",
+                    bloque, perfilesDelBloque.size());
+
+            if (perfilesDelBloque.size() < TAMANO_BLOQUE_CONSTANCIA) {
+                // Última página: no hay más. Sin esto el bucle daría una vuelta de más
+                // buscando una página vacía, que es una consulta inútil pero no un bug.
+                return;
+            }
+
+            corte = corte.next();
+            bloque++;
+        }
+    }
+
+    /** El cuerpo de un bloque, dentro de su propia transacción. */
+    private void recalcularConstanciaDe(List<Perfil> perfiles) {
+        perfiles.forEach(perfil -> perfil.verificarProgresoMision(
+                repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
+                        perfil.getIdUsuario(),
+                        perfil.getProgresoMisionActual().getMision().getIdMision())
         ));
 
-        repositorioPerfiles.saveAll(perfilesConMision);
+        repositorioPerfiles.saveAll(perfiles);
     }
 
     /**

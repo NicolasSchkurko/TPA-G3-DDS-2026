@@ -11,6 +11,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.Re
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import java.time.YearMonth;
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -142,8 +143,15 @@ public class RankingService {
         repoRankings.deleteById(idRanking);
     }
 
-    /** El trabajo en sí, sin permisos: lo comparten el endpoint y el scheduler. */
+    /**
+     * El trabajo en sí, sin permisos: lo comparten el endpoint y el scheduler.
+     *
+     * <p>El chequeo de período va acá y no solo en {@link #crearRankingMensual} porque el
+     * scheduler entra por el mismo camino y también tiene que respetarlo.
+     */
     private RankingMesDTO generarYGuardar(YearMonth periodo) {
+        verificarPeriodoCerrado(periodo);
+
         if (repoRankings.findByPeriodo(periodo).isPresent()) {
             throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
         }
@@ -155,23 +163,54 @@ public class RankingService {
     }
 
     /**
+     * Rechaza un período que todavía no cerró (punto 32).
+     *
+     * <p>Es un 400 y no un "no hay datos, te devuelvo vacío" porque un ranking vacío no es
+     * un resultado: es un ranking que rompe las consultas del "actual". Como
+     * {@code obtenerRankingActual} tomaba el período más alto existente, guardar uno del mes
+     * en curso o de un mes futuro hacía que {@code GET /api/rankings/actual} devolviera la
+     * lista vacía y {@code puestoRanking} respondiera 404 para todos los usuarios, aunque
+     * el ranking verdadero estuviera ahí. Quedaba roto hasta que alguien borrara a mano el
+     * ranking futuro.
+     *
+     * <p>La comparación es contra el mes en curso, no contra hoy: un ranking de este mes
+     * tampoco sirve, porque el mes todavía no terminó y siempre sale incompleto. Lo único
+     * publicable es un mes cerrado, que es justo lo que genera el scheduler.
+     */
+    private void verificarPeriodoCerrado(YearMonth periodo) {
+        YearMonth enCurso = YearMonth.now();
+
+        if (!periodo.isBefore(enCurso)) {
+            throw new IllegalArgumentException(
+                    "No se puede generar el ranking de " + periodo + " porque ese mes todavía no "
+                            + "terminó. Solo se publica un mes ya cerrado.");
+        }
+    }
+
+    /**
      * El ranking más reciente que se publicó.
      *
-     * <p>No recalcula nada: si el mes en curso todavía no cerró, devuelve el del mes
-     * anterior.
+     * <p>No recalcula nada, y solo cuenta períodos ya cerrados: si el mes en curso todavía no
+     * cerró, devuelve el del mes anterior (punto 32).
      */
     @Transactional(readOnly = true)
     public RankingMesDTO obtenerRankingActual() {
-        RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
+        RankingMensual rank = repoRankings
+                .findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth.now())
                                                                             .orElseThrow(InexistenteException::new);
 
         return convertirRankingMesADTO(rank);
     }
 
-    /** Todos los rankings publicados, del más reciente al más viejo. */
+    /**
+     * Todos los rankings publicados, del más reciente al más viejo.
+     *
+     * <p>Usa el método con {@code @EntityGraph} y no el {@code findAll} de JpaRepository: el
+     * {@code fetch} de las posiciones es lo que evita una consulta por ranking (punto 22).
+     */
     @Transactional(readOnly = true)
     public Page<RankingMesDTO> obtenerHistorialRankings(Pageable pageable) {
-        return repoRankings.findAll(pageable).map(this::convertirRankingMesADTO);
+        return repoRankings.findAllByOrderByPeriodoDesc(pageable).map(this::convertirRankingMesADTO);
     }
 
     private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {
@@ -184,13 +223,20 @@ public class RankingService {
         );
     }
 
+    /**
+     * Arma el ranking de un mes ya cerrado.
+     *
+     * <p>El corte del mes se pasa como <b>rango de instantes</b> y no como "mes y año" (punto
+     * 22): la base resuelve el filtro con un índice en {@code fecha_obtencion} en vez de
+     * tener que evaluar {@code MONTH()} y {@code YEAR()} sobre cada fila de la tabla.
+     */
     private RankingMensual generarRankingMensual(YearMonth periodo) {
-        int mes = periodo.getMonthValue();
-        int anio = periodo.getYear();
+        LocalDateTime inicioDelPeriodo = periodo.atDay(1).atStartOfDay();
+        LocalDateTime inicioDelPeriodoSiguiente = periodo.plusMonths(1).atDay(1).atStartOfDay();
 
         List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(
-                mes,
-                anio,
+                inicioDelPeriodo,
+                inicioDelPeriodoSiguiente,
                 PageRequest.of(0, RANKING_PREDETERMINADO)
         );
 
