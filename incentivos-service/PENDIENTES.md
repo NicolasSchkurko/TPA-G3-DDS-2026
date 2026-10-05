@@ -12,40 +12,37 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 13 + 14 | Corrompe datos: progreso inflado e insignias otorgadas sin merecer. Basta un reintento HTTP, que es lo que hacen todos los clientes por defecto |
-| 2 | 5 | La integración está rota: el servicio no recibe las donaciones |
-| 3 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben misión y no progresan nunca |
-| 4 | 26 | 3 donaciones en 3 días completan la misión de "3 meses consecutivos": la mecánica de constancia está mal |
-| 5 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 6 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
-| 7 | 12 | Timeouts infinitos dentro de transacciones: un downstream colgado tumba el pool y con él el servicio entero |
-| 8 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 9 | 28 | La misma misión en dos categorías: insignia duplicada y puntaje doble |
-| 10 | 27 | El orden de las misiones dentro de una categoría es aleatorio |
-| 11 | 17 | Filas huérfanas que crecen para siempre |
-| 12 | 22 | N+1 y tablas enteras en memoria |
-| 13 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
-| 14 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 15 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 16 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 17 | 8 | Requisito del enunciado no implementado (categoría pública) |
-| 18 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 19 | 2 | El podio sale truncado sin avisar |
-| 20 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 21 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 22 | 34 | Dos guardas que el código dice tener y no tiene |
-| 23 | 23 | Higiene: código muerto, logs, encapsulación |
-| 24 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 25 | 4 | `common-lib` es código muerto |
-| 26 | 9 | No es un faltante: es una decisión de arquitectura |
+| 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
+| 2 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben misión y no progresan nunca |
+| 3 | 26 | 3 donaciones en 3 días completan la misión de "3 meses consecutivos": la mecánica de constancia está mal |
+| 4 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
+| 5 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
+| 6 | 12 | Timeouts infinitos dentro de transacciones: un downstream colgado tumba el pool y con él el servicio entero |
+| 7 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
+| 8 | 28 | La misma misión en dos categorías: insignia duplicada y puntaje doble |
+| 9 | 27 | El orden de las misiones dentro de una categoría es aleatorio |
+| 10 | 17 | Filas huérfanas que crecen para siempre |
+| 11 | 22 | N+1 y tablas enteras en memoria |
+| 12 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
+| 13 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 14 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
+| 15 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
+| 16 | 8 | Requisito del enunciado no implementado (categoría pública) |
+| 17 | 24 | La insignia no tiene descripción propia: es texto derivado |
+| 18 | 2 | El podio sale truncado sin avisar |
+| 19 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
+| 20 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
+| 21 | 34 | Dos guardas que el código dice tener y no tiene |
+| 22 | 23 | Higiene: código muerto, logs, encapsulación |
+| 23 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
+| 24 | 4 | `common-lib` es código muerto |
+| 25 | 9 | No es un faltante: es una decisión de arquitectura |
 
-Los puntos 13 y 14 están juntos porque son una sola cadena de fallo: el primero provoca el
-500, el cliente reintenta y el segundo convierte ese reintento en datos corruptos.
-Arreglarlos de a uno no sirve.
+Los puntos 13 y 14 eran una sola cadena de fallo y se corrigieron juntos: el primero
+provocaba el 500 y el segundo convertía ese 500 en datos corruptos. Ver la sección
+`Corregidos`.
 
 ---
-Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo
-para que no se pierdan de vista al crecer el código.
 
 **Están ordenados de más urgente a menos urgente**, no por número de punto. El número es
 un ID estable y no se renumera nunca, así que quedan huecos. Un punto corregido se borra
@@ -86,124 +83,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 Los puntos 13 y 14 están juntos porque son una sola cadena de fallo: el primero provoca el
 500, el cliente reintenta y el segundo convierte ese reintento en datos corruptos.
 Arreglarlos de a uno no sirve.
-
----
-
-## 13. `N8nClient` propaga la excepción después del commit y el donante recibe 500
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `clients/N8nClient.java:46-51`,
-`clients/NotificacionClient.java:76-93`
-
-`publicarInsignia` está anotado `@TransactionalEventListener(AFTER_COMMIT)` y en el
-`catch` vuelve a lanzar:
-
-```java
-} catch (Exception e) {
-    repositorio.guardar(publicar);
-    throw new EnvioPublicacionException(publicar);   // nadie lo captura
-}
-```
-
-Un `@TransactionalEventListener` de fase `AFTER_COMMIT` se ejecuta **dentro** del
-`afterCommit` de la transacción, que Spring invoca sin try/catch
-(`TransactionSynchronizationUtils.invokeAfterCommit`). Si el listener lanza, la
-excepción sube por `processCommit` y sale del `@Transactional` hasta el handler HTTP.
-
-O sea: **la transacción ya se confirmó**, la donación quedó guardada y la insignia
-otorgada, pero `donaciones-service` recibe un 500. Lo más probable es que lo reintente,
-y ahí entra el punto 14.
-
-`EnvioPublicacionException` además no está registrado en `GlobalExceptionHandler`.
-
-`NotificacionClient` hace bien las cosas en este sentido: su helper privado `enviar()`
-captura la excepción y solo loguea. `N8nClient` no. La asimetría es el bug.
-
-Bug adjunto: `notificarMisionCompletada` resuelve el contacto con
-`donacionClient.obtenerContactoPersona(...)` **antes** de llamar a `enviar()`. Si esa
-llamada falla (donaciones-service caído), la excepción sale del listener con la misma
-consecuencia del párrafo anterior, y además **la notificación ni siquiera llega a la
-lista de pendientes**, porque el fallo ocurre antes de `enviarNotificacion`.
-
-**Propuesta:** que `N8nClient` capture la excepción después de guardar en pendientes, en
-lugar de relanzarla, y resolver el contacto de forma tolerante a fallos (si no hay
-contacto, se registra y se sigue). Vale la pena cubrir esto con un test que verifique
-que el `PATCH /api/perfiles/donacion/{idUsuario}` devuelve 200 aunque n8n esté caído.
-
----
-
-## 14. La ingesta de donaciones no es idempotente
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `services/PerfilService.java:127-143`,
-`models/entities/Actividad/ImpactoDonacion.java:20-48`,
-`controllers/PerfilController.java:110-120`
-
-`PATCH /api/perfiles/donacion/{idUsuario}` no tiene ninguna protección contra
-repetidos. `ImpactoDonacion` genera su `idDonacion` internamente y **no guarda ningún
-identificador de la donación en el servicio de origen**, así que no hay clave natural
-para deduplicar.
-
-Escenario: `donaciones-service` manda la donación, n8n falla, el cliente ve el 500 del
-punto 13 y reintenta. La segunda llamada:
-
-- inserta un segundo `ImpactoDonacion` con los mismos datos,
-- vuelve a aplicar la regla y suma otra vez al `progreso`,
-- para una misión de `ValoresDistintos`, agrega el mismo valor (que ya estaba, así que
-  no cambia, pero el `progreso++` sí).
-
-El resultado es progreso inflado y, en el peor caso, una insignia otorgada antes de
-tiempo. Es el bug más fácil de explotar de todos los listados, porque sólo hace falta
-que un cliente HTTP reintente, que es el comportamiento por defecto de cualquier
-cliente o proxy.
-
-**Propuesta**
-
-1. Propagar un identificador estable desde `donaciones-service` (el id de la donación
-   allá) y agregarlo a `ImpactoDonacion` con un `@Column(unique = true)`.
-2. Antes de procesar, intentar insertar; si viola la restricción, devolver la
-   respuesta guardada sin reprocesar. Con eso el reintento se vuelve seguro.
-3. Mientras tanto, como mitigación barata: registrar las donaciones por
-   `(idUsuario, entidadBeneficiaria, fechaEntrega, cantidadBienes)` y descartar
-   coincidencias exactas.
-
----
-
-## 5. Desajuste de ruta en la integración desde `donaciones-service`
-
-**Estado:** abierto (requiere tocar otro servicio)
-**Archivo:** `donaciones-service/.../clients/IncentivosClient.java`
-
-El cliente de donaciones compone las URLs así:
-
-```java
-restTemplate.postForEntity(incentivosUrl, dto, Void.class);            // crear perfil
-restTemplate.postForEntity(incentivosUrl + "/" + idUsuario, dto, ...); // registrar impacto
-```
-
-Con `INCENTIVOS_URL=http://incentivos-service:8082/api/perfiles`, la primera queda
-correcta (`POST /api/perfiles`) pero la segunda apunta a
-`POST /api/perfiles/{id}`, mientras que el endpoint real de impacto es
-**`PATCH /api/perfiles/donacion/{idUsuario}`**. Además el método HTTP no coincide.
-
-Se corrigió el `INCENTIVOS_URL` del `docker-compose.yml` para que incluya el prefijo
-`/api` (antes no lo tenía y por eso ya fallaba), pero el camino y el verbo del impacto
-hay que corregirlos en `IncentivosClient`, que está fuera de este servicio.
-
-**Además hay un desajuste de tipo en el mismo contrato.**
-`donaciones-service/.../dto/incentivos/IncentivosDonacionDTO` declara
-`private LocalDate fechaEntrega`, y `ImpactoDonacionDTO` de este servicio declara
-`LocalDateTime`. Jackson no puede convertir `"2026-03-10"` en un `LocalDateTime`, así
-que aunque se arreglaran el verbo y el camino, el pedido seguiría fallando. Con el
-`HttpMessageNotReadableException` registrado en `GlobalExceptionHandler` ahora eso se ve
-claro como un 400 en vez de un 500.
-
-Hay que decidir de qué lado se alinea: cambiar `IncentivosDonacionDTO` a `LocalDateTime`
-(pierde la hora, que acá no se usa para nada) o cambiar el DTO de acá a `LocalDate` y
-ajustar `ImpactoDonacion` y `MetricasService`, que hoy hacen `YearMonth.from(...)`.
-Lo natural es alinear el cliente, que es el que manda.
 
 ---
 
@@ -1064,6 +943,76 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
 
 Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía
 cada punto cuando se corrigió, así que no aparecen en la lista de arriba.
+
+## 13 + 14. El 500 después del commit y la ingesta no idempotente - corregidos
+
+Se corrigieron juntos porque son **una sola cadena de fallo**: el 13 provocaba el 500, el
+cliente reintenta y el 14 convertía ese reintento en datos corruptos. Arreglando solo uno,
+el otro seguía produciendo el daño.
+
+### 13. `N8nClient` relanzaba la excepción después del commit
+
+`publicarInsignia` es `@TransactionalEventListener(AFTER_COMMIT)`, y en el `catch`
+guardaba en pendientes y lanzaba `EnvioPublicacionException`. Ese listener corre dentro
+del `afterCommit`, que Spring invoca sin try/catch
+(`TransactionSynchronizationUtils.invokeAfterCommit`), así que la excepción subía por el
+`processCommit`, salía del `@Transactional` y llegaba al handler HTTP.
+
+O sea: **la transacción ya se había confirmado**, la donación estaba guardada y la insignia
+otorgada, pero el donante recibía un 500. Y `EnvioPublicacionException` no estaba registrado
+en `GlobalExceptionHandler`.
+
+Ahora el `catch` registra y deja la publicación en pendientes para reintentar, sin relanzar.
+Queda la misma asimetría que ya estaba resuelta en `NotificacionClient`, cuyo helper privado
+captura la excepción y solo loguea: el bug era justamente la falta de ese helper en
+`N8nClient`.
+
+El test `N8nClientTest.guardaLaPublicacionPendienteSiFalla` **codificaba el bug**
+(`assertThatThrownBy(...).isInstanceOf(EnvioPublicacionException.class)`), así que se
+invirtió a `assertThatNoException()`. Si alguien vuelve a relanzar, el test lo corta.
+
+### 14. La ingesta de donaciones ahora es idempotente
+
+`ImpactoDonacion` generaba su id internamente (`@GeneratedValue`) y no guardaba ningún
+identificador del servicio de origen, así que no había forma de reconocer un reintento.
+Cada reintento insertaba una fila nueva y volvía a aplicar la regla: progreso inflado y,
+en el peor caso, una insignia otorgada antes de tiempo.
+
+La corrección es que **`ImpactoDonacion.idDonacion` es el id de la donación en
+`donaciones-service`, guardado tal cual, y además es la primary key local**. Se le saca el
+`@GeneratedValue`.
+
+Eso simplifica todo lo que venía después:
+
+1. **La deduplicación es un `findById`.** No hace falta una consulta por columna ni
+   comparar el contenido: si la fila existe, la petición es un reintento. La primary key
+   ya garantiza la unicidad, así que no hay que agregar un índice único aparte.
+2. **`idDonacion` es obligatorio en el DTO** (`@NotNull`). Sin id no hay clave con la que
+   deduplicar, y un 400 explícito es preferible a guardar una fila imposible de
+   deduplicar. Antes se había puesto un campo `idDonacionOrigen` nullable con un fallback
+   que comparaba `(idUsuario, entidadBeneficiaria, fechaEntrega, cantidadBienes)`; ese
+   camino se descartó porque el identificador del origen es justamente lo que hace falta, y
+   comparar el payload tenía dos problemas: era menos discriminante (dos dones realmente
+   distintas con los mismos cuatro campos se tomarían por un reintento) y no estaba
+   protegido contra dos peticiones simultáneas, porque no había restricción que lo cubriera.
+3. **`ImpactoDonacion.completMision`**: guarda si esa donación completó la misión, para
+   poder **repetir la misma respuesta** ante un reintento. Un endpoint idempotente no puede
+   devolver algo distinto la segunda vez: el cliente ya recibió `true`, y si recibiera
+   `false` lo tomaría por un fallo.
+4. **`actualizarPerfilImpacto`** busca por `findById` antes de procesar. Si encuentra la
+   fila, devuelve el resultado guardado y no toca ni el perfil ni el histórico.
+
+`PerfilServiceIdempotenciaTest` cubre el reintento con y sin misión completada, la donación
+nueva, que el id guardado sea el de origen, y que dos donaciones distintas del mismo
+donante se procesen por separado.
+
+**Requisito para el otro servicio:** `donaciones-service` tiene que mandar el id de la
+donación. Es parte del contrato ahora, no una mejora opcional: mientras no lo mande, toda
+donación entra con un 400.
+
+**Migración en prod:** la columna `id_donacion` deja de autogenerarse y pasa a ser
+obligatoria (hoy admite NULL en tablas ya creadas), y se agrega `complet_mision`. Con
+`ddl-auto=validate` hay que hacerlo a mano.
 
 ## 7. Sin validación de entrada en los DTO — corregido
 

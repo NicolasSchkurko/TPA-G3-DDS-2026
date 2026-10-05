@@ -23,14 +23,17 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class PerfilService {
     private final RepositorioPerfiles repositorioPerfiles;
@@ -115,6 +118,25 @@ public class PerfilService {
     }
 
     // ========== ACTUALIZAR ==========
+
+    /**
+     * Registra el impacto de una donación sobre el perfil del donante.
+     *
+     * <p><b>Es idempotente</b> (punto 14). Un reintento del cliente no puede volver a sumar
+     * progreso ni otorgar una segunda insignia: si la donación ya se procesó, se devuelve
+     * el mismo resultado que se devolvió la primera vez y no se toca nada.
+     *
+     * <p>Esto importa porque {@code N8nClient} solía relanzar su excepción después del
+     * commit (punto 13), lo que dejaba al donante viendo un 500 con la transacción ya
+     * confirmada. Con ese 500, cualquier cliente HTTP reintenta, y sin esta guarda cada
+     * reintento insertaba una fila nueva y volvía a aplicar la regla.
+     *
+     * <p>La clave es {@code ImpactoDonacion.idDonacion}, que es el id de la donación en el
+     * servicio de origen y además la primary key local. Como es única, la consulta es un
+     * {@code findById} y no hace falta comparar el contenido para decidir si es un
+     * reintento. El id es obligatorio en el DTO: sin él no hay clave con la que deduplicar,
+     * y el 400 es preferible a guardar una fila imposible de deduplicar.
+     */
     @Transactional
     public Boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         if (idUsuario == null) {
@@ -122,10 +144,22 @@ public class PerfilService {
         }
 
         ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
+
+        Optional<ImpactoDonacion> yaProcesada =
+                repositorioDonaciones.findById(donacion.getIdDonacion());
+
+        if (yaProcesada.isPresent()) {
+            log.info("Donación {} de {} repetida: se devuelve el resultado guardado sin "
+                    + "reprocesar", donacion.getIdDonacion(), idUsuario);
+            return Boolean.TRUE.equals(yaProcesada.get().getCompletMision());
+        }
+
         Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
                                       .orElseThrow(InexistenteException::new);
 
         Boolean perfilActualizado = this.progresarPerfil(p, donacion);
+        // Se guarda para poder repetir la misma respuesta ante un reintento.
+        donacion.setCompletMision(perfilActualizado);
 
         repositorioPerfiles.save(p);
         repositorioDonaciones.save(donacion);
@@ -228,7 +262,7 @@ public class PerfilService {
     }
 
     public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion) {
-        return new ImpactoDonacion(
+        ImpactoDonacion entidad = new ImpactoDonacion(
             donacion.getEntidadBeneficiaria(),
             donacion.getCantidadBienes(),
             donacion.getFechaEntrega(),
@@ -236,6 +270,8 @@ public class PerfilService {
             donacion.getSubCategoria(),
             donacion.getEstado(),
             id);
+        entidad.setIdDonacion(donacion.getIdDonacion());
+        return entidad;
     }
 
     /**

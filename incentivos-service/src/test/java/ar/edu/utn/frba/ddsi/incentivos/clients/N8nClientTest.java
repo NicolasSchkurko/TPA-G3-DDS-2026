@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioPublicacionException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
@@ -17,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -97,14 +96,17 @@ class N8nClientTest {
     }
 
     @Test
-    @DisplayName("si el webhook falla, guarda la publicación como pendiente")
+    @DisplayName("si el webhook falla, guarda la publicación como pendiente y NO propaga")
     void guardaLaPublicacionPendienteSiFalla() throws Exception {
         givenWebhook(WEBHOOK);
 
         server.expect(requestTo(WEBHOOK)).andRespond(withServerError());
 
-        assertThatThrownBy(() -> client.publicarInsignia(eventoCompletada()))
-                .isInstanceOf(EnvioPublicacionException.class);
+        // Este listener corre dentro del afterCommit, que Spring invoca sin try/catch: si
+        // la excepcion sale de aca, sube por el commit y el donante recibe un 500 aunque
+        // la donacion ya este guardada. Con ese 500 el cliente reintenta y la segunda pasada
+        // vuelve a sumar progreso (punto 14).
+        assertThatNoException().isThrownBy(() -> client.publicarInsignia(eventoCompletada()));
 
         assertThat(pendientes.listarTodas()).hasSize(1);
         server.verify();
