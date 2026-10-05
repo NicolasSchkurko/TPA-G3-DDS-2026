@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.CategoriaBaseInexistenteException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.PerfilExistenteException;
 
@@ -15,6 +16,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.InsigniaObtenida;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
@@ -80,30 +83,18 @@ public class PerfilService {
 
         nuevo = repositorioPerfiles.save(nuevo);
 
-        return new PerfilDTO(
-            nuevo.getNombreUsuario(),
-            nuevo.getCategoriaActual() != null ? nuevo.getCategoriaActual().getNombre() : null,
-            nuevo.getInsigniasObtenidas() != null ? nuevo.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList() : List.of(),
-            nuevo.getProgresoMisionActual() != null ? nuevo.getProgresoMisionActual().getMision().getNombreMision() : null
-        );
+        return convertirPerfilADTO(nuevo);
     }
 
     // ========== BUSCAR ==========
     @Transactional(readOnly = true)
     public PerfilDTO buscarPorIdUsuario(UUID idUsuario) {
-        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario).orElse(null);
-        if (p == null) {
-            return null;
-        }
+        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
+                                      .orElseThrow(() -> new InexistenteException(
+                                          "No existe un perfil para el usuario " + idUsuario
+                                      ));
 
-        return new PerfilDTO(
-            p.getNombreUsuario(),
-            p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
-            p.getInsigniasObtenidas() == null ? List.of() : p.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            p.getProgresoMisionActual() == null || p.getProgresoMisionActual().getMision() == null
-               ? null
-               : p.getProgresoMisionActual().getMision().getNombreMision()
-        );
+        return convertirPerfilADTO(p);
     }
 
     @Transactional(readOnly = true)
@@ -118,16 +109,16 @@ public class PerfilService {
 
     @Transactional(readOnly = true)
     public MisionPerfilDTO obtenerMisionPorIdUsuario(UUID idUsuario) {
-        Mision mision = repositorioPerfiles.obtenerMisionPorIdUsuario(idUsuario)
-                                           .orElseThrow(InexistenteException::new);
-        return convertirMisionPerfilADTO(mision);
+        ProgresoMision progreso = repositorioPerfiles.obtenerProgresoMisionPorIdUsuario(idUsuario)
+                                                .orElseThrow(InexistenteException::new);
+        return convertirProgresoMisionADTO(progreso);
     }
 
     // ========== ACTUALIZAR ==========
     @Transactional
     public Boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         if (idUsuario == null) {
-            return null;
+            throw new DatosInvalidosException("El ID del usuario no puede ser nulo");
         }
 
         ImpactoDonacion donacion = this.convertirDTO(idUsuario, dto);
@@ -210,17 +201,32 @@ public class PerfilService {
 
         Perfil actualizado = repositorioPerfiles.save(p);
 
-        return new PerfilDTO(
-            actualizado.getNombreUsuario(),
-            actualizado.getCategoriaActual() == null ? null : actualizado.getCategoriaActual().getNombre(),
-            actualizado.getInsigniasObtenidas() == null ? List.of() : actualizado.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            actualizado.getProgresoMisionActual() == null || actualizado.getProgresoMisionActual().getMision() == null
-               ? null
-               : actualizado.getProgresoMisionActual().getMision().getNombreMision()
-        );
+        return convertirPerfilADTO(actualizado);
     }
 
     // ========== CONVERTIDORES ==========
+
+    /**
+     * Proyecta el perfil al DTO de respuesta. Centraliza los null checks porque la
+     * misma construcción estaba copiada en crearPerfil, buscarPorIdUsuario y
+     * actualizarDatosPerfil, y cada copia podía divergir.
+     */
+    public PerfilDTO convertirPerfilADTO(Perfil perfil) {
+        Categoria categoria = perfil.getCategoriaActual();
+        List<InsigniaObtenida> insignias = perfil.getInsigniasObtenidas();
+        ProgresoMision progreso = perfil.getProgresoMisionActual();
+        Mision mision = progreso == null ? null : progreso.getMision();
+
+        return new PerfilDTO(
+            perfil.getNombreUsuario(),
+            categoria == null ? null : categoria.getNombre(),
+            insignias == null
+                ? List.of()
+                : insignias.stream().map(io -> io.getInsignia().getNombre()).toList(),
+            mision == null ? null : mision.getNombreMision()
+        );
+    }
+
     public ImpactoDonacion convertirDTO(UUID id, ImpactoDonacionDTO donacion) {
         return new ImpactoDonacion(
             donacion.getEntidadBeneficiaria(),
@@ -232,11 +238,38 @@ public class PerfilService {
             id);
     }
 
-    public MisionPerfilDTO convertirMisionPerfilADTO(Mision mision) {
+    /**
+     * Arma el DTO de la misión vigente con el avance del donante. El enunciado pide
+     * poder ver "el progreso de su misión actual y la distancia restante hacia el
+     * objetivo", así que el progreso se expone en la respuesta.
+     *
+     * <p>El faltante se calcula sobre el {@code progresoObjetivo} de la operación. Para
+     * {@code VALORES_DISTINTOS} la regla además exige alcanzar cierta cantidad de
+     * valores diferentes, así que el faltante puede llegar a 0 sin que la misión esté
+     * completa. Es una limitación conocida del modelo, no de este cálculo.
+     */
+    public MisionPerfilDTO convertirProgresoMisionADTO(ProgresoMision progreso) {
+        Mision mision = progreso.getMision();
+        Integer actual = progreso.getProgreso() == null ? 0 : progreso.getProgreso();
+
+        Operacion operacion = mision.getReglaDeProgreso() == null
+                              ? null
+                              : mision.getReglaDeProgreso().getOperacion();
+        Integer objetivo = operacion == null ? null : operacion.getProgresoObjetivo();
+
+        Integer faltante = objetivo == null
+                ? null
+                : Math.max(0, objetivo - actual);
+
+        Insignia insignia = mision.getInsigniaObjetivo();
+
         return new MisionPerfilDTO(
             mision.getNombreMision(),
             mision.getDescripcion(),
-            mision.getInsigniaObjetivo().getNombre()
+            insignia == null ? null : insignia.getNombre(),
+            actual,
+            objetivo,
+            faltante
         );
     }
 

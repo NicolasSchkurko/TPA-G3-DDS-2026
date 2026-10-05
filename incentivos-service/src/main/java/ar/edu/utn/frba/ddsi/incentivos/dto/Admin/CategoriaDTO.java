@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +13,10 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class CategoriaDTO {
+
+    @NotBlank(message = "La categoría requiere un nombre")
     private String nombre;
+
     private Integer posicionSecuencia;
     private List<UUID> misiones;
 

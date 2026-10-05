@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -43,7 +44,7 @@ public class RankingController {
       @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período")
   })
   @PostMapping
-  public ResponseEntity<RankingMesDTO> crearRanking(@RequestBody CrearRankingDTO request) {
+  public ResponseEntity<RankingMesDTO> crearRanking(@Valid @RequestBody CrearRankingDTO request) {
     RankingMesDTO rankingCreado = service.crearRankingMensual(request.getPeriodo());
     return ResponseEntity.ok(rankingCreado);
   }
@@ -62,10 +63,7 @@ public class RankingController {
   public ResponseEntity<RankingDTO> obtenerPuestoRankingActual(
           @Parameter(description = "UUID del puesto perfil solicitado", example = "123e4567-e89b-12d3-a456-426614174000")
           @PathVariable UUID id) {
-    RankingDTO puesto = service.obtenerPuestoRankingActual(id);
-    return puesto == null
-           ? ResponseEntity.notFound().build()
-           : ResponseEntity.ok(puesto);
+    return ResponseEntity.ok(service.obtenerPuestoRankingActual(id));
   }
 
   @Operation(

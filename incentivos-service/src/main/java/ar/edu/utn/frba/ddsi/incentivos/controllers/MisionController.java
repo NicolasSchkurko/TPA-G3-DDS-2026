@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -49,6 +49,7 @@ public class MisionController {
   ) {
     return ResponseEntity.ok(service.obtenerMisiones(filtros, pageable));
   }
+
   @Operation(
       summary = "Obtener una misión específica",
       description = "Retorna los detalles de una misión identificada por su UUID."
@@ -63,10 +64,7 @@ public class MisionController {
       @Parameter(description = "UUID de la misión", required = true)
       @PathVariable UUID id
   ) {
-    MisionDTO mision = service.obtenerMisionPorId(id);
-    return mision == null
-           ? ResponseEntity.notFound().build()
-           : ResponseEntity.ok(mision);
+    return ResponseEntity.ok(service.obtenerMisionPorId(id));
   }
 
   @Operation(
@@ -82,7 +80,7 @@ public class MisionController {
   public ResponseEntity<MisionDTO> crearMision(
       @Parameter(description = "UUID del administrador", required = true)
       @RequestHeader("Admin-Id") UUID idAdmin,
-      @RequestBody MisionDTO request
+      @Valid @RequestBody MisionDTO request
   ) {
     MisionDTO nuevaMision = service.crearMision(idAdmin, request);
     return ResponseEntity.status(HttpStatus.CREATED).body(nuevaMision);
@@ -94,6 +92,7 @@ public class MisionController {
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Misión actualizada con éxito"),
+      @ApiResponse(responseCode = "400", description = "Datos inválidos"),
       @ApiResponse(responseCode = "404", description = "Misión no encontrada"),
       @ApiResponse(responseCode = "403", description = "No autorizado")
   })
@@ -103,12 +102,9 @@ public class MisionController {
       @RequestHeader("Admin-Id") UUID idAdmin,
       @Parameter(description = "UUID de la misión a actualizar", required = true)
       @PathVariable UUID id,
-      @RequestBody MisionDTO mision
+      @Valid @RequestBody MisionDTO mision
   ) {
-    MisionDTO actualizada = service.actualizarMision(idAdmin, id, mision);
-    return actualizada == null
-           ? ResponseEntity.notFound().build()
-           : ResponseEntity.ok(actualizada);
+    return ResponseEntity.ok(service.actualizarMision(idAdmin, id, mision));
   }
 
   @Operation(

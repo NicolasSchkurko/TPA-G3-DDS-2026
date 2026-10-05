@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.controllers.request.CategoriaFiltroRequest;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SecuenciaCategoria;
@@ -53,6 +54,9 @@ public class CategoriaService {
   @Transactional(readOnly = true)
     public CategoriaDTO obtenerCategoriaPorId(UUID id) {
     Categoria categoria = repoCategorias.obtenerPorId(id);
+    if (categoria == null) {
+      throw new InexistenteException();
+    }
     return CategoriaDTO.desdeEntidad(categoria);
   }
 
@@ -111,7 +115,7 @@ public class CategoriaService {
                            return repoCategorias.save(categoriaActual);
                          })
                          .map(CategoriaDTO::desdeEntidad)
-                         .orElse(null);
+                         .orElseThrow(InexistenteException::new);
   }
 
   @Transactional

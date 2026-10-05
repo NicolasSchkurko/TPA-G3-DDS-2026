@@ -118,8 +118,41 @@ docker compose -f compose.dev.yml up --build
 
 ---
 
+## Requisito pendiente: visibilidad configurable de insignias
+
+> Estado: **no implementado** en `incentivos-service`.
+
+El enunciado pide que las insignias obtenidas puedan visualizarse en el perfil de la
+persona donante *"siempre que la persona usuaria las configure como visibles"*. O sea,
+la visibilidad tiene que ser **una decisión de la persona donante**, no un dato que el
+servicio asuma.
+
+Hoy no hay forma de configurarla:
+
+- `InsigniaObtenida` (`models/entities/Perfil/InsigniaObtenida.java`) solo tiene
+  `perfil`, `insignia` y `fechaObtencion`. **No existe el campo de visibilidad.**
+- En consecuencia, `GET /api/perfiles/{idUsuario}/insignias` devuelve **todas** las
+  insignias otorgadas, sin filtro.
+- No hay endpoint para cambiar ese estado.
+
+### Qué hay que hacer
+
+1. Agregar `Boolean visible` a `InsigniaObtenida`, con `true` por defecto en el
+   constructor para no cambiar el comportamiento de las insignias ya emitidas.
+2. Exponer un endpoint de toggle, por ejemplo
+   `PUT /api/perfiles/{idUsuario}/insignias/{idInsignia}/visibilidad`.
+3. Filtrar por `visible` en el listado de insignias y en el DTO que se expone
+   públicamente, dejando las insignias ocultas fuera de la respuesta pero **sin** borrar
+   el registro (sigue contando para el ranking y para el historial).
+4. Solo la persona dueña del perfil debería poder cambiar la visibilidad.
+
+---
+
 ## Documentación por servicio
 
-Cada microservicio tiene su Swagger en `/api-docs`. Además, `incentivos-service` y el
-resto de módulos mantienen un `PENDIENTES.md` con los problemas técnicos conocidos que
-quedaron abiertos.
+Cada microservicio tiene su Swagger en `/api-docs`. Además, `incentivos-service`
+mantiene un `PENDIENTES.md` con los problemas técnicos conocidos que quedaron
+abiertos: los puntos 1 al 9 son disposiciones de diseño o requisitos del enunciado sin
+implementar, y del 10 al 23 son los resultados de una auditoría de código (bugs de
+correctitud, falta de idempotencia, consultas N+1, código muerto y deuda de diseño).
+Cada punto indica severidad, archivos afectados y una propuesta concreta.

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.UUID;
 
 import org.springdoc.core.annotations.ParameterObject;
@@ -42,7 +43,7 @@ public class PerfilController {
         @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes")
     })
     @PostMapping
-    public ResponseEntity<PerfilDTO> crearPerfil(@RequestBody PerfilDonanteDTO dto) {
+    public ResponseEntity<PerfilDTO> crearPerfil(@Valid @RequestBody PerfilDonanteDTO dto) {
         PerfilDTO nuevo = perfilService.crearPerfil(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -62,8 +63,7 @@ public class PerfilController {
     public ResponseEntity<PerfilDTO> obtenerPerfilPorIdUsuario(
             @Parameter(description = "UUID del usuario asociado al perfil")
             @PathVariable UUID idUsuario) {
-        PerfilDTO perfil = perfilService.buscarPorIdUsuario(idUsuario);
-        return perfil == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(perfil);
+        return ResponseEntity.ok(perfilService.buscarPorIdUsuario(idUsuario));
     }
 
     @Operation(
@@ -105,18 +105,15 @@ public class PerfilController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil impactado y actualizado con éxito"),
+        @ApiResponse(responseCode = "400", description = "Datos de la donación inválidos o faltantes"),
         @ApiResponse(responseCode = "404", description = "El UUID del usuario especificado no existe en los registros")
     })
     @PatchMapping("/donacion/{idUsuario}")
     public ResponseEntity<Boolean> progresarPerfil(
             @Parameter(description = "UUID del usuario que realizó la donación")
             @PathVariable UUID idUsuario,
-            @RequestBody ImpactoDonacionDTO dto) {
-        Boolean actualizado = perfilService.actualizarPerfilImpacto(idUsuario, dto);
-        if (actualizado == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(actualizado);
+            @Valid @RequestBody ImpactoDonacionDTO dto) {
+        return ResponseEntity.ok(perfilService.actualizarPerfilImpacto(idUsuario, dto));
     }
 
     @Operation(
@@ -133,10 +130,7 @@ public class PerfilController {
         @Parameter(description = "UUID del perfil a actualizar")
         @PathVariable UUID id,
         @RequestBody PerfilDTO perfil) {
-        PerfilDTO actualizado = perfilService.actualizarDatosPerfil(id, perfil);
-        return actualizado == null
-               ? ResponseEntity.notFound().build()
-               : ResponseEntity.ok(actualizado);
+        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(id, perfil));
     }
 
     // ========== ELIMINAR ==========

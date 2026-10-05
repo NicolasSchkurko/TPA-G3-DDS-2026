@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.InsigniaObtenida;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 
@@ -21,8 +22,13 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     Optional<Perfil> findByIdUsuario(UUID idUsuario);
 
-    @Query("SELECT pm.mision FROM Perfil p JOIN p.progresoMisionActual pm WHERE p.idUsuario = :idUsuario")
-    Optional<Mision> obtenerMisionPorIdUsuario(@Param("idUsuario") UUID idUsuario);
+    /**
+     * Progreso de la misión vigente de un donante. Devuelve el {@link ProgresoMision}
+     * entero y no solo la {@link Mision} porque el donante necesita ver cuanto
+     * lleva recorrido, que solo esta en el progreso.
+     */
+    @Query("SELECT pm FROM Perfil p JOIN p.progresoMisionActual pm WHERE p.idUsuario = :idUsuario")
+    Optional<ProgresoMision> obtenerProgresoMisionPorIdUsuario(@Param("idUsuario") UUID idUsuario);
 
     boolean existsByIdUsuario(UUID idUsuario);
 

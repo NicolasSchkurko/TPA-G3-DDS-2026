@@ -5,6 +5,8 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ConstanciaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ReglaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
@@ -48,6 +50,9 @@ public class MisionService {
   @Transactional(readOnly = true)
     public MisionDTO obtenerMisionPorId(UUID id) {
     Mision mision = repoMisiones.obtenerPorId(id);
+    if (mision == null) {
+      throw new InexistenteException();
+    }
     return MisionDTO.desdeEntidad(mision);
   }
 
@@ -73,7 +78,7 @@ public class MisionService {
                          return actualizada;
                        })
                        .map(MisionDTO::desdeEntidad)
-                       .orElse(null);
+                       .orElseThrow(InexistenteException::new);
   }
 
   @Transactional
@@ -82,10 +87,22 @@ public class MisionService {
     repoMisiones.eliminarMision(idMision);
   }
 
+  /**
+   * Traduce el DTO a la entidad. Las anotaciones de Bean Validation ya cubren esto
+   * cuando el pedido viene por HTTP, pero el service se puede llamar desde código y
+   * un null acá terminaba en NullPointerException (500) en vez de un 400.
+   */
   private Mision construirMision(UUID idAdmin, MisionDTO dto) {
     ReglaDTO regla = dto.getRegla();
+    if (regla == null) {
+      throw new DatosInvalidosException("La misión requiere una regla de progreso");
+    }
+
     ConstanciaDTO constancia = regla.getConstancia();
     OperacionDTO operacion = regla.getOperacion();
+    if (operacion == null) {
+      throw new DatosInvalidosException("La regla de la misión requiere una operación");
+    }
 
     return misionFactory.crearMision(
         idAdmin,

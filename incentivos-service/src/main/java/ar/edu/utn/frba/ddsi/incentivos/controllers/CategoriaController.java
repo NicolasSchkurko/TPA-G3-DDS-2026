@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -63,10 +64,7 @@ public class CategoriaController {
       @Parameter(description = "UUID de la categoría", required = true)
       @PathVariable UUID id
   ) {
-    CategoriaDTO categoria = service.obtenerCategoriaPorId(id);
-    return categoria == null
-           ? ResponseEntity.notFound().build()
-           : ResponseEntity.ok(categoria);
+    return ResponseEntity.ok(service.obtenerCategoriaPorId(id));
   }
 
   @Operation(
@@ -82,7 +80,7 @@ public class CategoriaController {
   public ResponseEntity<CategoriaDTO> crearCategoria(
       @Parameter(description = "UUID del administrador", required = true)
       @RequestHeader("Admin-Id") UUID idAdmin,
-      @RequestBody CategoriaDTO request
+      @Valid @RequestBody CategoriaDTO request
   ) {
     CategoriaDTO nuevaCategoria = service.agregarCategoria(idAdmin, request);
     return ResponseEntity.status(HttpStatus.CREATED).body(nuevaCategoria);
@@ -94,6 +92,7 @@ public class CategoriaController {
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Categoría actualizada con éxito"),
+      @ApiResponse(responseCode = "400", description = "Datos inválidos"),
       @ApiResponse(responseCode = "404", description = "Categoría no encontrada"),
       @ApiResponse(responseCode = "403", description = "No autorizado")
   })
@@ -103,12 +102,9 @@ public class CategoriaController {
       @RequestHeader("Admin-Id") UUID idAdmin,
       @Parameter(description = "UUID de la categoría a actualizar", required = true)
       @PathVariable UUID id,
-      @RequestBody CategoriaDTO categoria
+      @Valid @RequestBody CategoriaDTO categoria
   ) {
-    CategoriaDTO actualizada = service.actualizarCategoria(idAdmin, id, categoria);
-    return actualizada == null
-           ? ResponseEntity.notFound().build()
-           : ResponseEntity.ok(actualizada);
+    return ResponseEntity.ok(service.actualizarCategoria(idAdmin, id, categoria));
   }
 
   @Operation(

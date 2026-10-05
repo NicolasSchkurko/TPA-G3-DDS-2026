@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
@@ -39,7 +40,13 @@ public class RankingService {
 
     Ranking puesto = repoRankings.obtenerPosicionActualDeUsuario(idUsuario);
 
-    return puesto != null ? this.convertirRankingADTO(puesto) : null;
+    if (puesto == null) {
+      throw new InexistenteException(
+          "El usuario " + idUsuario + " no tiene puesto en el ranking actual"
+      );
+    }
+
+    return this.convertirRankingADTO(puesto);
   }
 
   @Transactional(readOnly = true)
@@ -79,6 +86,10 @@ public class RankingService {
 
   @Transactional
   public RankingMesDTO crearRankingMensual(YearMonth periodo) {
+    if (periodo == null) {
+      throw new DatosInvalidosException("El ranking necesita un período");
+    }
+
     if (repoRankings.findByPeriodo(periodo).isPresent()) {
       throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
     }

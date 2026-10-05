@@ -4,6 +4,9 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,10 +15,20 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class OperacionDTO {
+
+    @NotBlank(message = "La operación requiere un tipo (COINCIDENCIAS, "
+            + "VALORES_DISTINTOS o SUPERA_CANTIDAD)")
     private String tipoOperacion;
+
+    @NotNull(message = "La operación requiere un progreso objetivo")
+    @Positive(message = "El progreso objetivo debe ser mayor a cero")
     private Integer progresoObjetivo;
-    private String valorEsperado;  // solo COINCIDENCIAS
-    private Integer cantidad;      // VALORES_DISTINTOS o SUPERA_CANTIDAD
+
+    /** Requerido solo para COINCIDENCIAS. Validador en MisionService.construirMision. */
+    private String valorEsperado;
+
+    /** Requerido para VALORES_DISTINTOS y SUPERA_CANTIDAD. Validador en construirMision. */
+    private Integer cantidad;
 
     public OperacionDTO(String tipoOperacion,
                         Integer progresoObjetivo,
@@ -36,7 +49,11 @@ public class OperacionDTO {
             return new OperacionDTO(
                 "COINCIDENCIAS",
                 coincidencias.getProgresoObjetivo(),
-                String.valueOf(coincidencias.getValorEsperado()),
+                // String.valueOf de un null devuelve el texto "null", no null.
+                // Para una coincidencia sin valor esperado lo correcto es null.
+                coincidencias.getValorEsperado() == null
+                    ? null
+                    : String.valueOf(coincidencias.getValorEsperado()),
                 null
             );
         }
