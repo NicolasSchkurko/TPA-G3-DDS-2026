@@ -14,76 +14,32 @@ rompe cuando pasa, y qué tan fácil es que pase.
 |---|---|---|
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben misión y no progresan nunca |
-| 3 | 26 | 3 donaciones en 3 días completan la misión de "3 meses consecutivos": la mecánica de constancia está mal |
-| 4 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 5 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
+| 3 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
+| 4 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
+| 5 | 36 | Sin `@Version`: dos donaciones simultáneas pierden progreso y pueden duplicar la insignia |
 | 6 | 12 | Timeouts infinitos dentro de transacciones: un downstream colgado tumba el pool y con él el servicio entero |
 | 7 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 8 | 28 | La misma misión en dos categorías: insignia duplicada y puntaje doble |
-| 9 | 27 | El orden de las misiones dentro de una categoría es aleatorio |
-| 10 | 17 | Filas huérfanas que crecen para siempre |
-| 11 | 22 | N+1 y tablas enteras en memoria |
-| 12 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
-| 13 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 14 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 15 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 16 | 8 | Requisito del enunciado no implementado (categoría pública) |
-| 17 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 18 | 2 | El podio sale truncado sin avisar |
-| 19 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 20 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 21 | 34 | Dos guardas que el código dice tener y no tiene |
-| 22 | 23 | Higiene: código muerto, logs, encapsulación |
-| 23 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 24 | 4 | `common-lib` es código muerto |
-| 25 | 9 | No es un faltante: es una decisión de arquitectura |
+| 8 | 17 | Filas huérfanas que crecen para siempre |
+| 9 | 22 | N+1 y tablas enteras en memoria |
+| 10 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
+| 11 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 12 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
+| 13 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
+| 14 | 8 | Requisito del enunciado no implementado (categoría pública) |
+| 15 | 24 | La insignia no tiene descripción propia: es texto derivado |
+| 16 | 2 | El podio sale truncado sin avisar |
+| 17 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
+| 18 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
+| 19 | 34 | Dos guardas que el código dice tener y no tiene |
+| 20 | 23 | Higiene: código muerto, logs, encapsulación |
+| 21 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
+| 22 | 4 | `common-lib` es código muerto |
+| 23 | 9 | No es un faltante: es una decisión de arquitectura |
 
-Los puntos 13 y 14 eran una sola cadena de fallo y se corrigieron juntos: el primero
-provocaba el 500 y el segundo convertía ese 500 en datos corruptos. Ver la sección
-`Corregidos`.
-
----
-
-**Están ordenados de más urgente a menos urgente**, no por número de punto. El número es
-un ID estable y no se renumera nunca, así que quedan huecos. Un punto corregido se borra
-de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
-
-El orden no es el de la severidad declarada en cada punto sino el del daño real: cuánto se
-rompe cuando pasa, y qué tan fácil es que pase.
-
-| # | Punto | Por qué está acá |
-|---|---|---|
-| 1 | 13 + 14 | Corrompe datos: progreso inflado e insignias otorgadas sin merecer. Basta un reintento HTTP, que es lo que hacen todos los clientes por defecto |
-| 2 | 5 | La integración está rota: el servicio no recibe las donaciones |
-| 3 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben mión y no progresan nunca |
-| 4 | 26 | 3 donaciones en 3 días completan la misión de "3 meses consecutivos": la mecánica de constancia está mal |
-| 5 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 6 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
-| 7 | 12 | Timeouts infinitos dentro de transacciones: un downstream colgado tumba el pool y con él el servicio entero |
-| 8 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 9 | 28 | La misma misión en dos categorías: insignia duplicada y puntaje doble |
-| 10 | 27 | El orden de las misiones dentro de una categoría es aleatorio |
-| 11 | 17 | Filas huérfanas que crecen para siempre |
-| 12 | 22 | N+1 y tablas enteras en memoria |
-| 13 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
-| 14 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 15 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 16 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 17 | 8 | Requisito del enunciado no implementado (categoría pública) |
-| 18 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 19 | 2 | El podio sale truncado sin avisar |
-| 20 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 21 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 22 | 34 | Dos guardas que el código dice tener y no tiene |
-| 23 | 23 | Higiene: código muerto, logs, encapsulación |
-| 24 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 25 | 4 | `common-lib` es código muerto |
-| 26 | 9 | No es un faltante: es una decisión de arquitectura |
-
-Los puntos 13 y 14 están juntos porque son una sola cadena de fallo: el primero provoca el
-500, el cliente reintenta y el segundo convierte ese reintento en datos corruptos.
-Arreglarlos de a uno no sirve.
-
+El punto 36 va después de los dos de autorización a propósito: aquellos dos son
+deterministas (basta llamar al endpoint para sufrir el daño), mientras que el 36 necesita
+que dos peticiones coincidan en el tiempo. A igual impacto, el daño que se puede provocar
+sin condiciones va primero.
 ---
 
 ## 25. `crearPerfil` no abre transacción: los perfiles nuevos nunca reciben misión
@@ -133,118 +89,6 @@ también es LAZY.
 **Arreglo:** `@Transactional` en `crearPerfil`. Opcionalmente un
 `@EntityGraph(attributePaths = "categoriaMisiones")` en la query, para no depender del
 alcance de la transacción.
-
-## 26. La constancia no exige meses distintos: 3 donaciones en 3 días completan "3 meses consecutivos"
-
-**Estado:** abierto
-**Severidad:** alta
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `models/entities/Perfil/ProgresoMision.java:119-137`,
-`models/ServiciosInternos/InicializadorCategorias.java:47-55`
-
-```java
-for (ImpactoDonacion donacion : donacionesEvaluar) {
-    LocalDateTime limite = anterior == null ? null
-            : anterior.plus(constancia.getCantidad(), constancia.getUnidadTiempo());
-    if (limite != null && donacion.getFechaEntrega().isAfter(limite)) {
-        progresoActual = 0;
-    }
-    progresoActual++;
-    anterior = donacion.getFechaEntrega();
-}
-```
-
-La única condición es "esta donación no tiene más de `cantidad` unidades de antigüedad que
-la anterior". Con la misión semilla **"Racha"** (descripción: *"Realiza 1 donación durante
-3 meses consecutivos"*, `constancia = (1, MONTHS)`, `COINCIDENCIAS(3, "ENTREGADA")`):
-
-| donación | `anterior` | `limite` | ¿excede? | progreso |
-|---|---|---|---|---|
-| 2026-03-10 | — | — | — | 1 |
-| 2026-03-11 | 03-10 | 04-10 | no | 2 |
-| 2026-03-12 | 03-11 | 04-11 | no | 3 |
-
-`progreso = 3 >= 3` → `estaCompleta()` → se otorga la insignia "Constancia solidaria".
-**Tres PATCH en tres días consecutivos completan una misión de racha de 3 meses.**
-
-La `cantidad` de la constancia se está interpretando como "días de margen entre
-donaciones", no como "una donación por mes", y nunca se exige que las donaciones caigan
-en meses distintos. No es un detalle del seed: es la mecánica de constancia entera mal
-implementada.
-
-**Arreglo:** exigir que cada donación de la racha caiga en un `YearMonth` distinto, o
-calcular la racha sobre la cantidad de meses calendario transcurridos y no sobre la
-cantidad de donaciones. La segunda es más simple; hay que decidir cuál refleja el
-enunciado.
-
-## 27. `findAllById` no preserva el orden: la secuencia de misiones dentro de una categoría es aleatoria
-
-**Estado:** abierto
-**Severidad:** media-alta
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `models/repositories/SpringRepositories/RepositorioMisiones.java:67-73`,
-`models/entities/CategoriaPerfil/Categoria.java:52-56`
-
-`conseguirMisiones` deduplica los ids (arreglo del punto 19) pero los resuelve con
-`findAllById`, que genera `SELECT ... WHERE id IN (...)` **sin `ORDER BY`**: el orden con
-que vuelve es el que devuelva la base, sin garantía. Y ese orden importa, porque
-
-```java
-public void agregarMision(Mision mision) {
-    int nuevaPosicion = this.categoriaMisiones.size() + 1;
-    this.categoriaMisiones.add(new CategoriaMision(this, mision, nuevaPosicion));
-}
-```
-
-la posición **es** el orden de la lista, y `Categoria.siguienteMision` avanza con
-`posicion + 1`. O sea que el orden de la lista es literalmente la secuencia de progresión
-del donante.
-
-**Escenario de fallo:** `POST /api/categorias/admin` con `"misiones": ["uuidHabil",
-"uuidPrimera"]` → la base devuelve `[uuidPrimera, uuidHabil]` → el donante arranca en la
-misión equivocada. Y es silencioso: el DTO de respuesta sale con el orden ya barajado, así
-que el admin no ve el cambio. Afecta también a `actualizarCategoria`, que pasa por
-`copiar()`.
-
-**Arreglo:** resolver en un mapa por id y reordenar según `idsUnicos` antes de pasarlos a
-`Categoria`.
-
-## 28. La misma misión en dos categorías hace que el donante la re-complete y reciba la insignia duplicada
-
-**Estado:** abierto
-**Severidad:** media-alta
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `models/ServiciosInternos/InicializadorCategorias.java:95,97`,
-`services/PerfilService.java:142-147`,
-`models/entities/Perfil/InsigniaObtenida.java:19-31`
-
-El seed pone **la misma instancia** de `misionRacha` en dos categorías (`sostenedor`
-línea 95 y `transformador` línea 97), y `misionHabilDonador` también (líneas 96 y 99). Al
-cambiar de categoría se crea un `ProgresoMision` nuevo con `progreso = 0` para la **misma**
-`idMision`, y el historial se busca por `idMision`:
-
-```java
-donaciones = repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
-        perfil.getIdUsuario(), misionActual.getIdMision());   // historial completo, sin ventana
-```
-
-**Escenario de fallo:** el donante completa "Racha" en Sostenedor (3 donaciones, insignia
-"Constancia solidaria"). Al pasar a Transformador arranca de cero para la misma misión. En
-la **primera** donación nueva, `progresarPerfil` lee las 3 viejas más la nueva →
-`evaluarConstancia` recalcula `progreso = 4 >= 3` → `Perfil.progresarMision` inserta
-**otro** `InsigniaObtenida` de la misma insignia y vuelve a disparar `MisionCompletada`.
-
-Consecuencias: el perfil muestra la insignia dos veces, el donante recibe una segunda
-notificación y una segunda publicación en n8n, y el ranking puntúa doble (agrava el punto
-10). `InsigniaObtenida` no tiene ninguna restricción única sobre `(perfil_id, insignia_id)`
-que lo impida.
-
-**Arreglo:** restricción única en `(perfil_id, insignia_id)`, y acotar el historial al
-intento en curso (por ejemplo, desde la fecha en que se asignó la misión) en vez de a toda
-la misión.
-
----
-
 
 ---
 
@@ -341,6 +185,87 @@ la superficie de administración. Y de paso, activar el `@Tag` que falta en
 
 ---
 
+---
+
+## 36. Sin `@Version`: dos donaciones simultáneas hacen perder progreso
+
+**Estado:** abierto
+**Severidad:** alta
+**Salido de:** tercera revisión del servicio (2026-10-05), al revisar el punto 28
+**Archivos:** `models/entities/Perfil/Perfil.java`,
+`models/entities/Perfil/ProgresoMision.java`,
+`services/PerfilService.java:158-166`
+
+**Ninguna entidad del servicio tiene `@Version`.** `actualizarPerfilImpacto` es
+`@Transactional` y hace leer-modificar-escribir del agregado `Perfil` sin ningún control de
+concurrencia. Con dos donaciones del mismo donante entrando al mismo tiempo:
+
+```
+T1: lee progreso = 2          T2: lee progreso = 2
+T1: progreso++ → 3            T2: progreso++ → 3
+T1: save                       T2: save
+    progreso final = 3     ← se perdió una donación entera
+```
+
+Es un *lost update* clásico: cada transacción parte de una lectura que la otra ya
+invalidó, y la segunda escritura pisa a la primera.
+
+### Qué se rompe
+
+**1. Progreso perdido.** Es la falla más común y la más silenciosa: el contador queda
+desfasado y el donante tiene que donar de más para completar la misión. En la dirección
+"falla hacia el lado que no otorga insignias de más", por eso no es grave, pero es datos
+corruptos.
+
+**2. Insignias duplicadas.** Si las dos donaciones completan la misma misión (una misión con
+`progresoObjetivo = 1` se completa con una sola donación, así que es el caso más probable),
+cada transacción inserta su `InsigniaObtenida`. El `Set` de `Perfil.insigniasObtenidas`
+**no las ve**: cada petición tiene su propio objeto `Perfil` en memoria con su propio `Set`,
+así que los dos `Set.add` devuelven `true`. Es exactamente el bug del punto 28, pero por la
+ventana de la concurrencia en lugar de por el reintento. Y como el ranking cuenta
+`COUNT(insigniasObtenidas)`, el donante puntúa doble.
+
+### Por qué el `@UniqueConstraint` no era la respuesta
+
+Se llegó a poner un `@UniqueConstraint` sobre `(perfil_id, insignia_id)` y se quitó, por
+tres razones:
+
+1. **No arregla el problema real.** El *lost update* del contador de progreso sigue igual,
+   porque el índice solo revisa filas de `insignia_obtenida`.
+2. **Empeora el caso perdedor.** La segunda transacción falla por violación de unicidad y
+   hace rollback, con lo que **se pierde la donación que sí era legítima**. Es peor que una
+   fila duplicada que el `Set` ya evita en el camino normal.
+3. **Da una falsa impresión.** Al leer `@UniqueConstraint` parece que la concurrencia está
+   controlada, y no lo está.
+
+### Qué hacer
+
+**`@Version` en `Perfil`**, que es la raíz del agregado: es donde viven el progreso, la
+categoría y las insignias. Con eso, la segunda transacción falla al hacer el `UPDATE` porque
+la versión cambió, y hace rollback sin pisar nada.
+
+Esto resuelve **las dos cosas a la vez** (el contador y la insignia duplicada), que es
+justamente lo que el índice único no lograba.
+
+**Lo que cambia en el comportamiento:** hoy la concurrencia se pierde en silencio;
+con `@Version` la perdedora recibe un error de concurrencia. Eso hay que decidirlo
+explícitamente y no dejarlo como un 500:
+
+1. Mapear `ObjectOptimisticLockingFailureException` a **409** con un mensaje de "ya hubo otra
+   donación al mismo tiempo, reintentá", que es un 409 reintentable por definición.
+2. Opcionalmente reintentar unas pocas veces dentro del service, que para este caso es
+   seguro: como el `idDonacion` es la primary key (punto 14), un reintento con la misma
+   donación cae en el camino idempotente y no reprocesa nada.
+
+### Nota
+
+El mismo problema afecta a `CategoriaService.actualizarCategoria` y a
+`SincronizacionPerfiles`, que también hacen leer-modificar-escribir sin control de
+concurrencia. El punto se centra en `Perfil` porque es donde está el daño más visible,
+pero la solución es la misma en los tres.
+
+---
+
 ## 12. `RestTemplate` sin timeouts y llamadas HTTP dentro de transacciones
 
 **Estado:** abierto
@@ -433,9 +358,7 @@ exponencial.
 
 ---
 
-
 ---
-
 
 ---
 
@@ -716,9 +639,7 @@ misión.
 
 ---
 
-
 ---
-
 
 ---
 
@@ -754,7 +675,6 @@ práctica depende de cómo se despliegue, y no de lo que dice el código.
    campos viajan en el DTO.
 
 ---
-
 
 ## 24. La insignia no tiene descripción propia: es texto derivado del nombre de la misión
 
@@ -794,7 +714,6 @@ sea coherente consigo mismo y use `descripcion` en vez de `nombre`.
 
 ---
 
-
 ---
 
 ## 2. El snapshot mensual de ranking guarda solo 10 posiciones
@@ -814,7 +733,6 @@ parámetro, pero el **snapshot** sigue siendo finito.
 
 ---
 
-
 ---
 
 ## 6. `open-in-view` desactivado: revisar cargas perezosas al agregar endpoints
@@ -833,7 +751,6 @@ transacción va a fallar con `LazyInitializationException` en runtime, no al com
 colección necesita `@Transactional(readOnly = true)`.
 
 ---
-
 
 ---
 
@@ -890,7 +807,6 @@ setters solo donde hacen falta para JPA, y cambiar los `Boolean` de retorno por 
 
 ---
 
-
 ---
 
 ## 4. `common-lib` está en el repositorio pero no en el build
@@ -943,6 +859,91 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
 
 Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía
 cada punto cuando se corrigió, así que no aparecen en la lista de arriba.
+
+## 26 + 27 + 28 - corregidos
+
+### 26. La constancia ahora cuenta meses calendario, no donaciones
+
+La racha se calculaba contando donaciones cuya antigüedad respecto de la anterior no
+superaba `constancia.cantidad` en `constancia.unidadTiempo`. O sea que `cantidad` se
+usaba como margen en días, y con la misión *"Realiza 1 donación durante 3 meses
+consecutivos"* (`constancia = (1, MONTHS)`, `COINCIDENCIAS(3, "ENTREGADA")`) **tres PATCH
+en tres días consecutivos completaban la misión de tres meses**.
+
+`evaluarConstancia` ahora cuenta los meses calendario consecutivos hacia atrás desde el
+mes de la última donación:
+
+- dos o más donaciones en el mismo mes cuentan **una sola vez**;
+- un mes sin donación **corta la racha** en el hueco;
+- la racha **caduca** si pasó `cantidad`/`unidadTiempo` desde la última donación.
+
+O sea que `cantidad` y `unidadTiempo` pasaron a tener el papel que corresponde: definir cada
+cuánto se puede dejar de donar antes de perder la racha. Con `(1, MONTHS)` el donante tiene
+que donar al menos una vez por mes, que es lo que dice el enunciado.
+
+**Ojo con el cambio de significado:** para las misiones con constancia, `progreso` pasó a
+contar meses y no donaciones. Como `progresoObjetivo` de la misión semilla "Racha" es 3 y
+significa "3 meses", queda coherente. Si alguna otra misión con constancia usara
+`progresoObjetivo` pensando en FCA de donaciones, hay que revisarla.
+
+`ConstanciaPorMesesTest` cubre el caso del bug (tres donaciones en tres días) y los límites:
+dos en el mismo mes, hueco de un mes, caducidad y donaciones que no progresaron.
+
+### 27. `conseguirMisiones` respeta el orden del admin
+
+`findAllById` genera un `SELECT ... WHERE id IN (...)` sin `ORDER BY`, así que el orden con
+que volvía no estaba garantizado. Y ese orden importa más de lo que parece:
+`Categoria.agregarMision` asigna `posicion = size + 1`, o sea que **el orden de la lista es
+la secuencia de progresión del donante**. Con el orden barajado, el donante arrancaba en
+una misión distinta a la que el admin puso primera.
+
+Ahora se resuelve en un `Map` por id y se reordena según los ids pedidos. La deduplicación
+del punto 19 se mantiene.
+
+`RepositorioMisionesOrdenTest` simula que la base responde en el orden contrario y verifica
+que igual sale en el pedido. El mock del repositorio necesita `Answers.CALLS_REAL_METHODS`
+porque `conseguirMisiones` es un método `default` de la interfaz y un mock normal no lo
+ejecuta.
+
+### 28. La insignia ya no se otorga dos veces
+
+El seed pone **la misma instancia** de `misionRacha` en dos categorías (`sostenedor` y
+`transformador`), y `misionHabilDonador` también. Al cambiar de categoría se crea un
+`ProgresoMision` nuevo para la misma `idMision`, y como el historial se busca por
+`idMision` sin ventana temporal, en la donación siguiente la racha volvía a estar completa y
+se otorgaba la misma insignia otra vez: perfil con la insignia duplicada, segunda
+notificación, segunda publicación en n8n y puntaje doble en el ranking.
+
+La corrección es la que planteaste:
+
+1. **`Perfil.insigniasObtenidas` pasa de `List` a `Set`.** `LinkedHashSet` para no perder el
+   orden de obtención, que se expone en el perfil y en el historial.
+2. **`InsigniaObtenida` necesita `equals`/`hashCode`** por `(perfil, insignia)`. Sin esto un
+   `Set` de entidades compara por identidad y no reconoce nada, así que el paso a `Set` no
+   habría deduplicado nada. La clave es (perfil, insignia) y no el id, justamente para que
+   dos objetos distintos que representan lo mismo se reconozcan.
+3. **`Perfil.progresarMision`** usa lo que devuelve `Set.add`: si la insignia ya estaba,
+   no se guarda otra vez y **no se dispara `MisionCompletada`**, así que no hay segunda
+   notificación ni segunda publicación. Pero devuelve `true` igual, porque el donante
+   **sí tiene que avanzar de misión**: si devolviera `false` quedaría trabado en una misión
+   que ya no puede volver a completar, ya que la insignia no se le va a volver a otorgar.
+
+`InsigniaSinDuplicadosTest` cubre la identidad, el rechazo del duplicado y el escenario
+completo de completar, cambiar de categoría y volver a completar.
+
+**Lo que NO se puso, y por qué.** Se llegó a agregar un
+`@UniqueConstraint` sobre `(perfil_id, insignia_id)` para cubrir el caso de dos peticiones
+simultáneas con la misma insignia, que un `Set` en memoria no puede ver. Se quitó al
+revisarlo: sin `@Version` en ninguna entidad (ver punto 36) el problema real es otro y más
+grave, el índice no lo cubría, y además hacía que la transacción perdedora hiciera rollback
+y perdiera una donación legítima. Poner el bloqueo optimista en el agregado es lo que
+resuelve las dos cosas a la vez.
+
+**Pendiente que queda:** el historial de las misiones con constancia sigue siendo el de
+toda la misión, no solo el del intento en curso. Eso hace que el `progreso` se recalcule con
+donaciones de intentos anteriores. Ya no produce daño visible (el `Set` evita el
+duplicado), pero el número es inflado. Acotarlo requiere que `ProgresoMision` guarde desde
+cuándo empieza el intento y que la consulta del historial filtre por esa fecha.
 
 ## 13 + 14. El 500 después del commit y la ingesta no idempotente - corregidos
 

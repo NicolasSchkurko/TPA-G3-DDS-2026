@@ -14,8 +14,10 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
@@ -58,6 +60,13 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
      * {@code {"misiones": ["m1", "m1"]}} con m1 existente devolvía "Una o más misiones
      * solicitadas no existen", que es falso: m1 existe, lo que hay es un id repetido
      * (punto 19).
+     *
+     * <p><b>El resultado sale en el orden en que los pidió el admin</b> (punto 27).
+     * {@code findAllById} genera un {@code SELECT ... WHERE id IN (...)} sin
+     * {@code ORDER BY}, así que el orden con que vuelve es el que devuelva la base. Ese
+     * orden importa: {@code Categoria.agregarMision} va asignando
+     * {@code posicion = size + 1}, o sea que el orden de la lista <b>es</b> la secuencia de
+     * progresión del donante. Sin reordenar, el donante puede arrancar en otra misión.
      */
     default List<Mision> conseguirMisiones(List<UUID> idMisiones) {
         if (idMisiones == null || idMisiones.isEmpty()) {
@@ -66,11 +75,16 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
 
         List<UUID> idsUnicos = new ArrayList<>(new LinkedHashSet<>(idMisiones));
 
-        List<Mision> misiones = findAllById(idsUnicos);
-        if (misiones.size() != idsUnicos.size()) {
+        Map<UUID, Mision> porId = findAllById(idsUnicos).stream()
+                .collect(Collectors.toMap(Mision::getIdMision, mision -> mision));
+
+        if (porId.size() != idsUnicos.size()) {
             throw new DatosInvalidosException("Una o más misiones solicitadas no existen");
         }
-        return misiones;
+
+        return idsUnicos.stream()
+                        .map(porId::get)
+                        .toList();
     }
 
     default Mision obtenerPorId(UUID id) {

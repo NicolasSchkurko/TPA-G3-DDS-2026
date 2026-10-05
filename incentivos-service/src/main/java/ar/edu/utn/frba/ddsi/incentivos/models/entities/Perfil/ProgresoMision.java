@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -97,6 +98,25 @@ public class ProgresoMision implements ProgresoDelDonante {
         valoresObservados.clear();
     }
 
+    /**
+     * Calcula la racha de una misión con constancia.
+     *
+     * <p><b>La racha se cuenta en meses calendario, no en donaciones</b> (punto 26). Antes
+     * la única condición era "esta donación no tiene más de {@code cantidad} unidades de
+     * antigüedad que la anterior", o sea que {@code cantidad} se usaba como margen en
+     * días. Con la misión "Realiza 1 donación durante 3 meses consecutivos"
+     * ({@code constancia = (1, MONTHS)}), tres donaciones en tres días consecutivos
+     * completaban la misión de tres meses.
+     *
+     * <p>Ahora se cuentan los meses calendario consecutivos hacia atrás desde el mes de la
+     * última donación: dos donaciones en el mismo mes cuentan una sola vez, y un mes sin
+     * donate cierra la racha ahí.
+     *
+     * <p>La {@code cantidad} y la {@code unidadTiempo} siguen teniendo un papel: definen
+     * cuánto puede pasar desde la última donación antes de que la racha caduque. Con
+     * {@code (1, MONTHS)} el donante tiene que donar al menos una vez por mes, que es
+     * justamente lo que dice el enunciado de la misión.
+     */
     public void evaluarConstancia(List<ImpactoDonacion> donaciones,
                                    LocalDateTime fechaEvaluacion) {
         ReglaConstancia constancia = mision.getReglaDeProgreso().getConstancia();
@@ -106,43 +126,53 @@ public class ProgresoMision implements ProgresoDelDonante {
             return;
         }
 
-        int progresoActual = 0;
-        LocalDateTime anterior = null;
-
-//las donaciones a evaluar constancia deben ser las que hayan hecho progresar la mision actual
-        List<ImpactoDonacion> donacionesEvaluar = donaciones.stream()
-                .filter(donacion -> Boolean.TRUE.equals(
-                        donacion.getHizoProgresarMision())
-                )
+        // Para la racha solo cuentan las donaciones que hicieron progresar esta mision, y en
+        // orden de fecha porque la cuenta de meses va hacia atras.
+        List<ImpactoDonacion> donacionesQueProgresaron = donaciones.stream()
+                .filter(d -> Boolean.TRUE.equals(d.getHizoProgresarMision()))
+                .sorted(Comparator.comparing(ImpactoDonacion::getFechaEntrega))
                 .toList();
 
-        for (ImpactoDonacion donacion : donacionesEvaluar) {
-            LocalDateTime limite = anterior == null
-                    ? null
-                    : anterior.plus(constancia.getCantidad(), constancia.getUnidadTiempo());
+        if (donacionesQueProgresaron.isEmpty()) {
+            reiniciar();
+            return;
+        }
 
-            if (limite != null && donacion.getFechaEntrega().isAfter(limite)) {
-                progresoActual = 0;
+        ImpactoDonacion ultima = donacionesQueProgresaron.get(donacionesQueProgresaron.size() - 1);
+        LocalDateTime limite = ultima.getFechaEntrega()
+                .plus(constancia.getCantidad(), constancia.getUnidadTiempo());
+
+        if (fechaEvaluacion.isAfter(limite)) {
+            // La racha caduco: el donante arranca de cero.
+            reiniciar();
+            return;
+        }
+
+        // Cuenta meses calendario consecutivos hacia atras desde el mes de la ultima
+        // donacion. El recorrido es del mes mas nuevo al mas viejo, asi que mesPrevio
+        // es SIEMPRE posterior a mes.
+        YearMonth mesPrevio = null;
+        int mesesConsecutivos = 0;
+
+        for (int i = donacionesQueProgresaron.size() - 1; i >= 0; i--) {
+            YearMonth mes = YearMonth.from(donacionesQueProgresaron.get(i).getFechaEntrega());
+
+            if (mesPrevio != null) {
+                if (mes.equals(mesPrevio)) {
+                    // Varias donaciones en el mismo mes: ese mes ya esta contado.
+                    continue;
+                }
+                if (!mes.plusMonths(1).equals(mesPrevio)) {
+                    // Hay un mes sin donacion entre medio: la racha se corta aca.
+                    break;
+                }
             }
 
-            progresoActual++;
-            anterior = donacion.getFechaEntrega();
+            mesesConsecutivos++;
+            mesPrevio = mes;
         }
 
-        LocalDateTime limite = anterior == null
-                ? null
-                : anterior.plus(constancia.getCantidad(), constancia.getUnidadTiempo());
-        progreso = limite != null && fechaEvaluacion.isAfter(limite)
-                ? 0
-                : progresoActual;
-
-        // Los valores observados son de la racha vigente, no de la historia completa. Si
-        // la racha se rompio, el donante va de cero y tampoco le cuentan los valores que
-        // vio antes del corte; si no los borramos, "3 categorias distintas" se completaba
-        // con categorias de una racha que ya no existe.
-        if (progreso == 0) {
-            limpiarValoresObservados();
-        }
+        progreso = mesesConsecutivos;
     }
 
     public boolean estaCompleta() {

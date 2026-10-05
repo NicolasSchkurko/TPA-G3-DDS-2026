@@ -86,7 +86,7 @@ class PerfilTest {
         assertThat(perfil.progresarMision(donacion(), List.of())).isTrue();
 
         assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
-        assertThat(perfil.getInsigniasObtenidas().getFirst().getInsignia().getNombre())
+        assertThat(perfil.getInsigniasObtenidas().iterator().next().getInsignia().getNombre())
                 .isEqualTo("Insignia Primera");
 
         List<MisionCompletada> eventos = eventos(perfil);
@@ -167,7 +167,7 @@ class PerfilTest {
 
         perfil.progresarMision(donacion(), List.of());
 
-        InsigniaObtenida obtenida = perfil.getInsigniasObtenidas().getFirst();
+        InsigniaObtenida obtenida = perfil.getInsigniasObtenidas().iterator().next();
         assertThat(obtenida.getPerfil()).isSameAs(perfil);
         assertThat(obtenida.getFechaObtencion()).isNotNull();
         assertThat(obtenida.getInsignia()).isNotNull();

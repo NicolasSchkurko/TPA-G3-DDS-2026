@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -247,7 +248,7 @@ public class PerfilService {
      */
     public PerfilDTO convertirPerfilADTO(Perfil perfil) {
         Categoria categoria = perfil.getCategoriaActual();
-        List<InsigniaObtenida> insignias = perfil.getInsigniasObtenidas();
+        Set<InsigniaObtenida> insignias = perfil.getInsigniasObtenidas();
         ProgresoMision progreso = perfil.getProgresoMisionActual();
         Mision mision = progreso == null ? null : progreso.getMision();
 
