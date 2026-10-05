@@ -19,7 +19,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/metricas")
+@RequestMapping("/api/metricas")
 @Tag(name = "Métricas", description = "Endpoints para obtener métricas y análisis de donaciones y actividad de perfiles.")
 public class MetricaController {
     private final MetricasService service;
@@ -53,7 +53,6 @@ public class MetricaController {
     }
 
     // ========== ACTIVIDAD HISTÓRICA ==========
-    // TODO: paginacion
     @Operation(
         summary = "Obtener evolución histórica de actividad del perfil",
         description = "Retorna un registro completo de la evolución y actividad del usuario en el sistema, incluyendo donaciones, misiones completadas y cambios de categoría."

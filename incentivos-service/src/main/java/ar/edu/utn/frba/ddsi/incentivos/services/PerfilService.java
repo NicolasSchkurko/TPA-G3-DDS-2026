@@ -20,6 +20,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,12 +48,7 @@ public class PerfilService {
     //para misionesScheduler
     @Transactional
     public void evaluarConstanciaPerfiles(){
-        List<Perfil> perfilesConMision = repositorioPerfiles.findAll().stream()
-                                                            .filter(perfil -> perfil.getProgresoMisionActual() != null)
-                                                            .filter(perfil -> perfil.getProgresoMisionActual().getMision() != null)
-                                                            .filter(perfil -> perfil.getProgresoMisionActual().getMision()
-                                                                                    .getReglaDeProgreso().getConstancia() != null)
-                                                            .toList();
+        List<Perfil> perfilesConMision = repositorioPerfiles.buscarPerfilesConMisionQueRequiereConstancia();
 
         perfilesConMision.forEach(perfil -> perfil.verificarProgresoMision(
             repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
@@ -92,6 +89,7 @@ public class PerfilService {
     }
 
     // ========== BUSCAR ==========
+    @Transactional(readOnly = true)
     public PerfilDTO buscarPorIdUsuario(UUID idUsuario) {
         Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario).orElse(null);
         if (p == null) {
@@ -102,26 +100,26 @@ public class PerfilService {
             p.getNombreUsuario(),
             p.getCategoriaActual() == null ? null : p.getCategoriaActual().getNombre(),
             p.getInsigniasObtenidas() == null ? List.of() : p.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            p.getProgresoMisionActual() == null ? null : p.getProgresoMisionActual().getMision().getNombreMision()
+            p.getProgresoMisionActual() == null || p.getProgresoMisionActual().getMision() == null
+               ? null
+               : p.getProgresoMisionActual().getMision().getNombreMision()
         );
     }
 
-    public List<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario) {
-        repositorioPerfiles.findByIdUsuario(idUsuario)
-                           .orElseThrow(InexistenteException::new);
+    @Transactional(readOnly = true)
+    public Page<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario, Pageable pageable) {
+        if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
+            throw new InexistenteException();
+        }
 
-        return repositorioPerfiles.obtenerInsigniasPorIdUsuario(idUsuario)
-                                  .stream()
-                                  .map(this::convertirInsigniaADTO)
-                                  .toList();
+        return repositorioPerfiles.paginaInsigniasPorIdUsuario(idUsuario, pageable)
+                                  .map(obtenida -> convertirInsigniaADTO(obtenida.getInsignia()));
     }
 
+    @Transactional(readOnly = true)
     public MisionPerfilDTO obtenerMisionPorIdUsuario(UUID idUsuario) {
-        repositorioPerfiles.findByIdUsuario(idUsuario)
-                           .orElseThrow(InexistenteException::new);
-
         Mision mision = repositorioPerfiles.obtenerMisionPorIdUsuario(idUsuario)
-                                           .orElseThrow();
+                                           .orElseThrow(InexistenteException::new);
         return convertirMisionPerfilADTO(mision);
     }
 
@@ -214,9 +212,11 @@ public class PerfilService {
 
         return new PerfilDTO(
             actualizado.getNombreUsuario(),
-            actualizado.getCategoriaActual().getNombre(),
+            actualizado.getCategoriaActual() == null ? null : actualizado.getCategoriaActual().getNombre(),
             actualizado.getInsigniasObtenidas() == null ? List.of() : actualizado.getInsigniasObtenidas().stream().map(io -> io.getInsignia().getNombre()).toList(),
-            actualizado.getProgresoMisionActual().getMision().getNombreMision()
+            actualizado.getProgresoMisionActual() == null || actualizado.getProgresoMisionActual().getMision() == null
+               ? null
+               : actualizado.getProgresoMisionActual().getMision().getNombreMision()
         );
     }
 

@@ -34,8 +34,8 @@ public class ImpactoDonacion {
     public ImpactoDonacion(String entidadBeneficiaria,
                            Integer cantidadBienes,
                            LocalDateTime fechaEntrega,
-                           String subCategoria,
                            String categoria,
+                           String subCategoria,
                            String estado,
                            UUID idUsuario){
         this.idUsuario = idUsuario;

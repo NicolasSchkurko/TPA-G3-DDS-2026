@@ -11,15 +11,19 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
+import java.util.UUID;
+
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/perfiles")
+@RequestMapping("/api/perfiles")
 @Tag(name = "Gestión de Perfiles e Incentivos", description = "Endpoints para consultar métricas, misiones, insignias y rankings de los perfiles de colaboradores.")
 public class PerfilController {
     private final PerfilService perfilService;
@@ -77,27 +81,23 @@ public class PerfilController {
         MisionPerfilDTO mision = perfilService.obtenerMisionPorIdUsuario(idUsuario);
         return ResponseEntity.ok(mision);
     }
-
-    // TODO: PAGINACION
-
     @Operation(
         summary = "Listar insignias obtenidas",
-        description = "Retorna la colección de medallas y logros desbloqueados históricamente por el colaborador."
+        description = "Retorna la colección paginada de medallas y logros desbloqueados históricamente por el colaborador."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Listado de insignias recuperado con éxito"),
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
     @GetMapping("/{idUsuario}/insignias")
-    public ResponseEntity<List<InsigniaDTO>> obtenerInsigniasPerfil(
+    public ResponseEntity<Page<InsigniaDTO>> obtenerInsigniasPerfil(
             @Parameter(description = "UUID del usuario asociado al perfil")
-            @PathVariable UUID idUsuario) {
-        List<InsigniaDTO> insignias = perfilService.obtenerInsigniasPorIdUsuario(idUsuario);
-        return ResponseEntity.ok(insignias);
+            @PathVariable UUID idUsuario,
+            @ParameterObject
+            @PageableDefault(page = 0, size = 10, sort = "fechaObtencion", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(perfilService.obtenerInsigniasPorIdUsuario(idUsuario, pageable));
     }
-
-    // TODO: PAGINACION
-
     // ========== ACTUALIZAR ==========
     @Operation(
         summary = "Actualizar perfil por impacto de donación",

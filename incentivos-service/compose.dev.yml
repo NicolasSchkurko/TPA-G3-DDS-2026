@@ -34,7 +34,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: incentivos_user
       DB_PASSWORD: incentivos_pass
-      DONACIONES_URL: http://host.docker.internal:8085/
+      DONACIONES_URL: http://host.docker.internal:8084
       NOTIFICACIONES_URL: http://host.docker.internal:8083/
       N8N_URL: http://host.docker.internal:5678/webhook/incentivos
 

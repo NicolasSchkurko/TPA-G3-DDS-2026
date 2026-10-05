@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/misiones")
+@RequestMapping("/api/misiones")
 @Tag(name = "Administración - Misiones", description = "Gestión de misiones del sistema gamificado.")
 public class MisionController {
 

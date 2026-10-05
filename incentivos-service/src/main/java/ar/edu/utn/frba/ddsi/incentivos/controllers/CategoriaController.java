@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/categorias")
+@RequestMapping("/api/categorias")
 @Tag(name = "Administración - Categorías", description = "Gestión de categorías y su secuencia en el sistema gamificado.")
 public class CategoriaController {
 

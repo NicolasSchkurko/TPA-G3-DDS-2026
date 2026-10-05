@@ -34,7 +34,10 @@ public class ValoresDistintos extends Operacion {
 
     @Override
     public Boolean estaCompleta(Integer progresoActual) {
-        return progresoActual >= getProgresoObjetivo()
+        return progresoActual != null
+                && getProgresoObjetivo() != null
+                && cantValoresDistintos != null
+                && progresoActual >= getProgresoObjetivo()
                 && valoresDistintos.size() >= cantValoresDistintos;
     }
 

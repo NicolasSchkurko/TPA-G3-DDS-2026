@@ -27,6 +27,9 @@ public class CantidadCoincidencias extends Operacion {
     }
     @Override
     public Boolean calcularProgreso(Object valorAtributo) {
-        return valorEsperado.asText().equals(valorAtributo.toString());
+        if (valorEsperado == null || valorAtributo == null) {
+            return false;
+        }
+        return valorEsperado.asText().equalsIgnoreCase(valorAtributo.toString().trim());
     }
 }

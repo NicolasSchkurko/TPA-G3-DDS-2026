@@ -40,7 +40,8 @@ public class CategoriaService {
     this.validadorAdmin = validadorAdmin;
   }
 
-  public Page<CategoriaDTO> obtenerCategorias(CategoriaFiltroRequest filtros, Pageable pageable) {
+  @Transactional(readOnly = true)
+    public Page<CategoriaDTO> obtenerCategorias(CategoriaFiltroRequest filtros, Pageable pageable) {
     return repoCategorias.obtenerTodas(
         filtros.nombre(),
         filtros.posicionSecuencia(),
@@ -49,7 +50,8 @@ public class CategoriaService {
     ).map(CategoriaDTO::desdeEntidad);
   }
 
-  public CategoriaDTO obtenerCategoriaPorId(UUID id) {
+  @Transactional(readOnly = true)
+    public CategoriaDTO obtenerCategoriaPorId(UUID id) {
     Categoria categoria = repoCategorias.obtenerPorId(id);
     return CategoriaDTO.desdeEntidad(categoria);
   }

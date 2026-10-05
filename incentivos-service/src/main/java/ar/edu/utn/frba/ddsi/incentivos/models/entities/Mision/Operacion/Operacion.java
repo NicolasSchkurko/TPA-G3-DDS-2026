@@ -27,7 +27,9 @@ public abstract class Operacion {
     }
 
     public Boolean estaCompleta(Integer progresoActual) {
-        return progresoActual >= progresoObjetivo;
+        return progresoActual != null
+               && progresoObjetivo != null
+               && progresoActual >= progresoObjetivo;
     }
 
     public abstract Boolean calcularProgreso(

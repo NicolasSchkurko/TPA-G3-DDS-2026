@@ -50,11 +50,19 @@ public class Mision {
             this.descripcion = misionModificada.getDescripcion();
         }
 
-        if (misionModificada.getInsigniaObjetivo() != null && misionModificada.getInsigniaObjetivo().getNombre() != null) {
-            this.insigniaObjetivo = new Insignia(
-                misionModificada.getInsigniaObjetivo().getNombre(),
-                this.descripcion
-            );
+        if (misionModificada.getInsigniaObjetivo() != null
+                && misionModificada.getInsigniaObjetivo().getNombre() != null) {
+
+            String nombreNuevo = misionModificada.getInsigniaObjetivo().getNombre();
+
+            if (nombreNuevo.equals(this.insigniaObjetivo.getNombre())) {
+                // Se conserva la insignia existente para no dejar filas huérfanas
+                // ni romper las insignias ya obtenidas por los perfiles.
+                this.insigniaObjetivo.setDescripcion(this.descripcion);
+            } else {
+                this.insigniaObjetivo.setNombre(nombreNuevo);
+                this.insigniaObjetivo.setDescripcion(this.descripcion);
+            }
         }
 
         if (misionModificada.getReglaDeProgreso() != null) {

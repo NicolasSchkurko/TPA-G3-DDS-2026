@@ -22,7 +22,7 @@ public class NotificacionClient {
 
     private final RestTemplate restTemplate;
     private final DonacionClient donacionClient;
-    //todo: este repo puede q lo maneje servicio notificaciones
+
     private final RepositorioNotificacionesPendientes repositorioPendientes;
 
     public NotificacionClient(RestTemplate restTemplate,

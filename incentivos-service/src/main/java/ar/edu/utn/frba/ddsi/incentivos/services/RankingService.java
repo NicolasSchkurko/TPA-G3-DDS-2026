@@ -7,16 +7,24 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class RankingService {
+
+  /**
+   * Cantidad de posiciones que se persisten al snapshot mensual cuando el
+   * scheduler genera el ranking de forma automática.
+   */
+  public static final int RANKING_PREDETERMINADO = 10;
 
   private final RepositorioRankings repoRankings;
   private final RepositorioPerfiles repoPerfiles;
@@ -26,6 +34,7 @@ public class RankingService {
     this.repoPerfiles = repoPerfiles;
   }
 
+  @Transactional(readOnly = true)
   public RankingDTO obtenerPuestoRankingActual(UUID idUsuario) {
 
     Ranking puesto = repoRankings.obtenerPosicionActualDeUsuario(idUsuario);
@@ -33,6 +42,7 @@ public class RankingService {
     return puesto != null ? this.convertirRankingADTO(puesto) : null;
   }
 
+  @Transactional(readOnly = true)
   public RankingMesDTO obtenerRanking(UUID idRanking) {
     RankingMensual rank = repoRankings.findById(idRanking)
                                       .orElseThrow(InexistenteException::new);
@@ -40,14 +50,23 @@ public class RankingService {
     return convertirRankingMesADTO(rank);
   }
 
-  public RankingMesDTO obtenerTop3Ranking(UUID idRanking) {
+  /**
+   * Devuelve las primeras {@code limite} posiciones del ranking. El ranking ya viene
+   * ordenado por puesto, por lo que alcanza con recortar la lista.
+   */
+  @Transactional(readOnly = true)
+  public RankingMesDTO obtenerRankingConLimite(UUID idRanking, int limite) {
+    if (limite <= 0) {
+      throw new IllegalArgumentException("El límite debe ser mayor a cero");
+    }
+
     RankingMensual rank = repoRankings.findById(idRanking)
                                       .orElseThrow(InexistenteException::new);
 
     return new RankingMesDTO(
         rank.getIdRanking(),
         rank.getPosiciones().stream()
-            .limit(3)
+            .limit(limite)
             .map(this::convertirRankingADTO).toList(),
         rank.getPeriodo());
   }
@@ -80,6 +99,7 @@ public class RankingService {
     return true;
   }
 
+  @Transactional(readOnly = true)
   public RankingMesDTO obtenerRankingActual() {
     RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
                                       .orElseThrow(InexistenteException::new);
@@ -87,12 +107,9 @@ public class RankingService {
     return convertirRankingMesADTO(rank);
   }
 
-  public List<RankingMesDTO> obtenerHistorialRankings() {
-    List<RankingMensual> rankings = repoRankings.findAll();
-
-    return rankings.stream()
-                   .map(this::convertirRankingMesADTO)
-                   .collect(Collectors.toList());
+  @Transactional(readOnly = true)
+  public Page<RankingMesDTO> obtenerHistorialRankings(Pageable pageable) {
+    return repoRankings.findAll(pageable).map(this::convertirRankingMesADTO);
   }
 
   private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {
@@ -109,7 +126,11 @@ public class RankingService {
     int mes = periodo.getMonthValue();
     int anio = periodo.getYear();
 
-    List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(mes, anio);
+    List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(
+        mes,
+        anio,
+        PageRequest.of(0, RANKING_PREDETERMINADO)
+    );
 
     RankingMensual rankingDelMes = new RankingMensual(periodo);
 

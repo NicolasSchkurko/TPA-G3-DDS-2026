@@ -2,7 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioPublicacionException;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,13 +27,12 @@ public class N8nClient {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publicarInsignia(MisionCambiada event)
-            throws EnvioPublicacionException {
+    public void publicarInsignia(MisionCompletada event) {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(
                 "formato circulo, diseño estrella, color dorado, " +
-                        "en el centro debe decir " + event.insigniaAnterior(),
+                        "en el centro debe decir " + event.insigniaObtenida(),
                 "felicidades a " + event.nombreUsuario() +
-                        ", por ganar la insignia " + event.insigniaAnterior() +
+                        ", por ganar la insignia " + event.insigniaObtenida() +
                         " tras haber completado la mision " + event.misionAnterior(),
                 "discord",
                 event.nombreUsuario(),

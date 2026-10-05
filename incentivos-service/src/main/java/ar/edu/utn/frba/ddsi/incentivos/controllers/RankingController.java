@@ -8,8 +8,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import java.util.List;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +21,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/rankings")
+@RequestMapping("/api/rankings")
 public class RankingController {
   private final RankingService service;
 
@@ -43,11 +48,8 @@ public class RankingController {
     return ResponseEntity.ok(rankingCreado);
   }
 
-  // TODO: agregar un endpoint para crear ranking atcual
-  // TODO: Seguro de vida para cuando sofi finalmente decida matarme (no juzgamos)
 
   // ========== CONSULTAR ==========
-  // TODO: paginacion
   @Operation(
           summary = "Consultar el puesto ranking por ID",
           description = "Obtiene la posicion en el ranking actual para un perfil especifico"
@@ -61,7 +63,9 @@ public class RankingController {
           @Parameter(description = "UUID del puesto perfil solicitado", example = "123e4567-e89b-12d3-a456-426614174000")
           @PathVariable UUID id) {
     RankingDTO puesto = service.obtenerPuestoRankingActual(id);
-    return ResponseEntity.ok(puesto);
+    return puesto == null
+           ? ResponseEntity.notFound().build()
+           : ResponseEntity.ok(puesto);
   }
 
   @Operation(
@@ -81,19 +85,22 @@ public class RankingController {
   }
 
   @Operation(
-      summary = "Obtener el Top 3 de colaboradores destacados",
-      description = "Endpoint optimizado para tableros que lista exclusivamente a los tres usuarios con mayor puntuación acumulada en el mes."
+      summary = "Obtener el podio de colaboradores destacados",
+      description = "Devuelve las primeras posiciones del ranking, ordenadas de mayor a menor puntaje. " +
+          "Por defecto devuelve el top 10; el tamaño del podio se ajusta con el parámetro `limite`."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Podio recuperado con éxito"),
-      @ApiResponse(responseCode = "404", description = "Datos del podio no disponibles")
+      @ApiResponse(responseCode = "400", description = "El límite indicado no es válido"),
+      @ApiResponse(responseCode = "404", description = "Ranking no encontrado")
   })
-  @GetMapping("/{id}/top3")
-  public ResponseEntity<RankingMesDTO> obtenerTop3Ranking(
+  @GetMapping("/{id}/top")
+  public ResponseEntity<RankingMesDTO> obtenerPodioRanking(
       @Parameter(description = "UUID del ranking solicitado", example = "123e4567-e89b-12d3-a456-426614174000")
-      @PathVariable UUID id) {
-    RankingMesDTO top3 = service.obtenerTop3Ranking(id);
-    return ResponseEntity.ok(top3);
+      @PathVariable UUID id,
+      @Parameter(description = "Cantidad de posiciones a devolver")
+      @RequestParam(name = "limite", defaultValue = "10") int limite) {
+    return ResponseEntity.ok(service.obtenerRankingConLimite(id, limite));
   }
 
   @Operation(
@@ -112,16 +119,18 @@ public class RankingController {
 
   @Operation(
       summary = "Obtener historial de todos los rankings",
-      description = "Retorna la lista completa de rankings generados en el sistema."
+      description = "Retorna la lista paginada de rankings generados en el sistema, del más reciente al más antiguo."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Historial de rankings recuperado con éxito"),
       @ApiResponse(responseCode = "404", description = "No hay rankings disponibles")
   })
   @GetMapping
-  public ResponseEntity<List<RankingMesDTO>> obtenerHistorialRankings() {
-    List<RankingMesDTO> historial = service.obtenerHistorialRankings();
-    return ResponseEntity.ok(historial);
+  public ResponseEntity<Page<RankingMesDTO>> obtenerHistorialRankings(
+      @ParameterObject
+      @PageableDefault(page = 0, size = 10, sort = "periodo", direction = Sort.Direction.DESC)
+      Pageable pageable) {
+    return ResponseEntity.ok(service.obtenerHistorialRankings(pageable));
   }
 
   // ========== ELIMINAR ==========

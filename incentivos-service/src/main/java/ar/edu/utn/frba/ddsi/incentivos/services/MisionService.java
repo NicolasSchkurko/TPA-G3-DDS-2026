@@ -35,7 +35,8 @@ public class MisionService {
     this.validadorAdmin = validadorAdmin;
   }
 
-  public Page<MisionDTO> obtenerMisiones(MisionFiltroRequest filtros, Pageable pageable) {
+  @Transactional(readOnly = true)
+    public Page<MisionDTO> obtenerMisiones(MisionFiltroRequest filtros, Pageable pageable) {
     return repoMisiones.obtenerTodas(
         filtros.nombreMision(),
         filtros.insigniaObjetivo(),
@@ -44,7 +45,8 @@ public class MisionService {
     ).map(MisionDTO::desdeEntidad);
   }
 
-  public MisionDTO obtenerMisionPorId(UUID id) {
+  @Transactional(readOnly = true)
+    public MisionDTO obtenerMisionPorId(UUID id) {
     Mision mision = repoMisiones.obtenerPorId(id);
     return MisionDTO.desdeEntidad(mision);
   }
