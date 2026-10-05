@@ -1,13 +1,18 @@
 package ar.edu.utn.frba.ddsi.incentivos.config;
 
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-
+/**
+ * Define el cliente HTTP saliente con timeouts explícitos.
+ *
+ * <p>Es la clase que evita que una dependencia caída tumbe el servicio (punto 12). El
+ * detalle de por qué importa está en el método.
+ */
 @Configuration
 public class HttpClientConfig {
 
