@@ -13,85 +13,31 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | # | Punto | Por qué está acá |
 |---|---|---|
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
-| 2 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben misión y no progresan nunca |
-| 3 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 4 | 36 | Sin `@Version`: dos donaciones simultáneas pierden progreso y pueden duplicar la insignia |
-| 5 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 6 | 17 | Filas huérfanas que crecen para siempre |
-| 7 | 22 | N+1 y tablas enteras en memoria |
-| 8 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
-| 9 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 10 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 11 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 12 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 13 | 2 | El podio sale truncado sin avisar |
-| 14 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 15 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 16 | 34 | Dos guardas que el código dice tener y no tiene |
-| 17 | 23 | Higiene: código muerto, logs, encapsulación |
-| 18 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 19 | 4 | `common-lib` es código muerto |
-| 20 | 9 | No es un faltante: es una decisión de arquitectura |
-| 21 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
-
-El punto 36 va después del punto 1 a propásito: el 1 es determinista (basta conocer un UUID
-de admin para sufrir el daño), mientras que el 36 necesita que dos peticiones coincidan en
-el tiempo. A igual impacto, el daño que se puede provocar sin condiciones va primero.
+| 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
+| 3 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
+| 4 | 22 | N+1 y tablas enteras en memoria |
+| 5 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 6 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
+| 7 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
+| 8 | 24 | La insignia no tiene descripción propia: es texto derivado |
+| 9 | 2 | El podio sale truncado sin avisar |
+| 10 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
+| 11 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
+| 12 | 34 | Dos guardas que el código dice tener y no tiene |
+| 13 | 23 | Higiene: código muerto, logs, encapsulación |
+| 14 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
+| 15 | 4 | `common-lib` es código muerto |
+| 16 | 9 | No es un faltante: es una decisión de arquitectura |
+| 17 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
 
 El punto 23 no aparece en la tabla porque está en la sección de su propio detalle más
 abajo, y tampoco cuenta como "abierto a medias": su parte grande se hizo y lo que queda
 son tres cosas anotadas.
----
 
----
+Los puntos 25, 36, 17 y 30 estén la tabla hasta la tanda del 2026-10-05, que los cerró
+juntos: los cuatro eran fallos de progresión del donante y ninguno se manifestaba solo.
+Ver [la sección de esa tanda](#253617--30-progresin-del-donante--corregidos).
 
-## 25. `crearPerfil` no abre transacción: los perfiles nuevos nunca reciben misión
-
-**Estado:** abierto
-**Severidad:** alta
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `services/PerfilService.java:66-87`
-
-`crearPerfil` es el **único método de escritura de `PerfilService` sin `@Transactional`**:
-los otros cinco (`evaluarConstanciaPerfiles`, `actualizarPerfilImpacto`,
-`actualizarDatosPerfil`, `eliminarPerfil`) lo tienen.
-
-```java
-public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {          // sin @Transactional
-    Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
-    Categoria categoriaBase = repositorioCategorias.findAllByOrderByPosicionSecuenciaAsc()
-                                                       .stream().findFirst()
-                                                       .orElseThrow(...);
-    nuevo.setCategoriaActual(categoriaBase);
-    if (categoriaBase.primeraMision() != null) {             // lee una colección LAZY
-        nuevo.setProgresoMisionActual(new ProgresoMision(categoriaBase.primeraMision()));
-    }
-```
-
-**Por qué es grave.** `Categoria.categoriaMisiones` es `@OneToMany(mappedBy = "categoria")`
-→ LAZY, y `open-in-view=false`. La consulta del repositorio corre en su propia
-transacción read-only, así que al volver `categoriaBase` está **desligada**: no hay sesión
-que reenganche la colección. `primeraMision()` hace
-`if (this.categoriaMisiones.isEmpty()) return null;`, y sobre una colección desligada eso
-falla de una de dos formas, y las dos son bugs:
-
-- lanza `LazyInitializationException` → el alta del donante responde 500, o
-- `PersistentBag.isEmpty()` devuelve el tamaño cacheado sin inicializar → devuelve `true`
-  en silencio y `primeraMision()` devuelve `null`.
-
-En el segundo caso, que es el más probable y el más silencioso: `POST /api/profiles`
-responde 201 con `misionActual: null`, y el perfil queda con
-`progresoMisionActual == null` **para siempre**. Como `progresarPerfil` corta en
-`if (misionActual != null)`, **ninguna donación posterior de ese donante progresa jamás**:
-no completa misiones, no recibe insignias y nunca aparece en el ranking. Es un fallo
-funcional total del flujo principal, invisible en los tests porque son unitarios con mocks.
-
-`convertirPerfilADTO(nuevo)` en la línea 86 tiene el mismo riesgo: `Perfil.insigniasObtenidas`
-también es LAZY.
-
-**Arreglo:** `@Transactional` en `crearPerfil`. Opcionalmente un
-`@EntityGraph(attributePaths = "categoriaMisiones")` en la query, para no depender del
-alcance de la transacción.
 ---
 
 ## 1. La autorización de admin se apoya en un header controlado por el cliente
@@ -160,85 +106,6 @@ módulos y al cliente de front.
 
 Mientras tanto, **no exponer el servicio fuera de la red interna** y tratar el header
 `Admin-Id` como no confiable.
----
-
-## 36. Sin `@Version`: dos donaciones simultáneas hacen perder progreso
-
-**Estado:** abierto
-**Severidad:** alta
-**Salido de:** tercera revisión del servicio (2026-10-05), al revisar el punto 28
-**Archivos:** `models/entities/Perfil/Perfil.java`,
-`models/entities/Perfil/ProgresoMision.java`,
-`services/PerfilService.java:158-166`
-
-**Ninguna entidad del servicio tiene `@Version`.** `actualizarPerfilImpacto` es
-`@Transactional` y hace leer-modificar-escribir del agregado `Perfil` sin ningún control de
-concurrencia. Con dos donaciones del mismo donante entrando al mismo tiempo:
-
-```
-T1: lee progreso = 2          T2: lee progreso = 2
-T1: progreso++ → 3            T2: progreso++ → 3
-T1: save                       T2: save
-    progreso final = 3     ← se perdió una donación entera
-```
-
-Es un *lost update* clásico: cada transacción parte de una lectura que la otra ya
-invalidó, y la segunda escritura pisa a la primera.
-
-### Qué se rompe
-
-**1. Progreso perdido.** Es la falla más común y la más silenciosa: el contador queda
-desfasado y el donante tiene que donar de más para completar la misión. En la dirección
-"falla hacia el lado que no otorga insignias de más", por eso no es grave, pero es datos
-corruptos.
-
-**2. Insignias duplicadas.** Si las dos donaciones completan la misma misión (una misión con
-`progresoObjetivo = 1` se completa con una sola donación, así que es el caso más probable),
-cada transacción inserta su `InsigniaObtenida`. El `Set` de `Perfil.insigniasObtenidas`
-**no las ve**: cada petición tiene su propio objeto `Perfil` en memoria con su propio `Set`,
-así que los dos `Set.add` devuelven `true`. Es exactamente el bug del punto 28, pero por la
-ventana de la concurrencia en lugar de por el reintento. Y como el ranking cuenta
-`COUNT(insigniasObtenidas)`, el donante puntúa doble.
-
-### Por qué el `@UniqueConstraint` no era la respuesta
-
-Se llegó a poner un `@UniqueConstraint` sobre `(perfil_id, insignia_id)` y se quitó, por
-tres razones:
-
-1. **No arregla el problema real.** El *lost update* del contador de progreso sigue igual,
-   porque el índice solo revisa filas de `insignia_obtenida`.
-2. **Empeora el caso perdedor.** La segunda transacción falla por violación de unicidad y
-   hace rollback, con lo que **se pierde la donación que sí era legítima**. Es peor que una
-   fila duplicada que el `Set` ya evita en el camino normal.
-3. **Da una falsa impresión.** Al leer `@UniqueConstraint` parece que la concurrencia está
-   controlada, y no lo está.
-
-### Qué hacer
-
-**`@Version` en `Perfil`**, que es la raíz del agregado: es donde viven el progreso, la
-categoría y las insignias. Con eso, la segunda transacción falla al hacer el `UPDATE` porque
-la versión cambió, y hace rollback sin pisar nada.
-
-Esto resuelve **las dos cosas a la vez** (el contador y la insignia duplicada), que es
-justamente lo que el índice único no lograba.
-
-**Lo que cambia en el comportamiento:** hoy la concurrencia se pierde en silencio;
-con `@Version` la perdedora recibe un error de concurrencia. Eso hay que decidirlo
-explícitamente y no dejarlo como un 500:
-
-1. Mapear `ObjectOptimisticLockingFailureException` a **409** con un mensaje de "ya hubo otra
-   donación al mismo tiempo, reintentá", que es un 409 reintentable por definición.
-2. Opcionalmente reintentar unas pocas veces dentro del service, que para este caso es
-   seguro: como el `idDonacion` es la primary key (punto 14), un reintento con la misma
-   donación cae en el camino idempotente y no reprocesa nada.
-
-### Nota
-
-El mismo problema afecta a `CategoriaService.actualizarCategoria` y a
-`SincronizacionPerfiles`, que también hacen leer-modificar-escribir sin control de
-concurrencia. El punto se centra en `Perfil` porque es donde está el daño más visible,
-pero la solución es la misma en los tres.
----
 
 ## 3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes
 
@@ -288,39 +155,6 @@ vigente, porque esa integración no está cubierta por el requisito de asincron�
 
 **Propuesta para n8n:** tabla de outbox transaccional + scheduler de reintento con backoff
 exponencial.
----
-
-## 17. Filas huérfanas por `@OneToMany`/`@OneToOne` sin `orphanRemoval`
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/entities/Perfil/Perfil.java:43-44`,
-`models/entities/Mision/Mision.java:24-30`,
-`models/entities/Mision/Reglas/Regla.java:23-32`
-
-Cinco relaciones son unidireccionales con `cascade = ALL` y **sin `orphanRemoval`**, y en
-todas se reemplaza la referencia:
-
-| Relación | Qué queda huérfano |
-|---|---|
-| `Perfil.progresoMisionActual` | un `ProgresoMision` por cada cambio de misión o de categoría |
-| `Regla.constancia` | la `ReglaConstancia` anterior |
-| `Regla.operacion` | la `Operacion` anterior, incluido su JSON de valores |
-| `Mision.reglaDeProgreso` | la `Regla` anterior completa |
-| `Mision.insigniaObjetivo` | la `Insignia` anterior, si se reemplaza |
-
-Cuando Hibernate hace `this.progresoMisionActual = new ProgresoMision(mision)`, inserta
-la fila nueva y actualiza la FK del perfil, pero **no borra la fila vieja**: queda en
-`progreso_mision` sin que nadie la referencie. Como `cambiarMision` y `cambiarCategoria`
-se ejecutan en cada misión completada, la tabla crece de forma indefinida.
-
-`insigniasObtenidas` sí tiene `orphanRemoval = true` (línea 40) y por eso no sufre el
-problema: es el ejemplo de cómo debería ser.
-
-**Propuesta:** agregar `orphanRemoval = true` a las cinco relaciones, o borrar
-explícitamente la entidad anterior antes de reemplazarla. Con `ddl-auto=update` en
-desarrollo conviven las filas viejas con las nuevas, así que la limpieza es aparte.
----
 
 ## 22. Consultas N+1 y cargadas completas en memoria
 
@@ -359,46 +193,6 @@ es un full scan de `insignias_obtenidas` cada mes. Debería ser un rango
 `@Query` de agregación para las métricas, paginación por lotes para los schedulers, y
 un `INSERT ... SELECT` para el contacto en lugar del bucle. Agregar índices explícitos
 sobre `insignias_obtenidas(fechaObtencion)` y `progreso_mision`.
----
-
-## 30. Quitar una misión de una categoría deja al donante bloqueado para siempre
-
-**Estado:** abierto
-**Severidad:** media
-**Salido de:** segunda revisión del servicio (2026-10-05)
-**Archivos:** `models/gestores/SincronizacionPerfiles.java:49-63`,
-`models/entities/Perfil/Perfil.java:82-86`
-
-```java
-Mision nuevaMision = misionesPorPosicion.get(posicionAnterior);
-...
-perfil.cambiarMision(nuevaMision, misionActual, contacto);   // nuevaMision puede ser null
-```
-
-```java
-public void cambiarMision(Mision misionNueva, Mision misionAnterior, MedioContacto contacto) {
-    if (misionNueva == null) { this.progresoMisionActual = null; return; }   // ni evento ni reasignación
-```
-
-**Escenario de fallo:** la categoría tiene `[A(1), B(2), C(3)]` y hay 40 donantes
-haciendo `C`. El admin hace `PUT /api/categorias/admin/{id}` con `"misiones": ["A","B"]`.
-Para cada donante `posicionAnterior = 3`, `misionesPorPosicion.get(3) == null`, y entra
-el `return` temprano. Consecuencias:
-
-1. `GET /api/profiles/{id}/mision` empieza a devolver 404.
-2. Toda donación posterior devuelve `false` en `progresarPerfil` porque
-   `misionActual == null`: **el donante queda bloqueado para siempre** aunque la categoría
-   todavía tenga misiones disponibles.
-3. Como el `return` ocurre **antes** de `registerEvent`, no se emite `MisionCambiada`: el
-   donante no se entera nunca de que perdió su misión.
-
-Debería caer en `primeraMision()` de la categoría, que sí está disponible.
-
-**Arreglo:** cuando la posición ya no existe, asignar la primera misión de la categoría y
-emitir el evento. Y si la categoría se quedó sin misiones, avisar explícitamente en vez de
-dejar el perfil en null en silencio.
-
----
 
 ## 31. `desplazarParaActualizar` descarta la posición pedida en silencio y el service la aplica igual
 
@@ -989,7 +783,11 @@ setter, que es justo lo que se sacó.
 3. **No hay ni un test de persistencia.** No hay H2 ni `@DataJpaTest`, así que todos los
    tests son unitarios con Mockito y ninguno valida un mapping JPA: una `@Column` mal escrita
    o un `orphanRemoval` que falta no se detectan hasta que la aplicación arranca contra
-   MySQL. Es el hueco más grande que queda de la suite.
+   MySQL. Es el hueco más grande que queda de la suite. La tanda de los puntos 25, 36, 17 y
+   30 lo tapó a medias con tests de contrato por reflexión (que el `@Transactional`, el
+   `@Version` y los `orphanRemoval` estén donde deben), pero eso **no** prueba que
+   Hibernate los ejecute: solo que las anotaciones estén puestas. Cerrar esto de verdad
+   necesita H2, y es lo primero que agregaría.
 ---
 
 # Corregidos
@@ -1175,10 +973,10 @@ completo de completar, cambiar de categoría y volver a completar.
 **Lo que NO se puso, y por qué.** Se llegó a agregar un
 `@UniqueConstraint` sobre `(perfil_id, insignia_id)` para cubrir el caso de dos peticiones
 simultáneas con la misma insignia, que un `Set` en memoria no puede ver. Se quitó al
-revisarlo: sin `@Version` en ninguna entidad (ver punto 36) el problema real es otro y más
-grave, el índice no lo cubría, y además hacía que la transacción perdedora hiciera rollback
-y perdiera una donación legítima. Poner el bloqueo optimista en el agregado es lo que
-resuelve las dos cosas a la vez.
+revisarlo: sin `@Version` en ninguna entidad el problema real era otro y más grave, el índice
+no lo cubría, y además hacía que la transacción perdedora hiciera rollback y perdiera una
+donación legítima. Poner el bloqueo optimista en el agregado es lo que resuelve las dos
+cosas a la vez, y eso ya está hecho: ver [el punto 36](#253617--30-progresin-del-donante--corregidos).
 
 **Pendiente que queda:** el historial de las misiones con constancia sigue siendo el de
 toda la misión, no solo el del intento en curso. Eso hace que el `progreso` se recalcule con
@@ -1412,3 +1210,135 @@ guard de `periodo` nulo.
 `obtenerPorId` que devuelven `null` en vez de `Optional`, y la excepción para "no existe"
 no es uniforme: `CategoriaService.eliminarCategoria` lanza `EntityNotFoundException`
 mientras `RankingService.eliminarRanking` lanza `InexistenteException` para el mismo caso.
+
+---
+
+## 25 + 36 + 17 + 30. Progresión del donante — corregidos
+
+Los cuatro se cerraron en la misma tanda (2026-10-05) y no por casualidad: los cuatro eran
+fallos de la progresión del donante, y cada uno rompía el mismo camino por un lado distinto.
+Un donante podía quedarse sin misión al alta (25), perder una donación si dos llegaban
+juntas (36), acumular filas muertas en cada avance (17), o quedar congelado para siempre si
+el admin le quitaba su misión (30). Corregidos de a uno, el resultado intermedio parecía
+arreglado y el siguiente destapaba el que venía.
+
+El detalle largo de cada uno se sacó de la lista abierta; acá queda qué se hizo y qué
+decisión consciente se tomó.
+
+### 25. `crearPerfil` abre transacción
+
+Era el **único método de escritura de `PerfilService` sin `@Transactional`**, y sin ella la
+categoría base volvía desligada de la sesión: `Categoria.categoriaMisiones` es LAZY y
+`open-in-view` está desactivado, así que `primeraMision()` tocaba una colección sin sesión.
+El daño era peor de lo que parecía, porque **`PersistentBag.isEmpty()` devuelve el tamaño
+cacheado sin inicializar**: en vez de fallar, devolvía `true`, `primeraMision()` daba `null`
+y el perfil quedaba con `progresoMisionActual == null` para siempre. Como
+`progresarPerfil` corta en `if (misionActual != null)`, ese donante no completaba misiones,
+no recibía insignias y no aparecía en el ranking, sin ningún error en ninguna parte.
+
+Se agregó `@Transactional` y, además, `RepositorioCategorias.obtenerCategoriaBase()` con
+`LEFT JOIN FETCH` de la secuencia de misiones. El `fetch` no es cosmético: deja de
+depender del alcance de la transacción para armar el perfil, y devuelve `Optional` para que
+el llamador distinga "no hay categoría base configurada" de "hay pero no tiene misiones",
+que son dos errores distintos.
+
+### 36. `@Version` en `Perfil` y `Categoria`, con reintento y 409
+
+Sin control de concurrencia, dos donaciones del mismo donante que entraban al mismo tiempo
+hacían *lost update*: las dos leían el mismo progreso, las dos le sumaban uno y la segunda
+escritura pisaba a la primera. Si además las dos completaban la misión, cada una insertaba
+su `InsigniaObtenida` — el `Set` en memoria no las ve porque cada petición tiene su propio
+`Perfil` — y el donante quedaba con dos insignias puntuadas doble en el ranking.
+
+- `@Version` en `Perfil` (la raíz del agregado, que cubre progreso, categoría e insignias)
+  y en `Categoria` (el otro leer-modificar-escribir del servicio).
+- `PerfilService.actualizarPerfilImpacto` reintenta hasta 3 veces ante
+  `OptimisticLockingFailureException`. El reintento es seguro por el punto 14: la fila de
+  la donación no se llega a guardar cuando se detecta la carrera, así que al volver a
+  entrar el `findById` no la encuentra y el camino idempotente sigue igual.
+- El `flush` del perfil va **antes** de guardar la donación, para que la carrera se detecte
+  en el `UPDATE` del perfil y no después de haber insertado la fila de la donación.
+- `GlobalExceptionHandler` mapea la excepción a **409**, no a 500: 409 significa "el estado
+  del recurso cambió, volvé a intentarlo", y con un 500 el cliente trata el fallo como
+  irrecuperable y la donación se pierde.
+
+**Dos decisiones que conviene no volver a discutir:**
+
+1. Se usa `TransactionTemplate` y no `@Transactional(propagation = REQUIRES_NEW)` en un
+   método auxiliar. Un `@Transactional` en un método `private` no pasa por el proxy de
+   Spring, así que no abre transacción ninguna: es el mismo problema que tiene
+   `ValidadorAdmin.verificarPermisos` (punto 23). Con el `TransactionTemplate` cada intento
+   arranca en una transacción nueva, que es lo único que hace que el reintento sirva.
+2. `@Version` va en `Perfil`, no en `ProgresoMision`. El progreso es una parte del
+   agregado; ponerlo en la parte dejaría sin cubrir el avance de categoría y el `Set` de
+   insignias.
+
+### 17. `orphanRemoval` donde la referencia se reemplaza
+
+Cinco relaciones eran unidireccionales con `cascade = ALL` y sin `orphanRemoval`, y en todas
+se reemplaza la referencia: Hibernate insertaba la fila nueva, actualizaba la FK y dejaba la
+vieja sin que nadie la referenciara. Como el reemplazo pasa en cada misión completada y en
+cada edición de criterio, las tablas crecían de forma indefinida.
+
+**Se puso `orphanRemoval` en dos, y se dejó explícitamente fuera en tres.** La diferencia
+importa más que la anotación:
+
+| Relación | Decisión | Motivo |
+|---|---|---|
+| `Perfil.progresoMisionActual` | sí | Se reemplaza en cada avance. `ProgresoMision` no lo referencia nadie más que su perfil, así que borrarlo es seguro. |
+| `Mision.reglaDeProgreso` | sí | Cubre de una sola vez la `Regla` vieja y, por el `cascade = ALL` de la regla, también su `ReglaConstancia` y su `Operacion`. Las reglas no se comparten entre misiones: cada una construye las suyas. |
+| `Mision.insigniaObjetivo` | **no** | `InsigniaObtenida.insignia` es un `ManyToOne`: **todas** las filas del historial apuntan a ella. Borrarla por ser huérfana rompería la FK o se llevaría por delante insignias ya otorgadas. Hoy el código nunca reemplaza la referencia, pero si alguna vez lo hace el borrado tiene que ser explícito y verificado, no un efecto colateral de una anotación. |
+| `Regla.constancia` | **no** | La regla no se modifica en el lugar: se reemplaza entera. Como su relación tiene `cascade = ALL` (que incluye `REMOVE`), borrar la regla vieja se lleva por delante su constancia. No queda huérfana. |
+| `Regla.operacion` | **no** | Ídem. |
+
+`Perfil.insigniasObtenidas` ya lo tenía.
+
+**Deuda que quedó:** con `ddl-auto=update` conviven en las bases de desarrollo las filas
+viejas con las nuevas, así que el `orphanRemoval` evita que se acumulen de acá en adelante
+pero **no limpia lo que ya está**. Si hay que purgar, es un `DELETE` por tabla de las filas
+sin dueño, y tiene que correrse a mano.
+
+### 30. Quitar una misión ya no bloquea al donante
+
+El escenario: la categoría era `[A(1), B(2), C(3)]` con 40 donantes en `C`, y el admin hacía
+`PUT /api/categorias/admin/{id}` con `"misiones": ["A", "B"]`. Para cada donante la posición
+3 ya no existía, el código la pedía, recibía `null` y entraba al `return` temprano de
+`Perfil.cambiarMision`, que solo hacía `progresoMisionActual = null`. El donante quedaba
+**bloqueado para siempre**: sin misión no progresa, no completa nada y no aparece en el
+ranking. Y como el `return` era previo al `registerEvent`, tampoco se emitía
+`MisionCambiada`: no había forma de enterarse desde afuera de que había pasado algo.
+
+Se agregó `SincronizacionPerfiles.misionMasCercana`, que cuando la posición ya no existe
+busca la **última misión que queda por debajo**, o sea la más cercana: el donante retrocede
+lo mínimo, que es lo más justo con el avance que ya hizo. Si le sacaron la primera y no
+queda nada por debajo, arranca por la que ahora sea la primera. Y si la categoría se quedó
+genuinamente sin misiones, ahí sí no hay nada que ofrecerle: queda sin misión, pero ahora
+con un `log.warn` que dice el id del donante y el de la categoría.
+
+**Decisión consciente:** el donante **pierde** el avance que tenía en la misión que se le
+sacó, porque se le crea un `ProgresoMision` nuevo. Es la consecuencia de quitarle una
+misión al programa a mitad de camino, y es preferible a dejarlo congelado: perder progreso
+es una molestia, quedarse trabado no tiene arreglo.
+
+**Arreglo de paso, no estaba en el punto:** la comparación de si el donante sigue en la
+misma misión usaba `nuevaMision.getIdMision().equals(...)`, que revienta con
+`NullPointerException` si alguna de las dos no está persistida, con la categoría a medio
+reacomodar y la transacción ya abierta. Ahora es `Objects.equals`, y con dos ids `null` da
+`true`, que para ese caso es justo lo correcto: si son la misma fila, el donante no se toca.
+
+### Tests
+
+Los cuatro puntos no se prueban con una base de datos: los que dependen de LAZY (25), de
+`@Version` (36) y del `flush` de Hibernate (17) necesitarían H2 o Testcontainers. Lo que
+sí se hizo fue cubrir las dos mitades que se pueden:
+
+- **Efecto observable**: el donante sale del alta con misión, el reintento aplica la
+  donación, el reacomodo deja al donante en una misión concreta.
+- **Contrato**: tests por reflexión que fallan si alguien saca el `@Transactional` de
+  `crearPerfil`, si le saca el `fetch` a la consulta, si saca el `@Version`, o si pone
+  `orphanRemoval` donde no va. Esta segunda mitad es la que blinda de verdad: los bugs de
+  los cuatro puntos eran justamente "faltaba una anotación", y una anotación se puede
+  borrar sin que ningún test funcional se entere.
+
+Tests: `PerfilServiceAltaTest`, `PerfilServiceConcurrenciaTest`, `OrphanRemovalTest`,
+`SincronizacionPerfilesMisionRemovidaTest`.

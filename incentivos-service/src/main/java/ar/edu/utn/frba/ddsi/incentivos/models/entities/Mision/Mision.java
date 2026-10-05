@@ -36,7 +36,28 @@ public class Mision {
     @JoinColumn(name = "insignia_objetivo_id", nullable = false)
     private Insignia insigniaObjetivo;
 
-    @OneToOne(cascade = CascadeType.ALL, optional = false)
+    /**
+     * Qué tiene que cumplir el donante para completar esta misión.
+     *
+     * <p>El {@code orphanRemoval} cubre las tres filas que se acumulaban al editar una
+     * misión (punto 17): la {@code Regla} anterior, y con ella su {@code ReglaConstancia} y
+     * su {@code Operacion}, porque el {@code cascade = ALL} de la regla incluye {@code REMOVE}.
+     * Antes, cada vez que el admin cambiaba el criterio de completado quedaban las tres
+     * filas viejas en la base sin que nadie las referenciara.
+     *
+     * <p>Es seguro porque una {@code Regla} y su {@code Operacion} no se comparten: cada
+     * misión construye las suyas en {@code MisionFactory}.
+     *
+     * <p><b>Acá NO va {@code orphanRemoval} en cambio, a diferencia de
+     * {@code ProgresoMision}:</b> la {@code Insignia} es referenciada por el
+     * {@code InsigniaObtenida} de todos los donantes que ya la obtuvieron, así que borrarla
+     * por ser huérfana rompería la FK de esas filas o, peor, se llevaría por delante las
+     * insignias ya otorgadas. Hoy el código nunca reemplaza la referencia —
+     * {@code Mision.actualizar} la modifica en el lugar con
+     * {@code Insignia.actualizar} — pero si alguna vez lo hiciera, el borrado tiene que ser
+     * explícito y verificado, no un efecto colateral de un cambio de anotación.
+     */
+    @OneToOne(cascade = CascadeType.ALL, optional = false, orphanRemoval = true)
     @JoinColumn(name = "regla_id")
     private Regla reglaDeProgreso;
 

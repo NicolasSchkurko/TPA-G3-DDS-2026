@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -50,6 +51,32 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idPerfil; // id interno
 
+    /**
+     * Control de concurrencia optimista (punto 36).
+     *
+     * <p>Hibernate lo incrementa en cada {@code UPDATE} y lo compara en el
+     * {@code WHERE}. Si otra transacción modificó el perfil en el medio, la comparación
+     * no da y la segunda escritura falla con
+     * {@code ObjectOptimisticLockingFailureException}, en vez de pisar lo que hizo la
+     * primera.
+     *
+     * <p>Sin esto, dos donaciones del mismo donante que entran al mismo tiempo pierden
+     * una: las dos leen el mismo progreso, las dos le suman uno y la segunda escritura
+     * pisa a la primera. Y si las dos completaban la misión, cada una insertaba su
+     * {@code InsigniaObtenida}: el {@code Set} en memoria no las ve, porque cada petición
+     * tiene su propio objeto {@code Perfil} con su propio {@code Set}. El donante quedaba
+     * con dos insignias y el ranking lo puntuaba doble.
+     *
+     * <p>Va en {@code Perfil} y no en {@code ProgresoMision} a propósito: el progreso es
+     * una parte del agregado, y poner el {@code @Version} en la parte en vez de en la raíz
+     * dejaría sin cubrir el avance de categoría y el set de insignias.
+     *
+     * <p>No lleva setter ni se muestra: es de Hibernate, y tocarlo a mano rompe la
+     * garantía de silencio.
+     */
+    @Version
+    private Long version;
+
     private String nombreUsuario;
 
     @ManyToOne
@@ -72,7 +99,21 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @OneToMany(mappedBy = "perfil", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<InsigniaObtenida> insigniasObtenidas;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    /**
+     * La misión que el donante está haciendo y cuánto lleva.
+     *
+     * <p>El {@code orphanRemoval} es lo que evita que la tabla crezca sin freno (punto 17):
+     * cada cambio de misión o de categoría reemplaza esta referencia por un
+     * {@code ProgresoMision} nuevo, y sin esto Hibernate insertaba la fila nueva y
+     * actualizaba la FK sin borrar la vieja. Como {@code cambiarMision} corre en cada
+     * misión completada, quedaban un {@code ProgresoMision} huérfano por cada avance del
+     * donante, y en la tabla {@code progreso_mision} nadie los referenciaba.
+     *
+     * <p>Es seguro borrarlos: {@code ProgresoMision} no lo referencia nadie más que este
+     * perfil. Ni siquiera el reinicio de progreso del punto 15 lo busca por id, sino que
+     * llega por el perfil.
+     */
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private ProgresoMision progresoMisionActual;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {
@@ -182,6 +223,14 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
      *
      * <p>No pide el contacto: el evento lleva el {@code idUsuario} y el listener lo resuelve
      * en {@code AFTER_COMMIT}, fuera de la transacción (punto 12).
+     *
+     * <p><b>{@code misionNueva == null} significa que la categoría se quedó sin
+     * misiones</b>, no que haya un error: en ese caso el donante deja de progresar porque no
+     * hay nada que progresar, que es distinto a quedar trabado por un bug (punto 30).
+     * Antes, pasar por acá era la forma normal de "el admin sacó la misión que tenías", y
+     * el donante quedaba sin misión para siempre sin enterarse de nada. Ahora
+     * {@code SincronizacionPerfiles} busca la misión más cercana antes de llegar, y este
+     * caso queda reducido a la categoría genuinamente vacía.
      */
     public void cambiarMision(Mision misionNueva, Mision misionAnterior) {
         if (misionNueva == null) {

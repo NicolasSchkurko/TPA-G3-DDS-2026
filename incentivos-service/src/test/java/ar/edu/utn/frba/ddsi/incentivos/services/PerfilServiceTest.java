@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @DisplayName("PerfilService: la mision vigente del donante viaja con su avance")
 class PerfilServiceTest {
@@ -27,7 +28,8 @@ class PerfilServiceTest {
     private final PerfilService service = new PerfilService(
             mock(RepositorioPerfiles.class),
             mock(RepositorioCategorias.class),
-            mock(RepositorioDonaciones.class)
+            mock(RepositorioDonaciones.class),
+            mock(TransactionTemplate.class)
     );
 
     /**

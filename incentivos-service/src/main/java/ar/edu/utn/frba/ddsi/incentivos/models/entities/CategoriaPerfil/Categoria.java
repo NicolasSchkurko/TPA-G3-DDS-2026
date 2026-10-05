@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.Version;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,23 @@ public class Categoria {
     private UUID idAdmin;
     private String nombre;
     private Integer posicionSecuencia;
+
+    /**
+     * Control de concurrencia optimista (punto 36).
+     *
+     * <p>Hace falta por el mismo motivo que en {@code Perfil}:{@code actualizarCategoria}
+     * lee la categoría, arma una nueva y la guarda. Dos admins editando la misma categoría
+     * al mismo tiempo, o el scheduler de la secuencia corriendo mientras un admin edita,
+     * hacen que la segunda escritura pise a la primera y la secuencia de posiciones quede
+     * con huecos o con dos categorías en el mismo lugar.
+     *
+     * <p>La estructura de posiciones se garantiza en la aplicación y no con un
+     * {@code unique} en la base (punto 19), justamente porque el movimiento es un
+     * {@code UPDATE} en bloque de varias filas. Eso deja la concurrencia en manos del
+     * {@code @Version}.
+     */
+    @Version
+    private Long version;
 
     @OneToMany(mappedBy = "categoria", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("posicion ASC")

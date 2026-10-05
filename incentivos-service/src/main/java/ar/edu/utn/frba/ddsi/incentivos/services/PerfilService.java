@@ -30,7 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Alta, consulta y edición de perfiles de donante, y aplicación del progreso de las
@@ -44,16 +46,37 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 public class PerfilService {
+    /**
+     * Cuántas veces se reintenta la aplicación de una donación que perdió la carrera de
+     * concurrencia (punto 36).
+     *
+     * <p>Tres porque la carrera se resuelve en milisegundos: dos donaciones que
+     * terminan a la vez, una de las dos gana y la otra reintenta contra una base
+     * que ya no tiene a nadie escribiendo. Con más intentos se empieza a esperar
+     * por bloqueos de fila que no se van a resolver, y con menos se convierte una
+     * carrera puntual en un error para el donante.
+     */
+    private static final int MAX_INTENTOS_CONCURRENCIA = 3;
+
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioDonaciones repositorioDonaciones;
 
+    /**
+     * Se inyecta a mano y no por anotacion justamente porque hace falta sin proxy: el
+     * reintento de concurrencia tiene que abrir una transaccion nueva desde adentro de
+     * esta misma clase.
+     */
+    private final TransactionTemplate transactionTemplate;
+
     public PerfilService(RepositorioPerfiles repositorioPerfiles,
                          RepositorioCategorias repositorioCategorias,
-                         RepositorioDonaciones repositorioDonaciones) {
+                         RepositorioDonaciones repositorioDonaciones,
+                         TransactionTemplate transactionTemplate) {
         this.repositorioPerfiles = repositorioPerfiles;
         this.repositorioCategorias = repositorioCategorias;
         this.repositorioDonaciones = repositorioDonaciones;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -82,7 +105,24 @@ public class PerfilService {
      *
      * <p>Se verifica que el donante no tenga perfil antes de armar nada, así el error de
      * duplicado no deja un agregado a medio construir.
+     *
+     * <p><b>La transacción no es opcional (punto 25).</b> Sin ella,
+     * {@code findAllByOrderByPosicionSecuenciaAsc()} corre en su propia transacción
+     * read-only y devuelve la categoría desligada: la sesión ya se cerró. Como
+     * {@code Categoria.categoriaMisiones} es LAZY y {@code open-in-view} está desactivado,
+     * {@code primeraMision()} toca una colección sin sesión y falla de una de dos formas: o
+     * lanza {@code LazyInitializationException} y el alta responde 500, o —peor— el
+     * {@code PersistentBag.isEmpty()} devuelve el tamaño cacheado sin inicializar, devuelve
+     * {@code true} en silencio, {@code primeraMision()} da {@code null} y el perfil queda con
+     * {@code progresoMisionActual == null} <b>para siempre</b>. Como
+     * {@code progresarPerfil} corta en {@code if (misionActual != null)}, ninguna donación
+     * posterior de ese donante progresa jamás: no completa misiones, no recibe insignias y
+     * nunca aparece en el ranking.
+     *
+     * <p>La consulta de la categoría base además trae la secuencia de misiones en la misma
+     * ida, así que el método no depende del alcance de la transacción para armar el perfil.
      */
+    @Transactional
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
         // Se chequea antes de armar nada: si el donante ya existe, no tiene sentido
         // resolver la categoría base ni tocar la base de datos.
@@ -92,15 +132,16 @@ public class PerfilService {
 
         Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
 
-        Categoria categoriaBase = repositorioCategorias.findAllByOrderByPosicionSecuenciaAsc().stream()
-                                                       .findFirst()
-                                                       .orElseThrow(() -> new CategoriaBaseInexistenteException(
-                                                           "No existe la categoría base configurada"));
+        Categoria categoriaBase = repositorioCategorias.obtenerCategoriaBase()
+                .orElseThrow(() -> new CategoriaBaseInexistenteException(
+                        "No existe la categoría base configurada"));
 
         // El agregado arma su propio estado inicial: categoría y primera misión.
         nuevo.iniciarEn(categoriaBase);
 
-        return convertirPerfilADTO(repositorioPerfiles.save(nuevo));
+        Perfil guardado = repositorioPerfiles.save(nuevo);
+        repositorioPerfiles.flush();
+        return convertirPerfilADTO(guardado);
     }
 
     /** El perfil completo de un donante, con su categoría y su misión en curso. */
@@ -188,8 +229,46 @@ public class PerfilService {
      * reintento. El id es obligatorio en el DTO: sin él no hay clave con la que deduplicar,
      * y el 400 es preferible a guardar una fila imposible de deduplicar.
      */
-    @Transactional
     public boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
+        OptimisticLockingFailureException ultimaFalla = null;
+
+        for (int intento = 1; intento <= MAX_INTENTOS_CONCURRENCIA; intento++) {
+            try {
+                // TransactionTemplate y no @Transactional porque el reintento tiene que
+                // arrancar en una transaccion nueva: la de la vuelta perdedora ya esta
+                // marcada como rollback y reusarla no serviria de nada. Y tampoco se puede
+                // con @Transactional(REQUIRES_NEW) en un metodo privado, porque las
+                // llamadas internas no pasan por el proxy de Spring. Es el mismo problema
+                // que tiene ValidadorAdmin.verificarPermisos (punto 23).
+                Boolean resultado = transactionTemplate.execute(estado ->
+                        aplicarImpacto(idUsuario, dto));
+                return Boolean.TRUE.equals(resultado);
+
+            } catch (OptimisticLockingFailureException excepcion) {
+                ultimaFalla = excepcion;
+                log.warn("Carrera de concurrencia al aplicar la donacion {} de {}; "
+                                + "intento {} de {}",
+                        dto.getIdDonacion(), idUsuario, intento, MAX_INTENTOS_CONCURRENCIA);
+            }
+        }
+
+        // Se agotaron los intentos. Sube la excepcion y el handler la traduce a 409, que
+        // es un codigo reintentable por definicion: el cliente que lo recibe sabe que
+        // puede volver a llamar sin miedo.
+        throw ultimaFalla;
+    }
+
+    /**
+     * Aplica el impacto de una donacion, dentro de la transaccion que abrio el
+     * {@link TransactionTemplate} de {@link #actualizarPerfilImpacto}.
+     *
+     * <p>El reintento es seguro por el punto 14: la fila de la donacion no se llego a
+     * guardar cuando se detecta la carrera, asi que al volver a entrar el
+     * {@code findById} no la encuentra y el camino idempotente sigue igual. Y si otra
+     * transaccion la guardo en el medio, el reintento devuelve ese resultado y sale, que
+     * tambien es lo correcto.
+     */
+    private boolean aplicarImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         if (idUsuario == null) {
             throw new DatosInvalidosException("El ID del usuario no puede ser nulo");
         }
@@ -213,6 +292,11 @@ public class PerfilService {
         donacion.registrarSiCompletoMision(perfilActualizado);
 
         repositorioPerfiles.save(p);
+        // El flush va antes de guardar la donacion a proposito: el @Version de Perfil se
+        // valida en el UPDATE, y sin forzarlo aca el fallo de concurrencia se detectaria
+        // despues de haber insertado la fila de la donacion, con el reintento partiendo de
+        // un estado que no espera.
+        repositorioPerfiles.flush();
         repositorioDonaciones.save(donacion);
 
         return perfilActualizado;

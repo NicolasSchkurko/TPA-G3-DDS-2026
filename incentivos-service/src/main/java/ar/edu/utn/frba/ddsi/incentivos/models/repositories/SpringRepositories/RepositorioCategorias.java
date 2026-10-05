@@ -25,6 +25,23 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
 
     List<Categoria> findAllByOrderByPosicionSecuenciaAsc();
 
+    /**
+     * La categoría base, o sea la primera del programa, con su secuencia de misiones ya
+     * cargada.
+     *
+     * <p>Existe para el alta de un donante (punto 25), y el {@code fetch} no es
+     * cosmético: {@code categoriaMisiones} es LAZY y {@code open-in-view} está
+     * desactivado, así que sin traerse la colección en la misma consulta, el
+     * {@code Categoria} vuelve desligado y el primer {@code primeraMision()} falla o, peor,
+     * devuelve {@code null} en silencio dejando al donante sin misión para siempre.
+     *
+     * <p>{@code Optional} y no {@code null}: el llamador distingue "no hay categoría base
+     * configurada" de "hay pero no tiene misiones", que son dos errores distintos.
+     */
+    @Query("SELECT c FROM Categoria c LEFT JOIN FETCH c.categoriaMisiones WHERE c.posicionSecuencia = "
+            + "(SELECT MIN(c2.posicionSecuencia) FROM Categoria c2)")
+    Optional<Categoria> obtenerCategoriaBase();
+
     Optional<Categoria> findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(Integer posicionActual);
 
     @Query("""

@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -55,6 +56,25 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> manejarPerfilExistente(
             PerfilExistenteException exception) {
         return respuesta(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    /**
+     * Carrera de concurrencia (punto 36): el {@code @Version} de {@code Perfil} detectó que
+     * otra transacción modificó el mismo donante.
+     *
+     * <p>Es 409 y no 500 a propósito: un 409 significa "el estado del recurso cambió, volvé
+     * a intentarlo", que es exactamente lo que corresponde acá. Con un 500 el cliente
+     * trata el fallo como irrecuperable y la donación se pierde.
+     *
+     * <p>Con el reintento de {@code PerfilService.actualizarPerfilImpacto} esto solo se ve
+     * si la carrera dura más que tres intentos, o sea muy rara vez.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, String>> manejarConcurrencia(
+            OptimisticLockingFailureException exception) {
+        return respuesta(HttpStatus.CONFLICT,
+                "Hubo otra operación sobre el mismo recurso al mismo tiempo. "
+                        + "Volvé a intentarlo.");
     }
 
     /**

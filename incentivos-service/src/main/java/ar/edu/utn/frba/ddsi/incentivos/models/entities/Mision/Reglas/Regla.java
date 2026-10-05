@@ -38,6 +38,17 @@ public class Regla {
     @JoinColumn(name = "constancia_id")
     private ReglaConstancia constancia; // puede ser null
 
+    // Ni constancia ni operacion llevan orphanRemoval (punto 17), a diferencia de
+    // Mision.reglaDeProgreso y de Perfil.progresoMisionActual. El motivo es que la regla no
+    // se modifica nunca en el lugar: cuando el admin cambia el criterio de completado,
+    // Mision.actualizar reemplaza la Regla entera por una nueva. Y como esta relacion tiene
+    // cascade = ALL, que incluye REMOVE, borrar la regla vieja se lleva por delante su
+    // constancia y su operacion. No queda huerfana ninguna de las dos.
+    //
+    // Poner orphanRemoval aca seria ademas redundante y peligroso: si alguien llegara a
+    // reasignar constancia u operacion sobre una regla que ya se guardo, Hibernate borraria
+    // la fila sin comprobar que nadie mas la este usando.
+
     @Enumerated(EnumType.STRING)
     private AtributoImpacto atributo; // atributo de ImpactoDonacion
 
