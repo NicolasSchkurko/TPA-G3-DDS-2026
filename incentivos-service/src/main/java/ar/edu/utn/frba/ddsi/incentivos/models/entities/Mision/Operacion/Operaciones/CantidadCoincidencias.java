@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Entity;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -26,7 +27,7 @@ public class CantidadCoincidencias extends Operacion {
         this.valorEsperado = valorEsperado;
     }
     @Override
-    public Boolean calcularProgreso(Object valorAtributo) {
+    public Boolean calcularProgreso(Object valorAtributo, ProgresoDelDonante donante) {
         if (valorEsperado == null || valorAtributo == null) {
             return false;
         }

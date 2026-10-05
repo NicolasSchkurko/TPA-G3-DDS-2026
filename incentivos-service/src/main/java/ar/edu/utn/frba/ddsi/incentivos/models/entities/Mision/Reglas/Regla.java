@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,8 +42,8 @@ public class Regla {
         this.operacion = operacion;
     }
 
-    public Boolean estaCompleta(Integer progreso) {
-        return operacion.estaCompleta(progreso);
+    public Boolean estaCompleta(Integer progreso, ProgresoDelDonante donante) {
+        return operacion.estaCompleta(progreso, donante);
     }
 
     public Object aplicar(ImpactoDonacion donacion){
@@ -56,7 +57,7 @@ public class Regla {
         };
     }
 
-    public Boolean operar(Object valorAtributo){
-        return operacion.calcularProgreso(valorAtributo);
+    public Boolean operar(Object valorAtributo, ProgresoDelDonante donante){
+        return operacion.calcularProgreso(valorAtributo, donante);
     }
 }

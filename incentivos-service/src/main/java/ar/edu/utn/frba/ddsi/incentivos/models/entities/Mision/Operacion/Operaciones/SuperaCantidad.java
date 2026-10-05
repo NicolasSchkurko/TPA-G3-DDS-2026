@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +23,8 @@ public class SuperaCantidad extends Operacion {
 
     @Override
     public Boolean calcularProgreso(
-            Object valorAtributo
+            Object valorAtributo,
+            ProgresoDelDonante donante
     ){
         if (valorAtributo instanceof Integer valorConvertido) {
             return valorConvertido >= cantidadEsperada;

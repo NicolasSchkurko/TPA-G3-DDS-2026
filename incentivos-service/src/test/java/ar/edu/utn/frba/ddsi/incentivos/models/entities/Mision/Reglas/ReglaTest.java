@@ -3,6 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,9 @@ class ReglaTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final UUID USUARIO = UUID.randomUUID();
+
+    /** La regla recibe el avance del donante: sin esto no podria evaluar reglas con memoria. */
+    private static final ProgresoDelDonante DONANTE = new ProgresoMision(null);
 
     private static ImpactoDonacion donacion(String categoria, String subCategoria,
                                             Integer cantidadBienes, String estado) {
@@ -75,7 +80,7 @@ class ReglaTest {
         ImpactoDonacion conCategoriasDistintas =
                 donacion("ALIMENTOS", "MERCEARIA", 1, "ENTREGADA");
 
-        assertThat(regla.operar(regla.aplicar(conCategoriasDistintas))).isTrue();
+        assertThat(regla.operar(regla.aplicar(conCategoriasDistintas), DONANTE)).isTrue();
     }
 
     @Test
@@ -83,9 +88,9 @@ class ReglaTest {
     void operaYEvaluaLaCompletitud() {
         Regla regla = new Regla(null, AtributoImpacto.CANTIDAD_BIENES, new SuperaCantidad(2, 5));
 
-        assertThat(regla.operar(6)).isTrue();
-        assertThat(regla.estaCompleta(2)).isTrue();
-        assertThat(regla.estaCompleta(1)).isFalse();
+        assertThat(regla.operar(6, DONANTE)).isTrue();
+        assertThat(regla.estaCompleta(2, DONANTE)).isTrue();
+        assertThat(regla.estaCompleta(1, DONANTE)).isFalse();
     }
 
     @Test

@@ -5,8 +5,9 @@ para que no se pierdan de vista al crecer el código. Los puntos 1 a 9 son decis
 diseño o requisitos del enunciado que todavía no están implementados; los puntos 10 en
 adelante son hallazgos de la auditoría del código.
 
-Cada punto dice si quedó **abierto** o **corregido**, y los corregidos explican qué se
-cambió. Los puntos 7, 16 y 20 se corrigieron en la branch `fixes-bugs`.
+La numeración no se renumera cuando un punto se corrige: los números son IDs estables y
+quedan huecos. Un punto corregido se borra de acá, así que esta lista es solo lo que
+sigue pendiente.
 
 ---
 
@@ -215,57 +216,6 @@ colección necesita `@Transactional(readOnly = true)`.
 
 ---
 
-## 7. Sin validación de entrada en los DTO
-
-**Estado:** corregido en `fixes-bugs`
-**Archivos:** `pom.xml`, `dto/**`, `controllers/**`, `exceptions/GlobalExceptionHandler.java`,
-`models/entities/Mision/Factory/MisionFactory.java`,
-`models/entities/Mision/Factory/OperacionFactory.java`
-
-No había `spring-boot-starter-validation` ni anotaciones `@Valid` / `@NotBlank` en los DTOs.
-`DatosInvalidosException` existía pero nadie la lanzaba. Un `MisionDTO` con `regla: null`
-entra al service y reventaba con `NullPointerException` en `MisionService.construirMision`
-(`regla.getConstancia()` sobre un `regla` nulo).
-
-**Qué se hizo**
-
-1. `spring-boot-starter-validation` agregado al `pom.xml`, sin versión para que la
-   maneje el BOM de Spring Boot 3.2.5.
-2. `@Valid` en todos los cuerpos de entrada, y restricciones sobre los DTOs: `MisionDTO`,
-   `ReglaDTO`, `OperacionDTO`, `ConstanciaDTO`, `CategoriaDTO`, `PerfilDonanteDTO`,
-   `ImpactoDonacionDTO` y `CrearRankingDTO`.
-   `ImpactoDonacionDTO.fechaEntrega` quedó `@NotNull` a propósito: las métricas mensuales
-   hacen `YearMonth.from(fechaEntrega)`, así que una fecha nula reventaba con
-   `NullPointerException` (500) en lugar de rechazar el pedido con un 400.
-   `PerfilDTO` quedó sin restricciones a propósito: la actualización es parcial y un
-   campo en `null` significa "no lo cambies".
-3. Validación de integridad de la `Regla`, que es lo que Bean Validation no puede
-   expresar, en `MisionFactory` y `OperacionFactory`, tirando `DatosInvalidosException`
-   (ya mapeada a 400):
-   - `COINCIDENCIAS` sin `valorEsperado` armaba una misión **imposible de completar en
-     silencio**, porque `CantidadCoincidencias.calcularProgreso` devuelve `false` si el
-     valor esperado es nulo.
-   - `SUPERA_CANTIDAD` o `VALORES_DISTINTOS` sin `cantidad`: `SuperaCantidad` desempaca el
-     `Integer` al comparar y reventaba con `NullPointerException` cuando llegaba una
-     donación.
-   - `progresoObjetivo <= 0` en cualquier operación.
-   - `unidadTiempo` fuera de la lista admitida. Antes `ChronoUnit.valueOf` aceptaba
-     cualquier valor, incluidos `FOREVER` y `NANOS`. Ahora se aceptan `MINUTOS`, `HORAS`,
-     `DIAS`, `SEMANAS`, `MESES`, `ANOS` más los nombres en inglés que ya quedaron en la
-     base, sin importar mayúsculas, espacios ni acentos (el `ñ` de "AÑOS" se descompone
-     y se resuelve).
-   - `atributo` desconocido o vacío, con la lista de valores válidos en el mensaje.
-4. `GlobalExceptionHandler` suma `MethodArgumentNotValidException` (detalle por campo),
-   `HttpMessageNotReadableException`, `MethodArgumentTypeMismatchException`,
-   `EntityNotFoundException` y `DataIntegrityViolationException`.
-
-**Efecto secundario encontrado:** `MisionDTO.desdeEntidad` usaba
-`getUnidadTiempo().toString()`, y `ChronoUnit.toString()` devuelve `"Months"` en camelCase.
-La API emitía la unidad de tiempo distinta de todos los demás enums, que van en
-mayúsculas. Ahora usa `name()` y devuelve `"MONTHS"`.
-
----
-
 ## 8. La categoría no está visible públicamente
 
 **Estado:** abierto
@@ -376,55 +326,6 @@ misión.
    donaciones con `hizoProgresarMision = true` cuya misión estaba dentro del período.
    Como el progreso solo avanza una misión por vez, "misiones cumplidas en el mes" se
    puede reconstruir, aunque hay que definir bien el período.
-
-## 11. `ValoresDistintos` guarda el estado de la misión, no del donante
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `models/entities/Mision/Operacion/Operaciones/ValoresDistintos.java:24-55`
-
-Este es el bug más serio del modelo. `ValoresDistintos` es una entidad de la
-**misión**, y su lista `valoresDistintos` se muta dentro de `calcularProgreso`:
-
-```java
-public Boolean calcularProgreso(Object valorAtributo) {
-    JsonNode valor = MAPPER.valueToTree(valorAtributo);
-    if (!valoresDistintos.contains(valor)) {
-        valoresDistintos.add(valor);   // <-- estado compartido
-    }
-    return true;
-}
-```
-
-Como hay **una sola fila `ValoresDistintos` por misión**, la lista es compartida por
-todos los donantes que están haciendo esa misión. Ejemplo con la misión
-"Completitud" (3 categorías distintas):
-
-1. Ana dona "Ropa" → `valoresDistintos = ["Ropa"]`
-2. Beto dona "Alimentos" → `valoresDistintos = ["Ropa", "Alimentos"]`
-3. Carla dona "Muebles" → `valoresDistintos = ["Ropa","Alimentos","Muebles"]`
-
-A partir del paso 3 la misión está completa para **los tres**, y el paso 4 en adelante
-también, sin importar qué done cada uno. El foco de Ana sigue siendo 1 categoría,
-pero el servicio le dice que van 3. `calcularProgreso` además devuelve `true` siempre,
-así que `progreso++` cuenta cada donación, y `estaCompleta` (línea 36) solo mira el
-`progreso` y el tamaño de la lista compartida.
-
-**Consecuencia:** la misión se completa antes de tiempo y se otorga una insignia que
-el donante no se ganó. Como el mismo razonamiento aplica a cualquier
-`ValoresDistintos`, el problema es del tipo de operación, no de esta misión en
-particular.
-
-Bug adicional en la misma clase: `MAPPER.valueToTree(null)` devuelve `null`, y ese
-`null` se agrega a la lista, así que una donación sin `categoria` **infla el conteo de
-valores distintos** con un elemento nulo.
-
-**Propuesta:** mover el conjunto de valores observados al agregado del donante, no a
-la definición de la misión. Por ejemplo, una entidad `ValorObservado` con
-`(progresoMision, valor)` y una restricción única sobre
-`(progresoMision, valor)`. `ValoresDistintos` pasa a ser sólo la configuración
-("queremos N valores distintos") y el conteo real sale de un `count(distinct valor)`
-sobre las filas del donante.
 
 ## 12. `RestTemplate` sin timeouts y llamadas HTTP dentro de transacciones
 
@@ -600,62 +501,6 @@ misión. Lo que debería recibir es
    ya acumulado (reiniciar es válido, pero debería ser una decisión consciente y
    notificada, no un efecto colateral).
 
-## 16. El progreso de la misión no se expone, y el DTO invierte dos campos
-
-**Estado:** corregido en `fixes-bugs` (el paso 3 de la propuesta quedó como decisión)
-**Archivos:** `dto/Perfil/MisionPerfilDTO.java`,
-`services/PerfilService.java`,
-`models/repositories/SpringRepositories/RepositorioPerfiles.java`,
-`controllers/PerfilController.java`
-
-El enunciado pide que el donante pueda *"visualizar en todo momento el progreso de su
-misión actual y la distancia restante hacia el objetivo"*. `ProgresoMision.progreso` se
-calcula y se mantiene, pero **no aparecía en ningún DTO de salida**: el grep de `progreso`
-en `dto/` solo devuelve `progresoObjetivo`, que es el objetivo y va en los DTOs de
-administración. El donante no tenía forma de ver cuánto lleva.
-
-Peor: `MisionPerfilDTO` tenía los campos cruzados. El constructor declaraba
-`(nomM, nomI, descripcion)` y el servicio lo llamaba en orden `(nombreMision,
-descripcion, nombreInsignia)`:
-
-```java
-public MisionPerfilDTO(String nomM, String nomI, String descripcion) {
-    this.descripcion = descripcion;      // recibe el NOMBRE de la insignia
-    this.insigniaObjetivo = nomI;       // recibe la DESCRIPCIÓN de la misión
-    this.nombreMision = nomM;
-}
-```
-
-O sea, `GET /api/perfiles/{idUsuario}/mision` devolvía `descripcion` con el nombre de la
-insignia y `insigniaObjetivo` con la descripción de la misión. Es el mismo tipo de error
-que se corrigió antes en el constructor de `ImpactoDonacion`: parámetros que no se
-llaman igual que los campos que asignan, así que el orden equivocado compila sin que
-nada lo marque.
-
-**Qué se hizo**
-
-1. `MisionPerfilDTO` expone `progresoActual`, `progresoObjetivo` y `progresoFaltante`.
-2. El constructor quedó con los parámetros nombrados igual que los campos que asigna
-   (`nombreMision`, `descripcion`, `insigniaObjetivo`, ...), que es lo que evita la clase
-   de bug que había.
-3. `RepositorioPerfiles.obtenerMisionPorIdUsuario` pasó a devolver el `ProgresoMision`
-   completo (`obtenerProgresoMisionPorIdUsuario`) en vez de proyectar `pm.mision`,
-   porque el avance solo está en el progreso.
-4. `PerfilService.convertirProgresoMisionADTO` calcula el faltante como
-   `max(0, objetivo - actual)`.
-5. El 404 ya no se maneja a mano en el controller: el service tira `InexistenteException`
-   y lo traduce el handler (ver punto 20).
-
-**Salvedad conocida:** el faltante se calcula sobre el `progresoObjetivo`. Para
-`VALORES_DISTINTOS` la regla además exige alcanzar cierta cantidad de valores
-diferentes, así que el faltante puede llegar a 0 sin que la misión esté completa. Es una
-limitación del modelo (ver punto 11), no de este cálculo.
-
-**Pendiente de decidir:** convertir los DTO a `record` no se hizo en esta tanda. Con el
-constructor corregido y los parámetros nombrados como los campos que asignan, el error ya
-no puede repetirse por orden, pero un `record` sigue siendo la forma que lo elimina de
-raíz.
-
 ## 17. Filas huérfanas por `@OneToMany`/`@OneToOne` sin `orphanRemoval`
 
 **Estado:** abierto
@@ -767,80 +612,6 @@ existen".
 Lo que debería hacer: deduplicar los ids antes de resolver, y comparar conjuntos
 (`new HashSet<>(idMisiones).size()`) en lugar de tamaños de listas.
 
-## 20. Códigos de estado inconsistentes y NPE en los `desdeEntidad`
-
-**Estado:** corregido en `fixes-bugs`
-**Archivos:** `services/CategoriaService.java`, `services/MisionService.java`,
-`services/PerfilService.java`, `services/RankingService.java`,
-`dto/Admin/MisionDTO.java`, `dto/Admin/OperacionDTO.java`,
-`exceptions/GlobalExceptionHandler.java`, `exceptions/InexistenteException.java`,
-`exceptions/DatosInvalidosException.java`, `controllers/**`
-
-**a) `null` donde debería haber 404.** `obtenerCategoriaPorId` y `obtenerMisionPorId`
-devuelven `CategoriaDTO.desdeEntidad(null)` / `MisionDTO.desdeEntidad(null)`, que
-devuelven `null`, y el controller lo traduce a 404. Funciona, pero por accidente y
-dependiendo de que el DTO sea null-safe. Los controllers de categorías y perfiles lo
-manejan; `RankingController` no, y `eliminarCategoria` lanza
-`EntityNotFoundException`, que **no está en `GlobalExceptionHandler`** y sale como 500.
-
-**b) NPE en la serialización de misiones.** `MisionDTO.desdeEntidad` asume que ningún
-campo de la regla es nulo:
-
-```java
-mision.getReglaDeProgreso().getConstancia()          // 33
-reglaConstancia.getUnidadTiempo().toString()          // 38 → NPE si no hay unidad
-mision.getReglaDeProgreso().getAtributo().name()      // 46 → NPE si atributo es null
-```
-
-`atributo` y `unidadTiempo` son columnas nullable y no hay validación que los exija
-(ver punto 7). Consecuencia: **una sola misión mal cargada rompe el listado completo**
-`GET /api/misiones`, porque el `.map(MisionDTO::desdeEntidad)` falla en el medio de la
-página.
-
-**c) El filtro de atributo filtra con los datos crudos.**
-`AtributoImpacto.valueOf(atributoStr.trim().toUpperCase())` tira `IllegalArgumentException`
-con un mensaje de Java al usuario si el valor no existe. Debería validarse y devolver un
-400 con un mensaje que liste los valores válidos.
-
-**d) `progresarPerfil` devuelve 404 con `body` vacío**, y `PerfilService` devuelve `null`
-en guards que en realidad no pueden disparar (`idUsuario == null` en una `@PathVariable`).
-
-**Qué se hizo**
-
-- (a) `null` donde debería haber 404. `CategoriaService.obtenerCategoriaPorId` y
-  `actualizarCategoria`, `MisionService.obtenerMisionPorId` y `actualizarMision`,
-  `PerfilService.buscarPorIdUsuario` y `RankingService.obtenerPuestoRankingActual` ahora
-  tiran `InexistenteException`. De los controllers se sacaron los chequeos de `null` que
-  ya no hacen falta. A `InexistenteException` y `DatosInvalidosException` se les agregó
-  constructor con mensaje, para que el 404 diga qué recurso falta y el 400 qué campo está
-  mal; `manejarInexistente` usa el mensaje cuando lo hay y cae al texto genérico si no.
-- (b) NPE en la serialización de misiones. `MisionDTO.desdeEntidad` ahora es null-safe en
-  toda la cadena: `reglaDeProgreso`, `constancia`, `unidadTiempo`, `atributo`,
-  `operacion` e `insigniaObjetivo`. Una sola misión mal cargada ya no rompe el listado
-  completo.
-- (b2) `OperacionDTO.desdeEntidad` usaba `String.valueOf(valorEsperado)`, y
-  `String.valueOf(null)` devuelve el **texto** `"null"`, no `null`. Una coincidencia sin
-  valor esperado salía en la respuesta con la cadena `"null"`. Ahora devuelve `null`.
-- (c) El filtro y el alta de atributo. `AtributoImpacto.valueOf` tiraba
-  `IllegalArgumentException` con un mensaje de Java al usuario. Ahora
-  `MisionFactory.crearAtributoImpacto` valida y devuelve un 400 que lista los valores
-  válidos, tolerando mayúsculas, espacios y acentos. Lo mismo para `tipoOperacion` en
-  `OperacionFactory`.
-- (d) `progresarPerfil` ya no devuelve 404 con `body` vacío: `PerfilService` tira
-  `DatosInvalidosException` (400) en el guard de `idUsuario`, que de todos modos no puede
-  disparar desde una `@PathVariable`.
-- (e) `GlobalExceptionHandler` suma `EntityNotFoundException` (404),
-  `DataIntegrityViolationException` (409, para borrar una categoría que todavía tiene
-  donantes asignados, ver punto 18), `MethodArgumentNotValidException` (400 con detalle
-  por campo), `HttpMessageNotReadableException` (400) y
-  `MethodArgumentTypeMismatchException` (400, por ejemplo `?limite=abc`).
-
-**Deuda que queda en este punto:** los repositorios siguen teniendo métodos `obtenerPorId`
-que devuelven `null` en vez de `Optional` (`RepositorioCategorias`, `RepositorioMisiones`),
-y `CategoriaService.eliminarCategoria` lanza `EntityNotFoundException` mientras
-`RankingService.eliminarRanking` lanza `InexistenteException` para el mismo caso. Unificar
-en `Optional` queda como mejora futura.
-
 ## 21. Rutas de administración de ranking sin control de administrador
 
 **Estado:** abierto
@@ -951,3 +722,73 @@ claro.
 alcance a usarse, terminar de conectarlos), pasar `DonacionClient` a `@Slf4j` con
 stack trace, agregar el `@Tag` faltante, sacar `@Setter` de las entidades y dejar
 setters solo donde hacen falta para JPA, y cambiar los `Boolean` de retorno por `void`.
+
+---
+
+# Corregidos
+
+Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía cada
+punto cuando se corrigió, así que no aparecen en la lista de arriba.
+
+## 7. Sin validación de entrada en los DTO — corregido
+
+Se agregó `spring-boot-starter-validation` y `@Valid` en todos los `@RequestBody`, con
+constraints en los DTO de entrada. Además `MisionFactory` y `OperacionFactory` validan la
+integridad de la `Regla` en código, que Bean Validation no puede expresar: `COINCIDENCIAS`
+exige `valorEsperado` y `VALORES_DISTINTOS`/`SUPERA_CANTIDAD` exigen `cantidad`.
+`GlobalExceptionHandler` mapea `MethodArgumentNotValidException`,
+`HttpMessageNotReadableException` y `MethodArgumentTypeMismatchException` a 400.
+
+De paso: `MisionDTO.desdeEntidad` usaba `getUnidadTiempo().toString()`, y
+`ChronoUnit.toString()` devuelve `"Months"` en camelCase; ahora usa `name()` y devuelve
+`"MONTHS"`, como los demás enums.
+
+## 11. `ValoresDistintos` guardaba el estado de la misión, no del donante — corregido
+
+`ValoresDistintos` mutaba una lista de valores que vive en la entidad de la misión, o
+sea compartida por todos los que la hacen: al tercer donante la misión figuraba completa
+para los tres. Peor: `MAPPER.valueToTree(null)` devolvía `null` y ese `null` se agregaba
+a la lista, así que una donación sin `categoria` inflaba el conteo de valores distintos.
+
+Ahora la operación es sólo configuración (`cantValoresDistintos`) y el avance vive del
+lado del donante: nueva entidad `ValorObservado` (`progreso_mision_id` + `valor`, con
+restricción única) manejada por `ProgresoMision`. Para que la operación pueda leer y
+escribir ese estado se agregó la interfaz `ProgresoDelDonante` y el `ProgresoMision` se
+la pasa a sí mismo en `calcularProgreso` y `estaCompleta`; el contexto va en la firma y
+no en un campo de la operación justamente para que el estado compartido no pueda volver.
+
+Una donación sin el atributo ya no aporta (devuelve `false` y no registra nada). Y cuando
+la constancia rompe la racha, `evaluarConstancia` borra los valores observados además de
+poner `progreso` en 0; si no, el donante conservaría crédito por categorías de una racha
+que ya no existe.
+
+**Migración pendiente en prod:** `ddl-auto=validate` y sin Flyway ni Liquibase, así que
+la tabla `valor_observado` hay que crearla a mano donde la base ya existe (en dev se crea
+sola con `update`). La columna JSON `valores_distintos` de `operacion` queda sin mapear y
+conviene eliminarla.
+
+## 16. El progreso de la misión no se expone, y el DTO invierte dos campos — corregido
+
+`MisionPerfilDTO` tenía los parámetros del constructor en el orden equivocado, así que
+`progresoActual` y `progresoObjetivo` salían intercambiados. Se reescribió y se le
+agregaron `progresoFaltante` y el desglose de `progresoActual`/`progresoObjetivo`. Del
+lado del repositorio, `obtenerProgresoMisionPorIdUsuario` pasó a devolver
+`Optional<ProgresoMision>` en vez de `null`, y `PerfilService` suma
+`convertirProgresoMisionADTO`.
+
+## 20. Códigos de estado inconsistentes y NPE en los `desdeEntidad` — corregido
+
+`MisionDTO.desdeEntidad` armaba `"null"` a mano cuando faltaba un valor, y
+`OperacionDTO` hacía lo mismo. Ahora son null-safe y usan `name()` en vez de `toString()`
+para los enums. Los services lanzan `InexistenteException` (404) en vez de devolver `null`,
+y los controllers sacaron los chequeos de `null` que sobraban.
+`PerfilService.convertirPerfilADTO`, que estaba duplicado cuatro veces, se extrajo a un
+solo método.
+
+`RankingService.obtenerPuestoRankingActual` ahora tira 404, y `crearRankingMensal` tiene
+guard de `periodo` nulo.
+
+**Deuda que quedó:** `RepositorioCategorias` y `RepositorioMisiones` siguen con métodos
+`obtenerPorId` que devuelven `null` en vez de `Optional`, y la excepción para "no existe"
+no es uniforme: `CategoriaService.eliminarCategoria` lanza `EntityNotFoundException`
+mientras `RankingService.eliminarRanking` lanza `InexistenteException` para el mismo caso.

@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,13 +27,22 @@ public abstract class Operacion {
         this.progresoObjetivo = progresoObjetivo;
     }
 
-    public Boolean estaCompleta(Integer progresoActual) {
+    /**
+     * @param donante el avance del donante que está haciendo la misión. Las operaciones
+     *                que dependen solo del contador no lo usan, pero las que tienen que
+     *                recordar qué vio el donante (como {@code ValoresDistintos}) sí, y
+     *                por eso va en la firma en vez de guardarse en la operación: si se
+     *                guardara ahí, sería estado compartido entre todos los donantes de
+     *                la misión.
+     */
+    public Boolean estaCompleta(Integer progresoActual, ProgresoDelDonante donante) {
         return progresoActual != null
                && progresoObjetivo != null
                && progresoActual >= progresoObjetivo;
     }
 
     public abstract Boolean calcularProgreso(
-            Object valorAtributo
+            Object valorAtributo,
+            ProgresoDelDonante donante
     );
 }

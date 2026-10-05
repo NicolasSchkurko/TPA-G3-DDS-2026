@@ -2,9 +2,11 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,6 +19,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OperacionFactoryTest {
 
     private final OperacionFactory factory = new OperacionFactory();
+
+    /** Las operaciones reciben el avance del donante; aca ninguno lo necesita. */
+    private static ProgresoDelDonante donante() {
+        return new ProgresoMision(null);
+    }
 
     @Test
     @DisplayName("COINCIDENCIAS sin valor esperado armaba una mision imposible de completar")
@@ -52,8 +59,8 @@ class OperacionFactoryTest {
 
         assertThat(operacion).isInstanceOf(SuperaCantidad.class);
         assertThat(((SuperaCantidad) operacion).getCantidadEsperada()).isEqualTo(5);
-        assertThat(operacion.calcularProgreso(4)).isFalse();
-        assertThat(operacion.calcularProgreso(5)).isTrue();
+        assertThat(operacion.calcularProgreso(4, donante())).isFalse();
+        assertThat(operacion.calcularProgreso(5, donante())).isTrue();
     }
 
     @Test

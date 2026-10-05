@@ -5,11 +5,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -151,5 +153,140 @@ class ProgresoMisionTest {
 
         progreso.setProgreso(1);
         assertThat(progreso.estaCompleta()).isFalse();
+    }
+
+    @Nested
+    @DisplayName("Valores distintos: el avance es del donante, no de la mision")
+    class ValoresDistintosPorDonante {
+
+        /** "6 donaciones de 3 categorias distintas", mirando CATEGORIA. */
+        private Mision misionDeCategorias() {
+            Regla regla = new Regla(
+                    null,
+                    AtributoImpacto.CATEGORIA,
+                    new ValoresDistintos(2, 3)
+            );
+            return mision(regla, "Completitud");
+        }
+
+        private ImpactoDonacion donacionDeCategoria(LocalDateTime fecha, String categoria) {
+            return new ImpactoDonacion(
+                    "Fundacion", 1, fecha, categoria, "MERCEARIA", "ENTREGADA",
+                    UUID.randomUUID()
+            );
+        }
+
+        @Test
+        @DisplayName("las categorias que vio uno no completan la mision de otro")
+        void lasCategoriasDeUnoNoCompletanLaMisionDeOtro() {
+            Mision mision = misionDeCategorias();
+
+            // Ana y Beto hacen la MISMA mision, o sea comparten la entidad ValoresDistintos.
+            ProgresoMision ana = new ProgresoMision(mision);
+            ProgresoMision beto = new ProgresoMision(mision);
+
+            LocalDateTime marzo = LocalDateTime.of(2026, 3, 1, 10, 0);
+            ana.progresarMision(donacionDeCategoria(marzo, "INDUMENTARIA"), List.of());
+            beto.progresarMision(donacionDeCategoria(marzo, "ALIMENTOS"), List.of());
+            beto.progresarMision(donacionDeCategoria(marzo.plusDays(1), "MUEBLES"), List.of());
+
+            assertThat(beto.cantidadValoresObservados()).isEqualTo(2);
+            assertThat(ana.cantidadValoresObservados()).isEqualTo(1);
+
+            // Beto va 2 de 2 donaciones, pero solo vio 2 de las 3 categorias: no completa.
+            assertThat(beto.estaCompleta()).isFalse();
+            // Ana solo hizo una donacion, y no le sirven las categorias de Beto.
+            assertThat(ana.estaCompleta()).isFalse();
+            assertThat(ana.getProgreso()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("la insignia se otorga solo a quien completo su propia cuenta")
+        void laInsigniaSeOtorgaSoloAQuienLaCompleto() {
+            Mision mision = misionDeCategorias();
+
+            ProgresoMision ana = new ProgresoMision(mision);
+            ProgresoMision beto = new ProgresoMision(mision);
+
+            LocalDateTime marzo = LocalDateTime.of(2026, 3, 1, 10, 0);
+            ana.progresarMision(donacionDeCategoria(marzo, "INDUMENTARIA"), List.of());
+            beto.progresarMision(donacionDeCategoria(marzo, "ALIMENTOS"), List.of());
+            beto.progresarMision(donacionDeCategoria(marzo.plusDays(1), "MUEBLES"), List.of());
+
+            // Carla dona 3 veces con 3 categorias distintas: cumple las dos condiciones
+            // (2 donaciones y 3 categorias).
+            ProgresoMision carla = new ProgresoMision(mision);
+            carla.progresarMision(donacionDeCategoria(marzo, "SALUD"), List.of());
+            carla.progresarMision(donacionDeCategoria(marzo.plusDays(1), "LIBROS"), List.of());
+            Insignia deCarla = carla.progresarMision(
+                    donacionDeCategoria(marzo.plusDays(2), "JUGUETES"), List.of());
+            assertThat(deCarla).isNotNull();
+            assertThat(carla.estaCompleta()).isTrue();
+
+            // Ana y Beto no se han ganado nada, aunque las categorias "existan"
+            // en la mision porque otro las dono.
+            assertThat(ana.estaCompleta()).isFalse();
+            assertThat(beto.estaCompleta()).isFalse();
+        }
+
+        @Test
+        @DisplayName("una donacion sin categoria no suma valor distinto")
+        void unaDonacionSinCategoriaNoSumaValorDistinto() {
+            ProgresoMision progreso = new ProgresoMision(misionDeCategorias());
+
+            ImpactoDonacion sinCategoria = new ImpactoDonacion(
+                    "Fundacion", 1, LocalDateTime.of(2026, 3, 1, 10, 0),
+                    null, null, "ENTREGADA", UUID.randomUUID()
+            );
+            progreso.progresarMision(sinCategoria, List.of());
+
+            assertThat(sinCategoria.getHizoProgresarMision()).isFalse();
+            assertThat(progreso.cantidadValoresObservados()).isZero();
+            assertThat(progreso.getProgreso()).isZero();
+        }
+
+        @Test
+        @DisplayName("al romperse la constancia se descartan los valores de la racha vieja")
+        void alRomperseLaConstanciaSeDescartanLosValoresViejos() {
+            ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+            Regla regla = new Regla(
+                    constancia,
+                    AtributoImpacto.CATEGORIA,
+                    new ValoresDistintos(2, 2)
+            );
+            ProgresoMision progreso = new ProgresoMision(mision(regla, "Constante"));
+
+            LocalDateTime marzo = LocalDateTime.of(2026, 3, 10, 10, 0);
+            ImpactoDonacion primera = donacionDeCategoria(marzo, "ALIMENTOS");
+            progreso.progresarMision(primera, List.of());
+
+            // Como lo hace el service, la segunda evaluacion recibe el historial.
+            progreso.progresarMision(
+                    donacionDeCategoria(marzo.plusMonths(1), "MUEBLES"), List.of(primera));
+
+            assertThat(progreso.getProgreso()).isEqualTo(2);
+            assertThat(progreso.cantidadValoresObservados()).isEqualTo(2);
+
+            // La racha vencio: el donante arranca de cero y las categorias que vio antes
+            // del corte tampoco cuentan.
+            progreso.evaluarConstancia(List.of(), LocalDateTime.of(2026, 12, 1, 10, 0));
+
+            assertThat(progreso.getProgreso()).isZero();
+            assertThat(progreso.cantidadValoresObservados()).isZero();
+        }
+
+        @Test
+        @DisplayName("cambiar de mision deja los valores atras")
+        void cambiarDeMisionDejaLosValoresAtras() {
+            ProgresoMision ana = new ProgresoMision(misionDeCategorias());
+            ana.progresarMision(
+                    donacionDeCategoria(LocalDateTime.of(2026, 3, 1, 10, 0), "ALIMENTOS"),
+                    List.of());
+
+            ProgresoMision nuevo = new ProgresoMision(misionDeCategorias());
+
+            assertThat(nuevo.cantidadValoresObservados()).isZero();
+            assertThat(ana.cantidadValoresObservados()).isEqualTo(1);
+        }
     }
 }
