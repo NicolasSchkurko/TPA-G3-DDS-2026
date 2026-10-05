@@ -5,6 +5,7 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,7 +16,6 @@ public class RabbitMQConfig {
     public static final String ROUTING_KEY_NUEVA_DONACION = "donaciones.creada";
 
     public static final String LOGISTICAS_EXCHANGE = "logisticas.exchange";
-    public static final String SOLICITUD_EVENTOS_QUEUE = "logisticas.solicitud.eventos.queue";
     public static final String RESPUESTA_EVENTOS_QUEUE = "logisticas.eventos.respuesta.queue";
     public static final String ROUTING_KEY_SOLICITUD_EVENTOS = "logisticas.solicitud.eventos";
     public static final String ROUTING_KEY_RESPUESTA_EVENTOS = "logisticas.eventos.respuesta";
@@ -41,13 +41,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue solicitudEventosQueue() {
-        return new Queue(SOLICITUD_EVENTOS_QUEUE, true);
+    public Queue respuestaEventosQueue() {
+        return new Queue(RESPUESTA_EVENTOS_QUEUE, true);
     }
 
     @Bean
-    public Binding bindingSolicitudEventos(Queue solicitudEventosQueue, TopicExchange donacionesExchange) {
-        return BindingBuilder.bind(solicitudEventosQueue).to(donacionesExchange).with(ROUTING_KEY_SOLICITUD_EVENTOS);
+    public Binding bindingRespuestaEventos(Queue respuestaEventosQueue,
+                                           @Qualifier("logisticasExchange") TopicExchange logisticasExchange) {
+        return BindingBuilder.bind(respuestaEventosQueue).to(logisticasExchange).with(ROUTING_KEY_RESPUESTA_EVENTOS);
     }
 
     @Bean

@@ -40,7 +40,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @OneToMany(mappedBy = "perfil", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InsigniaObtenida> insigniasObtenidas;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private ProgresoMision progresoMisionActual;
 
     public Perfil(UUID idUsuario, String nombreUsuario) {

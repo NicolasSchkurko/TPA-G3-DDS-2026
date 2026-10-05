@@ -22,6 +22,8 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
 
     List<Categoria> findAllByOrderByPosicionSecuenciaAsc();
 
+    @Query("SELECT DISTINCT c FROM Categoria c JOIN c.categoriaMisiones cm WHERE cm.mision.idMision = :idMision")
+    List<Categoria> findAllByMisionId(@Param("idMision") UUID idMision);
 
     Optional<Categoria> findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(Integer posicionActual);
 
@@ -37,7 +39,7 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     @Query("UPDATE Categoria c SET c.posicionSecuencia = c.posicionSecuencia + 1 WHERE c.posicionSecuencia >= :inicio")
     void desplazarHaciaAbajoDesde(@Param("inicio") Integer inicio);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Categoria c SET c.posicionSecuencia = c.posicionSecuencia - 1 WHERE c.posicionSecuencia >= :inicio")
     void desplazarHaciaArribaDesde(@Param("inicio") Integer inicio);
 

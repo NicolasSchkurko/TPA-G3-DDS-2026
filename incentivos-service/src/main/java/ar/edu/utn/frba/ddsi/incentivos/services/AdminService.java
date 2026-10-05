@@ -3,6 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.CategoriaMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
@@ -11,13 +13,16 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +34,7 @@ public class AdminService {
     private final GestorSecuenciaCategoria gestorSecuencia;
     private final DonacionClient donacionClient;
     private final GestorSincronizacionPerfiles gestorSincronizacion;
+    private final RepositorioPerfiles repoPerfiles;
     private final MisionFactory misionFactory;
 
     public AdminService(RepositorioCategorias repoCategorias,
@@ -36,13 +42,15 @@ public class AdminService {
                         GestorSecuenciaCategoria gestorSecuencia,
                         MisionFactory misionFactory,
                         DonacionClient donacionClient,
-                        GestorSincronizacionPerfiles gestorSincronizacion) {
+                        GestorSincronizacionPerfiles gestorSincronizacion,
+                        RepositorioPerfiles repoPerfiles) {
         this.repoCategorias = repoCategorias;
         this.repoMisiones = repoMisiones;
         this.gestorSecuencia = gestorSecuencia;
         this.misionFactory = misionFactory;
         this.donacionClient = donacionClient;
         this.gestorSincronizacion = gestorSincronizacion;
+        this.repoPerfiles = repoPerfiles;
     }
 
     private void verificarPermisos(UUID idAdmin) {
@@ -129,6 +137,23 @@ public class AdminService {
         }
 
         Integer posicionLiberada = categoria.getPosicionSecuencia();
+        Categoria categoriaSiguiente = posicionLiberada == null
+            ? null
+            : repoCategorias.findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(posicionLiberada)
+                            .orElse(null);
+        List<Perfil> perfiles = repoPerfiles.findAllByCategoriaActual(categoria);
+
+        for (Perfil perfil : perfiles) {
+            Mision misionAnterior = perfil.getProgresoMisionActual() != null
+                ? perfil.getProgresoMisionActual().getMision()
+                : null;
+            MedioContacto contacto = categoriaSiguiente != null
+                ? donacionClient.obtenerContactoPersona(perfil.getIdUsuario())
+                : null;
+            perfil.cambiarCategoria(categoriaSiguiente, categoria, misionAnterior, contacto);
+        }
+
+        repoPerfiles.saveAllAndFlush(perfiles);
         repoCategorias.delete(categoria);
         gestorSecuencia.desplazarParaEliminar(posicionLiberada);
         return repoCategorias.obtenerTodas().stream()
@@ -212,7 +237,49 @@ public class AdminService {
     @Transactional
     public MisionDTO eliminarMision(UUID idAdmin, UUID idMision) {
         verificarPermisos(idAdmin);
-        return misionToDTO(repoMisiones.eliminarMision(idMision));
+        Mision mision = repoMisiones.findById(idMision).orElse(null);
+        if (mision == null) {
+            return null;
+        }
+
+        MisionDTO misionEliminada = misionToDTO(mision);
+        List<Perfil> perfiles = repoPerfiles.findAllByMisionActual(idMision);
+        for (Perfil perfil : perfiles) {
+            Mision misionSiguiente = obtenerMisionSiguiente(perfil.getCategoriaActual(), idMision);
+            MedioContacto contacto = misionSiguiente != null
+                ? donacionClient.obtenerContactoPersona(perfil.getIdUsuario())
+                : null;
+            perfil.cambiarMision(misionSiguiente, mision, contacto);
+        }
+        repoPerfiles.saveAllAndFlush(perfiles);
+
+        List<Categoria> categoriasConMision = repoCategorias.findAllByMisionId(idMision);
+        categoriasConMision.forEach(categoria -> categoria.eliminarMision(mision));
+        repoCategorias.saveAllAndFlush(categoriasConMision);
+
+        repoMisiones.eliminarMision(idMision);
+        return misionEliminada;
+    }
+
+    private Mision obtenerMisionSiguiente(Categoria categoria, UUID idMisionEliminada) {
+        if (categoria == null) {
+            return null;
+        }
+
+        Integer posicionEliminada = categoria.getCategoriaMisiones().stream()
+            .filter(cm -> cm.getMision().getIdMision().equals(idMisionEliminada))
+            .map(CategoriaMision::getPosicion)
+            .findFirst()
+            .orElse(null);
+        if (posicionEliminada == null) {
+            return null;
+        }
+
+        return categoria.getCategoriaMisiones().stream()
+            .filter(cm -> cm.getPosicion() != null && cm.getPosicion() > posicionEliminada)
+            .min(Comparator.comparing(CategoriaMision::getPosicion))
+            .map(CategoriaMision::getMision)
+            .orElse(null);
     }
 
     private CategoriaDTO categoriaToDTO(Categoria categoria) {

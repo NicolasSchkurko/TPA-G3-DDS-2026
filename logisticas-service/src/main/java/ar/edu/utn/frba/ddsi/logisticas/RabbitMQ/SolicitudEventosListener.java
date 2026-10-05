@@ -23,7 +23,7 @@ public class SolicitudEventosListener {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.RESPUESTA_EVENTOS_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.SOLICITUD_EVENTOS_QUEUE)
     public void recibirSolicitud(SolicitudEventosDTO solicitud) {
 
         EventoLogisticaResponseDTO respuesta = eventoService.obtenerEventosNuevos(solicitud.getDesdeId());
