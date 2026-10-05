@@ -104,7 +104,7 @@ class PerfilTest {
         Mision nueva = mision("Racha");
         perfil.setProgresoMisionActual(new ProgresoMision(anterior));
 
-        perfil.cambiarMision(nueva, anterior, CONTACTO);
+        perfil.cambiarMision(nueva, anterior);
 
         assertThat(perfil.getProgresoMisionActual().getMision()).isSameAs(nueva);
         assertThat(perfil.getProgresoMisionActual().getProgreso()).isZero();
@@ -124,7 +124,7 @@ class PerfilTest {
         perfil.setCategoriaActual(origen);
         perfil.setProgresoMisionActual(new ProgresoMision(mision("Primera")));
 
-        perfil.cambiarCategoria(categoria("Vacia"), origen, mision("Primera"), CONTACTO);
+        perfil.cambiarCategoria(categoria("Vacia"), origen, mision("Primera"));
 
         assertThat(perfil.getCategoriaActual().getNombre()).isEqualTo("Vacia");
         assertThat(perfil.getProgresoMisionActual()).isNull();
@@ -138,7 +138,7 @@ class PerfilTest {
         Categoria destino = categoria("Sostenedor", mision("Racha"));
         perfil.setCategoriaActual(origen);
 
-        perfil.cambiarCategoria(destino, origen, mision("Primera"), CONTACTO);
+        perfil.cambiarCategoria(destino, origen, mision("Primera"));
 
         assertThat(perfil.getProgresoMisionActual().getMision().getNombreMision())
                 .isEqualTo("Racha");

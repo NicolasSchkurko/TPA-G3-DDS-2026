@@ -59,16 +59,24 @@ public class NotificacionClient {
         );
     }
 
+    /**
+     * El contacto se resuelve <b>aca</b>, y no cuando se armo el evento (punto 12).
+     *
+     * <p>Este listener corre en {@code AFTER_COMMIT}: la transaccion ya cerro y la conexion
+     * del pool esta liberada. Antes el contacto se pedia dentro de la transaccion, solo para
+     * guardarlo en el evento y usarlo aca, o sea que se retenia una conexion durante una
+     * llamada HTTP sin usar el resultado hasta mucho despues.
+     */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioMision(MisionCambiada event) {
-        enviar(event.contacto(),
+        enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
                "Nueva misión disponible",
                crearMensajeMision(event.misionAnterior(), event.misionNueva()));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioCategoria(CategoriaNuevaPublicar event) {
-        enviar(event.contacto(),
+        enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
                "Nueva categoría",
                crearMensajeCategoria(event.categoriaAnterior(), event.categoriaNueva()));
     }

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
@@ -21,12 +22,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/rankings")
+@Tag(name = "Rankings", description = "Consulta del ranking de colaboradores y administración de los snapshots mensuales.")
 public class RankingController {
   private final RankingService service;
 
@@ -37,15 +40,19 @@ public class RankingController {
   // ========== CREAR ==========
   @Operation(
       summary = "Crear ranking para un período específico",
-      description = "Genera un nuevo ranking mensual a partir de los datos históricos de donaciones de ese período."
+      description = "Genera un nuevo ranking mensual a partir de los datos históricos de donaciones de ese período. Es una operación de administración: requiere el header Admin-Id."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Ranking creado con éxito"),
-      @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período")
+      @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período"),
+      @ApiResponse(responseCode = "403", description = "No autorizado")
   })
   @PostMapping
-  public ResponseEntity<RankingMesDTO> crearRanking(@Valid @RequestBody CrearRankingDTO request) {
-    RankingMesDTO rankingCreado = service.crearRankingMensual(request.getPeriodo());
+  public ResponseEntity<RankingMesDTO> crearRanking(
+      @Parameter(description = "UUID del administrador", required = true)
+      @RequestHeader("Admin-Id") UUID idAdmin,
+      @Valid @RequestBody CrearRankingDTO request) {
+    RankingMesDTO rankingCreado = service.crearRankingMensual(idAdmin, request.getPeriodo());
     return ResponseEntity.ok(rankingCreado);
   }
 
@@ -134,17 +141,20 @@ public class RankingController {
   // ========== ELIMINAR ==========
   @Operation(
       summary = "Eliminar un ranking",
-      description = "Elimina un ranking específico del sistema."
+      description = "Elimina un ranking específico del sistema. Es una operación de administración: requiere el header Admin-Id."
   )
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Ranking eliminado con éxito"),
+      @ApiResponse(responseCode = "403", description = "No autorizado"),
       @ApiResponse(responseCode = "404", description = "Ranking no encontrado")
   })
   @DeleteMapping("/{idRanking}")
   public ResponseEntity<Boolean> eliminarRanking(
+      @Parameter(description = "UUID del administrador", required = true)
+      @RequestHeader("Admin-Id") UUID idAdmin,
       @Parameter(description = "UUID del ranking a eliminar", example = "123e4567-e89b-12d3-a456-426614174000")
       @PathVariable UUID idRanking) {
-    Boolean eliminado = service.eliminarRanking(idRanking);
+    Boolean eliminado = service.eliminarRanking(idAdmin, idRanking);
     return ResponseEntity.ok(eliminado);
   }
 }

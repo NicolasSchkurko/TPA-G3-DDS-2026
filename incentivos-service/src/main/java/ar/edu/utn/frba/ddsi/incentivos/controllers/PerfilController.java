@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -98,6 +99,40 @@ public class PerfilController {
             Pageable pageable) {
         return ResponseEntity.ok(perfilService.obtenerInsigniasPorIdUsuario(idUsuario, pageable));
     }
+
+    // ========== PÚBLICO (sin autenticación) ==========
+
+    /**
+     * Único endpoint del servicio abierto (punto 8), y vive acá con los demás de perfiles
+     * en vez de en un controller aparte.
+     *
+     * <p>El path no colisiona con el {@code GET /{idUsuario}} de más arriba: este tiene
+     * tres segmentos con un literal al final, y aquel tiene dos. La diferencia es que el de
+     * arriba responde con un {@code PerfilDTO} completo y este no.
+     *
+     * <p>Lo que sale de acá es visible sin credenciales, así que devuelve un DTO propio y
+     * acotado: nombre de usuario y nombre de categoría, nada más. Ni misión vigente, ni
+     * insignias, ni identificadores internos.
+     *
+     * <p>El {@code permitAll()} está en {@code SecurityConfig}, como una regla por método
+     * y ruta: solo el GET de ese path. No un prefijo, que abriría de más cualquier cosa
+     * que se agregara después.
+     */
+    @Operation(
+        summary = "Consultar la categoría actual de un donante (público)",
+        description = "Devuelve el nombre de usuario y el nombre de su categoría actual, que es lo que el enunciado declara visible públicamente. No expone misión vigente, insignias ni identificadores internos. No requiere autenticación."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Perfil público obtenido con éxito"),
+        @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
+    })
+    @GetMapping("/{idUsuario}/publico")
+    public ResponseEntity<PerfilPublicoDTO> consultarPerfilPublico(
+        @Parameter(description = "UUID del donante")
+        @PathVariable UUID idUsuario) {
+        return ResponseEntity.ok(perfilService.obtenerPerfilPublico(idUsuario));
+    }
+
     // ========== ACTUALIZAR ==========
     @Operation(
         summary = "Actualizar perfil por impacto de donación",
@@ -144,8 +179,8 @@ public class PerfilController {
     })
     @DeleteMapping("/{idUsuario}")
     public ResponseEntity<Boolean> eliminarPerfil(
-            @Parameter(description = "UUID del perfil a eliminar")
-            @PathVariable UUID idUsuario) {
+        @Parameter(description = "UUID del perfil a eliminar")
+        @PathVariable UUID idUsuario) {
         Boolean eliminado = perfilService.eliminarPerfil(idUsuario);
         return ResponseEntity.ok(eliminado);
     }

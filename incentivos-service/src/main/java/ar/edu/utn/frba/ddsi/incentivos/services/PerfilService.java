@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
@@ -118,6 +119,31 @@ public class PerfilService {
         return convertirProgresoMisionADTO(progreso);
     }
 
+    /**
+     * La vista publica del perfil: nombre de usuario y nombre de su categoria.
+     *
+     * <p>Es lo que el enunciado pide que sea visible publicamente (punto 8), y por eso
+     * devuelve un {@link PerfilPublicoDTO} con solo esos dos campos en vez del
+     * {@code PerfilDTO} completo: la ruta es {@code permitAll()}, asi que lo que viaje
+     * en la respuesta queda expuesto.
+     *
+     * <p>Un perfil sin categoria devuelve {@code nombreCategoria = null} en vez de un 404:
+     * el donante existe y su nombre tiene que poder verse igual. Solo falla si el donante
+     * no existe.
+     */
+    @Transactional(readOnly = true)
+    public PerfilPublicoDTO obtenerPerfilPublico(UUID idUsuario) {
+        Perfil perfil = repositorioPerfiles.findByIdUsuario(idUsuario)
+                                           .orElseThrow(InexistenteException::new);
+
+        Categoria categoria = perfil.getCategoriaActual();
+
+        return new PerfilPublicoDTO(
+                perfil.getNombreUsuario(),
+                categoria == null ? null : categoria.getNombre()
+        );
+    }
+
     // ========== ACTUALIZAR ==========
 
     /**
@@ -190,7 +216,17 @@ public class PerfilService {
         return true;
     }
 
-    private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
+    /**
+ * Le pasa al donante la siguiente misión de su secuencia, que puede ser de la misma
+ * categoría o de la siguiente.
+ *
+ * <p><b>Acá no se llama a ningún servicio externo</b> (punto 12). Antes sí: pedía el
+ * contacto a {@code donaciones-service} para meterlo en el evento, y lo hacía con la
+ * transacción abierta, reteniendo una conexión del pool durante la llamada. Ahora el evento
+ * lleva el {@code idUsuario} y el listener resuelve el contacto en {@code AFTER_COMMIT},
+ * que es exactamente para lo que existe esa fase.
+ */
+private void asignarSiguienteMision(Perfil perfil, Mision misionCompletada) {
         Categoria categoriaActual = perfil.getCategoriaActual();
         if (categoriaActual == null) {
             perfil.setProgresoMisionActual(null);
@@ -199,8 +235,7 @@ public class PerfilService {
 
         Mision siguienteMision = categoriaActual.siguienteMision(misionCompletada);
         if (siguienteMision != null) {
-            MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
-            perfil.cambiarMision(siguienteMision, misionCompletada, contacto);
+            perfil.cambiarMision(siguienteMision, misionCompletada);
             return;
         }
 
@@ -208,13 +243,7 @@ public class PerfilService {
             .obtenerCategoriaSiguiente(categoriaActual);
 
         if (siguienteCategoria != null) {
-            MedioContacto contacto = donacionClient.obtenerContactoPersona(perfil.getIdUsuario());
-            perfil.cambiarCategoria(
-                siguienteCategoria,
-                categoriaActual,
-                misionCompletada,
-                contacto
-            );
+            perfil.cambiarCategoria(siguienteCategoria, categoriaActual, misionCompletada);
             return;
         }
 

@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
@@ -111,7 +110,13 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         return true;
     }
 
-    public void cambiarMision(Mision misionNueva, Mision misionAnterior, MedioContacto contacto) {
+    /**
+ * Asigna una misión nueva y, si corresponde, avisa que cambió.
+ *
+ * <p>No pide el contacto: el evento lleva el {@code idUsuario} y el listener lo resuelve
+     * en {@code AFTER_COMMIT}, fuera de la transacción (punto 12).
+ */
+public void cambiarMision(Mision misionNueva, Mision misionAnterior) {
         if (misionNueva == null) {
             this.progresoMisionActual = null;
             return;
@@ -125,16 +130,15 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     misionAnterior.getInsigniaObjetivo().getNombre(),
                     this.nombreUsuario,
                     this.idUsuario,
-                    contacto,
                     misionNueva.getNombreMision()
             ));
         }
     }
 
+    /** Igual que {@link #cambiarMision}: el contacto lo resuelve el listener. */
     public void cambiarCategoria(Categoria categoriaNueva,
                                  Categoria categoriaAnterior,
-                                 Mision misionAnterior,
-                                 MedioContacto contacto) {
+                                 Mision misionAnterior) {
         this.categoriaActual = categoriaNueva;
 
         Mision primeraMision = categoriaNueva != null ? categoriaNueva.primeraMision() : null;
@@ -145,7 +149,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     categoriaAnterior.getNombre(),
                     categoriaNueva.getNombre(),
                     this.nombreUsuario,
-                    contacto
+                    this.idUsuario
             ));
         }
 
@@ -155,7 +159,6 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
                     misionAnterior.getInsigniaObjetivo().getNombre(),
                     this.nombreUsuario,
                     this.idUsuario,
-                    contacto,
                     primeraMision.getNombreMision()
             ));
         }

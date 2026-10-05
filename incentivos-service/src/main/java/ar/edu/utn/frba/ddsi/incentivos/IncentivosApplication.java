@@ -2,9 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
 @EnableScheduling
@@ -14,8 +12,6 @@ public class IncentivosApplication {
         SpringApplication.run(IncentivosApplication.class, args);
     }
 
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+    // El RestTemplate se define en HttpClientConfig, con timeouts explicitos. Antes vivia
+    // aca como un `new RestTemplate()` pelado, que usa timeouts infinitos: ver el punto 12.
 }

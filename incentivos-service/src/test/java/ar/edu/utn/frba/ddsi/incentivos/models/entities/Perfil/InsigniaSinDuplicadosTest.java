@@ -120,7 +120,7 @@ class InsigniaSinDuplicadosTest {
         assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
 
         // Cambio de categoria: arranca de cero para la MISMA mision.
-        perfil.cambiarMision(racha, racha, null);
+        perfil.cambiarMision(racha, racha);
         assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
 
         // Segundo intento: el historial completo vuelve a completar la racha, pero la

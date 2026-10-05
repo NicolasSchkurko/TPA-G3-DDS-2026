@@ -15,31 +15,29 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 25 | `crearPerfil` sin transacción: los donantes nuevos no reciben misión y no progresan nunca |
 | 3 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 4 | 21 | Las rutas de ranking no validan nada: ni header ni permiso |
-| 5 | 36 | Sin `@Version`: dos donaciones simultáneas pierden progreso y pueden duplicar la insignia |
-| 6 | 12 | Timeouts infinitos dentro de transacciones: un downstream colgado tumba el pool y con él el servicio entero |
-| 7 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
-| 8 | 17 | Filas huérfanas que crecen para siempre |
-| 9 | 22 | N+1 y tablas enteras en memoria |
-| 10 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
-| 11 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 12 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
-| 13 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
-| 14 | 8 | Requisito del enunciado no implementado (categoría pública) |
-| 15 | 24 | La insignia no tiene descripción propia: es texto derivado |
-| 16 | 2 | El podio sale truncado sin avisar |
-| 17 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
-| 18 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 19 | 34 | Dos guardas que el código dice tener y no tiene |
-| 20 | 23 | Higiene: código muerto, logs, encapsulación |
-| 21 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
-| 22 | 4 | `common-lib` es código muerto |
-| 23 | 9 | No es un faltante: es una decisión de arquitectura |
+| 4 | 36 | Sin `@Version`: dos donaciones simultáneas pierden progreso y pueden duplicar la insignia |
+| 5 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
+| 6 | 17 | Filas huérfanas que crecen para siempre |
+| 7 | 22 | N+1 y tablas enteras en memoria |
+| 8 | 30 | Quitar una misión de una categoría bloquea al donante para siempre |
+| 9 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 10 | 31 | La secuencia de posiciones acepta valores fuera de rango en silencio |
+| 11 | 32 | Se aceptan rankings futuros, y eso rompe el ranking "actual" |
+| 12 | 24 | La insignia no tiene descripción propia: es texto derivado |
+| 13 | 2 | El podio sale truncado sin avisar |
+| 14 | 33 | `SUPERA_CANTIDAD` acepta el valor exacto donde el dominio pide "supera" |
+| 15 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
+| 16 | 34 | Dos guardas que el código dice tener y no tiene |
+| 17 | 23 | Higiene: código muerto, logs, encapsulación |
+| 18 | 35 | Los "pendientes" en memoria dicen deduplicar y no deduplican |
+| 19 | 4 | `common-lib` es código muerto |
+| 20 | 9 | No es un faltante: es una decisión de arquitectura |
 
-El punto 36 va después de los dos de autorización a propósito: aquellos dos son
-deterministas (basta llamar al endpoint para sufrir el daño), mientras que el 36 necesita
-que dos peticiones coincidan en el tiempo. A igual impacto, el daño que se puede provocar
-sin condiciones va primero.
+El punto 36 va después del punto 1 a propásito: el 1 es determinista (basta conocer un UUID
+de admin para sufrir el daño), mientras que el 36 necesita que dos peticiones coincidan en
+el tiempo. A igual impacto, el daño que se puede provocar sin condiciones va primero.
+---
+
 ---
 
 ## 25. `crearPerfil` no abre transacción: los perfiles nuevos nunca reciben misión
@@ -89,7 +87,6 @@ también es LAZY.
 **Arreglo:** `@Transactional` en `crearPerfil`. Opcionalmente un
 `@EntityGraph(attributePaths = "categoriaMisiones")` en la query, para no depender del
 alcance de la transacción.
-
 ---
 
 ## 1. La autorización de admin se apoya en un header controlado por el cliente
@@ -158,33 +155,6 @@ módulos y al cliente de front.
 
 Mientras tanto, **no exponer el servicio fuera de la red interna** y tratar el header
 `Admin-Id` como no confiable.
-
----
-
-## 21. Rutas de administración de ranking sin control de administrador
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `controllers/RankingController.java:45-49,145-151`,
-`models/gestores/ValidadorAdmin.java`
-
-`POST /api/rankings` y `DELETE /api/rankings/{idRanking}` **no verifican al
-administrador**: no piden el header `Admin-Id` ni llaman a `ValidadorAdmin`, que sí se
-usa en
-`POST/PUT/DELETE /api/categorias/admin` y en las rutas de misiones.
-
-Con lo que hay hoy (`anyRequest().authenticated()` y sin `UserDetailsService`), eso
-significa que cualquiera que llegue al servicio puede **crear rankings para meses
-históricos arbitrarios** y **borrar rankings ya publicados**. Es un problema distinto
-del punto 1: ahí el admin se valida con un header que el cliente elige (aclaración de
-permisos); acá no hay validación de ningún tipo.
-
-**Propuesta:** aplicar `ValidadorAdmin` a las dos rutas, como ya se hace en el resto de
-la superficie de administración. Y de paso, activar el `@Tag` que falta en
-`RankingController` (ver punto 23).
-
----
-
 ---
 
 ## 36. Sin `@Version`: dos donaciones simultáneas hacen perder progreso
@@ -263,48 +233,6 @@ El mismo problema afecta a `CategoriaService.actualizarCategoria` y a
 `SincronizacionPerfiles`, que también hacen leer-modificar-escribir sin control de
 concurrencia. El punto se centra en `Perfil` porque es donde está el daño más visible,
 pero la solución es la misma en los tres.
-
----
-
-## 12. `RestTemplate` sin timeouts y llamadas HTTP dentro de transacciones
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `IncentivosApplication.java:17-20`,
-`services/PerfilService.java:176,185`,
-`models/gestores/SincronizacionPerfiles.java:61`
-
-El bean de `RestTemplate` es un `new RestTemplate()` pelado, que usa timeouts por
-defecto **infinitos**. Si `donaciones-service`, `notificaciones-service` o `n8n` se
-quedan colgados (no devuelven error, simplemente no responden), el hilo queda
-bloqueado para siempre.
-
-Peor: ese `RestTemplate` se usa **dentro de transacciones de base de datos**:
-
-- `PerfilService.asignarSiguienteMision` llama a `donacionClient.obtenerContactoPersona`
-  para poder construir el evento `MisionCambiada`, y lo hace cuando el donante
-  completa una misión.
-- `SincronizacionPerfiles.actualizarMisionesPorCambioDeCategoria` lo hace una vez por
-  cada perfil afectado, dentro de un `@Transactional`.
-
-Mientras la llamada está bloqueada, la transacción sigue abierta y **ocupa una
-conexión del pool de Hikari**. Con 10 conexiones (default) y 10 requests colgados, el
-servicio entero deja de responder consultas, aunque la base esté perfectamente sana.
-
-A favor: `spring.threads.virtual.enabled=true` está activo, así que los hilos virtuales
-no quedan clavados occupying un hilo de plataforma. Eso **no** salva la conexión de la
-base de datos, que sigue retenida.
-
-**Propuesta**
-
-1. Configurar el `RestTemplate` con `connectTimeout` y `readTimeout` explícitos
-   (3 a 5 segundos es razonable). A partir de ahí un downstream caído produce un
-   error controlado en vez de un cuelgue.
-2. Sacar la llamada HTTP de la frontera transaccional: obtener el contacto **antes**
-   de abrir la transacción, o resolverlo por evento después del commit.
-3. Agregar reintentos con backoff y, si la infraestructura lo permite, un circuit
-   breaker para que un servicio caído no consuma el pool entero.
-
 ---
 
 ## 3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes
@@ -355,11 +283,6 @@ vigente, porque esa integración no está cubierta por el requisito de asincron�
 
 **Propuesta para n8n:** tabla de outbox transaccional + scheduler de reintento con backoff
 exponencial.
-
----
-
----
-
 ---
 
 ## 17. Filas huérfanas por `@OneToMany`/`@OneToOne` sin `orphanRemoval`
@@ -392,7 +315,6 @@ problema: es el ejemplo de cómo debería ser.
 **Propuesta:** agregar `orphanRemoval = true` a las cinco relaciones, o borrar
 explícitamente la entidad anterior antes de reemplazarla. Con `ddl-auto=update` en
 desarrollo conviven las filas viejas con las nuevas, así que la limpieza es aparte.
-
 ---
 
 ## 22. Consultas N+1 y cargadas completas en memoria
@@ -432,7 +354,6 @@ es un full scan de `insignias_obtenidas` cada mes. Debería ser un rango
 `@Query` de agregación para las métricas, paginación por lotes para los schedulers, y
 un `INSERT ... SELECT` para el contacto en lugar del bucle. Agregar índices explícitos
 sobre `insignias_obtenidas(fechaObtencion)` y `progreso_mision`.
-
 ---
 
 ## 30. Quitar una misión de una categoría deja al donante bloqueado para siempre
@@ -472,6 +393,8 @@ Debería caer en `primeraMision()` de la categoría, que sí está disponible.
 emitir el evento. Y si la categoría se quedó sin misiones, avisar explícitamente en vez de
 dejar el perfil en null en silencio.
 
+---
+
 ## 31. `desplazarParaActualizar` descarta la posición pedida en silencio y el service la aplica igual
 
 **Estado:** abierto
@@ -505,6 +428,8 @@ pedir un valor fuera de rango.
 **Arreglo:** `@Min(1)` en el DTO y que el service lance 400 cuando la posición está fuera
 de rango, en vez de perder el pedido en silencio.
 
+---
+
 ## 32. Se aceptan rankings de períodos futuros y eso rompe el ranking "actual"
 
 **Estado:** abierto
@@ -525,6 +450,8 @@ futuro. El mes en curso tiene el mismo problema: siempre sale vacío.
 
 **Arreglo:** rechazar con 400 los períodos `>= YearMonth.now()`.
 
+---
+
 ## 33. `SUPERA_CANTIDAD` usa `>=` donde el dominio pide "supera"
 
 **Estado:** abierto
@@ -544,6 +471,8 @@ enunciado reserva para los de 7 o más.
 
 **Arreglo:** decidir cuál es la semántica correcta y hacerla explícita en el nombre de la
 operación, o ajustar el dato semilla para que no haya ambigüedad.
+
+---
 
 ## 34. `obtenerTodas` parsea el enum sin normalizar y `crearConstancia` contradice su javadoc
 
@@ -574,6 +503,8 @@ racha** creyendo que sí la tiene, y no se detecta en ningún lado.
 **Arreglo:** reusar el normalizador en el repositorio y envolver en
 `DatosInvalidosException`; y hacer que `crearConstancia` cumpla lo que dice su javadoc.
 
+---
+
 ## 35. Los "pendientes" en memoria dicen deduplicar y no deduplican
 
 **Estado:** abierto
@@ -593,7 +524,6 @@ lo hace. Cuando el buffer de notificaciones migre a la cola (punto 3) deja de im
 pero el de publicaciones n8n sigue en pie.
 
 **Arreglo:** `@EqualsAndHashCode`, o guardar por clave en un `Map` en vez de en una `List`.
-
 ---
 
 ## 10. El ranking cuenta insignias, pero el modelo y el enunciado dicen misiones
@@ -636,44 +566,6 @@ misión.
    donaciones con `hizoProgresarMision = true` cuya misión estaba dentro del período.
    Como el progreso solo avanza una misión por vez, "misiones cumplidas en el mes" se
    puede reconstruir, aunque hay que definir bien el período.
-
----
-
----
-
----
-
-## 8. La categoría no está visible públicamente
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `config/SecurityConfig.java`, `controllers/PerfilController.java`
-
-El enunciado pide que *"la categoría actual debe ser visible públicamente junto al nombre
-de usuario"*.
-
-Hoy **no existe ningún endpoint público**: `SecurityConfig` deja
-`anyRequest().authenticated()`, así que hasta el perfil exige credenciales.
-
-El dato sí existe y se devuelve: `GET /api/perfiles/{idUsuario}` responde un `PerfilDTO`
-con `nombreUsuario` y `categoriaActual`. Lo que falta es la decisión de a quién se lo
-muestra.
-
-Esto además choca con el punto 1: como no hay `UserDetailsService` ni usuarios en
-memoria, la autenticación básica no tiene contra qué validar. O sea, hoy "público" en la
-práctica depende de cómo se despliegue, y no de lo que dice el código.
-
-**Propuesta**
-
-1. Definir un endpoint de lectura pública y de propósito acotado, sin exponer el perfil
-   completo. Por ejemplo `GET /api/publicos/perfiles/{idUsuario}` que devuelva solo
-   `nombreUsuario` y `nombreCategoria`, con su `@Operation` de OpenAPI al pie y sin datos
-   sensibles.
-2. Abrir únicamente esa ruta en `SecurityConfig` (`permitAll()`), dejando el resto en
-   `authenticated()`.
-3. Si el front ya consume el perfil autenticado, alcanza con relajarlo y filtrar qué
-   campos viajan en el DTO.
-
 ---
 
 ## 24. La insignia no tiene descripción propia: es texto derivado del nombre de la misión
@@ -711,9 +603,6 @@ enunciado, solo el nombre se puede cargar.
 **Propuesta:** agregar `insigniaDescripcion` al DTO de creación y edición, y que `Mision`
 deje de inventar el texto. Si no se quiere cambiar la API, al menos que el constructor
 sea coherente consigo mismo y use `descripcion` en vez de `nombre`.
-
----
-
 ---
 
 ## 2. El snapshot mensual de ranking guarda solo 10 posiciones
@@ -730,9 +619,6 @@ parámetro, pero el **snapshot** sigue siendo finito.
 
 **Propuesta:** persistir el ranking completo (o un tope alto y configurable) y aplicar el
 `limite` solo al responder, que es lo que hace el endpoint `GET /api/rankings/{id}/top`.
-
----
-
 ---
 
 ## 6. `open-in-view` desactivado: revisar cargas perezosas al agregar endpoints
@@ -749,9 +635,6 @@ transacción va a fallar con `LazyInitializationException` en runtime, no al com
 
 **Regla:** todo método de lectura que llame a un `...DTO.desdeEntidad(...)` sobre una
 colección necesita `@Transactional(readOnly = true)`.
-
----
-
 ---
 
 ## 23. Higiene: código muerto, logs a `System.err` y setters públicos
@@ -804,9 +687,6 @@ claro.
 alcance a usarse, terminar de conectarlos), pasar `DonacionClient` a `@Slf4j` con
 stack trace, agregar el `@Tag` faltante, sacar `@Setter` de las entidades y dejar
 setters solo donde hacen falta para JPA, y cambiar los `Boolean` de retorno por `void`.
-
----
-
 ---
 
 ## 4. `common-lib` está en el repositorio pero no en el build
@@ -821,7 +701,6 @@ ningún servicio, así que no se compila ni se distribuye. Es código muerto.
 **Propuesta:** o se declara el módulo y se adopta realmente como librería compartida de
 los contratos entre servicios, o se borra. Decidirlo antes de seguir acumulando clases
 sueltas ahí.
-
 ---
 
 ## 9. Logística no se integra de forma directa: es decisión de arquitectura
@@ -852,13 +731,116 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
 - Si alguna vez hace falta distinguir "la entidad recibió" de "logística entregó", esa
   distinción no puede viajar por el atajo de Donaciones y sí exigiría un contrato propio.
   Queda anotado por si el alcance del TP cambia.
-
 ---
 
 # Corregidos
 
 Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía
 cada punto cuando se corrigió, así que no aparecen en la lista de arriba.
+
+
+---
+
+## 21 + 12 + 8 - corregidos
+
+### 21. Las rutas de ranking exigen administrador
+
+`POST /api/rankings` y `DELETE /api/rankings/{idRanking}` no validaban nada: ni pedían el
+header `Admin-Id` ni llamaban a `ValidadorAdmin`, que sí se usaba en categorías y misiones.
+Con lo que hay hoy (`anyRequest().authenticated()` y sin `UserDetailsService`), cualquiera
+que llegara al servicio podía **crear rankings para meses históricos arbitrarios** y
+**borrar rankings ya publicados**.
+
+Ahora ambas rutas piden `@RequestHeader("Admin-Id")` y el service llama a
+`verificarPermisos`, igual que el resto de la superficie de administración. La seguridad
+sigue siendo la del punto 1 (un header que elige el cliente), pero al menos se exige que
+exista un admin, que antes no se exigía nada.
+
+**El scheduler no se salta el control por espalda.** `crearRankingMensualActual()` lo llama
+`RankingScheduler`, que corre dentro del proceso y no tiene request ni header. Se lo dejó
+delegando en un método privado `generarYGuardar` que es el que no valida permisos, en vez de
+pasar por `crearRankingMensual` (que sí lo valida) y tener que inventar un id de admin. La
+distinción está documentada en el javadoc de los dos métodos para que no parezca un
+agujero: es una entrada interna, no una ruta HTTP.
+
+De paso se agregó el `@Tag` que le faltaba a `RankingController`, que era el único controller
+sin anotación (aparecía sin agrupar en el Swagger).
+
+### 12. Las llamadas HTTP salieron de las transacciones
+
+El `RestTemplate` era un `new RestTemplate()` pelado, que usa timeouts **infinitos**. Si un
+downstream caído no devuelve error sino que simplemente no responde, el hilo queda
+bloqueado para siempre; y como varias de estas llamadas se hacían **dentro de
+transacciones**, la conexión del pool de Hikari quedaba retenida mientras tanto. Con 10
+conexiones (el default) y 10 requests colgados el servicio entero dejaba de responder,
+aunque la base estuviera sana.
+
+**1. Timeouts explícitos.** El bean se movió a `HttpClientConfig` con `RestTemplateBuilder`
+y valores configurables: `clientes.http.connect-timeout-ms` (3000 por defecto) y
+`clientes.http.read-timeout-ms` (5000 por defecto). El peor caso pasa de "infinito" a
+"conexión retenida 8 segundos", que es acotado y el pool se recupera solo.
+
+**2. Ninguna llamada HTTP dentro de una transacción.** Esta era la parte que más dolía, y
+no era un rediseño. El problema era que el `MedioContacto` se pedía **dentro** de la
+transacción, se guardaba en el evento, y solo se usaba en el listener de `AFTER_COMMIT`: se
+retenía una conexión del pool durante una llamada cuyo resultado no se usaba hasta mucho
+después.
+
+El arreglo es que los eventos lleven el `idUsuario` en vez del contacto resuelto, y que el
+listener lo consulte. `MisionCompletada` ya lo hacía así; ahora `MisionCambiada` y
+`CategoriaNuevaPublicar` hacen lo mismo, y `Perfil.cambiarMision` /
+`Perfil.cambiarCategoria` dejaron de recibir el contacto.
+
+Con eso desaparecieron **las dos** llamadas dentro de transacciones, incluida la peor, que
+era `SincronizacionPerfiles.actualizarMisionesPorCambioDeCategoria`: pedía el contacto
+**una vez por donante, dentro de un bucle**, así que reordenar las misiones de una categoría
+con 500 donantes eran 500 llamadas HTTP secuenciales con 500 conexiones retenidas. Por eso
+`SincronizacionPerfiles` ya no depende de `DonacionClient`.
+
+**Lo que queda, y es secundario:** `ValidadorAdmin.verificarPermisos` sí llama a
+`donaciones-service` dentro de la transacción de los servicios de administración. Se dejó
+así porque son operaciones de baja frecuencia y quedan acotadas por los timeouts; sacarla
+exigiría partir la validación en otra clase, porque llamar a un método `@Transactional`
+desde la misma clase no pasa por el proxy.
+
+**Lo que no se hizo, y acá la razón sí es técnica:** reintentos automáticos. La llamada a
+n8n es un `POST` que publica en redes sociales: si el webhook procesa la publicación pero la
+respuesta se pierde (un timeout de red, un proxy), reintentarlo a ciegas publica dos veces, y
+n8n no devuelve un idempotency key. El `GET` de contactos sí sería reintentable, pero quedó
+para más adelante junto con backoff y circuit breaker.
+
+`NotificacionClientResuelveContactoTest` fija el comportamiento nuevo: que el listener
+resuelve el contacto y que cambiar de misión dentro del agregado no toca la red.
+
+### 8. La categoría del donante es visible públicamente
+
+El enunciado pide que *"la categoría actual debe ser visible públicamente junto al nombre de
+usuario"*, y no existía ningún endpoint público: `SecurityConfig` tenía
+`anyRequest().authenticated()`, así que hasta el perfil exigía credenciales.
+
+Ahora hay `GET /api/perfiles/{idUsuario}/publico` con `permitAll()`, que devuelve solo el
+`nombreUsuario` y el `nombreCategoria`.
+
+Dos decisiones que importan:
+
+1. **Vive en `PerfilController`, pero con DTO aparte** (`PerfilPublicoDTO`, con solo esos
+   dos campos). Lo del DTO es lo importante: como la ruta es `permitAll()`, lo que sale de
+   ahí queda expuesto, así que no puede devolver el `PerfilDTO` completo (que incluye
+   misión vigente, insignias e ids internos) sino algo acotado.
+   Lo del controller es secundario: estuvo en uno aparte y terminó sobrando. La regla de
+   seguridad se escribe por método y ruta (`GET /api/perfiles/*/publico`), así que se sigue
+   viendo igual de bien cuál es el único endpoint abierto, y además el prefijo propio
+   obligaba a mantener un `/api/publicos/**` en `SecurityConfig` al lado de un controller
+   de un solo método.
+
+2. **Un perfil sin categoría devuelve `nombreCategoria = null`, no un 404.** El donante
+   existe y su nombre tiene que poder verse igual; solo falla si el donante no existe.
+
+Esto **no** resuelve el punto 1: la autenticación por header sigue siendo débil, y el
+servicio tiene dos mecanismos de seguridad que no se hablan (el `UserDetailsService` falta).
+Lo que se resolvió es el requisito puntual del enunciado sobre la categoría pública.
+
+---
 
 ## 26 + 27 + 28 - corregidos
 
@@ -1015,6 +997,8 @@ donación entra con un 400.
 obligatoria (hoy admite NULL en tablas ya creadas), y se agrega `complet_mision`. Con
 `ddl-auto=validate` hay que hacerlo a mano.
 
+---
+
 ## 7. Sin validación de entrada en los DTO — corregido
 
 Se agregó `spring-boot-starter-validation` y `@Valid` en todos los `@RequestBody`, con
@@ -1027,6 +1011,8 @@ exige `valorEsperado` y `VALORES_DISTINTOS`/`SUPERA_CANTIDAD` exigen `cantidad`.
 De paso: `MisionDTO.desdeEntidad` usaba `getUnidadTiempo().toString()`, y
 `ChronoUnit.toString()` devuelve `"Months"` en camelCase; ahora usa `name()` y devuelve
 `"MONTHS"`, como los demás enums.
+
+---
 
 ## 11. `ValoresDistintos` guardaba el estado de la misión, no del donante — corregido
 
@@ -1051,6 +1037,8 @@ que ya no existe.
 la tabla `valor_observado` hay que crearla a mano donde la base ya existe (en dev se crea
 sola con `update`). La columna JSON `valores_distintos` de `operacion` queda sin mapear y
 conviene eliminarla.
+
+---
 
 ## 15. Editar una mision borraba el progreso de todos los que estaban en ella - corregido
 
@@ -1082,6 +1070,8 @@ constructor reciben un texto propio para la insignia. O sea que la insignia no t
 descripcion independiente: sale del nombre de la mision. Arreglarlo en serio requiere
 agregar el campo al DTO, asi que no se toco.
 
+---
+
 ## 16. El progreso de la misión no se expone, y el DTO invierte dos campos — corregido
 
 `MisionPerfilDTO` tenía los parámetros del constructor en el orden equivocado, así que
@@ -1090,6 +1080,8 @@ agregaron `progresoFaltante` y el desglose de `progresoActual`/`progresoObjetivo
 lado del repositorio, `obtenerProgresoMisionPorIdUsuario` pasó a devolver
 `Optional<ProgresoMision>` en vez de `null`, y `PerfilService` suma
 `convertirProgresoMisionADTO`.
+
+---
 
 ## 18. Integridad referencial al borrar categorias y misiones - corregido
 
@@ -1111,6 +1103,8 @@ referencias que lo bloquean, mediante la nueva `ConflictoException`:
 La guarda va ANTES de tocar la secuencia de posiciones: antes el borrado fallaba por FK
 despues de haber desplazado las posiciones, dejando la secuencia movida sin haber borrado
 nada.
+
+---
 
 ## 19. Secuencia de categorias sin garantia de unicidad - corregido
 
@@ -1140,6 +1134,8 @@ la 4, y la base rechazaria el UPDATE dejando la secuencia a medias. Garantizarlo
 un trigger, o con UPDATE fila por fila en el orden correcto, exigiria reescribir el
 gestor; el chequeo en la capa de aplicacion con un 409 explicito cumple para el tamano de
 este servicio.
+
+---
 
 ## 20. Códigos de estado inconsistentes y NPE en los `desdeEntidad` — corregido
 
