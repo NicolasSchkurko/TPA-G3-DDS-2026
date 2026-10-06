@@ -21,7 +21,7 @@ import lombok.Setter;
  * agregado.
  */
 /**
- * Una donación, copiada desde {@code MetaDonacion-service}, y la fila de la que se calcula todo
+ * Una donación, copiada desde {@code donaciones-service}, y la fila de la que se calcula todo
  * el progreso.
  *
  * <p>Los dos índices cubren las formas en que se consulta (punto 22). Es la tabla más grande

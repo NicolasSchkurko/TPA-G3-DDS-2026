@@ -8,7 +8,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Publica las notificaciones de MetaDonacion.
+ * Publica las notificaciones de donaciones-service.
  *
  * <p><b>Va por Rabbit y no por HTTP, porque el enunciado lo pide así para todos.</b> Dice que
  * "la integración entre los servicios de dominio y el Servicio de Notificaciones deberá

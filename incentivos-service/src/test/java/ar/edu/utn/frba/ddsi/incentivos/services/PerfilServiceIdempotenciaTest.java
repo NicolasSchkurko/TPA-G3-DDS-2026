@@ -149,7 +149,7 @@ class PerfilServiceIdempotenciaTest {
     }
 
     @Test
-    @DisplayName("el id de la MetaDonacion guardada es el de origen, sin traducir")
+    @DisplayName("la donación reportada por el servicio de origen guarda su id sin traducirlo")
     void elIdGuardadoEsElDeOrigen() {
         hayPerfilRegistrado();
         when(repoDonaciones.findById(ID_DONACION)).thenReturn(Optional.empty());

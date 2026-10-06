@@ -38,7 +38,7 @@ public class RabbitConfig {
     public static final String RK_EVENTO_LOGISTICA = "notificaciones.evento.logistica";
 
     /**
-     * Routing key de las notificaciones de {@code MetaDonacion}: alta de donante, donación
+     * Routing key de las notificaciones de {@code donaciones-service}: alta de donante, donación
      * asignada, resultado de una entrega.
      *
      * <p>Es una tercera routing key y no una extensión de las otras porque la cola se

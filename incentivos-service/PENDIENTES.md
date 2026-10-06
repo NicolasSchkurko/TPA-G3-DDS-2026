@@ -753,7 +753,7 @@ arranque. No existía credencial fija que un llamador pudiera conocer, así que 
 tenía cómo resolverse: `POST /api/perfiles` y `PATCH /api/perfiles/donacion/{id}` devolvían
 `401` desde `donaciones-service`.
 
-Se comprobó levantando MetaDonacion e incentivos juntos: `POST /api/personas` devolvía `500`, y el log
+Se comprobó levantando donaciones-service e incentivos juntos: `POST /api/personas` devolvía `500`, y el log
 de la causa era `No se pudo crear el perfil ... : 401`.
 
 **Qué se decidió:** dejar el servicio abierto, igual que los otros tres módulos. Lo que se

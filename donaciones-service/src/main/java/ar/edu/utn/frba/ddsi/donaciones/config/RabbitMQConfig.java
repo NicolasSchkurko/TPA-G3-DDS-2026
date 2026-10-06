@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Antes declaraba las colas y los bindings de logística, y eso estaba mal.</b> El
  * servicio publicaba en el exchange de logística pero no le tocaba definir cómo logística
  * consume: la declaración de la cola ajena quedaba en este módulo. El síntoma era que
- * logistics-service tenía su propia copia de estos beans, idéntica salvo por dos bindings
+ * logisticas-service tenía su propia copia de estos beans, idéntica salvo por dos bindings
  * atados al exchange equivocado. Con las dos declaraciones, el broker aceptaba ambas y el
  * binding bueno de este módulo tapaba el malo del otro. Levantando logística sola, las
  * colas de este módulo no existían y la cadena se cortaba.
@@ -71,7 +71,7 @@ public class RabbitMQConfig {
      */
     public static final String EXCHANGE_NOTIFICACIONES = "notificaciones.exchange";
 
-    /** Routing key de las notificaciones de MetaDonacion: alta de donante, donacion asignada, entregas. */
+    /** Routing key de las notificaciones de donaciones-service: alta de donante, donacion asignada, entregas. */
     public static final String RK_DONACION = "notificaciones.donacion";
 
     @Bean

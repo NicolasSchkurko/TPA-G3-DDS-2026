@@ -1146,7 +1146,7 @@ mensaje llega.
 El contrato de integración son **DTOs copiados a mano en los dos módulos**, sin nada que los
 mantenga sincronizados:
 
-| Concepto | DTO en MetaDonacion | DTO en logística |
+| Concepto | DTO en `donaciones-service` | DTO en logística |
 |---|---|---|
 | Entrega | `dto.logistica.entrega.EntregaDTO` | `dto.entrega.EntregaDTO` |
 | Bien | `BienDTO` (7 campos) | `dto.entrega.BienDTO` |
@@ -1179,9 +1179,9 @@ No evita el problema, lo hace visible al primer test en vez de al primer inciden
 
 ### Qué pasa
 
-`BienDTO` está en el paquete `logistica.entrega` de MetaDonacion pero describe datos de logística:
-`estado`, `fechaCambioEstado`, `fotoComprobante`, `eventos`. Son campos que logistics llena al
-procesar, no que MetaDonacion mande.
+`BienDTO` está en el paquete `logistica.entrega` de `donaciones-service` pero describe datos de logística:
+`estado`, `fechaCambioEstado`, `fotoComprobante`, `eventos`. Son campos que logóstica llena al
+procesar, no que `donaciones-service` mande.
 
 Para el mensaje de integración se agregó un constructor de dos parámetros (`cantidad`,
 `unidadDeMedida`) que deja los otros cinco en `null`. Funciona, pero es el síntoma de que la
@@ -1192,7 +1192,7 @@ solo existen para el constructor de siete parámetros.
 
 ### Propuesta
 
-Separar el DTO de transporte del DTO de dominio: uno con lo que MetaDonacion publica (cantidad y
+Separar el DTO de transporte del DTO de dominio: uno con lo que `donaciones-service` publica (cantidad y
 unidad) y otro con lo que logística devuelve (estado, foto, eventos). Si los dos tienen que
 mantener el mismo nombre de campo para que Jackson los empareje, conviene que eso sea a
 propósito y no accidente de que la clase resultante tenga todos los campos.
@@ -1243,7 +1243,7 @@ servicios— responde `201` con persistencia real.
 **Severidad:** crítica
 **Archivos:** `.../clients/IncentivosClient.java`
 
-Las dos llamadas entre MetaDonacion e incentivos apuntaban a rutas que no existen:
+Las dos llamadas entre `donaciones-service` e incentivos apuntaban a rutas que no existen:
 
 | Método | Antes | Ahora | Ruta real |
 |---|---|---|---|

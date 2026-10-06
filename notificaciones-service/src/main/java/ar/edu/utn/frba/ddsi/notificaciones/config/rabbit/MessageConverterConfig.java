@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Existe por una razón medida, no por gusto.</b> {@code Jackson2JsonMessageConverter}
  * escribe por defecto un encabezado {@code __TypeId__} con el nombre de la clase Java del
  * productor, y del otro lado intenta resolver esa clase. Cada aviso de
- * {@code MetaDonacion} moría en el consumidor con
+ * {@code donaciones-service} moría en el consumidor con
  * {@code failed to resolve class name. Class not found [PerfilNotificacionDTO]}, porque este
  * módulo no tiene —ni debe tener— la clase del productor.
  *

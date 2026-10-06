@@ -31,7 +31,7 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 17 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
 | 18 | 18 | `return null` en el catch del planificador manual: el error se pierde |
 | 19 | 19 | La validación de la justificación de una entrega fallida está invertida |
-| 20 | 20 | Verificado: logóstica no invoca a MetaDonacion ni incentivos ni habla con notificaciones |
+| 20 | 20 | Verificado: logóstica no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 ---
 
 ## 1. El módulo no tiene un solo test
@@ -803,7 +803,7 @@ código muerto: cuando la condición se cumple el método ya salió por la excep
 nunca se llega.
 
 ---
-## 20. Verificado: logística no invoca a MetaDonacion ni a incentivos, y no habla con notificaciones
+## 20. Verificado: logística no invoca a `donaciones-service` ni a `incentivos`, y no habla con notificaciones
 
 **Estado:** verificado, sin cambios necesarios
 **Severidad:** informativa

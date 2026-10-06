@@ -6,8 +6,9 @@
 # construye desde su módulo con `build:`.
 #
 # La cadena de integración que exige el enunciado va por RabbitMQ, no por HTTP entre
-# contenedores: donor publica en `logistica.exchange`, logística publica en
-# `logistica.eventos.exchange` y los demás, son consumidores de esas colas.
+# contenedores: `donaciones-service` publica en `logistica.exchange`, `logisticas-service`
+# publica en `logistica.eventos.exchange`, y los dos servicios de dominio publican en
+# `notificaciones.exchange`. Todos son consumidores de esas colas.
 
 services:
 
