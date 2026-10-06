@@ -57,3 +57,12 @@ build/
 /gen-checkstyle.ps1
 /run-checkstyle.ps1
 /scripts/subir-servicios.ps1
+
+### Documentacion de configuracion local ###
+# CONFIG-MYSQL.md y CONFIG-RABBITMQ.md explican como hay que configurar MySQL y el
+# broker para que los cuatro servicios se hablen, pero traen las credenciales reales de
+# esta maquina (usuarios, contrasenas, hosts). Por eso no se versionan: si llegan al
+# repo, las contrasenas de desarrollo quedan exposed en el historial de forma permanente.
+# Si hay que compartirlos, se saca la parte de credenciales y se sube solo esa.
+/CONFIG-MYSQL.md
+/CONFIG-RABBITMQ.md
