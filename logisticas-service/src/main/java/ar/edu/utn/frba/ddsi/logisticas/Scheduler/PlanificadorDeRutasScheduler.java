@@ -1,12 +1,13 @@
 package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,19 +18,19 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificadorDeRutasScheduler {
 
-  private final GestorItemEntrega gestorItemEntrega;
-  private final GestorCamiones gestorCamiones;
+  private final RepositorioItemEntrega repoItemEntrega;
+  private final RepositorioCamiones repoCamiones;
   private final PlanificadorDeRutas planificadorDominio;
 
     @Autowired
   public PlanificadorDeRutasScheduler(
       ProveedorRutasExterno proveedorExterno,
-      GestorItemEntrega gestorItemEntrega,
-      GestorCamiones gestorCamiones) {
+      RepositorioItemEntrega repoItemEntrega,
+      RepositorioCamiones repoCamiones) {
       this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
-    this.gestorItemEntrega = gestorItemEntrega;
-    this.gestorCamiones = gestorCamiones;
+    this.repoItemEntrega = repoItemEntrega;
+    this.repoCamiones = repoCamiones;
     }
 
   @Scheduled(cron = "0 0 2 * * ?")
@@ -40,8 +41,8 @@ public class PlanificadorDeRutasScheduler {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = gestorItemEntrega.buscarPendientes();
-      camionesDisponibles = gestorCamiones.listarCamiones().stream()
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      camionesDisponibles = repoCamiones.findAll().stream()
                                                .filter(Camion::getDisponible)
                                                .collect(Collectors.toList());
 
