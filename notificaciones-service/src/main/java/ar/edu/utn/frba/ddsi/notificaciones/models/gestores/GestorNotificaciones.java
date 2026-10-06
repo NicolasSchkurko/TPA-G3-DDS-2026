@@ -29,6 +29,8 @@ public class GestorNotificaciones {
         notificacion.marcarPendiente();
         repositorioNotificaciones.guardar(notificacion);
         productorNotificaciones.enviar(notificacion);
+        repositorioNotificaciones.save(notificacion);
+        cola.add(notificacion);
 
     }
 
@@ -37,10 +39,26 @@ public class GestorNotificaciones {
 
         Mensaje mensaje = new Mensaje(asunto, cuerpo);
         Notificacion notificacion = new Notificacion(direccionDeContacto, tipoMedioDeContacto, mensaje);
+        Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
+        repositorioNotificaciones.save(notificacion);
 
         return notificacion;
     }
 
+    @Scheduled(fixedDelay = 2000)
+    public void procesarCola() {
+        Notificacion notificacion = cola.poll();
+        if (notificacion != null) {
+            try {
+                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
+                notificacion.marcarEnviada();
+            } catch (Exception e) {
+                notificacion.marcarFallida();
+                cola.add(notificacion);
+            }
+            repositorioNotificaciones.save(notificacion);
+        }
+    }
 
     // Por ahora solo envia al medio predeterminado
     public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
