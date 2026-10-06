@@ -10,11 +10,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Editar una misión (punto 15).
+ * Editar una misión (punto 15) y el texto propio de la insignia objetivo (punto 24).
  */
 @DisplayName("Mision.actualizar")
 class MisionActualizarTest {
 
+    /**
+     * La misión con su nombre, su texto y los datos de la insignia.
+     *
+     * <p>{@code insigniaDescripcion} es el texto **de la insignia** y va aparte de
+     * {@code descripcion}, que es el de la misión. El que se separan es todo el punto 24:
+     * antes el constructor no recibía ninguno de los dos y rellenaba el de la insignia con
+     * el nombre de la misión, así que no había forma de tener un texto propio.
+     */
     private Mision mision(String nombre, String descripcion,
                          String insigniaNombre, String insigniaDescripcion,
                          Integer objetivo) {
@@ -23,6 +31,8 @@ class MisionActualizarTest {
                 null,
                 descripcion,
                 insigniaNombre,
+                insigniaDescripcion,
+                null,
                 new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(objetivo, 1))
         );
     }
@@ -66,34 +76,62 @@ class MisionActualizarTest {
     class InsigniaObjetivo {
 
         @Test
-        @DisplayName("cambiar el texto de la mision no pisa la descripcion de la insignia")
+        @DisplayName("cambiar el texto de la mision no toca el texto de la insignia")
         void cambiarElTextoDeLaMisionNoPisaLaInsignia() {
-            // Al crearse, la insignia deriva su descripcion del NOMBRE de la mision:
-            // es lo unico que hay, porque ni el DTO ni el constructor reciben un texto
-            // propio para la insignia.
-            Mision actual = mision("Diez dones", "Texto viejo", "Constante", "Constante", 10);
-            assertThat(actual.getInsigniaObjetivo().getDescripcion()).isEqualTo("Diez dones");
+            // La insignia tiene su propio texto, así que editar el de la misión no lo mueve.
+            // Antes le llegaba this.descripcion y quedaba pegado al texto de la misión.
+            Mision actual = mision("Diez dones", "Texto viejo", "Constante",
+                    "Texto propio de la insignia", 10);
+            assertThat(actual.getInsigniaObjetivo().getDescripcion())
+                    .isEqualTo("Texto propio de la insignia");
 
-            Mision editada = mision("Diez dones", "TEXTO NUEVO de la mision", "Constante", "Constante", 10);
+            Mision editada = mision("Diez dones", "TEXTO NUEVO de la mision", "Constante",
+                    "Texto propio de la insignia", 10);
             actual.actualizar(editada);
 
-            // Antes le llegaba this.descripcion, asi que la insignia quedaba con el texto
-            // de la MISION y cambiaba cada vez que se editaba la mision.
-            assertThat(actual.getInsigniaObjetivo().getDescripcion()).isEqualTo("Diez dones");
+            assertThat(actual.getDescripcion()).isEqualTo("TEXTO NUEVO de la mision");
+            assertThat(actual.getInsigniaObjetivo().getDescripcion())
+                    .as("el texto de la insignia y el de la misión son campos separados")
+                    .isEqualTo("Texto propio de la insignia");
         }
 
         @Test
-        @DisplayName("la insignia toma su descripcion de la insignia entrante, no de la mision")
+        @DisplayName("la insignia toma su texto de la insignia entrante, no del nombre de la misión")
         void laInsigniaTomaSuDescripcionDeLaInsigniaEntrante() {
-            Mision actual = mision("Diez dones", "Texto viejo", "Constante", "Constante", 10);
+            Mision actual = mision("Diez dones", "Texto viejo", "Constante",
+                    "Texto viejo de la insignia", 10);
 
-            // Editar el nombre de la mision cambia la descripcion que el constructor le
-            // deriva a la insignia, y eso es lo que debe quedar: no el texto de la mision.
-            Mision editada = mision("Quince dones", "Otro texto de mision", "Constante", "Constante", 10);
+            Mision editada = mision("Quince dones", "Otro texto de mision", "Constante",
+                    "Texto nuevo de la insignia", 10);
             actual.actualizar(editada);
 
-            assertThat(actual.getInsigniaObjetivo().getDescripcion()).isEqualTo("Quince dones");
+            // Antes el nombre de la misión era lo que quedaba en la insignia, porque el
+            // constructor no recibía otro texto y lo derivaba de ahí (punto 24).
+            assertThat(actual.getInsigniaObjetivo().getDescripcion())
+                    .isEqualTo("Texto nuevo de la insignia");
             assertThat(actual.getDescripcion()).isEqualTo("Otro texto de mision");
+        }
+
+        @Test
+        @DisplayName("editar solo la imagen no exige mandar el nombre")
+        void editarSoloLaImagenNoExigeElNombre() {
+            // La condición del punto 15 era `insigniaNueva.getNombre() != null`, así que un
+            // PUT que solo cambiaba la imagen no se aplicaba. Con los tres campos
+            // independientes, cada uno se aplica solo si viene.
+            Mision actual = new Mision("Diez dones", null, "Texto", "La insignia",
+                    "Texto de la insignia", null,
+                    new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(10, 1)));
+
+            Mision editada = new Mision(null, null, null, null,
+                    null, "https://incentivos.example.edu.ar/img/nueva.png",
+                    new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(10, 1)));
+            actual.actualizar(editada);
+
+            assertThat(actual.getInsigniaObjetivo().getUrlImagen())
+                    .isEqualTo("https://incentivos.example.edu.ar/img/nueva.png");
+            assertThat(actual.getInsigniaObjetivo().getNombre()).isEqualTo("La insignia");
+            assertThat(actual.getInsigniaObjetivo().getDescripcion())
+                    .isEqualTo("Texto de la insignia");
         }
 
         @Test

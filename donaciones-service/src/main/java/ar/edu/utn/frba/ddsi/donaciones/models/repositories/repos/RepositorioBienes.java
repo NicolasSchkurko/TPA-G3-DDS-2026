@@ -27,7 +27,11 @@ public class RepositorioBienes {
       if (bien.getId() == null) {
         bien.setId(UUID.randomUUID());
       }
-      if (buscarPorId(bien.getId()).isPresent()) {
+      // Va directo al repositorio de Spring Data y no por un buscarPorId() propio: ese
+      // método se borró en el commit 86c6f93 (25/09) y la llamada quedó, con lo que el
+      // módulo entero no compilaba desde esa fecha. existsById es lo mismo que el
+      // findById(...).isPresent() que había antes, sin el Optional de por medio.
+      if (jpaRepository.existsById(bien.getId())) {
         throw new IllegalArgumentException("Ya existe un bien con el ID: " + bien.getId());
       }
       jpaRepository.save(bien);

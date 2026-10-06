@@ -27,6 +27,8 @@ class CategoriaTest {
                 nombre,                  // nombreMision
                 "Descripcion",           // descripcion
                 "Insignia " + nombre,    // nombreInsignia
+                "Texto de la insignia",  // insigniaDescripcion
+                null,                    // insigniaUrlImagen
                 null,                    // cantidadTiempo
                 null,                    // unidadTiempo
                 "ESTADO",                // atributo

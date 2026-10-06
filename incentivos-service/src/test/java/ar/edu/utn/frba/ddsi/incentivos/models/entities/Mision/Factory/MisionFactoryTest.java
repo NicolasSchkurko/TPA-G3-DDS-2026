@@ -63,11 +63,29 @@ class MisionFactoryTest {
         }
 
         @Test
-        @DisplayName("si no viene cantidad o unidad, la mision no lleva constancia")
-        void sinCantidadOUnidadNoHayConstancia() {
-            assertThat(factory.crearConstancia(null, "MESES")).isNull();
-            assertThat(factory.crearConstancia(3, null)).isNull();
-            assertThat(factory.crearConstancia(3, "   ")).isNull();
+        @DisplayName("si no viene ninguna de las dos partes, la mision no lleva constancia")
+        void sinNingunaParteNoHayConstancia() {
+            assertThat(factory.crearConstancia(null, null)).isNull();
+            assertThat(factory.crearConstancia(null, "   ")).isNull();
+        }
+
+        @Test
+        @DisplayName("si viene solo una de las dos partes se rechaza, no se ignora (punto 34)")
+        void conMedioDatoSeRechaza() {
+            // Antes estos tres devolvían null y la misión se guardaba sin exigencia de racha.
+            // Por HTTP no se notaba (el ConstanciaDTO tiene @NotNull en los dos campos), pero
+            // una llamada interna creaba una misión más permisiva que la que el admin quiso,
+            // sin que nada lo indicara.
+            assertThatThrownBy(() -> factory.crearConstancia(null, "MESES"))
+                    .isInstanceOf(DatosInvalidosException.class)
+                    .hasMessageContaining("solo la unidad");
+
+            assertThatThrownBy(() -> factory.crearConstancia(3, null))
+                    .isInstanceOf(DatosInvalidosException.class)
+                    .hasMessageContaining("solo la cantidad");
+
+            assertThatThrownBy(() -> factory.crearConstancia(3, "   "))
+                    .isInstanceOf(DatosInvalidosException.class);
         }
 
         @ParameterizedTest

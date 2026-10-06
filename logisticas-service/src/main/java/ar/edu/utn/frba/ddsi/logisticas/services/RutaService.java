@@ -19,10 +19,10 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

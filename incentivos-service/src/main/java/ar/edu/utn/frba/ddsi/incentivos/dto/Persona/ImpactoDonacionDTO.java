@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Impacto de una donación, reportado por donating-service.
+ * Impacto de una donación, reportado por donaciones-service.
  *
  * <p>{@code fechaEntrega} es obligatoria a propósito: las métricas mensuales hacen
  * {@code YearMonth.from(fechaEntrega)} y las reglas de constancia comparan contra
@@ -24,7 +24,7 @@ public class ImpactoDonacionDTO {
 
     /**
      * Id de la DONACION en el servicio de origen. Se guarda tal cual: es la primary key de
-     * la donating local y lo que hace idempotente el endpoint (punto 14).
+     * la donación local y lo que hace idempotente el endpoint (punto 14).
      *
      * <p>Es obligatorio a propósito. Si el servicio de origen no manda un id estable no hay
      * forma de distinguir una donación nueva de un reintento de la misma, y el proceso

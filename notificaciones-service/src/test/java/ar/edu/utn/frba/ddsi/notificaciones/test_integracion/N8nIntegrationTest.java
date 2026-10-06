@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 
-
 @SpringBootTest
 public class N8nIntegrationTest {
 
@@ -22,8 +21,12 @@ public class N8nIntegrationTest {
         Mail mail = new Mail(gateway);
 
         Notificacion n = new Notificacion(
-                "INSERTAR_MAIL_PARA_TESTEAR",
-                new Mensaje("Test de integracion con n8n", "Mensaje que ves si la prueba funciono")
+                "merotero@frba.utn.edu.ar",
+                "WHATSAPP",
+                new Mensaje(
+                        "Test de integración con n8n",
+                        "Mensaje..."
+                )
         );
 
         mail.enviarNotificacion(n);

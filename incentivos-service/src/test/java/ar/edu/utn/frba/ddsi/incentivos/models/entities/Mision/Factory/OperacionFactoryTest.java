@@ -53,14 +53,17 @@ class OperacionFactoryTest {
     }
 
     @Test
-    @DisplayName("SUPERA_CANTIDAD guarda el umbral que debe superar la donacion")
+    @DisplayName("SUPERA_CANTIDAD guarda el umbral que la donacion tiene que superar")
     void superaCantidadSeArma() {
         Operacion operacion = factory.conseguirOperacion("SUPERA_CANTIDAD", 2, 5, null);
 
         assertThat(operacion).isInstanceOf(SuperaCantidad.class);
         assertThat(((SuperaCantidad) operacion).getCantidadEsperada()).isEqualTo(5);
         assertThat(operacion.calcularProgreso(4, donante())).isFalse();
-        assertThat(operacion.calcularProgreso(5, donante())).isTrue();
+        // El 5 exacto NO cuenta: el umbral es exclusivo (punto 33), porque el enunciado dice
+        // "supera N" y no "alcanza N".
+        assertThat(operacion.calcularProgreso(5, donante())).isFalse();
+        assertThat(operacion.calcularProgreso(6, donante())).isTrue();
     }
 
     @Test

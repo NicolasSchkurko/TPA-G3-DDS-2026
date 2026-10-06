@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,10 +20,30 @@ import lombok.Setter;
  * lado hacía posible que una fila quedara con datos que nunca pudieron pasar por el
  * agregado.
  */
+/**
+ * Una donación, copiada desde {@code donaciones-service}, y la fila de la que se calcula todo
+ * el progreso.
+ *
+ * <p>Los dos índices cubren las formas en que se consulta (punto 22). Es la tabla más grande
+ * del servicio y todas las lecturas la filtran por donante:
+ *
+ * <ul>
+ *   <li>{@code (id_usuario, fecha_entrega)} para la evolución mensual del donante y para el
+ *       resumen por rango de fechas. Las dos agrupan por mes, así que el índice tiene que
+ *       llegar hasta la columna de fecha para que el filtro sea un recorrido acotado en vez
+ *       de uno completo.</li>
+ *   <li>{@code (id_usuario, id_mision, fecha_entrega)} para el cálculo de constancia, que
+ *       pregunta las donaciones de un donante en una misión ordenadas por fecha.</li>
+ * </ul>
+ */
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "impacto_donacion")
+@Table(name = "impacto_donacion", indexes = {
+        @Index(name = "idx_impacto_usuario_fecha", columnList = "id_usuario, fecha_entrega"),
+        @Index(name = "idx_impacto_usuario_mision_fecha",
+                columnList = "id_usuario, id_mision, fecha_entrega")
+})
 public class ImpactoDonacion {
 
     /**

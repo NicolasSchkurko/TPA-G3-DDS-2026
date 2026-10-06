@@ -189,6 +189,11 @@ public class MisionService {
                 dto.getNombreMision(),
                 dto.getDescripcion(),
                 dto.getInsigniaObjetivo(),
+                // Los dos siguientes son de la INSIGNIA, no de la misión (punto 24). Antes
+                // no existían y la insignia se quedaba con el nombre de la misión como
+                // descripción, que no era el texto que el admin quería.
+                dto.getInsigniaDescripcion(),
+                dto.getInsigniaUrlImagen(),
                 constancia != null ? constancia.getCantidad() : null,
                 constancia != null ? constancia.getUnidadTiempo() : null,
                 regla.getAtributo(),

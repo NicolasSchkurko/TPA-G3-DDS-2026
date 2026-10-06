@@ -84,7 +84,9 @@ public class CategoriaService {
      * Crea una categoría y abre un hueco en la secuencia en su posición.
      *
      * <p>Si no se pasa posición, la nueva queda al final del programa. Si se pasa y ya está
-     * ocupada, se rechaza con {@link ConflictoException} (409) antes de desplazar nada.
+     * ocupada, se rechaza con {@link ConflictoException} (409) antes de desplazar nada. Y si
+     * se pasa una posición fuera de rango, se rechaza con 400 (punto 31): antes el gestor
+     * se salía sin hacer nada y el alta guardaba igual, dejando la secuencia con huecos.
      */
     @Transactional
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
@@ -103,7 +105,10 @@ public class CategoriaService {
                 misiones
         );
 
-        gestorSecuencia.desplazarParaCrear(repoCategorias, categoria.getPosicionSecuencia());
+        gestorSecuencia.desplazarParaCrear(
+                repoCategorias,
+                categoria.getPosicionSecuencia(),
+                gestorSecuencia.posicionMaxima(repoCategorias));
         Categoria categoriaCreada = repoCategorias.save(categoria);
 
         return CategoriaDTO.desdeEntidad(categoriaCreada);

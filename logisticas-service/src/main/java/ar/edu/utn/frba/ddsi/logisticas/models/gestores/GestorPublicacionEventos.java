@@ -6,7 +6,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,18 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Publica los eventos de logística: alta de ruta, entrega confirmada, fallida y reingreso.
+ *
+ * <p><b>Este archivo pasó por un merge sin resolver.</b> Traía los marcadores de conflicto de
+ * {@code GestorEventos.java} (rama HEAD) y de {@code GestorPublicacionEventos.java} (rama
+ * {@code donaciones-y-logistica}) en el mismo archivo, y así quedó commiteado: el módulo
+ * entero no compilaba desde el merge del 2026-10-05.
+ *
+ * <p>Se resolvió quedarse con esta versión y descartar la de {@code GestorEventos} porque
+ * {@code EntregaService} y {@code RutaService} consumen esta clase, y los dos métodos de la
+ * otra —{@code buscarEventos} y {@code guardarEvento}— no los usa nadie en el módulo.
+ */
 @Component
 public class GestorPublicacionEventos {
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -22,10 +35,14 @@ public class GestorPublicacionEventos {
 
     private final RepositorioEventoLogistica repoEventos;
     private final ObjectMapper objectMapper;
+    private final ProductorEventosLogistica productorEventos;
 
-    public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos, ObjectMapper objectMapper) {
+    public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
+                                   ObjectMapper objectMapper,
+                                   ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
         this.objectMapper = objectMapper;
+        this.productorEventos = productorEventos;
     }
 
     public Ruta publicarInicioRuta(Ruta ruta) {
@@ -52,6 +69,7 @@ public class GestorPublicacionEventos {
 
         ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return ruta;
     }
@@ -68,6 +86,7 @@ public class GestorPublicacionEventos {
 
             item.getEventos().add(evento);
             repoEventos.save(evento);
+            productorEventos.publicar(evento);
         }
         return item;
     }
@@ -82,6 +101,7 @@ public class GestorPublicacionEventos {
 
         item.getEventos().add(evento);
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return item;
     }
@@ -95,6 +115,7 @@ public class GestorPublicacionEventos {
 
         item.getEventos().add(evento);
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return item;
     }
