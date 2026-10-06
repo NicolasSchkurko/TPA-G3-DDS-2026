@@ -1,202 +1,150 @@
+# Infraestructura y servicios del TPA.
+#
+# Antes este archivo declaraba los cuatro servicios con `image:` y sin MySQL ni broker:
+# los contenedores no se podían construir desde el repo y no había base de datos ni cola que
+# los sostuviera. Ahora MySQL y RabbitMQ son servicios del compose y cada microservicio se
+# construye desde su módulo con `build:`.
+#
+# La cadena de integración que exige el enunciado va por RabbitMQ, no por HTTP entre
+# contenedores: `donaciones-service` publica en `logistica.exchange`, `logisticas-service`
+# publica en `logistica.eventos.exchange`, y los dos servicios de dominio publican en
+# `notificaciones.exchange`. Todos son consumidores de esas colas.
+
 services:
-  mysql-donaciones:
-    image: mysql:8.4
-    environment:
-      MYSQL_ROOT_PASSWORD: root_dev_password
-      MYSQL_DATABASE: donaciones_db
-      MYSQL_USER: donaciones_user
-      MYSQL_PASSWORD: donaciones_dev_password
-    ports:
-      - "3311:3306"
-    volumes:
-      - tpa_g3_donaciones_mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
-      interval: 10s
-      timeout: 20s
-      retries: 20
-      start_period: 60s
 
-  mysql-incentivos:
-    image: mysql:8.4
-    environment:
-      MYSQL_ROOT_PASSWORD: root_dev_password
-      MYSQL_DATABASE: incentivos_db
-      MYSQL_USER: incentivos_user
-      MYSQL_PASSWORD: incentivos_dev_password
-    ports:
-      - "3309:3306"
-    volumes:
-      - tpa_g3_incentivos_mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
-      interval: 10s
-      timeout: 20s
-      retries: 20
-      start_period: 60s
+  # --- Infraestructura ---
 
-  mysql-notificaciones:
-    image: mysql:8.4
-    environment:
-      MYSQL_ROOT_PASSWORD: root_dev_password
-      MYSQL_DATABASE: notificaciones_db
-      MYSQL_USER: notificaciones_user
-      MYSQL_PASSWORD: notificaciones_dev_password
+  mysql:
+    image: mysql:8.0
+    container_name: tpa-mysql
     ports:
-      - "3310:3306"
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
-      - tpa_g3_notificaciones_mysql_data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
-      timeout: 20s
-      retries: 20
-      start_period: 60s
-
-  mysql-logisticas:
-    image: mysql:8.4
-    environment:
-      MYSQL_ROOT_PASSWORD: root_dev_password
-      MYSQL_DATABASE: logisticas
-      MYSQL_USER: logisticas_user
-      MYSQL_PASSWORD: logisticas_dev_password
-    ports:
-      - "3312:3306"
-    volumes:
-      - tpa_g3_logisticas_mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
-      interval: 10s
-      timeout: 20s
-      retries: 20
-      start_period: 60s
-
-  n8n:
-    image: n8nio/n8n:latest
-    ports:
-      - "5679:5678"
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5679/
-      WEBHOOK_URL: http://localhost:5679/
-      N8N_SECURE_COOKIE: "false"
-      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
-      TZ: America/Argentina/Buenos_Aires
-    volumes:
-      - tpa_g3_n8n_data:/home/node/.n8n
+      timeout: 5s
+      retries: 12
 
   rabbitmq:
     image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: dds_user
-      RABBITMQ_DEFAULT_PASS: dds_dev_password
+    container_name: tpa-rabbitmq
     ports:
       - "5672:5672"
-      - "15672:15672"
+      - "15672:15672"   # consola web de administración
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     volumes:
-      - tpa_g3_rabbitmq_data:/var/lib/rabbitmq
+      - rabbit-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 30s
-      retries: 20
-      start_period: 90s
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
-  donaciones-service:
-    build:
-      context: .
-      dockerfile: donaciones-service/Dockerfile
-    ports:
-      - "8084:8084"
-    depends_on:
-      mysql-donaciones:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      SERVER_PORT: 8084
-      DB_URL: jdbc:mysql://mysql-donaciones:3306/donaciones_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: donaciones_user
-      DB_PASSWORD: donaciones_dev_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: dds_user
-      SPRING_RABBITMQ_PASSWORD: dds_dev_password
-      NOTIFICACIONES_URL: http://notificaciones-service:8083/api/notificaciones
-      INCENTIVOS_URL: http://incentivos-service:8082/api/perfiles
-      LOGISTICAS_URL: http://logisticas-service:8086/api
-      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m
-
-  incentivos-service:
-    build:
-      context: .
-      dockerfile: incentivos-service/Dockerfile
-    ports:
-      - "8082:8082"
-    depends_on:
-      mysql-incentivos:
-        condition: service_healthy
-    environment:
-      SERVER_PORT: 8082
-      DB_URL: jdbc:mysql://mysql-incentivos:3306/incentivos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: incentivos_user
-      DB_PASSWORD: incentivos_dev_password
-      DONACIONES_URL: http://donaciones-service:8084
-      NOTIFICACIONES_URL: http://notificaciones-service:8083/api/notificaciones
-      N8N_URL: http://n8n:5678/webhook/incentivos
-      JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m
+  # --- Servicios de dominio ---
 
   notificaciones-service:
-    build:
-      context: .
-      dockerfile: notificaciones-service/Dockerfile
+    build: ./notificaciones-service
+    container_name: notificaciones-service
     ports:
       - "8083:8083"
-    depends_on:
-      mysql-notificaciones:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     environment:
       SERVER_PORT: 8083
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notificaciones:3306/notificaciones_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: notificaciones_user
-      SPRING_DATASOURCE_PASSWORD: notificaciones_dev_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: dds_user
-      SPRING_RABBITMQ_PASSWORD: dds_dev_password
-      N8N_URL: http://n8n:5678/webhook/notificaciones
-      JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m
-
-  logisticas-service:
-    build:
-      context: .
-      dockerfile: logisticas-service/Dockerfile
-    ports:
-      - "8086:8086"
+      # Con context-path /api, la ruta real del controller es /api/notificaciones.
+      DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: marcelo
+      DB_PASSWORD: losbabasonicos
+      # Rabbit es el canal de entrada: sin esto, dentro del contenedor el servicio busca
+      # localhost y no encuentra al broker.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
     depends_on:
-      mysql-logisticas:
+      mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+
+  incentivos-service:
+    build: ./incentivos-service
+    container_name: incentivos-service
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      #no lleva context-path: las rutas ya empiezan con /api.
+      DONACIONES_URL: http://donaciones-service:8084
+      NOTIFICACIONES_URL: http://notificaciones-service:8083/api
+      N8N_URL: http://host.docker.internal:5678/webhook/incentivos
+      DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: incentivos_user
+      DB_PASSWORD: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      mysql:
+        condition: service_healthy
+      notificaciones-service:
+        condition: service_started
+
+  # Es el broker de integración del enunciado: publica las donaciones asignadas para
+  # logística y consume los eventos de trazabilidad para notificar.
+  donaciones-service:
+    build: ./donaciones-service
+    container_name: donaciones-service
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      NOTIFICACIONES_URL: http://notificaciones-service:8083/api
+      INCENTIVOS_URL: http://incentivos-service:8082
+      LOGISTICAS_URL: http://logisticas-service:8086/api
+      DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: valentin
+      DB_PASSWORD: "10032001"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Compite por la cola compartida `logistica.integracion.queue`: para cumplir el
+  # "más de un servicio de logística disponible" del enunciado basta con escalar este
+  # servicio con `docker compose up --scale logisticas-service=2`.
+  logisticas-service:
+    build: ./logisticas-service
+    container_name: logisticas-service
+    ports:
+      - "8086:8086"
     environment:
       SERVER_PORT: 8086
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-logisticas:3306/logisticas?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: logisticas_user
-      SPRING_DATASOURCE_PASSWORD: logisticas_dev_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: dds_user
-      SPRING_RABBITMQ_PASSWORD: dds_dev_password
-      JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m
+      DB_URL: jdbc:mysql://mysql:3306/logisticas?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: valentin
+      DB_PASSWORD: "10032001"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
-  tpa_g3_donaciones_mysql_data:
-  tpa_g3_incentivos_mysql_data:
-  tpa_g3_notificaciones_mysql_data:
-  tpa_g3_logisticas_mysql_data:
-  tpa_g3_n8n_data:
-  tpa_g3_rabbitmq_data:
+  mysql-data:
+  rabbit-data:

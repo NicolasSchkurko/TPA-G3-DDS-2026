@@ -78,6 +78,33 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.6.0</version>
         </dependency>
+        <!--
+            RabbitMQ. El enunciado exige que la integracion con notificaciones sea asincrona
+            "a traves de una cola de mensajes", y sin esta dependencia no hay RabbitTemplate ni
+            forma de publicar. Antes el servicio mandaba las notificaciones por HTTP
+            sincronico, que es justo lo contrario de lo pedido.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+        <!--
+            Spring Security, declarado aca a proposito y no heredado del padre.
+
+            El padre lo saca porque lo heredaban los cuatro modulos y en los otros tres no hay
+            ninguna clase de seguridad: Spring Boot generaba una password aleatoria y
+            bloqueaba todo. En notificaciones eso era 401 en POST /notificaciones, con lo que
+            ningun servicio de dominio podia publicar un aviso.
+
+            Incentivos lo declara para poder dejar la politica de acceso escrita y explicita en
+            su SecurityConfig, aunque hoy sea dejar pasar todo. Es el lugar donde reintroducir
+            una politica real si alguna vez se define, y tenerlo declarado evita depender del
+            comportamiento por defecto de Boot.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

@@ -169,9 +169,12 @@ Hoy no hay forma de configurarla:
 
 ## Documentación por servicio
 
-Cada microservicio tiene su Swagger en `/api-docs`. Además, `incentivos-service`
-mantiene un `PENDIENTES.md` con los problemas técnicos conocidos que quedaron
-abiertos: los puntos 1 al 9 son disposiciones de diseño o requisitos del enunciado sin
-implementar, y del 10 al 23 son los resultados de una auditoría de código (bugs de
-correctitud, falta de idempotencia, consultas N+1, código muerto y deuda de diseño).
-Cada punto indica severidad, archivos afectados y una propuesta concreta.
+Cada microservicio tiene su Swagger en `/api-docs`.
+
+Los cuatro mantienen un `PENDIENTES.md` propio con los problemas técnicos conocidos que
+quedaron abiertos. Los IDs nunca se renumeran, así que hay huecos: cada punto dice su
+severidad, los archivos afectados y una propuesta concreta. Lo que ya se corrigió queda en la
+sección `# Corregidos` de cada archivo, con el motivo por el que se cambió.
+
+Los tres comandos de arranque y el compose están en [docker-compose.yml](docker-compose.yml),
+que incluye MySQL y RabbitMQ: la integración entre servicios va por el broker, no por HTTP.

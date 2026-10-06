@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
+import ar.edu.utn.frba.ddsi.incentivos.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
@@ -8,54 +9,68 @@ import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.web.client.RestTemplate;
 
 /**
- * Avisa a {@code notificaciones-service}, y escucha los eventos del servicio para
- * notificarle al donante lo que le pasa.
+ * Publica las notificaciones del donante en el broker.
  *
- * <p>Los tres listeners corren en {@code AFTER_COMMIT} a propósito: notificar antes de que
- * la transacción confirme puede avisarle al donante de una insignia que después no se
- * guardó.
+ * <p><b>Va por Rabbit y no por HTTP, y es lo que pide el enunciado.</b> Dice textualmente
+ * que la integración con el servicio de notificaciones "deberá realizarse de forma asíncrona, a
+ * través de una cola de mensajes, a fin de no afectar la disponibilidad del sistema ante picos
+ * de carga o fallas transitorias".
+ *
+ * <p>Antes era un {@code restTemplate.postForEntity} dentro de un
+ * {@code @TransactionalEventListener}, o sea **sincrónico y bloqueante**: si el servicio de
+ * notificaciones tardaba o estaba caído, el hilo quedaba esperando y, como la llamada ocurre
+ * en {@code AFTER_COMMIT}, la transacción ya estaba commiteada pero la excepción subía igual.
+ * Con un pico de notificaciones, el servicio entero se caía por culpa del receptor.
+ *
+ * <p><b>Si el broker falla, la notificación queda en pendientes y el error sube.</b> Publicar
+ * es barato y no debe romper la operación de dominio que la originó, pero perder el aviso
+ * silenciosamente es peor: por eso se guarda en el buffer de pendientes antes de propagar
+ * {@link EnvioNotificacionException}, que el llamador ya usa para saber que el aviso no salió.
+ *
+ * <p><b>El exchange lo declara este servicio</b> y notificaciones ata su cola a él. La frontera
+ * va del lado del que publica, que es lo que evita que cada consumidor tenga que conocer el
+ * nombre de las colas de los demás.
  */
 @Slf4j
 @Service
 public class NotificacionClient {
-    @Value("${servicio.notificaciones.url}")
-    private String notificacionesUrl;
 
-    private final RestTemplate restTemplate;
+    private final RabbitTemplate rabbitTemplate;
     private final DonacionClient donacionClient;
-
     private final RepositorioNotificacionesPendientes repositorioPendientes;
 
-    public NotificacionClient(RestTemplate restTemplate,
+    public NotificacionClient(RabbitTemplate rabbitTemplate,
                               DonacionClient donacionClient,
                               RepositorioNotificacionesPendientes repositorioPendientes) {
-        this.restTemplate = restTemplate;
+        this.rabbitTemplate = rabbitTemplate;
         this.donacionClient = donacionClient;
         this.repositorioPendientes = repositorioPendientes;
     }
 
     /**
-     * Manda la notificación y, si falla, la guarda en la cola de pendientes.
+     * Publica la notificación en el exchange de notificaciones.
      *
-     * @throws EnvioNotificacionException si el envío falla. Quien llama desde un listener
-     *                                    lo captura y solo loguea, porque el error ya
-     *                                    quedó registrado en la cola de pendientes.
+     * @throws EnvioNotificacionException si el broker no acepta el mensaje; en ese caso la
+     *                                   notificación queda guardada como pendiente
      */
-    public void enviarNotificacion(PerfilNotificacionDTO dto)
-            throws EnvioNotificacionException {
+    public void enviarNotificacion(PerfilNotificacionDTO dto) throws EnvioNotificacionException {
         try {
-            restTemplate.postForEntity(notificacionesUrl, dto, void.class);
-            log.info("Notificación enviada exitosamente a {}", dto.getDireccionContacto());
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NOTIFICACIONES,
+                    RabbitMQConfig.RK_INCENTIVO,
+                    dto);
+
+            log.info("Notificación publicada para {}", dto.getDireccionDeContacto());
         } catch (Exception e) {
-            log.error("Error al enviar notificación a {}, guardando en pendientes",
-                     dto.getDireccionContacto(), e);
+            log.error("Error al publicar la notificación para {}, guardando en pendientes",
+                    dto.getDireccionDeContacto(), e);
+
             repositorioPendientes.guardar(dto);
             throw new EnvioNotificacionException(dto);
         }
@@ -75,32 +90,20 @@ public class NotificacionClient {
         );
     }
 
-    /**
-     * El contacto se resuelve <b>aca</b>, y no cuando se armo el evento (punto 12).
-     *
-     * <p>Este listener corre en {@code AFTER_COMMIT}: la transaccion ya cerro y la conexion
-     * del pool esta liberada. Antes el contacto se pedia dentro de la transaccion, solo para
-     * guardarlo en el evento y usarlo aca, o sea que se retenia una conexion durante una
-     * llamada HTTP sin usar el resultado hasta mucho despues.
-     */
+    /** Le avisa al donante que tiene una misión nueva disponible. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioMision(MisionCambiada event) {
         enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
-               "Nueva misión disponible",
-               crearMensajeMision(event.misionAnterior(), event.misionNueva()));
+                "Nueva misión disponible",
+                crearMensajeMision(event.misionAnterior(), event.misionNueva()));
     }
 
-    /**
-     * Le avisa al donante que subió de categoría, contando desde cuál venía.
-     *
-     * <p>El contacto se resuelve acá y no en el evento, igual que en
-     * {@link #notificarMisionCompletada}: esta transacción ya cerró.
-     */
+    /** Le avisa al donante que avanzó de categoría. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioCategoria(CategoriaNuevaPublicar event) {
         enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
-               "Nueva categoría",
-               crearMensajeCategoria(event.categoriaAnterior(), event.categoriaNueva()));
+                "Nueva categoría",
+                crearMensajeCategoria(event.categoriaAnterior(), event.categoriaNueva()));
     }
 
     private void enviar(MedioContacto contacto, String asunto, String cuerpo) {
@@ -108,6 +111,7 @@ public class NotificacionClient {
             log.warn("Intento de envío con contacto nulo");
             return;
         }
+
         try {
             this.enviarNotificacion(
                     new PerfilNotificacionDTO(
@@ -134,6 +138,7 @@ public class NotificacionClient {
     }
 
     private String crearMensajeCategoria(String categoriaAnterior, String categoriaNueva) {
-        return "Completaste la categoría '%s' y avanzaste a '%s'.".formatted(categoriaAnterior, categoriaNueva);
+        return "Completaste la categoría '%s' y avanzaste a '%s'."
+                .formatted(categoriaAnterior, categoriaNueva);
     }
 }

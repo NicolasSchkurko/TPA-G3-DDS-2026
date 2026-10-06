@@ -10,6 +10,11 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
+// El merge movio estos dos a subpaquetes. El wildcard de arriba no los alcanza, asi que van
+// explicitos: el servicio los escribe contra findByIdDonacion() y findByEstado(), que solo
+// existen en las versiones de subpaquete.
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -70,37 +75,34 @@ public class EntregaService {
   }
 
   // --- MÉTODOS DE NEGOCIO ---
-  public void procesarPeticion(PeticionEntregaDTO request) {
-    if (request == null || request.getEntregas() == null) return;
+  public void procesarPeticion(EntregaDTO request) {
+    if (request == null) return;
 
-    List<EntregaDTO> entregas = request.getEntregas();
-    for (EntregaDTO entregaActual : entregas) {
-      List<BienDTO> bienes = entregaActual.getDonacionResumen().getBienes();
-      if (bienes == null) continue;
+    List<BienDTO> bienes = request.getDonacionResumen().getBienes();
+    if (bienes == null) return;
 
-      for (int j = 0; j < bienes.size(); j++) {
-        BienDTO bien = bienes.get(j);
-        Direccion direccionEntidad = this.convertirDireccionDTO(entregaActual.getEntidadBeneficiaria());
-        repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
-        repoProvincias.save(direccionEntidad.getCiudad().getProvincia());
-        repoCiudades.save(direccionEntidad.getCiudad());
-        repoDirecciones.save(direccionEntidad);//revisar todos lo que se agrega a otros elementos
+    for (int j = 0; j < bienes.size(); j++) {
+      BienDTO bien = bienes.get(j);
+      Direccion direccionEntidad = this.convertirDireccionDTO(request.getEntidadBeneficiaria());
+      repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
+      repoProvincias.save(direccionEntidad.getCiudad().getProvincia());
+      repoCiudades.save(direccionEntidad.getCiudad());
+      repoDirecciones.save(direccionEntidad);//revisar todos lo que se agrega a otros elementos
 
-        Entidad nuevaEntidad = new Entidad(entregaActual.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
-        repoEntidades.save(nuevaEntidad);
+      Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
+      repoEntidades.save(nuevaEntidad);
 
-        // Mapeo mediante el switch delegado al servicio
-        UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
-        repoUnidades.save(unidadDominio);
+      // Mapeo mediante el switch delegado al servicio
+      UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
+      repoUnidades.save(unidadDominio);
 
-        ItemEntrega nuevoItem = new ItemEntrega(
-            entregaActual.getDonacionResumen().getIdsDonaciones().get(j),
-            bien.getCantidad(),
-            unidadDominio,
-            nuevaEntidad
-        );
-        repoItemEntrega.saveAndFlush(nuevoItem);
-      }
+      ItemEntrega nuevoItem = new ItemEntrega(
+              request.getDonacionResumen().getIdsDonaciones().get(j),
+              bien.getCantidad(),
+              unidadDominio,
+              nuevaEntidad
+      );
+      repoItemEntrega.saveAndFlush(nuevoItem);
     }
   }
 

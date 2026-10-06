@@ -4,7 +4,7 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
 import org.springframework.stereotype.Service;
 import java.util.List;
 

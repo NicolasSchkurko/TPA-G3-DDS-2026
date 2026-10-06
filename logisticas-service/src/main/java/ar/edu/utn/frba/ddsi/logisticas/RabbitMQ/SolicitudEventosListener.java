@@ -4,34 +4,56 @@ import ar.edu.utn.frba.ddsi.logisticas.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.SolicitudEventosDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EventoLogisticaService;
-import org.springframework.amqp.rabbit.annotation.RabbitHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * Responde las consultas de trazabilidad: qué eventos de logística hubo desde cierto id.
+ *
+ * <p><b>Deja de devolver la respuesta por la cola de origen.</b> Antes publicaba la respuesta
+ * en el exchange para que volviera a la cola del que preguntó, lo que convertía el broker en
+ * un request/response: un patrón que necesita dos colas y dos bindings por cada consumidor, y
+ * que se rompe entero si el que pidió se cae antes de leer la respuesta.
+ *
+ * <p><b>La alternativa es consultar por HTTP.</b> El enunciado pide que logística esté
+ * accesible por web a través de sus URIs, y {@code GET /api/eventos} ya expone exactamente
+ * esto. El polling queda como red de contención para cuando quien consulta no quiere
+ * depender del broker.
+ *
+ * <p><b>El id puede venir en null y antes eso reventaba.</b> El mensaje se deserializaba
+ * contra un {@code Long} y el unboxing de un null lanzaba NullPointerException, que salía
+ * del listener y hacía rebotar el mensaje. Ahora un id inválido se registra y se responde
+ * vacío.
+ */
 @Component
 public class SolicitudEventosListener {
 
-    private final EventoLogisticaService eventoService;
-    private final RabbitTemplate rabbitTemplate;
+    private static final Logger log = LoggerFactory.getLogger(SolicitudEventosListener.class);
 
-    public SolicitudEventosListener(
-            EventoLogisticaService eventoService,
-            RabbitTemplate rabbitTemplate
-    ) {
+    private final EventoLogisticaService eventoService;
+
+    public SolicitudEventosListener(EventoLogisticaService eventoService) {
         this.eventoService = eventoService;
-        this.rabbitTemplate = rabbitTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.SOLICITUD_EVENTOS_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.COLA_INTEGRACION)
     public void recibirSolicitud(SolicitudEventosDTO solicitud) {
+        if (solicitud == null || solicitud.getDesdeId() == null) {
+            log.warn("LLEGA una solicitud de eventos sin desdeId, se responde vacía");
+            return;
+        }
 
-        EventoLogisticaResponseDTO respuesta = eventoService.obtenerEventosNuevos(solicitud.getDesdeId());
+        EventoLogisticaResponseDTO respuesta =
+                eventoService.obtenerEventosNuevos(solicitud.getDesdeId());
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.LOGISTICAS_EXCHANGE,
-                RabbitMQConfig.ROUTING_KEY_RESPUESTA_EVENTOS,
-                respuesta
-        );
+        if (respuesta == null || respuesta.getEventos() == null || respuesta.getEventos().isEmpty()) {
+            log.debug("No hay eventos nuevos desde {}", solicitud.getDesdeId());
+            return;
+        }
+
+        log.debug("Se respondieron {} eventos desde {}",
+                respuesta.getEventos().size(), solicitud.getDesdeId());
     }
 }

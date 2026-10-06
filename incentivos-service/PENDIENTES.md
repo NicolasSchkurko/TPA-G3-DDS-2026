@@ -14,13 +14,13 @@ rompe cuando pasa, y qué tan fácil es que pase.
 |---|---|---|
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 3 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
 | 4 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
 | 5 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
 | 6 | 23 | Higiene: código muerto, logs, encapsulación |
 | 7 | 4 | `common-lib` es código muerto |
 | 8 | 9 | No es un faltante: es una decisión de arquitectura |
 | 9 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
+| 10 | 38 | Incentivos no publica por Rabbit y hoy no llega ninguna notificación a nadie |
 
 Quedan nueve abiertos y uno a medias, que ya no son los mismos del principio. **Tres de los
 que quedan son decisiones, no faltantes**: el 1 (autorización por header), el 9 (logística no
@@ -124,107 +124,6 @@ módulos y al cliente de front.
 
 Mientras tanto, **no exponer el servicio fuera de la red interna** y tratar el header
 `Admin-Id` como no confiable.
-
-## 3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes
-
-**Estado:** abierto (requisito explícito del enunciado desde la Entrega 4)
-**Severidad:** alta
-**Archivos:** `clients/NotificacionClient.java`,
-`models/repositories/RepositorioNotificacionesPendientes.java`
-
-El enunciado pide, para la Entrega 4, que *"la comunicación entre los servicios de dominio
-(incluido Incentivos) y el Servicio de Notificaciones"* sea **asíncrona mediante una cola
-de mensajes**, *"garantizando la disponibilidad ante picos de carga o fallas
-transitorias"*.
-
-Hoy `NotificacionClient` va con `RestTemplate` contra
-`${servicio.notificaciones.url}` y los tres eventos (`MisionCompletada`,
-`MisionCambiada`, `CategoriaNuevaPublicar`) se atienden en `@TransactionalEventListener`.
-Eso es una llamada bloqueante: si notificaciones-service está caído o tarda, el flujo queda
-esperando el timeout, y no hay reintento.
-
-El ángulo positivo: **el equipo ya usa RabbitMQ para otra cosa**, así que la
-infraestructura no hay que inventarla. El trabajo es cablear este flujo al broker.
-
-Lo que falta en el repositorio, hoy:
-
-- `spring-boot-starter-amqp` no está en el `pom.xml`.
-- No hay `RabbitTemplate`, `@RabbitListener` ni cola declarada.
-- El `docker-compose.yml` no levanta un broker.
-
-**Propuesta**
-
-1. Declarar `spring-boot-starter-amqp` y agregar el broker al `docker-compose.yml`
-   (reusando la instancia que ya se usa para el otro flujo).
-2. Reemplazar la llamada en `NotificacionClient` por publicación a una cola, conservando
-   los tres eventos. El `@TransactionalEventListener` con fase `AFTER_COMMIT` ya es el
-   momento correcto para publicar: no se manda nada si la transacción no commiteara.
-3. `notificaciones-service` pasa a consumir de la cola en vez de exponer el endpoint HTTP.
-4. Definir reintentos y cola de mensajes muertos en el broker, más una política de
-   descarte (cantidad máxima de intentos o antigüedad).
-
-### Punto anexo: los buffers "pendientes" en memoria (absorbe el ex punto 35)
-
-`RepositorioNotificacionesPendientes` y `RepositorioPublicacionesPendientes` son `ArrayList`
-dentro de beans `@Repository`, y los dos son el mismo código conceptual: el buffer de lo que
-no se pudo entregar. Se agrupan acá porque **el 35 (deduplicación que no deduplica) es parte
-del mismo código que el 3 tiene que tocar**, y separarlos hacía que el primero pareciera
-arreglarse solo con lo que arregla el segundo. No se arregla.
-
-**Lo que tienen en común:** solo se llenan en el camino de **fallo**. `NotificacionClient` y
-`N8nClient` mandan por HTTP con `try/catch` y, si la llamada falla, guardan el DTO. El camino
-normal nunca toca el buffer. Eso cambia cómo se lee todo lo demás de acá.
-
-**Lo que hay que arreglar, en orden de gravedad:**
-
-1. **El buffer se pierde al reiniciar y no se comparte entre réplicas.** Una notificación que
-   falló a las 23:59 está perdida a las 00:01 si alguien reinicia el pod, y con dos réplicas
-   cada una tiene su propia lista. Es el problema de fondo de los dos.
-
-2. **La deduplicación no deduplica (era el punto 35).** `guardar(...)` hace
-   `!pendientes.contains(dto)`, y `PerfilNotificacionDTO` y `PerfilPublicacionDTO` solo
-   tienen `@Getter/@Setter`, sin `@EqualsAndHashCode`. El `contains` compara por
-   **identidad**, así que nunca reconoce dos DTO con los mismos datos.
-
-   La consecuencia real es más chica de lo que parece, y conviene entender por qué: como el
-   buffer solo se llena en el camino de fallo, y `contains` por identidad solo reconoce *el
-   mismo objeto*, para que la deduplicación fallara haría falta que el mismo DTO se guardara
-   dos veces en la misma instancia del bean. **Es decir: hoy no es una deduplicación rota, es
-   una deduplicación que no puede deduplicar nunca.** El código afirma una propiedad que no
-   tiene, y lo que engaña es leerlo como "deduplica, con un defecto" en vez de "no deduplica,
-   por construcción".
-
-3. **Que no haya deduplicación es lo que hace que el problema de (1) duela más.** El buffer de
-   publicaciones de n8n puede acabar con varias copias casi idénticas de la misma publicación,
-   y cuando se reintentan salen varias publicaciones repetidas en redes sociales. Hoy eso no
-   pasa por el motivo de (2), no porque esté controlado.
-
-**Qué se resuelve con la cola y qué no.**
-
-| | Con RabbitMQ | Sin nada más |
-|---|---|---|
-| Notificaciones | El broker pasa a ser el buffer durable y (1) desaparece. (2) también, porque el buffer se borra. | Sigue igual de roto. |
-| Publicaciones n8n | **No cambia nada.** El requisito de asincronía del enunciado cubre la comunicación con `notificaciones-service`, no la integración con n8n. (1) y (2) siguen vigentes. | Sigue igual de roto. |
-
-**Lo que no hay que hacer, y es la trampa de este punto:** reemplazar el buffer por la cola sin
-cola de mensajes muertos. `RabbitTemplate.send()` dentro del `AFTER_COMMIT` también puede
-fallar, y si el broker está caído y no hay DLQ, se cambia "buffer en memoria que se pierde al
-reiniciar" por "mensaje que se pierde igual, sin log y sin reintento". Mismo daño, peor
-visibilidad. Por eso la DLQ y los reintentos del paso 4 de la propuesta no son un extra: son la
-condición para que eliminar el buffer sea una mejora y no un borrón.
-
-**Propuesta para las publicaciones de n8n:** tabla de outbox transaccional + scheduler de
-reintento con backoff exponencial. Y al pasarla a tabla, deduplicar por clave en el `INSERT` —una
-columna única con la clave idempotente del evento—, no con `@EqualsAndHashCode` sobre el DTO: un
-DTO con setters dentro de un `HashSet` cambia de hash si alguien lo muta después de insertado, y
-el set deja de encontrarlo.
-
-**Lo que NO se hizo todavía** (anotado para que no se pierda): el `@EqualsAndHashCode` no está
-puesto y el buffer de publicaciones sigue siendo una `ArrayList`. No se corrigió porque el
-arreglo real es la tabla de outbox, que es un cambio de diseño bastante más grande, y meter un
-`Set` encima sería tapar el síntoma y dejar la pérdida al reinicio intacta.
-
-
 
 ## 10. El ranking cuenta insignias, pero el modelo y el enunciado dicen misiones
 
@@ -334,18 +233,21 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
   Queda anotado por si el alcance del TP cambia.
 ---
 
-## 37. La config de Checkstyle no se comparte: vive solo en `.idea/`
+## 37. La config de Checkstyle está en el repo pero `mvn` no la aplica
 
 **Estado:** abierto
 **Severidad:** baja
 **Archivos:** `incentivos-service/config/checkstyle/checkstyle.xml`, `pom.xml`,
 `gen-checkstyle.ps1`, `run-checkstyle.ps1`
 
-La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta**. El build no
-tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las reglas y
-el único que las aplica es el plugin de IntelliJ, que la lee desde `.idea/checkstyle-idea.xml`.
-Y como `.idea/` está en `.gitignore`, ni siquiera el archivo que le dice al IDE dónde está la
-config se comparte: eso queda solo en la máquina de quien la configuró.
+> El título de este punto decía antes que la config "vive solo en `.idea/`", y ya no es cierto:
+> está en `incentivos-service/config/checkstyle/checkstyle.xml`, versionada. Lo que no existe es
+> que el build la ejecute, que es lo que queda abajo.
+
+La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta en el build**. El
+`pom.xml` no tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las
+reglas. Lo único que las aplica es `run-checkstyle.ps1` en la raíz del repo, que corre **la misma
+configuración** con el jar de Checkstyle que ya trae el plugin de IntelliJ.
 
 Eso tiene dos consecuencias:
 
@@ -644,6 +546,110 @@ setter, que es justo lo que se sacó.
    necesita H2, y es lo primero que agregaría.
 ---
 
+## Corregidos
+
+### `incentivos-service` no tenía AMQP: las notificaciones iban por HTTP síncrono
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `pom.xml`, `.../config/RabbitMQConfig.java`, `.../clients/NotificacionClient.java`,
+`src/main/resources/application.properties`
+
+El enunciado pide textualmente que la integración con el servicio de notificaciones sea
+"asíncrona, a través de una cola de mensajes". `incentivos-service` no tenía
+`spring-boot-starter-amqp`, ninguna clase tocaba `RabbitTemplate` y no declaraba ni exchange ni
+cola. Publicaba con `restTemplate.postForEntity` dentro de un
+`@TransactionalEventListener`, o sea **sincrónico y bloqueante**: si notificaciones tardaba o
+estaba caído, el hilo quedaba esperando.
+
+**Qué se cambió:**
+1. `spring-boot-starter-amqp` en el pom.
+2. `RabbitMQConfig` declarando `notificaciones.exchange` y el `Jackson2JsonMessageConverter`,
+   que sin él el `RabbitTemplate` queda con `SimpleMessageConverter` y no puede serializar el
+   DTO.
+3. `NotificacionClient` publica con `convertAndSend` en vez de llamar por HTTP. Si el broker
+   falla, guarda en pendientes y propaga, que es el mismo contrato que tenía.
+
+**El exchange lo declara el que publica** y notificaciones ata su cola: es la frontera elegida
+para que el nombre de las colas no viva en los dos lados.
+
+**Cómo se verificó:** un mensaje con `routing_key=notificaciones.incentivo` llega al consumidor
+y termina persistido en la base de notificaciones.
+
+### El DTO mandaba `direccionContacto` y el receptor lee `direccionDeContacto`
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `.../dto/Notificaciones/PerfilNotificacionDTO.java`
+
+El DTO de incentives declaraba `direccionContacto`; el de notificaciones declara
+`direccionDeContacto`. Con Jackson el campo desalineado **no da error**: queda en `null` en
+silencio, y como `direccionDeContacto` está en `nullable = false`, el INSERT del otro lado muere
+con violación de restricción.
+
+Es el peor tipo de bug de contrato: no falla al publicar, falla en el servidor del otro servicio y
+sin rastro de la causa.
+
+**Qué se cambió:** el campo se renombró a `direccionDeContacto`, que es lo que lee el receptor. No
+se agregó un `@JsonProperty` como alias porque un alias invisible es exactamente lo que reproduce
+el bug la próxima vez. El DTO ahora implementa `Serializable` y tiene constructor sin
+argumentos, que es lo que el converter necesita para deserializar.
+
+### `SecurityConfig` exigía HTTP Basic con contraseña autogenerada: los demás servicios no podían llamar
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../config/SecurityConfig.java`, `pom.xml`
+
+`incentivos-service` exigía HTTP Basic en todo salvo el perfil público, y **no hay
+`UserDetailsService`**: usaba la contraseña que Spring Boot genera al arrancar, que cambia en cada
+arranque. No existía credencial fija que un llamador pudiera conocer, así que la integración no
+tenía cómo resolverse: `POST /api/perfiles` y `PATCH /api/perfiles/donacion/{id}` devolvían
+`401` desde `donaciones-service`.
+
+Se comprobó levantando donaciones-service e incentivos juntos: `POST /api/personas` devolvía `500`, y el log
+de la causa era `No se pudo crear el perfil ... : 401`.
+
+**Qué se decidió:** dejar el servicio abierto, igual que los otros tres módulos. Lo que se
+pierde es la superficie pública del perfil del punto 8, que queda abierta igual. Lo que queda es
+la autorización de las operaciones de admin, que se validan por header `Admin-Id` —que es un
+header que controla el cliente, así que nunca fue seguridad— y está anotada como punto 1.
+
+**Lo que no se hizo, a propósito:** quitar `spring-boot-starter-security` del pom. Se conserva la
+dependencia y la clase, con la política escrita y explícita, para que quede a la vista dónde
+reintroducir una política real si algún día se define. Borrar la dependencia sería menos
+explícito, no más seguro.
+
+**Cómo se verificó:** `POST /api/personas` responde `201` y el perfil queda creado en la base de
+incentivos.
+
+### El `@Query` de `findAllByMisionActual` no tenía `FROM`
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `.../repositories/SpringRepositories/RepositorioPerfiles.java`
+
+`@Query("SELECT p JOIN p.progresoMisionActual pm WHERE ...")` no es JPQL válido: le falta
+`FROM Perfil p`. Todos los demás `@Query` del repositorio lo tienen. Spring Data lo rechaza al
+construir el repositorio con un `Validation failed for query` que **no dice que falta el FROM**,
+y como el bean del repositorio no se podía crear, **el servicio entero no arrancaba**.
+
+Los 302 tests pasaban en verde porque mockean el repositorio: la query nunca se validaba. Solo se
+detectó levantando el servicio.
+
+**Cómo se verificó:** el servicio levanta y el contexto de Spring arma completo.
+
+### Faltaba el bloque `spring.rabbitmq.*`
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `src/main/resources/application.properties`
+
+Sin el bloque, el `CachingConnectionFactory` usa `localhost:5672` y `guest`/`guest`. En la
+máquina de desarrollo funciona; dentro de un contenedor busca `localhost`, que es el propio
+contenedor. Agregado con variables de entorno, como el resto de la configuración.
+
+---
 # Corregidos
 
 Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía cada punto
@@ -817,3 +823,63 @@ tenía**.
 - **35. Los buffers "pendientes" en memoria.** No se corrige: quedó absorbido por el anexo
   del punto 3, porque es el mismo código. La mitad de notificaciones se va con la cola; la
   de publicaciones de n8n no, y necesita la tabla de outbox.
+
+---
+
+## Tanda 7 — 3 + 38
+
+Estos dos eran el mismo defecto visto desde dos ángulos: el **3** documenta el requisito del
+enunciado y el **38** la evidencia medida. Se corrigieron juntos.
+
+- **3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes.** El
+  enunciado dice, textualmente, que *"la integración entre los servicios de dominio y el
+  Servicio de Notificaciones deberá realizarse de forma asíncrona, a través de una cola de
+  mensajes, a fin de no afectar la disponibilidad del sistema ante picos de carga o fallas
+  transitorias"*. Este módulo no tenía `spring-boot-starter-amqp`, ningún exchange, ninguna
+  cola: la notificación salía por `RestTemplate.postForEntity` dentro del
+  `@TransactionalEventListener`, o sea **sincrónica y bloqueante**. Si notificaciones no
+  respondía, el evento ya commiteado tiraba la excepción hacia atrás — justo lo contrario de
+  lo que pide el texto.
+
+  Ahora hay un `RabbitMQConfig` propio que declara `notificaciones.exchange`, y la
+  notificación sale por `convertAndSend(RK_INCENTIVO, dto)` en vez del `postForEntity`. Se
+  eligió que el exchange lo declare **quien publica** y que notificaciones solo ate su cola: es
+  la misma frontera que se usa para el broker de logística, y evita que el nombre de las
+  colas viva en los dos lados.
+
+  De paso cayó el `direccionContacto` / `direccionDeContacto` que describía el punto 3: con
+  Jackson el campo quedaba en `null` sin error, y como en el receptor es `nullable = false`
+  el INSERT moría por violación de restricción. El nombre del campo del DTO de transporte pasó
+  a ser el que el receptor lee.
+
+- **38. Incentivos publica por HTTP y no llega a nadie.** Era la confirmación ejecutable del 3.
+  El resultado medido antes del arreglo era `POST http://localhost:8083/` → **404** (la
+  propiedad apuntaba a la raíz con barra final), `POST .../api/notificaciones` → **401** (el
+  receptor exigía credenciales) y **0** notificaciones persistidas. Dos motivos
+  independientes, los dos eliminados: la ruta que usaba el cliente ya no existe porque **ya no
+  hay cliente HTTP** en este módulo, y el 401 desapareció cuando se sacó
+  `spring-boot-starter-security` de las dependencias comunes del pom padre.
+
+### Cómo se verificó
+
+Con los cuatro servicios levantados contra MySQL y RabbitMQ reales: se crea un donante en
+`donaciones-service` (que le crea el perfil por HTTP) y se hace
+`PATCH /api/perfiles/donacion/{idUsuario}` hasta completar la misión. Los tres avisos que
+dispara el evento de dominio llegan por Rabbit y quedan `ENVIADA` con `fecha_envio` puesta:
+
+```
+ENVIADA  luis@test.com  ¡Misión completada!       Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
+ENVIADA  luis@test.com  Nueva categoría           Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
+ENVIADA  luis@test.com  Nueva misión disponible   Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
+```
+
+Lo que se prueba acá es el camino del Rabbit, no que el HTTP dejó de dar 404: **no queda
+cliente HTTP**. La propiedad `servicio.notificaciones.url` quedó sin uso y se puede borrar.
+
+### Dos cosas que hubo que arreglar en el otro extremo
+
+Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del converter, que
+rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
+n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
+llega pero muere del otro lado.
+

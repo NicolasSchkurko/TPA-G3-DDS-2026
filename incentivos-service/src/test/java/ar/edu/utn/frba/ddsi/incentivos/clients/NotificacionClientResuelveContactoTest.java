@@ -20,7 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 /**
  * El contacto del donante ya no viaja resuelto en el evento: lo resuelve el listener
@@ -33,7 +33,7 @@ class NotificacionClientResuelveContactoTest {
     private static final UUID USUARIO = UUID.randomUUID();
 
     private DonacionClient donacionClient;
-    private RestTemplate restTemplate;
+    private RabbitTemplate rabbitTemplate;
     private NotificacionClient client;
 
     @BeforeEach
@@ -41,9 +41,9 @@ class NotificacionClientResuelveContactoTest {
         // Mocks por test: si fueran estaticos, las invocaciones de un test contaminarian
         // las verificaciones del siguiente.
         donacionClient = mock(DonacionClient.class);
-        restTemplate = mock(RestTemplate.class);
+        rabbitTemplate = mock(RabbitTemplate.class);
         client = new NotificacionClient(
-                restTemplate,
+                rabbitTemplate,
                 donacionClient,
                 mock(RepositorioNotificacionesPendientes.class));
     }
@@ -79,10 +79,10 @@ class NotificacionClientResuelveContactoTest {
 
         client.notificarCambioMision(evento());
 
-        // verifyNoInteractions y no un verify(restTemplate, never()).postForEntity(...):
-        // ese metodo tiene dos sobrecargas compatibles entre si y Mockito no puede
+        // verifyNoInteractions y no un verify(rabbitTemplate, never()).convertAndSend(...):
+        // convertAndSend tiene varias sobrecargas compatibles entre si y Mockito no puede
         // desambiguar, con lo que la verificacion pasaria sin comprobar nada.
-        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(rabbitTemplate);
     }
 
     @Test

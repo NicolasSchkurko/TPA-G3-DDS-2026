@@ -78,7 +78,17 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     List<Perfil> findAllByCategoriaActual(Categoria categoria);
 
+    /**
+     * Donantes cuya mision vigente es la indicada.
+     *
+     * <p><b>Le faltaba el {@code FROM}.</b> Era {@code "SELECT p JOIN p.progresoMisionActual pm ..."},
+     * que no es JPQL valido, y Spring Data lo rechaza al construir el repositorio: el mensaje
+     * es un {@code Validation failed for query} que no dice que falta el FROM. Como el bean
+     * del repositorio no se podia crear, <b>el servicio entero no arrancaba</b> aunque los 302
+     * testsaran en verde — los tests mockean el repositorio, asi que la query nunca se valida.
+     */
     @Query("SELECT p "
+            + "FROM Perfil p "
             + "JOIN p.progresoMisionActual pm "
             + "WHERE pm.mision.idMision = :idMision")
     List<Perfil> findAllByMisionActual(@Param("idMision") UUID idMision);

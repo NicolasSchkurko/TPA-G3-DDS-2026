@@ -1,45 +1,40 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 
+import ar.edu.utn.frba.ddsi.incentivos.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestTemplate;
+import org.mockito.ArgumentCaptor;
+import org.springframework.amqp.AmqpConnectException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
-@DisplayName("NotificacionClient: envio de notificaciones")
+/**
+ * El test antes afirmaba el bug: esperaba un {@code POST} a la raíz del servicio y el campo
+ * {@code direccionContacto}, que es el nombre que el receptor nunca leyó. Con las dos cosas
+ * rotas a la vez, el test pasaba en verde mientras ninguna notificación llegaba a nadie.
+ */
+@DisplayName("NotificacionClient: publicacion en el broker de notificaciones")
 class NotificacionClientTest {
 
-    private static final String BASE_URL = "http://localhost:8083";
-
-    private RestTemplate restTemplate;
-    private MockRestServiceServer server;
+    private RabbitTemplate rabbitTemplate;
     private RepositorioNotificacionesPendientes pendientes;
     private NotificacionClient client;
 
     @BeforeEach
     void setUp() {
-        restTemplate = new RestTemplate();
-        server = MockRestServiceServer.bindTo(restTemplate).build();
+        rabbitTemplate = org.mockito.Mockito.mock(RabbitTemplate.class);
         pendientes = new RepositorioNotificacionesPendientes();
-        client = new NotificacionClient(restTemplate, null, pendientes);
-    }
-
-    private void givenBaseUrl(String url) throws Exception {
-        var field = NotificacionClient.class.getDeclaredField("notificacionesUrl");
-        field.setAccessible(true);
-        field.set(client, url);
+        client = new NotificacionClient(rabbitTemplate, null, pendientes);
     }
 
     private PerfilNotificacionDTO notificacion() {
@@ -47,48 +42,52 @@ class NotificacionClientTest {
     }
 
     @Test
-    @DisplayName("envía la notificación al servicio de notificaciones")
-    void enviaLaNotificacion() throws Exception {
-        givenBaseUrl(BASE_URL);
-
-        server.expect(requestTo(BASE_URL))
-              .andRespond(withSuccess());
-
+    @DisplayName("publica en el exchange de notificaciones con la routing key de incentivo")
+    void publicaEnElExchange() {
         client.enviarNotificacion(notificacion());
 
-        server.verify();
+        verify(rabbitTemplate).convertAndSend(
+                eq(RabbitMQConfig.EXCHANGE_NOTIFICACIONES),
+                eq(RabbitMQConfig.RK_INCENTIVO),
+                any(PerfilNotificacionDTO.class));
+
         assertThat(pendientes.listarTodas()).isEmpty();
     }
 
+    /**
+     * El nombre del campo es parte del contrato con el receptor. Si vuelve a
+     * {@code direccionContacto}, el broker lo acepta, el consumidor lo deserializa con null y
+     * el INSERT del otro lado muere por {@code nullable = false}.
+     */
     @Test
-    @DisplayName("si el envío falla, guarda la notificación como pendiente y propaga el error")
-    void guardaLaNotificacionPendienteSiFalla() throws Exception {
-        givenBaseUrl(BASE_URL);
+    @DisplayName("el DTO lleva direccionDeContacto, el nombre que lee el receptor")
+    void elCampoDeDireccionSeLlamaComoLoEsperaElReceptor() {
+        client.enviarNotificacion(notificacion());
 
-        server.expect(requestTo(BASE_URL))
-              .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        ArgumentCaptor<PerfilNotificacionDTO> captor =
+                ArgumentCaptor.forClass(PerfilNotificacionDTO.class);
 
-        assertThatThrownBy(() -> client.enviarNotificacion(notificacion()))
-                .isInstanceOf(EnvioNotificacionException.class);
+        verify(rabbitTemplate).convertAndSend(
+                eq(RabbitMQConfig.EXCHANGE_NOTIFICACIONES),
+                eq(RabbitMQConfig.RK_INCENTIVO),
+                captor.capture());
 
-        assertThat(pendientes.listarTodas()).hasSize(1);
-        server.verify();
+        assertThat(captor.getValue().getDireccionDeContacto()).isEqualTo("ana@example.com");
     }
 
     @Test
-    @DisplayName("envía el cuerpo con medio, dirección, mensaje y asunto")
-    void enviaElCuerpoEsperado() throws Exception {
-        givenBaseUrl(BASE_URL);
+    @DisplayName("si el broker falla, guarda la notificacion como pendiente y propaga el error")
+    void guardaLaNotificacionPendienteSiElBrokerFalla() {
+        // Los tipos explicitos evitan la ambiguedad de convertAndSend, que tiene varias
+        // sobrecargas y Mockito no puede desambiguar entre matchers genericos.
+        doThrow(new AmqpConnectException(new java.io.IOException("broker caido")))
+                .when(rabbitTemplate)
+                .convertAndSend(anyString(), anyString(), any(PerfilNotificacionDTO.class));
 
-        server.expect(requestTo(BASE_URL))
-              .andExpect(jsonPath("$.direccionContacto").value("ana@example.com"))
-              .andExpect(jsonPath("$.medioDeContacto").value("EMAIL"))
-              .andExpect(jsonPath("$.cuerpoMensaje").value("Mensaje"))
-              .andExpect(jsonPath("$.asuntoMensaje").value("Asunto"))
-              .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(() -> client.enviarNotificacion(notificacion()))
+                .isInstanceOf(EnvioNotificacionException.class);
 
-        client.enviarNotificacion(notificacion());
-
-        server.verify();
+        assertThat(pendientes.listarTodas()).hasSize(1);
     }
 }
