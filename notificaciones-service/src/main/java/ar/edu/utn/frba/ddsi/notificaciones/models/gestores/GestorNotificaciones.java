@@ -1,47 +1,48 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.gestores;
 
-import ar.edu.utn.frba.ddsi.notificaciones.exceptions.NotificacionExceptions.ErrorAlEnviarNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.messaging.ProductorNotificaciones;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvio;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
 public class GestorNotificaciones {
     private final RepositorioNotificaciones repositorioNotificaciones;
     private final MedioDeEnvioFactory factory;
-    private final BlockingQueue<Notificacion> cola = new LinkedBlockingQueue<>();
+    private final ProductorNotificaciones productorNotificaciones;
 
-    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory) {
+    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory, ProductorNotificaciones productorNotificaciones) {
         this.repositorioNotificaciones = repositorioNotificaciones;
-        this.factory = factory; //No se donde se asigna
+        this.factory = factory;
+        this.productorNotificaciones = productorNotificaciones;
     }
 
-    public void enviarSolicitudDeNotificacion(String tipoDeMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
+    public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
 
-        Notificacion notificacion = crearNotificacion(direccionDeContacto, asunto, cuerpo);
+        Notificacion notificacion = crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
         notificacion.marcarPendiente();
         repositorioNotificaciones.guardar(notificacion);
+        productorNotificaciones.enviar(notificacion);
+        repositorioNotificaciones.save(notificacion);
         cola.add(notificacion);
 
     }
 
     // Crea una Notificacion a partir de una SolicitudNotificacion y la guarda en el repositorio
-    public Notificacion crearNotificacion(String direccionDeContacto, String asunto, String cuerpo) {
+    public Notificacion crearNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
 
         Mensaje mensaje = new Mensaje(asunto, cuerpo);
+        Notificacion notificacion = new Notificacion(direccionDeContacto, tipoMedioDeContacto, mensaje);
         Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
 
-        return new Notificacion(direccionDeContacto, mensaje);
+        return notificacion;
     }
 
     @Scheduled(fixedDelay = 2000)
@@ -49,13 +50,13 @@ public class GestorNotificaciones {
         Notificacion notificacion = cola.poll();
         if (notificacion != null) {
             try {
-                enviarNotificacion("sms", notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
+                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
                 notificacion.marcarEnviada();
             } catch (Exception e) {
                 notificacion.marcarFallida();
                 cola.add(notificacion);
             }
-            repositorioNotificaciones.guardar(notificacion);
+            repositorioNotificaciones.save(notificacion);
         }
     }
 

@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 
-
 public class NotificacionesServiceApplicationTests {
 
 
@@ -24,7 +23,12 @@ public class NotificacionesServiceApplicationTests {
         Mail mail = new Mail(gatewayMock);
 
         Mensaje mensaje = new Mensaje("Asunto test", "Cuerpo test");
-        Notificacion notificacion = new Notificacion("test@mail.com", mensaje);
+        Notificacion notificacion =
+                new Notificacion(
+                        "test@mail.com",
+                        "email",
+                        mensaje
+                );
 
         mail.enviarNotificacion(notificacion);
 
@@ -38,7 +42,12 @@ public class NotificacionesServiceApplicationTests {
         Mail mail = new Mail(gatewayMock);
 
         Mensaje mensaje = new Mensaje("Asunto test", "Cuerpo test");
-        Notificacion notificacion = new Notificacion("test@mail.com", mensaje);
+        Notificacion notificacion =
+                new Notificacion(
+                        "test@mail.com",
+                        "telefono",
+                        mensaje
+                );
 
         mail.enviarNotificacion(notificacion);
 

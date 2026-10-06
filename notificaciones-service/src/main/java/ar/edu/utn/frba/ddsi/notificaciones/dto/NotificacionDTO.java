@@ -8,6 +8,7 @@ import lombok.Setter;
 public class NotificacionDTO {
     private String asunto;
     private String cuerpo;
+    private String tipoMedioDeContacto;
     private String direccionDeContacto;
     private String fechaCreacion;
     private String fechaEnvio;
