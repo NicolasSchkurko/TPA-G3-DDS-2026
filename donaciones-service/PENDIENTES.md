@@ -12,9 +12,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 1 | Las dos llamadas HTTP a otros servicios apuntan a rutas que no existen |
-| 2 | 2 | Dos bindings de Rabbit atan al exchange equivocado |
-| 3 | 3 | Se traga las excepciones de salida a propósito, sin log |
 | 4 | 4 | Declara el bean de `notificaciones-service` como dependencia de Maven |
 | 5 | 5 | El endpoint de vencer una donación manda un estado que el parser no conoce |
 | 6 | 6 | Una estrategia de notificación no es bean: toda entrega fallida revienta |
@@ -40,112 +37,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 26 | 26 | El PUT de necesidad ignora el id de entidad y castea a ciegas |
 | 27 | 27 | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
 | 28 | 28 | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica |
-
----
-
-## 1. Las dos llamadas a otros servicios apuntan a rutas que no existen
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/IncentivosClient.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/NotificacionesClient.java`
-
-### Qué pasa
-
-Tres peticiones HTTP, las tres fallan. Se verificó levantando los cuatro servicios juntos y
-mirando las rutas reales que declara cada controller.
-
-**`IncentivosClient.peticionCrearPerfil`** hace `POST` a `servicio.incentivos.url`, que por
-defecto es `http://localhost:8082/`. O sea, a la raíz. En `incentivos-service` el endpoint
-real es `POST /api/perfiles`. Lo mismo con `notificarDonacionAsignada`, que hace `POST` a
-`http://localhost:8082/{idUsuario}`: la ruta real es `PATCH /api/perfiles/donacion/{idUsuario}`.
-Faltan el método HTTP, la ruta y el path variable.
-
-**`NotificacionesClient.enviarNotificacion`** hace `POST` a `http://localhost:8083/`. El
-controller de notificaciones está declarado como `@RequestMapping("/notificaciones")` y el
-servicio tiene `server.servlet.context-path=/api`, así que la ruta real es
-`POST /api/notificaciones`. Al cliente le falta el `/notificaciones`.
-
-### Por qué no se ve
-
-Los dos clientes envuelven la llamada en `try { ... } catch (Exception e)` y responden
-`System.err.println`. Eso convierte un 404 en un mensaje en la consola y sigue. El flujo
-principal cree que notificó y el registro nunca se crea.
-
-Es el mismo punto 5 del backlog de `incentivos-service`, visto desde el otro lado: el
-contrato roto no es de un servicio, es de los dos.
-
-### Propuesta
-
-Definir el contrato una vez y corregir los dos lados. Las rutas reales ya están declaradas en
-los controllers, así que la corrección es completar los strings de los clientes.
-
----
-
-## 2. Dos bindings de Rabbit atan al exchange equivocado
-
-**Estado:** abierto
-**Severidad:** media
-**Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/config/RabbitMQConfig.java`
-
-### Qué pasa
-
-`RabbitMQConfig` está duplicado: hay una copia byte a byte en `donaciones-service` y otra en
-`logisticas-service`. En la de `logisticas-service`, dos bindings usan `donacionesExchange()`
-donde corresponde `logisticasExchange()`:
-
-- `bindingSolicitudEventos` ata `solicitudEventosQueue` a `donaciones.exchange`.
-- `bindingRespuestaEventos` ata `respuestaEventosQueue` a `logisticas.exchange` (este está
-  bien, es el único de los dos que acierta).
-
-El de `solicitudEventos` es el que importa: `logisticas.exchange` publica
-`LogisticaPollingScheduler` y `SolicitudEventosListener` consumed
-`logisticas.solicitud.eventos.queue`. Con el binding atado al exchange de donaciones, ese
-tráfico no llega nunca.
-
-### Por qué no se ve
-
-El binding del mismo nombre declarado en `donaciones-service` **sí** ata
-`solicitudEventosQueue` a `logisticas.exchange` con el routing key correcto. Como las dos
-colas tienen el mismo nombre, la declaración de `donaciones-service` la deja atada igual y el
-mensaje llega. El bug está enmascarado por el binding del otro servicio: funciona mientras
-`donaciones-service` esté arriba, y se rompe si alguna vez se levanta logística sola.
-
-Se verificó contra el broker: la cola `logisticas.solicitud.eventos.queue` aparece con dos
-consumidores esperados y el binding de `donaciones.exchange` no aparece en la lista.
-
-### Propuesta
-
-Corregir el exchange del binding y eliminar la copia duplicada de `RabbitMQConfig`, dejando la
-declaración de colas y exchanges en un solo módulo. Dos copias de la misma constante en
-servicios distintos es exactamente lo que hace que un fix se aplique en un lado y no en el otro.
-
----
-
-## 3. Se traga las excepciones de salida a propósito, sin log estructurado
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/IncentivosClient.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/NotificacionesClient.java`
-
-### Qué pasa
-
-Los dos clientes hacen `catch (Exception e) { System.err.println(...) }` y devuelven
-`null`. Ninguno distingue un 404 de una base caída de un timeout.
-
-### Por qué está anotado y no corregido
-
-Es una decisión consciente del equipo: no cortar el flujo de donación porque falló una
-notificación. El problema es la otra mitad: sin nivel ni logger, cuando algo falla no hay forma
-de saber qué pasó, y con el punto 1 de arriba es imposible distinguir "no llegó la
-notificación" de "se mandó y el endpoint no existe".
-
-### Propuesta
-
-Dejar la decisión (no propagar) y cambiar solo la observabilidad: logger con nivel `warn` en
-lugar de `System.err`, y el código de respuesta HTTP en el mensaje. Es un cambio chico que
-convierte un fallo invisible en uno diagnosticable.
 
 ---
 
@@ -1198,6 +1089,7 @@ mantener el mismo nombre de campo para que Jackson los empareje, conviene que es
 propósito y no accidente de que la clase resultante tenga todos los campos.
 
 ---
+
 ## 29. `POST /donaciones/formulario` devuelve 400 sin decir por qué
 
 **Estado:** abierto
@@ -1235,6 +1127,7 @@ servicios— responde `201` con persistencia real.
 `notificaciones-service`. Es la causa de que el `400` no diga nada.
 
 ---
+
 ## Corregidos
 
 ### `IncentivosClient` publicaba contra la raíz del servicio: 404 y 405 garantizados
@@ -1325,4 +1218,135 @@ llega al listener y falla con `MessageConversionException`, que no dice cuál de
 desalineó. Ese error se sufrió durante esta tanda y costó tiempo de diagnóstico.
 
 ---
+
 # Corregidos
+
+### 1. Las dos llamadas a otros servicios apuntaban a rutas que no existían
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `.../clients/IncentivosClient.java`, `.../clients/NotificacionesClient.java`
+
+### Qué pasaba
+
+Los dos clientes de salida apuntaban mal, por motivos distintos:
+
+**`IncentivosClient`.** La propiedad por defecto era `http://localhost:8082` sin el context-path,
+y las rutas que concatenaba no existían:
+
+| Llamada | Antes | Ahora |
+|---|---|---|
+| Crear perfil | `POST /` | `POST /api/perfiles` |
+| Reportar donación | `POST /perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{id}` |
+
+Lo de `POST` contra un endpoint que solo declara `PATCH` es lo que más fácil de pasar por alto:
+aunque la ruta hubiera existido, el métodoverbs mismatch da **405**, no 404.
+
+**`NotificacionesClient`.** Iba por HTTP a la raíz del otro servicio, así que cada
+notificación daba 404. Y según el enunciado no tenía que ir por HTTP en absoluto: la integración
+de los servicios de dominio con notificaciones es asíncrona por cola de mensajes.
+
+### Qué se hizo
+
+- `IncentivosClient` usa las rutas reales, con `exchange(..., HttpMethod.PATCH, ...)` para el
+  informe de donación, y loguea la URL que intenta antes de llamar.
+- `NotificacionesClient` **migró a Rabbit**: publica en `notificaciones.exchange` con la routing key
+  `notificaciones.donacion`. Es la razón por la que se agregó el exchange a este `RabbitMQConfig`.
+
+### Cómo se verificó
+
+Los cuatro servicios levantados contra MySQL y RabbitMQ reales:
+
+- `POST /api/personas` en donating → **201**, y el perfil aparece creado en la base de
+  incentivos.
+- `PATCH /api/perfiles/donacion/{id}` en incentivos → **200 `true`**, que es la respuesta de que
+  la misión se completó.
+- El alta de donante publica por Rabbit y la notificación queda `ENVIADA` con `fecha_envio`.
+
+---
+
+### 2. Dos bindings de Rabbit ataban al exchange equivocado
+
+**Estado:** corregido
+**Severidad:** alta
+**Archivo:** `.../config/RabbitMQConfig.java`
+
+### Qué pasaba
+
+Este módulo declaraba **colas y bindings que son de logística**, y encima los ataba al exchange
+equivocado. Logística tenía su propia copia de esos beans, idéntica salvo por esos dos bindings
+mal atados.
+
+Con las dos declaraciones, el broker aceptaba ambas. El binding bueno de este módulo tapaba el
+malo del otro, así que en el arranque normal de los cuatro juntos todo parecía andar. Pero
+levantando logística sola, las colas que este módulo declara no existen y la cadena se corta:
+**el bug estaba oculto por el orden de arranque**.
+
+### Qué se hizo
+
+La frontera quedó así: **cada servicio declara lo suyo y nada más.**
+
+- Este módulo declara `logistica.exchange`, `logistica.eventos.exchange` y
+  `notificaciones.exchange` (los tres de los que publica), más **su** cola de eventos y **su**
+  binding.
+- Logística declara las colas que consume.
+
+Un exchange es un punto de encuentro: lo declara quien publica y lo usan todos los que lo
+consumen, así que el nombre no vive en los dos lados.
+
+De paso se sacaron los dos bindings con `#.` del routing key. En RabbitMQ el comodín `#` **exige
+al menos un nivel más**: `notificaciones.incentivo.#` no matchea su propia clave
+`notificaciones.incentivo`. El broker aceptaba el mensaje y lo descartaba — la peor combinación
+para diagnosticar, porque `routed=true` y no hay mensaje.
+
+### Cómo se verificó
+
+Los bindings declarados en el broker, con las tres routing keys de notificaciones unidas a la
+cola:
+
+```
+--[notificaciones.donacion]--> notificaciones
+--[notificaciones.evento.logistica]--> notificaciones
+--[notificaciones.incentivo]--> notificaciones
+```
+
+Y los mensajes de los dos servicios de dominio salen efectivamente por esa cola.
+
+---
+
+### 3. Se tragaba las excepciones de salida a propósito, sin log estructurado
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `.../clients/IncentivosClient.java`
+
+### Qué pasaba
+
+Los clientes de salida envolvían la llamada en un `try/catch` que **se tragaba la excepción sin
+loguear nada**. El síntoma era el peor posible: la operación de dominio se completaba y devolvía
+`201` o `200`, el servicio parecía sano, y el mensaje nunca había salido. Nadie se enteraba hasta
+que un donante se quejaba de que no le llegó la notificación.
+
+Es el mismo patrón que el `__TypeId__` del otro lado: **el servicio responde bien y el problema
+aparece un salto después.**
+
+### Qué se hizo
+
+Los clientes ahora loguean la URL que van a llamar y **relanzan**. Que re-lancen es lo correcto:
+el fallo de integración no es un fallo de la operación de dominio, y ocultarlo hacía que un
+problema de conectividad fuera indistinguible de un noop.
+
+Lo que se dejó como estaba: el `catch` sigue existiendo donde corresponde —publicar en Rabbit es
+un efecto secundario de una donación que ya está guardada, y si el broker está caído la donación
+ya está persistida. Ahí sí corresponde tragarse la excepción, pero **logueándola**.
+
+### Cómo se verificó
+
+El mensaje del `catch` incluye la URL y la routing key, que es lo que hace falta para diagnosticar
+sin tener que reproducir:
+
+```
+No se pudo publicar la notificación con routing key notificaciones.donacion: <motivo>
+```
+
+---

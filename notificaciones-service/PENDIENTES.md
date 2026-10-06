@@ -15,12 +15,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 1 | 1 | Un test contra n8n sin `@Disabled` rompe `mvn verify` en cualquier máquina sin n8n |
 | 2 | 2 | El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas |
 | 3 | 3 | Solo hay dos tests, y ninguno cubre el camino de Rabbit |
-| 4 | 4 | No hay `Jackson2JsonMessageConverter`: `RabbitTemplate` publica con `SimpleMessageConverter` y toda publicación revienta |
-| 5 | 5 | `@OneToOne` sin cascada: el `Mensaje` nunca se inserta y la FK `id_mensaje` hace fallar el INSERT |
 | 6 | 6 | El `id_mensaje` no viaja en el JSON: el consumidor vuelve con un UUID nuevo y pisa la FK |
-| 7 | 7 | El factory no normaliza el tipo: `incentivos-service` manda `"EMAIL"` y todas sus notificaciones quedan `FALLIDA` |
 | 8 | 8 | Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500 |
-| 9 | 9 | El consumidor no es idempotente: una reentrega de Rabbit reenvía la notificación y pisa el estado |
 | 10 | 10 | `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre |
 | 11 | 11 | Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties` |
 | 12 | 12 | `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null` |
@@ -77,8 +73,8 @@ debe decidir si el build del equipo pasa.
 
 ## 2. El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas
 
-**Estado:** abierto
-**Severidad:** media
+**Estado:** abierto, pero es una mejora pendiente y no un bug
+**Severidad:** baja
 **Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/messaging/ConsumidorNotificaciones.java`
 
 ### Qué pasa
@@ -100,11 +96,32 @@ Como el productor guarda la notificación en la base **antes** de publicar, toda
 fallida queda en la fila con estado `FALLIDA` y se puede reintentar desde ahí. Ese es el
 agente de recuperación. Lo que falta es el automatismo.
 
+### Qué se corrigió de este punto
+
+El "se traga en silencio" ya no es exacto. Hoy **cada** salida del listener loguea:
+
+```
+log.warn("LLEGA un mensaje vacío a la cola de notificaciones, se descarta");
+log.warn("La notificación {} no existe, el mensaje se descarta", mensaje.id());
+log.warn("LLEGA una solicitud sin medio de contacto, se descarta: {}", cuerpoCrudo);
+log.error("No se pudo procesar el mensaje de la cola: {}", ...);
+```
+
+Y el descarte en vez de reencolar está justificado por escrito en el javadoc de la clase: para
+un mail que no se puede entregar, reintentar cinco veces seguido es peor que dejarlo, porque la
+fila queda en `FALLIDA` y se puede reintentar desde la base.
+
+Lo que queda es exactamente lo mismo de antes: el automatismo.
+
 ### Propuesta
 
 Configurar la dead letter queue en `RabbitConfig` y relanzar en el caso transitorio. Con la
 base ya guardando el estado, el reintento manual es posible hoy; la propuesta es no
 depender de que alguien se acuerde.
+
+**Esta propuesta es la misma del punto 15**, que la tiene más completa y con la evidencia del
+log de 1.9 GB. Queda acá la referencia al caso transitorio, que es el ángulo que el 15 no
+cubre.
 
 ---
 
@@ -132,128 +149,6 @@ Es decir, el código que cambió en el último merge no tiene nada que lo cubra.
   el código, así que debería estar protegido por un test.
 - `NotificacionTest` sobre el constructor y los tres `marcar*`, en especial que `marcarEnviada`
   setea `fechaEnvio` y que `fechaEnvio` es nullable en una notificación nueva.
-
----
-
-## 4. No hay `Jackson2JsonMessageConverter`: `RabbitTemplate` publica con `SimpleMessageConverter`
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/config/rabbit/RabbitConfig.java:8`,
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/messaging/ProductorNotificaciones.java:17`
-
-### Qué pasa
-
-`ProductorNotificaciones.enviar` hace `rabbitTemplate.convertAndSend(COLA_NOTIFICACIONES, notificacion)`
-pasando la entidad. Para eso hace falta un `MessageConverter` que sepa serializar un POJO, y en este
-módulo **no hay ninguno**: no existe ningún bean `MessageConverter` en todo el servicio.
-
-Spring Boot 3.2.5 no lo agrega solo. En `RabbitAutoConfiguration.RabbitTemplateConfiguration`
-(`RabbitAutoConfiguration.java:146-155`) se hace
-`configurer.setMessageConverter(messageConverter.getIfUnique())`; sin bean queda `null` y el
-`RabbitTemplate` conserva el `SimpleMessageConverter` por defecto.
-
-Ese converter solo maneja `byte[]`, `String` y `Serializable`
-(`SimpleMessageConverter.java:111-143`). `Notificacion` no es ninguna de las tres, así que en las
-líneas 142-143 tira:
-
-```
-IllegalArgumentException: SimpleMessageConverter only supports String, byte[] and Serializable
-payloads, received: ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion
-```
-
-El error sube por `GestorNotificaciones.enviarSolicitudDeNotificacion:64` **después** de que la
-notificación ya se guardó, y lo atrapa el `catch (IllegalArgumentException)` de
-`NotificadorController.recibirSolicitudNotificacion:46`, que devuelve **400** con ese texto interno
-como cuerpo de la respuesta.
-
-### Lo que queda
-
-- El `POST /notificaciones` nunca devuelve el 202 que promete el Swagger.
-- No se publica ningún mensaje: la cola `notificaciones` queda vacía para siempre.
-- Cada intento deja una fila en `PENDIENTE` que nadie va a procesar. Notificaciones perdidas, y el
-  `GET /notificaciones/{id}` las muestra como si estuvieran en curso.
-
-No queda ni un log: el 400 se va al caller y el servicio sigue pareciendo sano.
-
-### Por qué no lo detectó nadie
-
-Los otros dos módulos que usan Rabbit **sí** definen el converter, en un `RabbitMQConfig` propio:
-`logisticas-service/.../config/RabbitMQConfig.java:61` y
-`donaciones-service/.../config/RabbitMQConfig.java:64`. El merge trajo a `notificaciones-service` las
-tres clases de mensajería y se quedó sin esa cuarta pieza.
-
-El mismo hueco está del lado del consumidor: sin converter, el `SimpleMessageConverter` del listener
-devuelve el payload crudo como `byte[]` y `@RabbitListener` tampoco puede armar un `Notificacion`.
-
-### Propuesta
-
-Un bean `Jackson2JsonMessageConverter` en `RabbitConfig`, igual que en los otros dos módulos. Conviene
-configurarlo con un `ObjectMapper` propio: el default no registra `JavaTimeModule`, así que
-`LocalDateTime` de `fechaCreacion` y `fechaEnvio` no va a serializar bien.
-
----
-
-## 5. `@OneToOne` sin cascada: el `Mensaje` nunca se inserta y la FK `id_mensaje` hace fallar el INSERT
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/entities/Notificacion/Notificacion.java:29`,
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificaciones.java:78`
-
-### Qué pasa
-
-`Notificacion.mensaje` está declarado como
-
-```java
-@OneToOne
-@JoinColumn(name = "id_mensaje", referencedColumnName = "id_mensaje")
-private Mensaje mensaje;
-```
-
-**sin `cascade`**. Y `GestorNotificaciones.crearNotificacion:78-84` arma un `new Mensaje(asunto, cuerpo)`
-— una entidad nueva, transient — y solo guarda la notificación:
-
-```java
-Notificacion notificacion = new Notificacion(
-        direccionDeContacto,
-        tipoMedioDeContacto,
-        new Mensaje(asunto, cuerpo)   // <- nunca se persiste
-);
-return repositorioNotificaciones.save(notificacion);
-```
-
-Sin cascada, Hibernate no emite ningún `INSERT INTO mensajes`: simplemente escribe el UUID del
-`Mensaje` transient en la columna `notificaciones.id_mensaje`. Y existe `RepositorioMensajes`
-(`models/repositories/RepositorioMensajes.java:9`) pero **no se usa en ningún lado del repo**: es la
-pista de que faltó guardar el mensaje.
-
-### Verificado contra la base
-
-El esquema que generó `ddl-auto=update` sobre `notificaciones` (localhost:3306) tiene la restricción
- Foreign Key creada, y las dos tablas están vacías:
-
-```
-CONSTRAINT `FK99l0v21gfbuc7ymnevh67mpjy` FOREIGN KEY (`id_mensaje`) REFERENCES `mensajes` (`id_mensaje`)
-notificaciones: 0 filas
-mensajes:       0 filas
-```
-
-Es decir que hoy, en la base de desarrollo, **no se persistió ni una sola notificación**. MySQL rechaza
-el `INSERT` con errno 1452, Hibernate lo traduce a `DataIntegrityViolationException`, la transacción
-revierte y el `POST` responde 500 (el controller solo atrapa `IllegalArgumentException`).
-
-Este punto es el que hoy tapa al 4: mientras el `save` reviente, nunca se llega a publicar. Arreglando
-el 5 sin el 4, el servicio pasa de "no persiste nada" a "persiste y después explota al publicar".
-
-### Propuesta
-
-Cascada explícita en la asociación más `orphanRemoval`, o guardar el `Mensaje` con
-`RepositorioMensajes` antes de guardar la notificación. Lo primero es menos código, pero hay que
-decidir quién es el dueño de la relación: hoy el `id_mensaje` de `notificaciones` es único y nullable,
-y el mensaje solo existe para ser leído por la notificación.
 
 ---
 
@@ -308,69 +203,6 @@ en un `Set` sobre estas entidades compara referencias, no contenido. Es la razó
 
 ---
 
-## 7. El factory no normaliza el tipo: `incentivos-service` manda `"EMAIL"` y todo queda `FALLIDA`
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivo:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/entities/MedioDeEnvio/MedioDeEnvioFactory.java:17`
-
-### Qué pasa
-
-`MedioDeEnvioFactory` recibe `Map<String, MedioDeEnvio>` por constructor, o sea que el mapa está indexado
-por **nombre de bean**. Los tres medios se registran así:
-
-| Clase | Anotación | Clave en el mapa |
-|---|---|---|
-| `Mail.java:8` | `@Component("email")` | `email` |
-| `Telefono.java:8` | `@Component("telefono")` | `telefono` |
-| `Whatsapp.java:9` | `@Component("whatsapp")` | `whatsapp` |
-
-Y el lookup es `medios.get(tipo)` en la línea 18: exacto y **sensible a mayúsculas**. Si no encuentra,
-`IllegalArgumentException("Tipo desconocido: " + tipo)` en la línea 20.
-
-El problema es quién llama. `incentivos-service` toma el tipo tal cual viene de
-`donaciones-service /api/personas/{id}/medios-contacto`, sin transformarlo
-(`incentivos-service/.../clients/DonacionClient.java:60-63` usa `dto.get("tipo")`), y ese endpoint
-responde en mayúsculas: `donaciones-service/.../MedioDeContacto/Mail.java:39` devuelve `"EMAIL"`, y el
-propio test lo asegura en `incentivos-service/src/test/.../NotificacionClientTest.java:85`
-(`jsonPath("$.medioDeContacto").value("EMAIL")`).
-
-O sea: el POST real es
-
-```json
-{ "medioDeContacto": "EMAIL", "direccionDeContacto": "ana@example.com", ... }
-```
-
-`medios.get("EMAIL")` da `null` → `IllegalArgumentException` → `GestorNotificaciones.enviarNotificacion:100`
-marca `FALLIDA` y re-lanza → `ConsumidorNotificaciones.recibir:58` la loguea y sigue → la notificación
-queda `FALLIDA` sin haber salido nunca. **Todo el flujo de incentivización** (misiones completadas, cambio
-de misión, cambio de categoría) falla en silencio.
-
-`donaciones-service` lo hace bien: `ServicioNotificaciones.mapearTipo:82-86` normaliza a minúsculas antes
-de llamar. La asimetría entre los dos clientes es justamente el bug.
-
-### Sobre los medios soportados
-
-Son tres, y solo tres: `email`, `telefono` y `whatsapp`. No hay `sms`, ni `push`, ni un default. El
-nombre del bean es además el contrato implícito de la API: `POST /notificaciones` acepta cualquier
-string en `medioDeContacto` y responde 202, y recién en el consumidor se descubre que no era válido.
-
-Existe `TipoMedioDeContactoInvalidoException` en
-`exceptions/NotificacionExceptions/TipoMedioDeContactoInvalidoException.java`, con la firma y el mensaje
-justos para este caso, y no la usa nadie: el factory tira `IllegalArgumentException` pelada.
-
-### Propuesta
-
-- Normalizar en la frontera del factory (`tipo.toLowerCase(Locale.ROOT).trim()`), que es el punto donde
-  el error es recuperable. O mejor, un enum `MedioDeContacto` con `@JsonCreator` y `@JsonValue`, que
-  saca el problema de raíz.
-- Tirar `TipoMedioDeContactoInvalidoException` en vez de `IllegalArgumentException`.
-- Rechazar el `medioDeContacto` desconocido **en el `POST`**, con 400, en vez de devolver 202 y fallar
-  después en el consumidor. Ver punto 8.
-
----
-
 ## 8. Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500
 
 **Estado:** abierto
@@ -414,50 +246,6 @@ con el mensaje crudo.
   cuerpo genérico para el resto, y log del error real en el log y no en la respuesta.
 - De paso, validar el medio de contacto en el borde (punto 7), que es la otra validación que hoy no
   existe y por eso los tipos inválidos se descubren tarde.
-
----
-
-## 9. El consumidor no es idempotente: una reentrega de Rabbit reenvía la notificación y pisa el estado
-
-**Estado:** abierto
-**Severidad:** media
-**Archivo:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/messaging/ConsumidorNotificaciones.java:49`
-
-### Qué pasa
-
-`recibir` manda la notificación sin mirar en qué estado está. RabbitMQ es de entrega *al menos una vez*:
-si la conexión se cae después de que n8n ya recibió el webhook pero antes de que el listener ackee, el
-mensaje vuelve a la cola y la notificación sale **dos veces**. El mail duplicado al usuario es visible; el
-problema peor es el historial, porque en la línea 65 el `save` sobrescribe el estado sin condición.
-
-Escenario concreto: una notificación quedó `ENVIADA`, se reentrega por un reinicio del broker y esta vez
-n8n no responde. `marcarFallida` la deja en `FALLIDA` y el registro pierde que en algún momento salió.
-Al revés también: una que estaba `FALLIDA` y ahora sale bien queda `ENVIADA`, y con eso se pierde el
-histórico del intento fallido. En los dos casos la fila deja de contar la historia.
-
-### Transiciones
-
-`Notificacion` expone los tres `marcar*` sin ninguna validación
-(`Notificacion.java:80-91`): `marcarEnviada`, `marcarFallida` y `marcarPendiente` escriben el estado sin
-mirar cuál era. `marcarPendiente` en particular es público y pone en `PENDIENTE` una notificación que ya
-fue enviada, **conservando el `fechaEnvio` viejo**: queda una fila PENDIENTE con fecha de envío, que no
-significa nada y rompe la interpretación de la columna que el propio mapper muestra en el GET.
-
-Además, `marcarEnviada` y `marcarPendiente` se contradicen entre sí en el flujo de producción:
-`GestorNotificaciones.enviarSolicitudDeNotificacion:59` llama `marcarPendiente()` sobre una
-notificación que el constructor de la línea 74 ya dejó en `PENDIENTE`.
-
-El punto 2 (que el consumidor no relanza) está bien resuelto. Esto es el otro lado: cuando el reintento
-exista, va a reprocesar notificaciones que ya se mandaron.
-
-### Propuesta
-
-- Si `estado == ENVIADA`, hacer ack y volver sin mandar nada.
-- Reencapsular las transiciones: que `marcarEnviada` y `marcarFallida` rechacen una notificación ya
-  terminal, y que exista un `reintentar()` explícito en vez de `marcarPendiente` a secas.
-- Si `marcarPendiente` sigue existiendo, que limpie `fechaEnvio`, para que la columna no mienta.
-- Sacar el `marcarPendiente()` redundante de `GestorNotificaciones.enviarSolicitudDeNotificacion:59`.
 
 ---
 
@@ -513,23 +301,44 @@ que tenga exactamente ese usuario y esa contraseña. En cualquier otro entorno h
 
 ### RabbitMQ sin configurar
 
-`application.properties` **no tiene ningún bloque `spring.rabbitmq.*`** (18 líneas, ninguna de AMQP). El
-`CachingConnectionFactory` se crea con los defaults de Spring Boot: `localhost:5672`, `guest`/`guest`. En
-la máquina de desarrollo funciona; en cualquier otro lado no. Y `guest` es un caso especial de RabbitMQ:
-por su propia regla solo puede conectarse desde `localhost`, así que el día que el broker se mueva a un
-contenedor o a otra host la conexión falla sin que el properties diga nada.
+**Esta parte ya está resuelta.** `application.properties` hoy tiene el bloque completo, con
+variables de entorno y valor por defecto:
 
-De paso, `spring.jpa.show-sql=true` (línea 18) deja cada statement SQL en el log de una instancia
-desplegada, que es ruido y puede filtrar datos.
+```properties
+spring.rabbitmq.host=${RABBITMQ_HOST:localhost}
+spring.rabbitmq.port=${RABBITMQ_PORT:5672}
+spring.rabbitmq.username=${RABBITMQ_USERNAME:guest}
+spring.rabbitmq.password=${RABBITMQ_PASSWORD:guest}
+```
+
+Era necesario: sin esto, dentro de un contenedor el servicio buscaba `localhost` y no encontraba
+al broker, y la cola quedaba sin consumidor. Verificado en vivo — la cola `notificaciones` tiene
+consumidor y los avisos de los dos servicios de dominio salen por ella.
+
+### Qué sigue pendiente de este punto
+
+Lo de MySQL, que es la mitad del título original y sigue igual:
+
+```properties
+spring.datasource.username=marcelo
+spring.datasource.password=losbabasonicos
+```
+
+Sin `${...}` ni fallback, al contrario que el puerto y la URL de n8n, que sí están
+parametrizadas. Dos consecuencias: la contraseña de la base está en el repositorio, y el
+servicio solo levanta contra una base que tenga exactamente ese usuario y esa contraseña.
+
+También queda `spring.jpa.show-sql=true`, que deja cada statement SQL en el log de una instancia
+desplegada: es ruido y puede filtrar datos.
 
 ### Propuesta
 
 - `spring.datasource.username=${DB_USERNAME:marcelo}` y
   `spring.datasource.password=${DB_PASSWORD:...}`, con las credenciales reales solo en variables de
   entorno o en un `.env` que no se commite.
-- Agregar `spring.rabbitmq.host`, `port`, `username` y `password` con las mismas variables de entorno,
-  para que el servicio no dependa de estar en la misma máquina que el broker.
 - Mover `spring.jpa.show-sql` a un perfil de desarrollo.
+
+Lo de Rabbit ya no hace falta: está hecho, y la verificación está arriba.
 
 ---
 
@@ -564,7 +373,6 @@ sumar un `NotificacionMapperTest`, que hoy no existe (punto 3), y un
 `GET /notificaciones/{id}` de integración que verifique el JSON completo.
 
 ---
-
 
 ## 14. El DTO de entrada no tiene validación de Bean Validation y el manejador de excepciones está comentado
 
@@ -646,6 +454,166 @@ midió; la dead letter previene la clase de problema, no este caso.
 ---
 
 # Corregidos
+
+### 4. No había converter de mensajes: `RabbitTemplate` publicaba con `SimpleMessageConverter`
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../config/rabbit/MessageConverterConfig.java`, `.../config/rabbit/RabbitConfig.java`
+
+### Qué pasaba
+
+Sin declarar un `MessageConverter`, Spring Boot deja el `RabbitTemplate` con
+`SimpleMessageConverter`, que solo sabe manejar `byte[]`, `String` y `Serializable`. Los DTO de
+integración no son ninguno de los tres, así que la publicación fallaba con
+`IllegalArgumentException` **dentro del `catch` del productor**: el servicio respondía 202 y el
+mensaje nunca salía. Los otros dos módulos con Rabbit sí definían su converter en un
+`RabbitMQConfig` propio; a este lo que le faltaba era esa cuarta pieza.
+
+### Qué se hizo
+
+`MessageConverterConfig` declara un `MessageConverter` propio, con la conversión a mano en las
+dos direcciones: al publicar serializa con el `ObjectMapper` de la aplicación, y al recibir
+devuelve el body como `String` sin deserializar a nada.
+
+Que sea propio y no un `Jackson2JsonMessageConverter` con el tipo deshabilitado es
+intencionado: el `__TypeId__` rompe la integración entre servicios y, con el mapper en `null`, el
+converter de Jackson tira `NullPointerException` antes de llegar al listener. Ver punto 16.
+
+El `RabbitConfig` conserva solo la topología (exchange, colas, bindings).
+
+### Cómo se verificó
+
+Con los cuatro servicios levantados contra MySQL y RabbitMQ reales, se crea un donante en
+`donaciones-service` y se hace `PATCH /api/perfiles/donacion/{id}` hasta completar la misión.
+Los tres avisos que dispara el evento de dominio llegan por Rabbit y quedan `ENVIADA` con
+`fecha_envio` puesta. Sin el converter, ninguno habría salido del proceso.
+
+---
+
+### 5. `@OneToOne` sin cascada: el `Mensaje` nunca se insertaba y la FK `id_mensaje` reventaba el INSERT
+
+**Estado:** corregido
+**Severidad:** alta
+**Archivo:** `.../models/entities/Notificacion/Notificacion.java:50`
+
+### Qué pasaba
+
+`Notificacion.mensaje` estaba declarado como `@OneToOne` **sin `cascade`**, y
+`GestorNotificaciones.crearNotificacion` arma un `new Mensaje(asunto, cuerpo)` —una entidad
+nueva, transient— y guarda solo la notificación.
+
+Sin cascada, Hibernate no emite el `INSERT INTO mensajes`: escribe el UUID del `Mensaje`
+transient en `notificaciones.id_mensaje`, y la FK revienta el INSERT. O sea que **no se
+persistía ni una sola notificación**, y la respuesta era un `500` con la excepción de MySQL
+adentro.
+
+### Por qué `ALL` y no `PERSIST`
+
+Este es el detalle que costó entender. **`CascadeType.PERSIST` no sirve acá, y no por poco.**
+`Notificacion.id` es un UUID asignado a mano, sin `@GeneratedValue`, así que el `isNew` de Spring
+Data siempre da `false` y `JpaRepository.save()` va **siempre por `merge()`**. El `PERSIST` solo
+actúa en `persist()`, que nunca se llama: con `PERSIST` el `INSERT` del mensaje no sale igual.
+
+Por eso es `ALL`, que además cubre el `merge` que sí ocurre.
+
+### Cómo se verificó
+
+Con la base limpia, las notificaciones de los flujos reales quedan persistidas y con su mensaje:
+
+```
+ENVIADA  ana@test.com   Nuevo Registro en DonaTrack
+ENVIADA  luis@test.com  ¡Misión completada!
+ENVIADA  luis@test.com  Nueva categoría
+ENVIADA  luis@test.com  Nueva misión disponible
+```
+
+Cada fila tiene su `id_mensaje` apuntando a una fila real de `mensajes`.
+
+---
+
+### 7. El factory no normalizaba el tipo: `incentivos-service` manda `"EMAIL"` y todo quedaba `FALLIDA`
+
+**Estado:** corregido
+**Severidad:** alta
+**Archivo:** `.../models/entities/MedioDeEnvio/MedioDeEnvioFactory.java`
+
+### Qué pasaba
+
+`MedioDeEnvioFactory` recibía `Map<String, MedioDeEnvio>` por constructor, o sea que el mapa está
+indexado por **nombre de bean** en minúsculas (`email`, `telefono`, `whatsapp`), y buscaba con
+`get()` **case-sensitive**. Los servicios mandan `"EMAIL"` o `"WHATSAPP"`.
+
+El resultado era `medios.get("EMAIL")` → `null` → `IllegalArgumentException` → `FALLIDA`. Y como
+el error se producía en el consumidor y no en el borde, **todo el flujo de incentivización**
+—misiones completadas, cambio de misión, cambio de categoría— fallaba en silencio.
+
+### Qué se hizo
+
+Normalización en la frontera del factory, que es el punto donde el error todavía es recuperable:
+`trim().toLowerCase()`. Se agregan además alias (`mail`, `gmail`, `correo`, `tel`, `celular`,
+`wa`), porque el tipo viene de otro servicio y no hay contrato que obligue a una forma sola.
+
+La alternativa que estaba propuesta en el punto original —un enum con `@JsonCreator`— es mejor a
+largo plazo, pero cambia el contrato de la API pública. La normalización arregla el bug sin
+romper nada.
+
+### Cómo se verificó
+
+En la base, las notificaciones guardadas quedaron con el tipo en minúsculas, que es lo que el
+mapper de la base espera:
+
+```
+estado  tipo_medio_contacto
+ENVIADA email
+```
+
+Y todas llegaron a `ENVIADA`, o sea que el factory las resolvió y el medio se usó de verdad.
+
+---
+
+### 9. El consumidor no era idempotente: una reentrega de Rabbit reenviaba la notificación y pisaba el estado
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `.../messaging/ConsumidorNotificaciones.java:98-119`
+
+### Qué pasaba
+
+`recibir` mandaba la notificación sin mirar en qué estado estaba. RabbitMQ es de entrega *al
+menos una vez*: si la conexión se cae después de que n8n ya recibió el webhook pero antes de que
+el listener ackee, el mensaje vuelve a la cola y **la notificación sale dos veces**. El mail
+duplicado al donante es visible; el historial es lo peor, porque el `save` sobrescribía el
+estado sin condición y se perdía que en algún momento salió.
+
+Escenario: una notificación quedó `ENVIADA`, se reentrega y ahora n8n no responde.
+`marcarFallida` la deja en `FALLIDA` y el registro pierde que ya había salido. Al revés también.
+
+### Qué se hizo
+
+`procesarAvisoDeNotificacionExistente` busca por id y **no reenvía si el estado ya es `ENVIADA`**:
+
+```java
+if (notificacion.getEstado() == EstadoNotificacion.ENVIADA) {
+    log.debug("La notificación {} ya estaba enviada, no se reenvía", notificacion.getId());
+    return;
+}
+```
+
+También se agregó el caso del mensaje que apunta a una notificación inexistente, que antes
+provocaba el loop de reentrega infinita descrito en el punto 6: ahora se descarta con `log.warn`.
+
+### Lo que quedó de este punto
+
+El `save` sigue escribiendo la entidad entera, así que **queda sin resolver la parte de las
+transiciones**: `marcarEnviada`, `marcarFallida` y `marcarPendiente` no validan nada, y en
+particular `marcarPendiente()` no limpia `fechaEnvio`, con lo que queda una fila `PENDIENTE` con
+fecha de envío, que no significa nada y contradice lo que el mapper muestra en el GET.
+
+Es un problema más chico que el que se corrigió y no se tocó: la fila ya no se pisa por
+redelivería, que era lo que rompía el historial.
+
+---
 
 ### 13. Todos los endpoints devolvían 401: la seguridad por defecto bloqueaba la integración
 

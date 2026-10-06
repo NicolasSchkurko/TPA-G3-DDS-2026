@@ -233,18 +233,21 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
   Queda anotado por si el alcance del TP cambia.
 ---
 
-## 37. La config de Checkstyle no se comparte: vive solo en `.idea/`
+## 37. La config de Checkstyle está en el repo pero `mvn` no la aplica
 
 **Estado:** abierto
 **Severidad:** baja
 **Archivos:** `incentivos-service/config/checkstyle/checkstyle.xml`, `pom.xml`,
 `gen-checkstyle.ps1`, `run-checkstyle.ps1`
 
-La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta**. El build no
-tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las reglas y
-el único que las aplica es el plugin de IntelliJ, que la lee desde `.idea/checkstyle-idea.xml`.
-Y como `.idea/` está en `.gitignore`, ni siquiera el archivo que le dice al IDE dónde está la
-config se comparte: eso queda solo en la máquina de quien la configuró.
+> El título de este punto decía antes que la config "vive solo en `.idea/`", y ya no es cierto:
+> está en `incentivos-service/config/checkstyle/checkstyle.xml`, versionada. Lo que no existe es
+> que el build la ejecute, que es lo que queda abajo.
+
+La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta en el build**. El
+`pom.xml` no tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las
+reglas. Lo único que las aplica es `run-checkstyle.ps1` en la raíz del repo, que corre **la misma
+configuración** con el jar de Checkstyle que ya trae el plugin de IntelliJ.
 
 Eso tiene dos consecuencias:
 
