@@ -28,5 +28,5 @@ ARG SERVICE_NAME=logisticas-service
 # Copiar el JAR compilado desde la etapa anterior
 COPY --from=builder /app/${SERVICE_NAME}/target/*.jar app.jar
 
-EXPOSE 8085
+EXPOSE 8086
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -5,68 +5,99 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorPublicacionEventos;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class EntregaService {
 
-  private final GestorItemEntrega gestorItemEntrega;
-  private final GestorRutas gestorRutas;
+  private final RepositorioItemEntrega repoItemEntrega;
+  private final RepositorioRutas repoRutas;
+  private final RepositorioEntidades repoEntidades;
+  private final RepositorioDirecciones repoDirecciones;
+  private final RepositorioCiudades repoCiudades;
+  private final RepositorioProvincias repoProvincias;
+  private final RepositorioPaises repoPaises;
+  private final RepositorioUnidadesDeMedida repoUnidades;
   private final GestorPublicacionEventos gestorPublicacionEventos;
 
-  public EntregaService(GestorItemEntrega gestorItemEntrega, GestorRutas gestorRutas, GestorPublicacionEventos gestorPublicacionEventos) {
-      this.gestorItemEntrega = gestorItemEntrega;
-      this.gestorRutas = gestorRutas;
-    this.gestorPublicacionEventos = gestorPublicacionEventos;
+  public EntregaService(RepositorioItemEntrega repoItemEntrega,
+                        RepositorioRutas repoRutas,
+                        RepositorioEntidades repoEntidades,
+                        RepositorioDirecciones repoDirecciones,
+                        RepositorioCiudades repoCiudades,
+                        RepositorioProvincias repoProvincias,
+                        RepositorioPaises repoPaises,
+                        RepositorioUnidadesDeMedida repoUnidades,
+                        GestorPublicacionEventos gestorPublicacionEventos) {
+      this.repoItemEntrega = repoItemEntrega;
+      this.repoRutas = repoRutas;
+      this.repoEntidades = repoEntidades;
+      this.repoDirecciones = repoDirecciones;
+      this.repoCiudades = repoCiudades;
+      this.repoProvincias = repoProvincias;
+      this.repoPaises = repoPaises;
+      this.repoUnidades = repoUnidades;
+      this.gestorPublicacionEventos = gestorPublicacionEventos;
   }
 
   // --- MÉTODOS CRUD BÁSICOS ---
   public BienesDTO findAll() {
-      List<ItemEntrega> items = gestorItemEntrega.listarItems();
+      List<ItemEntrega> items = repoItemEntrega.findAll();
       return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
   public ItemEntrega findById(UUID id) {
-    return gestorItemEntrega.buscarItem(id);
+    return repoItemEntrega.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada"));
   }
 
   public void delete(UUID id) {
-    gestorItemEntrega.eliminarItem(id);
+    Optional<ItemEntrega> item = repoItemEntrega.findById(id);
+    if(item.isPresent()){
+      repoItemEntrega.deleteById(id);
+      throw new IllegalArgumentException("Entrega no encontrada");
+    }
   }
 
   // --- MÉTODOS DE NEGOCIO ---
-  public void procesarPeticion(PeticionEntregaDTO request) {
-    if (request == null || request.getEntregas() == null) return;
+  public void procesarPeticion(EntregaDTO request) {
+    if (request == null) return;
 
-    List<EntregaDTO> entregas = request.getEntregas();
-    for (EntregaDTO entregaActual : entregas) {
-      List<BienDTO> bienes = entregaActual.getDonacionResumen().getBienes();
-      if (bienes == null) continue;
+    List<BienDTO> bienes = request.getDonacionResumen().getBienes();
+    if (bienes == null) return;
 
-      for (int j = 0; j < bienes.size(); j++) {
-        BienDTO bien = bienes.get(j);
-        Direccion direccionEntidad = this.convertirDireccionDTO(entregaActual.getEntidadBeneficiaria());
+    for (int j = 0; j < bienes.size(); j++) {
+      BienDTO bien = bienes.get(j);
+      Direccion direccionEntidad = this.convertirDireccionDTO(request.getEntidadBeneficiaria());
+      repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
+      repoProvincias.save(direccionEntidad.getCiudad().getProvincia());
+      repoCiudades.save(direccionEntidad.getCiudad());
+      repoDirecciones.save(direccionEntidad);//revisar todos lo que se agrega a otros elementos
 
-        // Mapeo mediante el switch delegado al servicio
-        UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
+      Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
+      repoEntidades.save(nuevaEntidad);
 
-        ItemEntrega nuevoItem = new ItemEntrega(
-            entregaActual.getDonacionResumen().getIdsDonaciones().get(j),
-            bien.getCantidad(),
-            unidadDominio,
-            new Entidad(entregaActual.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad)
-        );
-        gestorItemEntrega.guardarItem(nuevoItem);
-      }
+      // Mapeo mediante el switch delegado al servicio
+      UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
+      repoUnidades.save(unidadDominio);
+
+      ItemEntrega nuevoItem = new ItemEntrega(
+              request.getDonacionResumen().getIdsDonaciones().get(j),
+              bien.getCantidad(),
+              unidadDominio,
+              nuevaEntidad
+      );
+      repoItemEntrega.saveAndFlush(nuevoItem);
     }
   }
 
@@ -86,10 +117,8 @@ public class EntregaService {
   }
 
   public void actualizarEstado(UUID idDonacion, ActualizacionEntregaDTO request) {
-    ItemEntrega item = gestorItemEntrega.buscarItem(idDonacion);
-    if (item == null) {
-      throw new IllegalArgumentException("Donación no encontrada con el ID proporcionado");
-    }
+    ItemEntrega item = repoItemEntrega.findById(idDonacion)
+            .orElseThrow(() -> new IllegalArgumentException("Donación no encontrada con el ID proporcionado"));
 
     if (request.getEstado() == null) {
       throw new IllegalArgumentException("El estado no puede ser nulo");
@@ -100,27 +129,31 @@ public class EntregaService {
         if(comprobarExistencia(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        gestorItemEntrega.guardarItem(gestorPublicacionEventos.publicarEntregaConfirmada(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getFotoUrl()));
+        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getFotoUrl()));
         break;
 
       case "NO_RECIBIDA":
         if(comprobarExistencia(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        gestorItemEntrega.guardarItem(gestorPublicacionEventos.publicarEntregaFallida(item, gestorRutas.buscarRutaDeIdDonacion(item.getIdDonacion()), request.getJustificacion()));
+        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getJustificacion()));
         break;
 
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-        gestorItemEntrega.guardarItem(gestorPublicacionEventos.publicarReingresoDeposito(item));
+        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarReingresoDeposito(item));
         break;
 
       default:
         throw new IllegalArgumentException("Estado no válido. Use ENTREGADA, NO_RECIBIDA o PENDIENTE.");
     }
 
-    gestorItemEntrega.guardarItem(item);
+    repoItemEntrega.saveAndFlush(item);
   }
 
   /**
@@ -134,7 +167,7 @@ public class EntregaService {
   }
 
   public BienesDTO obtenerEntregasNoRecibidas() {
-    List<ItemEntrega> items = gestorItemEntrega.buscarNoRecibidos();
+    List<ItemEntrega> items = repoItemEntrega.findByEstado(EstadoEntrega.NO_RECIBIDA);
     return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
@@ -142,7 +175,6 @@ public class EntregaService {
     return items.stream().map(this::convertirABienDTO).toList();
   }
 
-  //TODO Arreglar eventos
   private BienDTO convertirABienDTO(ItemEntrega item){
     return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
   }
