@@ -102,7 +102,9 @@ public class RankingController {
     @Operation(
             summary = "Obtener el podio de colaboradores destacados",
             description = "Devuelve las primeras posiciones del ranking, ordenadas de mayor a menor puntaje. "
-                    + "Por defecto devuelve el top 10; el tamaóo del podio se ajusta con el parámetro `limite`."
+                    + "Por defecto devuelve el top 10; el tamaño del podio se ajusta con el parámetro `limite`. "
+                    + "El ranking se persiste completo, así que el `limite` recorta la respuesta y no el "
+                    + "snapshot: pedir 50 devuelve 50 aunque el ranking tenga más."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Podio recuperado con éxito"),

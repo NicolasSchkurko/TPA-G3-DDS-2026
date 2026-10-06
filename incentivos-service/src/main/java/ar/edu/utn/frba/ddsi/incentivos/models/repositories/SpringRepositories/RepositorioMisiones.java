@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -56,9 +57,27 @@ public interface RepositorioMisiones extends JpaRepository<Mision, UUID> {
                                 ? "%" + insigniaObjetivo.trim().toLowerCase() + "%"
                                 : null;
 
-        AtributoImpacto atributo = (atributoStr != null && !atributoStr.isBlank())
-                                   ? AtributoImpacto.valueOf(atributoStr.trim().toUpperCase())
-                                   : null;
+        AtributoImpacto atributo = null;
+
+        if (atributoStr != null && !atributoStr.isBlank()) {
+            // Se reusa el normalizador de MisionFactory y no un valueOf con trim/toUpperCase
+            // propio (punto 34). Con el valueOf pelado, "CATEGORÍA" con acento —que es como
+            // lo escribe una persona— daba 400 con el mensaje crudo de
+            // IllegalArgumentException, mientras que el POST de la misma misión sí
+            // aceptaba esa cadena. Era la misma entrada por dos caminos y solo uno
+            // entendía español.
+            try {
+                atributo = AtributoImpacto.valueOf(MisionFactory.normalizar(atributoStr));
+            } catch (IllegalArgumentException sinNormalizar) {
+                // Antes el IllegalArgumentException desnudo sobrevivía porque
+                // GlobalExceptionHandler lo mapea a 400. Eso ataba el mensaje a un handler que
+                // puede cambiar, y el mensaje era "No enum constant ...", que no le dice
+                // nada a quien está usando la API.
+                throw new DatosInvalidosException(
+                        "'" + atributoStr + "' no es un atributo de impacto válido. Se aceptan: "
+                                + List.of(AtributoImpacto.values()));
+            }
+        }
 
         return this.findAllByFiltros(patronNombre, patronInsignia, atributo, pageable);
     }

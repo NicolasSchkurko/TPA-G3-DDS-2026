@@ -14,7 +14,6 @@ import java.util.List;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +32,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class RankingService {
 
     /**
-     * Cantidad de posiciones que se persisten al snapshot mensual cuando el
-     * scheduler genera el ranking de forma automática.
+     * Cuántas posiciones guarda el snapshot mensual por defecto cuando se consulta el
+     * ranking sin pedir un tamaño.
+     *
+     * <p><b>Esto NO limita lo que se persiste</b>, que es el cambio del punto 2: antes el
+     * scheduler guardaba solo 10 y por eso un {@code GET /api/rankings/{id}/top?limite=50}
+     * devolvía 10 en silencio, sin avisar de que el ranking estaba truncado. Ahora el
+     * snapshot es completo y el {@code limite} se aplica al responder.
+     *
+     * <p>Es el valor por defecto del parámetro {@code limite} del endpoint, nada más.
      */
     public static final int RANKING_PREDETERMINADO = 10;
 
@@ -75,8 +81,12 @@ public class RankingService {
     }
 
     /**
-     * Devuelve las primeras {@code limite} posiciones del ranking. El ranking ya viene
-     * ordenado por puesto, por lo que alcanza con recortar la lista.
+     * Devuelve las primeras {@code limite} posiciones del ranking.
+     *
+     * <p>El ranking ya viene ordenado por puesto, así que alcanza con recortar la lista. Y el
+     * recorte es <b>aquí</b> y no al generar: como el snapshot se persiste completo (punto
+     * 2), un {@code limite} de 50 devuelve las 50 primeras aunque el ranking tenga más. Antes
+     * devolvía 10 sin decir nada, porque el snapshot era top 10.
      */
     @Transactional(readOnly = true)
     public RankingMesDTO obtenerRankingConLimite(UUID idRanking, int limite) {
@@ -229,20 +239,32 @@ public class RankingService {
      * <p>El corte del mes se pasa como <b>rango de instantes</b> y no como "mes y año" (punto
      * 22): la base resuelve el filtro con un índice en {@code fecha_obtencion} en vez de
      * tener que evaluar {@code MONTH()} y {@code YEAR()} sobre cada fila de la tabla.
+     *
+     * <p><b>Se persiste el ranking entero (punto 2).</b> Antes se pasaba
+     * {@code PageRequest.of(0, RANKING_PREDETERMINADO)}, o sea top 10, y como el snapshot
+     * guardaba lo que viniera, pedir el podio con {@code limite=50} devolvía 10 en silencio.
+     * El corte va ahora al responder, en {@link #obtenerRankingConLimite}.
+     *
+     * <p><b>El precio, dicho claro:</b> la tabla de posiciones crece con todos los
+     * donantes que obtuvieron al menos una insignia en el mes, no con diez. Es lo que
+     * corresponde: un ranking publicado es un hecho del período, y recortarlo es perder
+     * información que el cliente pidió explícitamente. Si algún día el volumen lo hace
+     * inviable, la solución es generar el snapshot por bloques, no volver a truncarlo en
+     * silencio.
      */
     private RankingMensual generarRankingMensual(YearMonth periodo) {
         LocalDateTime inicioDelPeriodo = periodo.atDay(1).atStartOfDay();
         LocalDateTime inicioDelPeriodoSiguiente = periodo.plusMonths(1).atDay(1).atStartOfDay();
 
-        List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(
+        List<Object[]> todosLosPerfilesDelPeriodo = repoPerfiles.calcularRankingMensual(
                 inicioDelPeriodo,
                 inicioDelPeriodoSiguiente,
-                PageRequest.of(0, RANKING_PREDETERMINADO)
+                Pageable.unpaged()
         );
 
         RankingMensual rankingDelMes = new RankingMensual(periodo);
 
-        rankingDelMes.calcularYAgregarPosiciones(topPerfiles);
+        rankingDelMes.calcularYAgregarPosiciones(todosLosPerfilesDelPeriodo);
 
         return rankingDelMes;
     }
