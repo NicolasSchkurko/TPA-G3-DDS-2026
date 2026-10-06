@@ -14,7 +14,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 |---|---|---|
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 3 | 3 | Requisito explícito del enunciado sin cumplir (cola de mensajes) |
 | 4 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
 | 5 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
 | 6 | 23 | Higiene: código muerto, logs, encapsulación |
@@ -126,90 +125,6 @@ módulos y al cliente de front.
 Mientras tanto, **no exponer el servicio fuera de la red interna** y tratar el header
 `Admin-Id` como no confiable.
 
-## 3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/clients/NotificacionClient.java`,
-`src/main/resources/application.properties`,
-`pom.xml`
-
-### Qué pasa
-
-El enunciado dice, textualmente: *"La integración entre los servicios de dominio y el
-Servicio de Notificaciones deberá realizarse de forma asíncrona, a través de una cola de
-mensajes, a fin de no afectar la disponibilidad del sistema ante picos de carga o fallas
-transitorias."*
-
-`incentivos-service` **no usa RabbitMQ en absoluto**. No tiene `spring-boot-starter-amqp` en el
-pom, ninguna clase toca `RabbitTemplate`, y no hay exchange ni cola declarados. La
-notificación sale por `RestTemplate.postForEntity` dentro de un `@TransactionalEventListener`,
-o sea **sincrónica y bloqueante**: si el servicio de notificaciones no responde, la
-notificación falla y el evento ya commiteado tira la excepción hacia atrás.
-
-Es exactamente el punto 3 del backlog, confirmado contra el código y contra el enunciado.
-
-### Por qué hoy no funciona, y no solo por el HTTP
-
-Se verificó levantando `incentivos-service` y `notificaciones-service` juntos y llamando por
-HTTP. Hay **tres fallos encadenados**, y cualquiera de los tres basta para que ninguna
-notificación llegue a ningún lado:
-
-**1. El servicio de notificaciones exige autenticación.**
-`spring-boot-starter-security` es dependencia directa de su pom. Spring Boot genera una
-password aleatoria al arrancar y *toda* petición sin credenciales recibe `401`, incluido
-`POST /api/notificaciones`. No hay `SecurityFilterChain` propio ni `permitAll`. Es el motivo
-de que hoy no funcione ninguna notificación por HTTP, con independencia de lo demás.
-
-**2. La ruta está mal.** La propiedad apunta a `${NOTIFICACIONES_URL:http://localhost:8083/}`,
-es decir la raíz con barra final. El controller está declarado como
-`@RequestMapping("/notificaciones")` y el servicio tiene
-`server.servlet.context-path=/api`, así que la ruta real es `POST /api/notificaciones`.
-Comprobado: `POST http://localhost:8083/` devuelve **404**.
-
-**3. Los DTO no coinciden en un nombre de campo.** `PerfilNotificacionDTO` declara
-`direccionContacto`; `SolicitudNotificacionDTO` declara `direccionDeContacto`. Con Jackson el
-campo queda en `null` sin error, y como `direccionDeContacto` está en `nullable = false`, el
-INSERT muere con violación de restricción en el servidor de notificaciones. Un `renamed`
-implícito que no da ningún aviso.
-
-**4. El medio de contacto tampoco habríaITDA.** `MedioDeEnvioFactory` indexa por nombre de
-bean en minúsculas (`email`, `telefono`, `whatsapp`) y buscaba con `get()` case-sensitive,
-mientras los servicios mandan `"EMAIL"` o `"WHATSAPP"`. Eso ya está corregido en
-`notificaciones-service`, pero conviene saber que era la cuarta barrera.
-
-### Qué se ya resolvió en el otro extremo
-
-`notificaciones-service` ya tiene su topología de broker declarada y funcionando
-(`notificaciones.exchange`, cola `notificaciones`, routing keys
-`notificaciones.incentivo.#` y `notificaciones.evento.logistica.#`, con
-`Jackson2JsonMessageConverter`). Lo que falta es el lado de acá: publicar en vez de llamar
-por HTTP.
-
-### Propuesta
-
-1. Agregar `spring-boot-starter-amqp` al pom de este módulo.
-2. Declarar el exchange y el converter, o mejor: definir el exchange en el servicio que
-   publica y que `notificaciones-service` solo declare su cola, que es la frontera que se
-   eligió para el broker de logística.
-3. Reemplazar el `postForEntity` por `convertAndSend(RabbitMQ, RK_INCENTIVO, dto)`.
-4. Alinear el nombre del campo con el del receptor, o definir un DTO de transporte con los
-   nombres que el broker espera. Lo segundo es más frágil; lo primero, un cambio de una
-   línea.
-5. Decidir qué hacer con la autorización del endpoint HTTP de notificaciones: o `permitAll`
-   solo para `POST /notificaciones`, o que la cadena sea únicamente por broker y el endpoint
-   quede para uso interno.
-
-El paso 5 es decisión del equipo y no se puede dar por hecho: **no tocar la autorización sin
-que lo defina el equipo**, porque el punto 1 de este mismo backlog ya discute ese tema.
-
-### Verificación que hay que dejar
-
-Un test que publicaría por el broker y comprueba que una notificación queda persistida. Hoy
-ningún test cubre este camino, que es la razón por la que el bug llevaba tiempo sin
-detectarse.
-
----
 ## 10. El ranking cuenta insignias, pero el modelo y el enunciado dicen misiones
 
 **Estado:** abierto (divergencia conocida y aceptada a propósito)
@@ -628,70 +543,6 @@ setter, que es justo lo que se sacó.
    necesita H2, y es lo primero que agregaría.
 ---
 
-## 38. Incentivos publica por HTTP y no llega a nadie: la URL está mal y el receptor exige autenticación
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/clients/NotificacionClient.java`,
-`src/main/resources/application.properties`,
-`notificaciones-service/pom.xml`
-
-### Qué pasa
-
-Es la confirmación ejecutable del [punto 3](#3-las-notificaciones-van-por-http-sincrono-y-el-requisito-pide-cola-de-mensajes),
-que documenta el requisito; acá está la evidencia medida. Al levantar `incentivos-service` y
-`notificaciones-service` juntos y llamar por HTTP, el resultado es:
-
-| Prueba | Resultado |
-|---|---|
-| `POST http://localhost:8083/` (la URL que usa incentivos) | **404** |
-| `POST http://localhost:8083/api/notificaciones` (la real) | **401** |
-| Notificaciones persistidas al final | **0** |
-
-O sea que hoy **ninguna notificación de incentive llega a ningún lado**, y por dos motivos
-independientes: la ruta que usa el cliente no existe, y la ruta que sí existe pide
-credenciales.
-
-### El 401 no es un detalle de configuración
-
-`spring-boot-starter-security` es dependencia **directa** del pom de
-`notificaciones-service`. No hay `SecurityFilterChain` propio, ni `permitAll`, ni clase de
-seguridad en el código: solo dos `@Configuration` (`RestTemplateConfig` y `RabbitConfig`).
-Spring Boot entonces aplica su configuración por defecto, genera una password aleatoria al
-arrancar y bloquea todo.
-
-Es el único módulo de los cuatro con seguridad activa, así que es también el único que puede
-explicar un 401. Y explica por qué el bug fue invisible: nadie lo detectó porque el síntoma
-es "no llegan notificaciones", que selee como "el n8n no está" o "falta configurar algo", y
-no como "el receptor pide autenticación".
-
-### Los DTO tampoco coinciden
-
-`incentivos-service` manda `PerfilNotificacionDTO`, que declara `direccionContacto`.
-`notificaciones-service` recibe `SolicitudNotificacionDTO`, que declara `direccionDeContacto`.
-Con Jackson el campo desalineado queda en `null` sin error ni aviso, y como
-`direccionDeContacto` está en `nullable = false`, el INSERT muere en el servidor con violación
-de restricción.
-
-Este detalle importa por separado: **es un fallo que se activaría solo después de arreglar los
-otros dos**. Si se arregla la URL y la seguridad por partes, el siguiente síntoma va a ser un
-500 en notificaciones con un `null` en el log, y va a parecer un problema nuevo.
-
-### Propuesta
-
-Orden de arreglo, del más bloqueante al menos:
-
-1. Definir la autorización de `POST /notificaciones`: es decisión del equipo y la propone el
-   [punto 1](#1-la-autorizaci-n-de-admin-se-apoya-en-un-header-controlado-por-el-cliente), no
-se puede aplicar de forma automatica.
-2. Corregir la URL a `http://localhost:8083/api/notificaciones`, o mejor: eliminar la llamada
-   por HTTP y publicar por broker, que es lo que pide el enunciado (punto 3).
-3. Alinear el nombre del campo entre los dos DTO.
-
-El punto 1 va primero a propósito: es una decisión de diseño y las otras dos dependen de
-cómo se resuelva.
-
----
 ## Corregidos
 
 ### `incentivos-service` no tenía AMQP: las notificaciones iban por HTTP síncrono
@@ -969,3 +820,63 @@ tenía**.
 - **35. Los buffers "pendientes" en memoria.** No se corrige: quedó absorbido por el anexo
   del punto 3, porque es el mismo código. La mitad de notificaciones se va con la cola; la
   de publicaciones de n8n no, y necesita la tabla de outbox.
+
+---
+
+## Tanda 7 — 3 + 38
+
+Estos dos eran el mismo defecto visto desde dos ángulos: el **3** documenta el requisito del
+enunciado y el **38** la evidencia medida. Se corrigieron juntos.
+
+- **3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes.** El
+  enunciado dice, textualmente, que *"la integración entre los servicios de dominio y el
+  Servicio de Notificaciones deberá realizarse de forma asíncrona, a través de una cola de
+  mensajes, a fin de no afectar la disponibilidad del sistema ante picos de carga o fallas
+  transitorias"*. Este módulo no tenía `spring-boot-starter-amqp`, ningún exchange, ninguna
+  cola: la notificación salía por `RestTemplate.postForEntity` dentro del
+  `@TransactionalEventListener`, o sea **sincrónica y bloqueante**. Si notificaciones no
+  respondía, el evento ya commiteado tiraba la excepción hacia atrás — justo lo contrario de
+  lo que pide el texto.
+
+  Ahora hay un `RabbitMQConfig` propio que declara `notificaciones.exchange`, y la
+  notificación sale por `convertAndSend(RK_INCENTIVO, dto)` en vez del `postForEntity`. Se
+  eligió que el exchange lo declare **quien publica** y que notificaciones solo ate su cola: es
+  la misma frontera que se usa para el broker de logística, y evita que el nombre de las
+  colas viva en los dos lados.
+
+  De paso cayó el `direccionContacto` / `direccionDeContacto` que describía el punto 3: con
+  Jackson el campo quedaba en `null` sin error, y como en el receptor es `nullable = false`
+  el INSERT moría por violación de restricción. El nombre del campo del DTO de transporte pasó
+  a ser el que el receptor lee.
+
+- **38. Incentivos publica por HTTP y no llega a nadie.** Era la confirmación ejecutable del 3.
+  El resultado medido antes del arreglo era `POST http://localhost:8083/` → **404** (la
+  propiedad apuntaba a la raíz con barra final), `POST .../api/notificaciones` → **401** (el
+  receptor exigía credenciales) y **0** notificaciones persistidas. Dos motivos
+  independientes, los dos eliminados: la ruta que usaba el cliente ya no existe porque **ya no
+  hay cliente HTTP** en este módulo, y el 401 desapareció cuando se sacó
+  `spring-boot-starter-security` de las dependencias comunes del pom padre.
+
+### Cómo se verificó
+
+Con los cuatro servicios levantados contra MySQL y RabbitMQ reales: se crea un donante en
+`donaciones-service` (que le crea el perfil por HTTP) y se hace
+`PATCH /api/perfiles/donacion/{idUsuario}` hasta completar la misión. Los tres avisos que
+dispara el evento de dominio llegan por Rabbit y quedan `ENVIADA` con `fecha_envio` puesta:
+
+```
+ENVIADA  luis@test.com  ¡Misión completada!       Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
+ENVIADA  luis@test.com  Nueva categoría           Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
+ENVIADA  luis@test.com  Nueva misión disponible   Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
+```
+
+Lo que se prueba acá es el camino del Rabbit, no que el HTTP dejó de dar 404: **no queda
+cliente HTTP**. La propiedad `servicio.notificaciones.url` quedó sin uso y se puede borrar.
+
+### Dos cosas que hubo que arreglar en el otro extremo
+
+Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del converter, que
+rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
+n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
+llega pero muere del otro lado.
+

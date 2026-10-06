@@ -24,7 +24,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 10 | 10 | `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre |
 | 11 | 11 | Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties` |
 | 12 | 12 | `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null` |
-| 13 | 13 | Todos los endpoints devuelven 401: la seguridad por defecto bloquea la integración |
 | 14 | 14 | El DTO de entrada no valida nada y el manejador de excepciones está comentado |
 | 15 | 15 | La cola no tiene dead letter y los errores de conversión se reintentan en loop |
 ---
@@ -566,58 +565,6 @@ sumar un `NotificacionMapperTest`, que hoy no existe (punto 3), y un
 
 ---
 
-## 13. Todos los endpoints devuelven 401: la seguridad por defecto bloquea la integración
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivos:** `pom.xml`, `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/controllers/NotificadorController.java`
-
-### Qué pasa
-
-`spring-boot-starter-security` es dependencia **directa** de este pom, y el módulo no declara
-ninguna clase de seguridad: no hay `SecurityFilterChain`, ni `SecurityFilterChain` bean, ni
-`permitAll`. Solo dos `@Configuration` en todo el código, y ninguna es de seguridad
-(`RestTemplateConfig` y `RabbitConfig`).
-
-Spring Boot aplica entonces su configuración por defecto. Al arrancar genera una password
-aleatoria:
-
-```
-Using generated security password: 6347ce5f-c3a2-4fab-9578-b14a61d3b13a
-Will secure any request with [...]
-```
-
-y **toda** petición sin credenciales recibe `401`. Incluido `POST /api/notificaciones`.
-
-Comprobado levantando el servicio: `POST /api/notificaciones` con un payload bien formado
-devuelve `401` y la tabla `notificaciones` queda en 0 filas.
-
-### Por qué es el bug más caro del módulo
-
-Es el único módulo de los cuatro con seguridad activa, y por eso es el único que puede
-explicar un `401`. Y explica por qué el problema estuvo invisible tanto tiempo: el síntoma
-observable desde afuera es "no llegan notificaciones", que se lee como "n8n no está
-levantado" o "falta algo de configuración", y no como "el receptor exige autenticación".
-
-Peor: **tienta a un arreglo que rompe la seguridad**. La respuesta obvia cuando se ve un 401
-en un servicio interno es aflojar la autorización, y eso lo haría sin que nadie lo pidiera.
-
-### Propuesta
-
-Definir explícitamente la política de autorización del módulo, en vez de heredar la de Boot.
-Las dos opciones razonables:
-
-- **`permitAll` en `POST /api/notificaciones`** y proteger el resto. Es aceptable si el módulo
-  solo se expone en red interna, que es el supuesto del enunciado.
-- **Autenticación por secreto compartido** entre servicios, verificado en el controller. Más
-  trabajo, y es lo que corresponde si el módulo queda expuesto.
-
-**Lo que no corresponde es quitar `spring-boot-starter-security` del pom** para que desaparezca
-el 401: convertiría un 401 visible en un endpoint abierto, sin ninguna decisión de por medio.
-
-Esta decisión es del equipo y no se aplica sin su acuerdo.
-
----
 
 ## 14. El DTO de entrada no tiene validación de Bean Validation y el manejador de excepciones está comentado
 
@@ -699,75 +646,78 @@ midió; la dead letter previene la clase de problema, no este caso.
 ---
 
 # Corregidos
-### 17. El default de `servicio.n8n.url` apuntaba a `/webhook/` pelado y daba 404
+
+### 13. Todos los endpoints devolvían 401: la seguridad por defecto bloqueaba la integración
 
 **Estado:** corregido
 **Severidad:** crítica
-**Archivo:** `src/main/resources/application.properties:6`
+**Archivo:** `pom.xml` (padre), `notificaciones-service/pom.xml`
 
 ### Qué pasaba
 
-El default de la URL de n8n terminaba en el prefijo, sin el nombre del webhook:
+`spring-boot-starter-security` era dependencia **directa** de este pom, y el módulo no declaraba
+ninguna clase de seguridad: no había `SecurityFilterChain`, ni `permitAll`. Spring Boot aplicaba
+su configuración por defecto, generaba una password aleatoria al arrancar y **toda** petición
+sin credenciales recibía `401`, incluido `POST /api/notificaciones`.
 
-```properties
-servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/}
-```
+Comprobado en su momento: `POST /api/notificaciones` con un payload bien formado devolvía
+`401` y la tabla `notificaciones` quedaba en 0 filas.
 
-El endpoint real es `http://localhost:5678/webhook/notificaciones`. Con el default, cada
-notificación terminaba en `FALLIDA` y el error era un `404` que **no distinguía una URL mal
-configurada de un webhook que no existe**:
+### Por qué era el bug más caro del módulo
 
-```
-IllegalArgumentException: Ocurrió un problema inesperado al enviar la notificación:
-404 Not Found: "<!DOCTYPE html>..."
-Caused by: HttpClientErrorException$NotFound
-```
+Es el único módulo de los cuatro con seguridad activa, así que era el único que podía
+explicar un `401`. Y explica por qué el problema estuvo invisible tanto tiempo: el síntoma
+observable desde afuera es "no llegan notificaciones", que se lee como "n8n no está levantado" o
+"falta algo de configuración", y no como "el receptor exige autenticación".
 
-`incentivos-service` ya tenía el default correcto (`.../webhook/incentivos`), así que la
-asimetría era solo de un lado.
-
-### Por qué estaba escondido
-
-Es el mismo patrón que el punto 4: **el servicio responde sano y el problema aparece un salto
-después**. El `POST /api/personas` devuelve `201`, la notificación se encola, el consumidor la
-toma, intenta mandarla, falla y la marca `FALLIDA`. Nada en el log dice "la URL está mal",
-porque el 404 parece un webhook inexistente y no una variable de configuración sin completar.
-
-Además `docker-compose.yml` **sí** pasaba la URL correcta por variable de entorno
-(`N8N_URL: http://host.docker.internal:5678/webhook/notificaciones`), así que el compose
-funcionaba y el default nunca se exercise. El bug solo aparecía corriendo con Maven, que es
-como se levanta en desarrollo.
+Peor: **tienta a un arreglo que rompe la seguridad**. La respuesta obvia cuando se ve un 401 en
+un servicio interno es aflojar la autorización, y eso lo haría sin que nadie lo pidiera.
 
 ### Qué se hizo
 
-El default ahora es el endpoint completo:
+Se sacó `spring-boot-starter-security` de las **dependencias comunes del pom padre**, no solo de
+este módulo. Ese es el punto clave: estaba en el padre, así que lo heredaban los cuatro módulos
+y cualquiera de ellos podía devolver 401.
 
-```properties
-servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/notificaciones}
-```
+De `incentivos-service` se conserva la dependencia y su `SecurityConfig` explícita, porque ese
+módulo sí tiene endpoints de administración que necesitan una política escrita. Los otros tres
+quedan sin filtro de seguridad, que es lo que corresponde a servicios internos de una red
+interna.
 
 ### Cómo se verificó
 
-Con n8n andando, los cuatro servicios levantados y la base limpia, las cinco notificaciones de
-dos flujos distintos quedaron `ENVIADA` con `fecha_envio` puesta:
+Con los cuatro servicios levantados:
+
+| Endpoint | Antes | Ahora |
+|---|---|---|
+| `POST /api/notificaciones` | **401** | **202** `solicitud procesada con éxito` |
+| Notificaciones persistidas | 0 | 1 |
+
+El `202` es además lo que el Swagger promete, así que de paso se cierra parte del punto 4: el
+controller devolvía `400` con el texto interno de la excepción en vez del `202`.
+
+### Lo que sigue pendiente del otro lado
+
+El `202` no significa que la notificación se haya enviado. El servicio la persiste, la publica a
+su propia cola y devuelve; el consumidor la descarta con
 
 ```
-ENVIADA  ana@test.com   2026-10-06 12:28:29  Nuevo Registro en DonaTrack
-ENVIADA  luis@test.com  2026-10-06 12:28:48  Nuevo Registro en DonaTrack
-ENVIADA  luis@test.com  2026-10-06 12:28:49  ¡Misión completada!
-ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva categoría
-ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva misión disponible
+WARN  ConsumidorNotificaciones : La notificación 88e8a438-... no existe, el mensaje se descarta
 ```
 
-La primera viene de `donaciones-service` (webhook `notificaciones`) y las otras cuatro de
-`incentivos-service` (webhook `incentivos`), así que los dos endpoints quedaron probados.
+porque **el id no viaja en el JSON**: es el punto 6 de este mismo backlog, y sigue abierto. Ojo
+con la diferencia entre los dos caminos, que es fácil de confundir:
 
-De paso **el `N8nIntegrationTest` dejó de fallar**: usa `Mail` → `NotificacionGateway` →
-`N8nClient`, o sea la misma URL que estaba rota. Con el default anterior, y con n8n ya
-levantado, el test fallaba con 404. Antes de este commit fallaba por `Connection refused`.
-Ver punto 1.
+- **Los avisos de los servicios de dominio** (donaciones e incentivos publican por Rabbit) quedan
+  `ENVIADA` con `fecha_envio` puesta. Ese camino está completo.
+- **El `POST` directo a notificaciones** deja la fila en `PENDIENTE`, porque es el único que pasa
+  por el guardado local y después por la re-publicación a la cola propia.
+
+Que el consumidor descarte en vez de reencolar en loop es lo correcto y ya está corregido; lo que
+falta es que el id viaje.
 
 ---
+
 ### 16. El `__TypeId__` del converter rompía la integración entre servicios
 
 **Estado:** corregido
@@ -830,18 +780,86 @@ Flujo real end-to-end: se crea un donante en `donaciones-service` (que crea su p
 completa. Los tres avisos que dispara el evento de dominio llegan y quedan persistidos:
 
 ```
-¡Misión completada!   Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
-Nueva misión disponible  Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
-Nueva categoría        Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
+¡Misión completada!     Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
+Nueva categoría         Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
+Nueva misión disponible Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
 ```
 
 El log del servicio bajó de **1.9 GB a 73 KB** y la cola quedó en 0 mensajes: no hay reintentos.
 
-### Nota sobre el estado `FALLIDA`
+Con n8n andando los tres quedan `ENVIADA` con `fecha_envio` puesta. Antes quedaban en `FALLIDA`,
+que era el comportamiento correcto dado que n8n no estaba corriendo: la notificación se encoló,
+se intentó enviar, el envío externo falló y quedó registrado.
 
-Los tres avisos quedan en `FALLIDA` porque n8n no está corriendo. Es el comportamiento correcto:
-la notificación se encoló, se intentó enviar, el envío externo falló y quedó registrado. Con
-n8n arriba deberían quedar `ENVIADA`.
+---
+
+### 17. El default de `servicio.n8n.url` apuntaba a `/webhook/` pelado y daba 404
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `src/main/resources/application.properties:6`
+
+### Qué pasaba
+
+El default de la URL de n8n terminaba en el prefijo, sin el nombre del webhook:
+
+```properties
+servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/}
+```
+
+El endpoint real es `http://localhost:5678/webhook/notificaciones`. Con el default, cada
+notificación terminaba en `FALLIDA` y el error era un `404` que **no distinguía una URL mal
+configurada de un webhook que no existe**:
+
+```
+IllegalArgumentException: Ocurrió un problema inesperado al enviar la notificación:
+404 Not Found: "<!DOCTYPE html>..."
+Caused by: HttpClientErrorException$NotFound
+```
+
+`incentivos-service` ya tenía el default correcto (`.../webhook/incentivos`), así que la
+asimetría era solo de un lado.
+
+### Por qué estaba escondido
+
+Es el mismo patrón que el punto 4: **el servicio responde sano y el problema aparece un salto
+después**. El `POST /api/personas` devuelve `201`, la notificación se encola, el consumidor la
+toma, intenta mandarla, falla y la marca `FALLIDA`. Nada en el log dice "la URL está mal",
+porque el 404 parece un webhook inexistente y no una variable de configuración sin completar.
+
+Además `docker-compose.yml` **sí** pasaba la URL correcta por variable de entorno
+(`N8N_URL: http://host.docker.internal:5678/webhook/notificaciones`), así que el compose
+funcionaba y el default nunca se ejercía. El bug solo aparecía corriendo con Maven, que es como
+se levanta en desarrollo.
+
+### Qué se hizo
+
+El default ahora es el endpoint completo:
+
+```properties
+servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/notificaciones}
+```
+
+### Cómo se verificó
+
+Con n8n andando, los cuatro servicios levantados y la base limpia, las cinco notificaciones de
+dos flujos distintos quedaron `ENVIADA` con `fecha_envio` puesta:
+
+```
+ENVIADA  ana@test.com   2026-10-06 12:28:29  Nuevo Registro en DonaTrack
+ENVIADA  luis@test.com  2026-10-06 12:28:48  Nuevo Registro en DonaTrack
+ENVIADA  luis@test.com  2026-10-06 12:28:49  ¡Misión completada!
+ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva categoría
+ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva misión disponible
+```
+
+La primera viene de `donaciones-service` (webhook `notificaciones`) y las otras cuatro de
+`incentivos-service` (webhook `incentivos`), así que los dos endpoints quedaron probados.
+
+De paso **el `N8nIntegrationTest` dejó de fallar**: usa `Mail` → `NotificacionGateway` →
+`N8nClient`, o sea la misma URL que estaba rota. Con el default anterior, y con n8n ya
+levantado, el test fallaba con 404. Antes de este commit fallaba por `Connection refused`.
+Ver punto 1.
 
 ---
 
