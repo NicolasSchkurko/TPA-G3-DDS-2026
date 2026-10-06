@@ -38,9 +38,10 @@
       "name": "1 - Crear perfil",
       "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
         "pm.collectionVariables.set('userId', pm.variables.replaceIn('{{$guid}}'));",
+        "pm.collectionVariables.set('donacionId', pm.variables.replaceIn('{{$guid}}'));",
         "pm.collectionVariables.set('fechaImpacto', new Date().toISOString());",
         "pm.collectionVariables.set('fechaConsulta', pm.collectionVariables.get('fechaImpacto').slice(0, 10));",
-        "pm.request.body.update(JSON.stringify({ idUsuario: pm.collectionVariables.get('userId'), nombreUsuario: 'smoke-user', role: 'DONANTE' }));"
+        "pm.request.body.update(JSON.stringify({ idUsuario: pm.collectionVariables.get('userId'), nombreUsuario: 'Sofia', role: 'DONANTE' }));"
       ]}}, { "listen": "test", "script": { "type": "text/javascript", "exec": [
         "pm.test('Crea el perfil', () => pm.response.to.have.status(201));",
         "const body = pm.response.json();",
@@ -54,7 +55,7 @@
         "pm.test('Rechaza el perfil duplicado', () => pm.response.to.have.status(409));",
         "pm.test('Informa el conflicto', () => pm.expect(pm.response.json().error).to.include('Ya existe'));"
       ]}}],
-      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idUsuario\": \"{{userId}}\",\n  \"nombreUsuario\": \"smoke-user\",\n  \"role\": \"DONANTE\"\n}" }, "url": "{{baseUrl}}/perfiles" }
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idUsuario\": \"{{userId}}\",\n  \"nombreUsuario\": \"Sofia\",\n  \"role\": \"DONANTE\"\n}" }, "url": "{{baseUrl}}/perfiles" }
     },
     {
       "name": "Error - Perfil inexistente (404)",
@@ -109,7 +110,7 @@
       "name": "2 - Consultar perfil",
       "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
         "pm.test('Recupera el perfil creado', () => pm.response.to.have.status(200));",
-        "pm.test('Devuelve smoke-user', () => pm.expect(pm.response.json().nombreUsuario).to.eql('smoke-user'));"
+        "pm.test('Devuelve Sofia', () => pm.expect(pm.response.json().nombreUsuario).to.eql('Sofia'));"
       ]}}],
       "request": { "method": "GET", "url": "{{baseUrl}}/perfiles/{{userId}}" }
     },
@@ -119,7 +120,7 @@
         "pm.test('Persiste el impacto', () => pm.response.to.have.status(200));",
         "pm.test('Confirma la operación', () => pm.expect(pm.response.json()).to.eql(true));"
       ]}}],
-      "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaEntrega\": \"{{fechaImpacto}}\",\n  \"cantidadBienes\": 3,\n  \"subCategoria\": \"Ropa\",\n  \"categoria\": \"Indumentaria\",\n  \"entidadBeneficiaria\": \"Fundación de prueba\",\n  \"estado\": \"ENTREGADA\"\n}" }, "url": "{{baseUrl}}/perfiles/donacion/{{userId}}" }
+      "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idDonacion\": \"{{donacionId}}\",\n  \"fechaEntrega\": \"{{fechaImpacto}}\",\n  \"cantidadBienes\": 3,\n  \"subCategoria\": \"Ropa\",\n  \"categoria\": \"Indumentaria\",\n  \"entidadBeneficiaria\": \"Fundación de prueba\",\n  \"estado\": \"ENTREGADA\"\n}" }, "url": "{{baseUrl}}/perfiles/donacion/{{userId}}" }
     },
     {
       "name": "4 - Consultar métricas",

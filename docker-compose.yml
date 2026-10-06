@@ -14,6 +14,8 @@ services:
 
   # --- Infraestructura ---
 
+  # Credenciales simples solo para el entorno local de demostración. No reutilizar
+  # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
   mysql:
     image: mysql:8.0
     container_name: tpa-mysql
@@ -78,8 +80,8 @@ services:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: marcelo
-      DB_PASSWORD: losbabasonicos
+      DB_USERNAME: root
+      DB_PASSWORD: root
       # Rabbit es el canal de entrada: sin esto, dentro del contenedor el servicio busca
       # localhost y no encuentra al broker.
       RABBITMQ_HOST: rabbitmq
@@ -109,8 +111,8 @@ services:
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       N8N_URL: http://n8n:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: incentivos_user
-      DB_PASSWORD: ""
+      DB_USERNAME: root
+      DB_PASSWORD: root
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
@@ -138,8 +140,8 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: valentin
-      DB_PASSWORD: "10032001"
+      DB_USERNAME: root
+      DB_PASSWORD: root
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
@@ -163,8 +165,8 @@ services:
     environment:
       SERVER_PORT: 8086
       DB_URL: jdbc:mysql://mysql:3306/logisticas?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: valentin
-      DB_PASSWORD: "10032001"
+      DB_USERNAME: root
+      DB_PASSWORD: root
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
