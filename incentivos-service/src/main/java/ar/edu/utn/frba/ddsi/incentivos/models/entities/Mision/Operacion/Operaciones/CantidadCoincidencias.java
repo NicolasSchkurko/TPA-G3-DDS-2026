@@ -4,20 +4,24 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Entity;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.util.Objects;
-
+/**
+ * Cuenta las donaciones cuyo atributo coincide con el valor esperado.
+ *
+ * <p>Es la operación más simple y la que más se usa: "5 donaciones ENTREGADA". El valor
+ * esperado se guarda como {@link JsonNode} porque así llega del JSON del admin, sin
+ * convertirlo.
+ */
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 public class CantidadCoincidencias extends Operacion {
-    //5 donaciones "ENTREGADAS"
+    // 5 donaciones "ENTREGADAS"
     @JdbcTypeCode(SqlTypes.JSON)
     private JsonNode valorEsperado;
 
@@ -28,8 +32,16 @@ public class CantidadCoincidencias extends Operacion {
         super(progresoObjetivo);
         this.valorEsperado = valorEsperado;
     }
+
+    /**
+     * Una donación cuenta si su atributo es igual al esperado, sin distinguir mayúsculas y
+     * sin espacio al final.
+     *
+     * @param donante no se usa: esta operación no necesita acordarse del pasado, solo mira
+     *               la donación de ahora.
+     */
     @Override
-    public Boolean calcularProgreso(Object valorAtributo, ProgresoDelDonante donante) {
+    public boolean calcularProgreso(Object valorAtributo, ProgresoDelDonante donante) {
         if (valorEsperado == null || valorAtributo == null) {
             return false;
         }

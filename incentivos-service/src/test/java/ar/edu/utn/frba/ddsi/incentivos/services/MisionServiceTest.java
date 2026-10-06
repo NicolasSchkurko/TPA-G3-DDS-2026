@@ -1,5 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ReglaDTO;
@@ -16,20 +23,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * MisionService: borrado protegido (punto 18) y progreso que solo se reinicia cuando
@@ -77,10 +77,10 @@ class MisionServiceTest {
         return dto;
     }
 
-    private Mision olonearEnRepositorio() {
+    private Mision colonearEnRepositorio() {
         Mision mision = misionVigente();
         UUID idMision = UUID.randomUUID();
-        mision.setIdMision(idMision);
+        ReflectionTestUtils.setField(mision, "idMision", idMision);
         when(repoMisiones.findById(idMision)).thenReturn(Optional.of(mision));
         when(repoMisiones.save(any(Mision.class))).thenAnswer(i -> i.getArgument(0));
         return mision;
@@ -93,7 +93,7 @@ class MisionServiceTest {
         @Test
         @DisplayName("retocar la descripción no reinicia el progreso de nadie")
         void retocarLaDescripcionNoReiniciaElProgreso() {
-            Mision mision =olonearEnRepositorio();
+            Mision mision = colonearEnRepositorio();
             UUID idMision = mision.getIdMision();
 
             service.actualizarMision(ADMIN, idMision,
@@ -105,7 +105,7 @@ class MisionServiceTest {
         @Test
         @DisplayName("cambiar solo el texto de la insignia tampoco reinicia el progreso")
         void cambiarLaInsigniaTampocoReiniciaElProgreso() {
-            Mision mision = olonearEnRepositorio();
+            Mision mision = colonearEnRepositorio();
             UUID idMision = mision.getIdMision();
 
             service.actualizarMision(ADMIN, idMision,
@@ -117,7 +117,7 @@ class MisionServiceTest {
         @Test
         @DisplayName("cambiar el objetivo sí reinicia el progreso")
         void cambiarElObjetivoSiReiniciaElProgreso() {
-            Mision mision = olonearEnRepositorio();
+            Mision mision = colonearEnRepositorio();
             UUID idMision = mision.getIdMision();
 
             service.actualizarMision(ADMIN, idMision,
@@ -129,7 +129,7 @@ class MisionServiceTest {
         @Test
         @DisplayName("cambiar el atributo de la regla sí reinicia el progreso")
         void cambiarElAtributoSiReiniciaElProgreso() {
-            Mision mision = olonearEnRepositorio();
+            Mision mision = colonearEnRepositorio();
             UUID idMision = mision.getIdMision();
 
             service.actualizarMision(ADMIN, idMision,
@@ -150,7 +150,7 @@ class MisionServiceTest {
         void preparar() {
             idMision = UUID.randomUUID();
             mision = misionVigente();
-            mision.setIdMision(idMision);
+            ReflectionTestUtils.setField(mision, "idMision", idMision);
             when(repoMisiones.findById(idMision)).thenReturn(Optional.of(mision));
         }
 

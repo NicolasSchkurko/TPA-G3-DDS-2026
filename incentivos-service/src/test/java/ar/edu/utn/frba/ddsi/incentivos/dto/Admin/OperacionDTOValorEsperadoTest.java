@@ -1,11 +1,11 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("OperacionDTO: el valor esperado tiene que volver como texto plano")
 class OperacionDTOValorEsperadoTest {

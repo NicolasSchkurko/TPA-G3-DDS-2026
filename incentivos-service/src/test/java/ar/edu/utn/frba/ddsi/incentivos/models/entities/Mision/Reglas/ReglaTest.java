@@ -1,20 +1,19 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Regla: composicion de atributo + operacion (+ constancia)")
 class ReglaTest {
@@ -28,13 +27,14 @@ class ReglaTest {
     private static ImpactoDonacion donacion(String categoria, String subCategoria,
                                             Integer cantidadBienes, String estado) {
         return new ImpactoDonacion(
+                UUID.randomUUID(),
+                USUARIO,
                 "Fundacion de prueba",
                 cantidadBienes,
                 LocalDateTime.of(2026, 3, 10, 12, 0),
                 categoria,
                 subCategoria,
-                estado,
-                USUARIO
+                estado
         );
     }
 

@@ -1,16 +1,15 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Categoria: secuencia ordenada de misiones")
 class CategoriaTest {
@@ -28,6 +27,8 @@ class CategoriaTest {
                 nombre,                  // nombreMision
                 "Descripcion",           // descripcion
                 "Insignia " + nombre,    // nombreInsignia
+                "Texto de la insignia",  // insigniaDescripcion
+                null,                    // insigniaUrlImagen
                 null,                    // cantidadTiempo
                 null,                    // unidadTiempo
                 "ESTADO",                // atributo
@@ -86,14 +87,16 @@ class CategoriaTest {
     }
 
     @Test
-    @DisplayName("identifica la ultima mision de la secuencia")
-    void identificaLaUltimaMision() {
+    @DisplayName("la ultima mision de la secuencia no tiene siguiente")
+    void laUltimaMisionNoTieneSiguiente() {
+        // No hace falta un esUltimaMision: que siguienteMision devuelva null YA es la
+        // forma de preguntar si la donante es la ultima.
         Mision a = mision("A");
         Mision b = mision("B");
         Categoria categoria = categoriaCon(a, b);
 
-        assertThat(categoria.esUltimaMision(b)).isTrue();
-        assertThat(categoria.esUltimaMision(a)).isFalse();
+        assertThat(categoria.siguienteMision(a)).isSameAs(b);
+        assertThat(categoria.siguienteMision(b)).isNull();
     }
 
     @Test
@@ -103,7 +106,6 @@ class CategoriaTest {
 
         assertThat(categoria.primeraMision()).isNull();
         assertThat(categoria.siguienteMision(mision("A"))).isNull();
-        assertThat(categoria.esUltimaMision(mision("A"))).isFalse();
         categoria.eliminarMision(mision("A"));
         assertThat(categoria.getCategoriaMisiones()).isEmpty();
     }

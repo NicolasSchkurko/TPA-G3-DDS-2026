@@ -1,17 +1,16 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Motor de operaciones de regla (patrón Strategy)")
 class OperacionTest {
@@ -108,12 +107,15 @@ class OperacionTest {
     class SuperaCantidadTest {
 
         @Test
-        @DisplayName("progresa cuando el valor iguala o supera el mínimo")
+        @DisplayName("progresa solo si el valor supera el mínimo, no si lo iguala")
         void comparaContraElMinimo() {
             SuperaCantidad operacion = new SuperaCantidad(1, 6);
 
             assertThat(operacion.calcularProgreso(7, donante())).isTrue();
-            assertThat(operacion.calcularProgreso(6, donante())).isTrue();
+            // El 6 exacto NO cuenta: la misión del seed dice "supera 6 bienes", y "supera"
+            // es "excede", no "alcanza" (punto 33). Con un >= un donante con 6 obtenía la
+            // insignia que el enunciado reserva para los de 7 o más.
+            assertThat(operacion.calcularProgreso(6, donante())).isFalse();
             assertThat(operacion.calcularProgreso(5, donante())).isFalse();
         }
 

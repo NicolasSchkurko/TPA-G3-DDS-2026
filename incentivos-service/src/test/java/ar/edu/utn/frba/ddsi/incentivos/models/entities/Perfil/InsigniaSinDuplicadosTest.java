@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
@@ -8,16 +10,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImp
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * La misma misión en dos categorías no puede dar dos insignias (punto 28).
@@ -47,9 +46,9 @@ class InsigniaSinDuplicadosTest {
 
     private static ImpactoDonacion donacion(LocalDateTime fecha, UUID idDonacion) {
         ImpactoDonacion d = new ImpactoDonacion(
-                "Fundacion", 1, fecha, "ROPA", "INDUMENTARIA", "ENTREGADA", USUARIO);
-        d.setIdDonacion(idDonacion);
-        d.setHizoProgresarMision(true);
+                idDonacion, USUARIO,
+                "Fundacion", 1, fecha, "ROPA", "INDUMENTARIA", "ENTREGADA");
+        d.registrarProgresoEn(null, true);
         return d;
     }
 
@@ -114,7 +113,7 @@ class InsigniaSinDuplicadosTest {
         Perfil perfil = new Perfil(USUARIO, "Ana");
 
         // Primer intento: completa y obtiene la insignia.
-        perfil.setProgresoMisionActual(new ProgresoMision(racha));
+        perfil.cambiarMision(racha, null);
         List<ImpactoDonacion> historia = rachaCompleta();
         assertThat(perfil.progresarMision(historia.get(2), historia)).isTrue();
         assertThat(perfil.getInsigniasObtenidas()).hasSize(1);

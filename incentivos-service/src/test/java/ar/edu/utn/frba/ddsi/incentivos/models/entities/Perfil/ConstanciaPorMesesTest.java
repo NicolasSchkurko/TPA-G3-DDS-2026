@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
@@ -7,15 +9,12 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImp
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * La racha tiene que contar MESES calendario consecutivos, no donaciones (punto 26).
@@ -45,13 +44,13 @@ class ConstanciaPorMesesTest {
     }
 
     private static ImpactoDonacion donacion(LocalDateTime fecha, String estado) {
-        return new ImpactoDonacion(
-                "Fundacion", 1, fecha, "ROPA", "INDUMENTARIA", estado, UUID.randomUUID());
+        return new ImpactoDonacion(UUID.randomUUID(), UUID.randomUUID(),
+                "Fundacion", 1, fecha, "ROPA", "INDUMENTARIA", estado);
     }
 
     private static List<ImpactoDonacion> rachasQueProgresan(ImpactoDonacion... donaciones) {
         List<ImpactoDonacion> lista = List.of(donaciones);
-        lista.forEach(d -> d.setHizoProgresarMision(true));
+        lista.forEach(d -> d.registrarProgresoEn(null, true));
         return lista;
     }
 
@@ -154,18 +153,17 @@ class ConstanciaPorMesesTest {
     @Test
     @DisplayName("las donaciones que no progresaron la misión no cuentan para la racha")
     void lasDonacionesQueNoProgresaronNoCuentan() {
-        ProgresoMision progreso = rachaDeTresMeses();
-
         LocalDateTime marzo = LocalDateTime.of(2026, 3, 10, 10, 0);
         List<ImpactoDonacion> lista = List.of(
                 donacion(marzo, "ENTREGADA"),
                 donacion(marzo.plusMonths(1), "CANCELADA"),
                 donacion(marzo.plusMonths(2), "ENTREGADA")
         );
-        lista.get(0).setHizoProgresarMision(true);
-        lista.get(1).setHizoProgresarMision(false);
-        lista.get(2).setHizoProgresarMision(true);
+        lista.get(0).registrarProgresoEn(null, true);
+        lista.get(1).registrarProgresoEn(null, false);
+        lista.get(2).registrarProgresoEn(null, true);
 
+        ProgresoMision progreso = rachaDeTresMeses();
         progreso.evaluarConstancia(lista, marzo.plusMonths(2));
 
         // Marzo y mayo no son consecutivos: la racha es de uno solo.

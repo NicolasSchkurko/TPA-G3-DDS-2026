@@ -1,5 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.ConflictoException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
@@ -10,21 +17,12 @@ import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * CategoriaService: borrado protegido (punto 18) y secuencia sin posiciones repetidas
@@ -152,7 +150,7 @@ class CategoriaServiceTest {
 
             service.agregarCategoria(ADMIN, dto("Plata", 3));
 
-            verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3);
+            verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3, gestorSecuencia.posicionMaxima(repoCategorias));
         }
     }
 }

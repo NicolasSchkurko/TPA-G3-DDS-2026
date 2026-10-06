@@ -48,3 +48,11 @@ build/
 ### Variables de entorno (credenciales locales) ###
 .env
 !.env.example
+
+### Scripts de desarrollo de esta maquina ###
+# gen-checkstyle.ps1 arma config/checkstyle/checkstyle.xml a partir del google_checks.xml
+# del jar de Checkstyle, y run-checkstyle.ps1 lo corre. Los dos dependen de rutas
+# locales: el jar de Checkstyle que trae el plugin de IntelliJ y el commons-logging del
+# .m2. En otra maquina no corren, asi que no tiene sentido versionarlos.
+/gen-checkstyle.ps1
+/run-checkstyle.ps1

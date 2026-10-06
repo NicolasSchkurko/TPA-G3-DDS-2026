@@ -1,8 +1,12 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,11 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.time.temporal.ChronoUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("MisionFactory: se rechaza el dato de entrada que no se puede usar")
 class MisionFactoryTest {
@@ -64,11 +63,29 @@ class MisionFactoryTest {
         }
 
         @Test
-        @DisplayName("si no viene cantidad o unidad, la mision no lleva constancia")
-        void sinCantidadOUnidadNoHayConstancia() {
-            assertThat(factory.crearConstancia(null, "MESES")).isNull();
-            assertThat(factory.crearConstancia(3, null)).isNull();
-            assertThat(factory.crearConstancia(3, "   ")).isNull();
+        @DisplayName("si no viene ninguna de las dos partes, la mision no lleva constancia")
+        void sinNingunaParteNoHayConstancia() {
+            assertThat(factory.crearConstancia(null, null)).isNull();
+            assertThat(factory.crearConstancia(null, "   ")).isNull();
+        }
+
+        @Test
+        @DisplayName("si viene solo una de las dos partes se rechaza, no se ignora (punto 34)")
+        void conMedioDatoSeRechaza() {
+            // Antes estos tres devolvían null y la misión se guardaba sin exigencia de racha.
+            // Por HTTP no se notaba (el ConstanciaDTO tiene @NotNull en los dos campos), pero
+            // una llamada interna creaba una misión más permisiva que la que el admin quiso,
+            // sin que nada lo indicara.
+            assertThatThrownBy(() -> factory.crearConstancia(null, "MESES"))
+                    .isInstanceOf(DatosInvalidosException.class)
+                    .hasMessageContaining("solo la unidad");
+
+            assertThatThrownBy(() -> factory.crearConstancia(3, null))
+                    .isInstanceOf(DatosInvalidosException.class)
+                    .hasMessageContaining("solo la cantidad");
+
+            assertThatThrownBy(() -> factory.crearConstancia(3, "   "))
+                    .isInstanceOf(DatosInvalidosException.class);
         }
 
         @ParameterizedTest

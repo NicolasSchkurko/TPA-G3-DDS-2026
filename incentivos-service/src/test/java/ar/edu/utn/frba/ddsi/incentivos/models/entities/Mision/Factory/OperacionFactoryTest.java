@@ -1,19 +1,19 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("OperacionFactory: una operacion incompleta no se puede persistir")
 class OperacionFactoryTest {
@@ -53,14 +53,17 @@ class OperacionFactoryTest {
     }
 
     @Test
-    @DisplayName("SUPERA_CANTIDAD guarda el umbral que debe superar la donacion")
+    @DisplayName("SUPERA_CANTIDAD guarda el umbral que la donacion tiene que superar")
     void superaCantidadSeArma() {
         Operacion operacion = factory.conseguirOperacion("SUPERA_CANTIDAD", 2, 5, null);
 
         assertThat(operacion).isInstanceOf(SuperaCantidad.class);
         assertThat(((SuperaCantidad) operacion).getCantidadEsperada()).isEqualTo(5);
         assertThat(operacion.calcularProgreso(4, donante())).isFalse();
-        assertThat(operacion.calcularProgreso(5, donante())).isTrue();
+        // El 5 exacto NO cuenta: el umbral es exclusivo (punto 33), porque el enunciado dice
+        // "supera N" y no "alcanza N".
+        assertThat(operacion.calcularProgreso(5, donante())).isFalse();
+        assertThat(operacion.calcularProgreso(6, donante())).isTrue();
     }
 
     @Test

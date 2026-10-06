@@ -1,26 +1,24 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
-import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestTemplate;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
 
 @DisplayName("N8nClient: publicacion de insignias obtenidas")
 class N8nClientTest {
@@ -48,10 +46,10 @@ class N8nClientTest {
 
     private MisionCompletada eventoCompletada() {
         ImpactoDonacion impacto = new ImpactoDonacion(
+                UUID.randomUUID(), UUID.randomUUID(),
                 "Fundacion de prueba", 3,
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                "ALIMENTOS", "MERCEARIA", "ENTREGADA",
-                UUID.randomUUID());
+                "ALIMENTOS", "MERCEARIA", "ENTREGADA");
 
         return new MisionCompletada(
                 "Primera donacion",

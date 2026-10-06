@@ -1,36 +1,32 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("Perfil: raiz de agregado")
 class PerfilTest {
 
-    private static final MisionFactory MISION_FACTORY = new MisionFactory(new OperacionFactory());
     private static final UUID ID_USUARIO = UUID.randomUUID();
-    private static final MedioContacto CONTACTO = new MedioContacto("EMAIL", "a@b.com");
 
     private static Mision mision(String nombre) {
         Regla regla = new Regla(null, AtributoImpacto.CANTIDAD_BIENES, new SuperaCantidad(1, 5));
@@ -38,9 +34,9 @@ class PerfilTest {
     }
 
     private static ImpactoDonacion donacion() {
-        return new ImpactoDonacion("Fundacion", 7,
+        return new ImpactoDonacion(UUID.randomUUID(), ID_USUARIO, "Fundacion", 7,
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                "ALIMENTOS", "MERCEARIA", "ENTREGADA", ID_USUARIO);
+                "ALIMENTOS", "MERCEARIA", "ENTREGADA");
     }
 
     private static Categoria categoria(String nombre, Mision... misiones) {
@@ -81,7 +77,7 @@ class PerfilTest {
     @DisplayName("al completar la mision otorga la insignia y registra el evento")
     void alCompletarOtorgaInsigniaYRegistraEvento() {
         Perfil perfil = new Perfil(ID_USUARIO, "Ana");
-        perfil.setProgresoMisionActual(new ProgresoMision(mision("Primera")));
+        perfil.cambiarMision(mision("Primera"), null);
 
         assertThat(perfil.progresarMision(donacion(), List.of())).isTrue();
 
@@ -102,7 +98,7 @@ class PerfilTest {
         Perfil perfil = new Perfil(ID_USUARIO, "Ana");
         Mision anterior = mision("Primera");
         Mision nueva = mision("Racha");
-        perfil.setProgresoMisionActual(new ProgresoMision(anterior));
+        perfil.cambiarMision(anterior, null);
 
         perfil.cambiarMision(nueva, anterior);
 
@@ -121,8 +117,8 @@ class PerfilTest {
     void cambiarACategoriaSinMisionesDejaProgresoVacio() {
         Perfil perfil = new Perfil(ID_USUARIO, "Ana");
         Categoria origen = categoria("Colaborador", mision("Primera"));
-        perfil.setCategoriaActual(origen);
-        perfil.setProgresoMisionActual(new ProgresoMision(mision("Primera")));
+        // iniciarEn ya deja al donante en la primera misión de "Colaborador".
+        perfil.iniciarEn(origen);
 
         perfil.cambiarCategoria(categoria("Vacia"), origen, mision("Primera"));
 
@@ -136,7 +132,7 @@ class PerfilTest {
         Perfil perfil = new Perfil(ID_USUARIO, "Ana");
         Categoria origen = categoria("Colaborador", mision("Primera"));
         Categoria destino = categoria("Sostenedor", mision("Racha"));
-        perfil.setCategoriaActual(origen);
+        perfil.iniciarEn(origen);
 
         perfil.cambiarCategoria(destino, origen, mision("Primera"));
 
@@ -163,7 +159,7 @@ class PerfilTest {
     void laInsigniaQuedaAsociadaAlPerfil() {
         Perfil perfil = new Perfil(ID_USUARIO, "Ana");
         Insignia insignia = new Insignia("Insignia", "Descripcion");
-        perfil.setProgresoMisionActual(new ProgresoMision(mision("Primera")));
+        perfil.cambiarMision(mision("Primera"), null);
 
         perfil.progresarMision(donacion(), List.of());
 

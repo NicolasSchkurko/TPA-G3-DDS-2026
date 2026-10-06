@@ -1,18 +1,17 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 @DisplayName("MisionDTO: la proyeccion no se rompe cuando a la entidad le falta algo")
 class MisionDTOTest {
@@ -56,10 +55,12 @@ class MisionDTOTest {
     @Test
     @DisplayName("una insignia nula no rompe la proyeccion")
     void unaInsigniaNulaNoRompeLaProyeccion() {
-        Mision conInsignia = mision(new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(1, 1)));
-        conInsignia.setInsigniaObjetivo(null);
+        // Una misión sin insignia objetivo no puede existir en la base (la columna es NOT
+        // NULL), pero la proyección no debería romperse si aparece una: devuelve null.
+        Mision sinInsignia = new Mision("Sin insignia", null, "d", null,
+                new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(1, 1)));
 
-        MisionDTO dto = MisionDTO.desdeEntidad(conInsignia);
+        MisionDTO dto = MisionDTO.desdeEntidad(sinInsignia);
 
         assertThat(dto).isNotNull();
         assertThat(dto.getInsigniaObjetivo()).isNull();

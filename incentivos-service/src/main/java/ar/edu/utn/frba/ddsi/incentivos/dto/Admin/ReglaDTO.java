@@ -28,7 +28,7 @@ public class ReglaDTO {
 
     public ReglaDTO(ConstanciaDTO constancia,
                     String atributo,
-                    OperacionDTO operacion){
+                    OperacionDTO operacion) {
         this.constancia = constancia;
         this.atributo = atributo;
         this.operacion = operacion;

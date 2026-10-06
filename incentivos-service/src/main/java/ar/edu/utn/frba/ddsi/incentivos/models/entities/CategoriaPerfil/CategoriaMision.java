@@ -1,15 +1,27 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-import java.util.UUID;
-
+/**
+ * La posición de una misión dentro de la secuencia de una categoría.
+ *
+ * <p>Es una entidad propia y no un id compuesto porque hace falta poder preguntar "en qué
+ * posición estaba esta misiónó cuando el admin reordena la secuencia.
+ *
+ * <p>No tiene setters: la posición solo la cambia {@link Categoria} al renumerar, y la
+ * referencia a la categoría se fija en el constructor.
+ */
 @Getter
-@Setter
 @NoArgsConstructor // Requerido por JPA
 @Entity
 public class CategoriaMision {
@@ -34,5 +46,14 @@ public class CategoriaMision {
         this.categoria = categoria;
         this.mision = mision;
         this.posicion = posicion;
+    }
+
+    /**
+     * Cambia la posición en la secuencia. Solo {@link Categoria} lo llama, y únicamente
+     * al renumerar después de sacar una misión, para que las posiciones sigan siendo
+     * 1..N sin huecos.
+     */
+    public void moverAPosicion(Integer nuevaPosicion) {
+        this.posicion = nuevaPosicion;
     }
 }

@@ -2,6 +2,9 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,31 +13,44 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Consultas sobre las categorías y su secuencia de posiciones.
+ *
+ * <p>Además de las consultas, tiene los {@code UPDATE} en bloque que desplazan las
+ * posiciones cuando entra, sale o se mueve una categoría. Son consultas y no código de
+ * aplicación porque hay que mover varias filas de a uno en una sola sentencia.
+ */
 @Repository
 public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
 
-    Optional<Categoria> findByIdCategoria(UUID idCategoria);
-
-    List<Categoria> findByPosicionSecuenciaGreaterThanEqual(Integer nivel);
-
-    List<Categoria> findByPosicionSecuenciaBetween(Integer start, Integer end);
-
     List<Categoria> findAllByOrderByPosicionSecuenciaAsc();
 
+    /**
+     * La categoría base, o sea la primera del programa, con su secuencia de misiones ya
+     * cargada.
+     *
+     * <p>Existe para el alta de un donante (punto 25), y el {@code fetch} no es
+     * cosmético: {@code categoriaMisiones} es LAZY y {@code open-in-view} está
+     * desactivado, así que sin traerse la colección en la misma consulta, el
+     * {@code Categoria} vuelve desligado y el primer {@code primeraMision()} falla o, peor,
+     * devuelve {@code null} en silencio dejando al donante sin misión para siempre.
+     *
+     * <p>{@code Optional} y no {@code null}: el llamador distingue "no hay categoría base
+     * configurada" de "hay pero no tiene misiones", que son dos errores distintos.
+     */
+    @Query("SELECT c FROM Categoria c LEFT JOIN FETCH c.categoriaMisiones WHERE c.posicionSecuencia = "
+            + "(SELECT MIN(c2.posicionSecuencia) FROM Categoria c2)")
+    Optional<Categoria> obtenerCategoriaBase();
 
     Optional<Categoria> findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(Integer posicionActual);
 
     @Query("""
-    SELECT DISTINCT c FROM Categoria c
-    LEFT JOIN c.categoriaMisiones cm
-    WHERE (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre)
-      AND (:posicionSecuencia IS NULL OR c.posicionSecuencia = :posicionSecuencia)
-      AND (:misionId IS NULL OR cm.mision.idMision = :misionId)
-""")
+            SELECT DISTINCT c FROM Categoria c
+            LEFT JOIN c.categoriaMisiones cm
+            WHERE (:nombre IS NULL OR LOWER(c.nombre) LIKE :nombre)
+              AND (:posicionSecuencia IS NULL OR c.posicionSecuencia = :posicionSecuencia)
+              AND (:misionId IS NULL OR cm.mision.idMision = :misionId)
+            """)
     Page<Categoria> findAllByFiltros(
         @Param("nombre") String nombre,
         @Param("posicionSecuencia") Integer posicionSecuencia,
@@ -43,15 +59,13 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     );
 
     // ===== Secuencia de posiciones (punto 19) =====
-    //
     // Todos los @Modifying llevan flushAutomatically para que el UPDATE masivo parta del
     // estado real de la base y no pise inserts que todavía estan en el contexto de
     // persistencia sin flushear.
-    //
     // NO se pone clearAutomatically a proposito: en actualizarCategoria el contexto
     // contiene la Categoria que se esta editando, y limpiarla la dejaria detached en
     // mitad de la operacion; el setPosicionSecuencia y el copiar de esa misma entidad
-    //vendrían despues sobre un objeto desligado, y el save final terminaria haciendo
+    // vendrían despues sobre un objeto desligado, y el save final terminaria haciendo
     // merge de un CategoriaMision que ya no esta gestionado.
 
     @Modifying(flushAutomatically = true)
@@ -90,7 +104,6 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
      */
     List<Categoria> findAllByCategoriaMisionesMision(Mision mision);
 
-
     default Page<Categoria> obtenerTodas(String nombre, Integer posicionSecuencia, UUID misionId, Pageable pageable) {
         String patronNombre = (nombre != null && !nombre.isBlank())
                               ? "%" + nombre.trim().toLowerCase() + "%"
@@ -108,8 +121,9 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
             return null;
         }
 
-        return findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(categoriaActual.getPosicionSecuencia())
-            .orElse(null);
+        return findFirstByPosicionSecuenciaGreaterThanOrderByPosicionSecuenciaAsc(
+                categoriaActual.getPosicionSecuencia())
+                .orElse(null);
     }
 
 }

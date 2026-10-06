@@ -1,11 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Persona;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

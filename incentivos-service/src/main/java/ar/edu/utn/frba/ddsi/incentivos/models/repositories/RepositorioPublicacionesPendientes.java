@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories;
 
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
-
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Repository;
@@ -14,8 +13,8 @@ import org.springframework.stereotype.Repository;
  * de reintento esta trackeado en {@code PENDIENTES.md} (punto 3).
  */
 @Repository
-//guardar las publicaciones y es decision de la empresa pensar que hacer con ellas
-//al fallar la publicacion en redes sociales
+// guardar las publicaciones y es decision de la empresa pensar que hacer con ellas
+// al fallar la publicacion en redes sociales
 public class RepositorioPublicacionesPendientes {
     private final List<PerfilPublicacionDTO> pendientes;
 

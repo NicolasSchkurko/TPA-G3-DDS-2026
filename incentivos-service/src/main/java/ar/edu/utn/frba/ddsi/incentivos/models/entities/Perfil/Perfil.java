@@ -4,23 +4,43 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
-import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
-import org.springframework.data.domain.AbstractAggregateRoot;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.data.domain.AbstractAggregateRoot;
 
+/**
+ * El donante y todo su estado de fidelización: en qué categoría está, qué misión está
+ * haciendo y qué insignias ya tiene.
+ *
+ * <p>Es el agregado raíz, así que <b>no tiene setters</b>. Todas las transiciones pasan por
+ * métodos con nombre: {@link #iniciarEn} alCSFaltar, {@link #cambiarMision} y
+ * {@link #cambiarCategoria} al avanzar, {@link #progresarMision} al donar y
+ * {@link #finalizarSecuencia} cuando se agotó el programa.
+ *
+ * <p>La razón es concreta: con setters abiertos, {@code PerfilService} podía llamar
+ * {@code setProgresoMisionActual(...)} y saltarse los eventos de dominio. El donante
+ * avanzaba de misión sin que nadie publicara {@code MisionCambiada}, así que no le
+ * llegaban ni la notificación ni la publicación.
+ */
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 public class Perfil extends AbstractAggregateRoot<Perfil> {
@@ -30,6 +50,32 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idPerfil; // id interno
+
+    /**
+     * Control de concurrencia optimista (punto 36).
+     *
+     * <p>Hibernate lo incrementa en cada {@code UPDATE} y lo compara en el
+     * {@code WHERE}. Si otra transacción modificó el perfil en el medio, la comparación
+     * no da y la segunda escritura falla con
+     * {@code ObjectOptimisticLockingFailureException}, en vez de pisar lo que hizo la
+     * primera.
+     *
+     * <p>Sin esto, dos donaciones del mismo donante que entran al mismo tiempo pierden
+     * una: las dos leen el mismo progreso, las dos le suman uno y la segunda escritura
+     * pisa a la primera. Y si las dos completaban la misión, cada una insertaba su
+     * {@code InsigniaObtenida}: el {@code Set} en memoria no las ve, porque cada petición
+     * tiene su propio objeto {@code Perfil} con su propio {@code Set}. El donante quedaba
+     * con dos insignias y el ranking lo puntuaba doble.
+     *
+     * <p>Va en {@code Perfil} y no en {@code ProgresoMision} a propósito: el progreso es
+     * una parte del agregado, y poner el {@code @Version} en la parte en vez de en la raíz
+     * dejaría sin cubrir el avance de categoría y el set de insignias.
+     *
+     * <p>No lleva setter ni se muestra: es de Hibernate, y tocarlo a mano rompe la
+     * garantía de silencio.
+     */
+    @Version
+    private Long version;
 
     private String nombreUsuario;
 
@@ -53,6 +99,20 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @OneToMany(mappedBy = "perfil", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<InsigniaObtenida> insigniasObtenidas;
 
+    /**
+     * La misión que el donante está haciendo y cuánto lleva.
+     *
+     * <p>El {@code orphanRemoval} es lo que evita que la tabla crezca sin freno (punto 17):
+     * cada cambio de misión o de categoría reemplaza esta referencia por un
+     * {@code ProgresoMision} nuevo, y sin esto Hibernate insertaba la fila nueva y
+     * actualizaba la FK sin borrar la vieja. Como {@code cambiarMision} corre en cada
+     * misión completada, quedaban un {@code ProgresoMision} huérfano por cada avance del
+     * donante, y en la tabla {@code progreso_mision} nadie los referenciaba.
+     *
+     * <p>Es seguro borrarlos: {@code ProgresoMision} no lo referencia nadie más que este
+     * perfil. Ni siquiera el reinicio de progreso del punto 15 lo busca por id, sino que
+     * llega por el perfil.
+     */
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private ProgresoMision progresoMisionActual;
 
@@ -66,9 +126,55 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         this.progresoMisionActual = null;
     }
 
-    public void verificarProgresoMision(List<ImpactoDonacion> donaciones){
-        if (progresoMisionActual != null)
+    /**
+     * Ubica al donante en una categoría, empezando por su primera misión.
+     *
+     * <p>Es el alta del perfil, así que no dispara ningún evento: no hay una misión
+     * anterior de la que "cambiar". Lo que sí hace es dejar al donante con las reglas de la
+     * categoría ya aplicadas, que antes las tenía que armar el service a mano.
+     *
+     * @param categoria la categoría base. Si no tiene misiones, el donante queda sin
+     *                  misión en vez de con una en null.
+     */
+    public void iniciarEn(Categoria categoria) {
+        this.categoriaActual = categoria;
+
+        Mision primera = categoria == null ? null : categoria.primeraMision();
+        this.progresoMisionActual = primera == null ? null : new ProgresoMision(primera);
+    }
+
+    /**
+     * Deja al donante sin misión.
+     *
+     * <p>Se usa cuando terminó la secuencia: no hay más categorías ni más misiones que
+     * ofrecerle. No es un error, es un donante que ya hizo todo lo que el programa de
+     * fidelización tenía para darle.
+     */
+    public void finalizarSecuencia() {
+        this.progresoMisionActual = null;
+    }
+
+    /**
+     * Cambia el nombre del donante.
+     *
+     * <p>Con setter público esto se podía llamar desde cualquier lado, y el nombre es lo
+     * que aparece en el perfil, en el ranking y en las publicaciones: dejarlo abierto
+     * hacía muy fácil que quedara inconsistente con el de {@code donaciones-service}.
+     */
+    public void cambiarNombre(String nombre) {
+        this.nombreUsuario = nombre;
+    }
+
+    /**
+     * Recalcula la racha de la misión vigente a partir de todo su historial.
+     *
+     * <p>No hace nada si el donante no tiene misión: un donante sin misión no puede tener
+     * racha que recalcular.
+     */
+    public void verificarProgresoMision(List<ImpactoDonacion> donaciones) {
+        if (progresoMisionActual != null) {
             progresoMisionActual.evaluarConstancia(donaciones, LocalDateTime.now());
+        }
     }
 
     /**
@@ -79,9 +185,11 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
      *         insignia ya la tenía de antes, porque en ese caso igual tiene que avanzar de
      *         misión. Lo que no se repite es el guardado de la insignia ni la notificación.
      */
-    public Boolean progresarMision(ImpactoDonacion donacion,
-                                   List<ImpactoDonacion> donaciones){
-        if (progresoMisionActual == null) return false;
+    public boolean progresarMision(ImpactoDonacion donacion,
+                                   List<ImpactoDonacion> donaciones) {
+        if (progresoMisionActual == null) {
+            return false;
+        }
 
         Mision misionAnterior = progresoMisionActual.getMision();
         Insignia insignia = progresoMisionActual.progresarMision(donacion, donaciones);
@@ -111,12 +219,20 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     }
 
     /**
- * Asigna una misión nueva y, si corresponde, avisa que cambió.
- *
- * <p>No pide el contacto: el evento lleva el {@code idUsuario} y el listener lo resuelve
+     * Asigna una misión nueva y, si corresponde, avisa que cambió.
+     *
+     * <p>No pide el contacto: el evento lleva el {@code idUsuario} y el listener lo resuelve
      * en {@code AFTER_COMMIT}, fuera de la transacción (punto 12).
- */
-public void cambiarMision(Mision misionNueva, Mision misionAnterior) {
+     *
+     * <p><b>{@code misionNueva == null} significa que la categoría se quedó sin
+     * misiones</b>, no que haya un error: en ese caso el donante deja de progresar porque no
+     * hay nada que progresar, que es distinto a quedar trabado por un bug (punto 30).
+     * Antes, pasar por acá era la forma normal de "el admin sacó la misión que tenías", y
+     * el donante quedaba sin misión para siempre sin enterarse de nada. Ahora
+     * {@code SincronizacionPerfiles} busca la misión más cercana antes de llegar, y este
+     * caso queda reducido a la categoría genuinamente vacía.
+     */
+    public void cambiarMision(Mision misionNueva, Mision misionAnterior) {
         if (misionNueva == null) {
             this.progresoMisionActual = null;
             return;

@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
 
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
@@ -25,6 +26,29 @@ public class MisionDTO {
     @NotBlank(message = "La misión requiere una insignia objetivo")
     private String insigniaObjetivo;
 
+    /**
+     * El texto propio de la insignia objetivo (punto 24).
+     *
+     * <p>Es opcional a propósito, y no por pereza: el enunciado pide que la insignia tenga
+     * nombre, descripción e imagen, pero obligar a los tres en el alta rompe a cualquier
+     * cliente que hoy solo mande el nombre. Con esto los tres se pueden cargar, y los que no
+     * se manden quedan en null.
+     *
+     * <p>Ojo con la asimetría: {@code descripcion} es el texto de la <b>misión</b> y este es
+     * el de la <b>insignia</b>. Antes el de la insignia se rellenaba solo con el nombre de la
+     * misión, así que el campo directamente no existía y lo que se guardaba era el texto que
+     * no correspondía.
+     */
+    private String insigniaDescripcion;
+
+    /**
+     * Dónde se puede ver la imagen de la insignia objetivo.
+     *
+     * <p>Una URL, no la imagen: el campo lleva el enlace y no los bytes. Ver el javadoc de
+     * {@code Insignia.urlImagen} para por qué.
+     */
+    private String insigniaUrlImagen;
+
     @NotNull(message = "La misión requiere una regla de progreso")
     @Valid
     private ReglaDTO regla;
@@ -33,17 +57,27 @@ public class MisionDTO {
                      ConstanciaDTO cia,
                      String atributo,
                      OperacionDTO op) {
+        this(nomM, descripcion, nomI, null, null, cia, atributo, op);
+    }
+
+    public MisionDTO(String nomM, String descripcion, String nomI,
+                     String descripcionInsignia, String urlImagenInsignia,
+                     ConstanciaDTO cia,
+                     String atributo,
+                     OperacionDTO op) {
         this.nombreMision = nomM;
         this.descripcion = descripcion;
         this.insigniaObjetivo = nomI;
+        this.insigniaDescripcion = descripcionInsignia;
+        this.insigniaUrlImagen = urlImagenInsignia;
         this.regla = new ReglaDTO(cia, atributo, op);
     }
 
     /**
- * Proyecta una misión a DTO. Es null-safe en toda la cadena: una sola misión con la
- * regla incompleta no puede romper el listado completo de misiones, que es lo que
- * pasaba antes con un {@code NullPointerException} a mitad del {@code map}.
- */
+     * Proyecta una misión a DTO. Es null-safe en toda la cadena: una sola misión con la
+     * regla incompleta no puede romper el listado completo de misiones, que es lo que
+     * pasaba antes con un {@code NullPointerException} a mitad del {@code map}.
+     */
     public static MisionDTO desdeEntidad(Mision mision) {
         if (mision == null) {
             return null;
@@ -66,14 +100,14 @@ public class MisionDTO {
                 : reglaConstancia.getUnidadTiempo().name()
         );
 
-        String nombreInsignia = mision.getInsigniaObjetivo() == null
-                               ? null
-                               : mision.getInsigniaObjetivo().getNombre();
+        Insignia insignia = mision.getInsigniaObjetivo();
 
         return new MisionDTO(
             mision.getNombreMision(),
             mision.getDescripcion(),
-            nombreInsignia,
+            insignia == null ? null : insignia.getNombre(),
+            insignia == null ? null : insignia.getDescripcion(),
+            insignia == null ? null : insignia.getUrlImagen(),
             constancia,
             atributo == null ? null : atributo.name(),
             OperacionDTO.desdeEntidad(operacion)

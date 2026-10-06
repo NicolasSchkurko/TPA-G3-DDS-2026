@@ -4,10 +4,20 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Arranque del servicio de incentivos.
+ *
+ * <p>{@code @EnableScheduling} es lo que hace que corran los dos schedulers: el que
+ * evalúa la constancia de las misiones y el que arma el ranking mensual.
+ */
 @SpringBootApplication
 @EnableScheduling
 public class IncentivosApplication {
 
+    /**
+     * Punto de entrada de Spring Boot. No lleva javadoc propio porque no hace nada que no
+     * haga el framework: solo levanta el contexto.
+     */
     public static void main(String[] args) {
         SpringApplication.run(IncentivosApplication.class, args);
     }

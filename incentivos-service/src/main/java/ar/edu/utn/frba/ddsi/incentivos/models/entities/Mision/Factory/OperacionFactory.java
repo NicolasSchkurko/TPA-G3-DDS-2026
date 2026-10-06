@@ -5,18 +5,35 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
-import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.util.List;
 import java.util.Locale;
+import org.springframework.stereotype.Component;
 
+/**
+ * Elige qué subclase de {@link Operacion} corresponde al tipo que pidió el admin, y la
+ * construye con los parámetros que esa subclase necesita.
+ *
+ * <p>El {@code switch} sobre el enum es el lugar donde el JSON se traduce a una operación
+ * concreta. Cada rama valida sus propios parámetros: lo que no se valida acá, revienta más
+ * tarde con un NullPointerException en pleno trabajo, y el donante pierde el progreso.
+ */
 @Component
 public class OperacionFactory {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /**
+     * Construye la operación.
+     *
+     * @param tipoOperacion   el texto del tipo, sin distinguir mayúsculas.
+     * @param progresoObjetivo cuántas donatedciones hacen falta, siempre mayor a cero.
+     * @param cantidad        parámetro de las operaciones que comparan contra un número.
+     * @param valor           parámetro de las operaciones que comparan contra un texto.
+     * @throws DatosInvalidosException si falta un parámetro o no se reconoce el tipo. El
+     *                               mensaje dice qué se esperaba.
+     */
     public Operacion conseguirOperacion(
             String tipoOperacion,
             Integer progresoObjetivo,
