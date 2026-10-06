@@ -1,22 +1,89 @@
 package ar.edu.utn.frba.ddsi.incentivos.dto.Admin;
+
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class OperacionDTO {
+
+    @NotBlank(message = "La operación requiere un tipo (COINCIDENCIAS, "
+            + "VALORES_DISTINTOS o SUPERA_CANTIDAD)")
     private String tipoOperacion;
+
+    @NotNull(message = "La operación requiere un progreso objetivo")
+    @Positive(message = "El progreso objetivo debe ser mayor a cero")
     private Integer progresoObjetivo;
-    private String valorEsperado;  // solo COINCIDENCIAS
-    private Integer cantidad;      // VALORES_DISTINTOS o SUPERA_CANTIDAD
+
+    /** Requerido solo para COINCIDENCIAS. Validador en MisionService.construirMision. */
+    private String valorEsperado;
+
+    /** Requerido para VALORES_DISTINTOS y SUPERA_CANTIDAD. Validador en construirMision. */
+    private Integer cantidad;
 
     public OperacionDTO(String tipoOperacion,
                         Integer progresoObjetivo,
                         String valorEsperado,
-                        Integer cantidad){
+                        Integer cantidad) {
         this.tipoOperacion = tipoOperacion;
         this.progresoObjetivo = progresoObjetivo;
         this.valorEsperado = valorEsperado;
         this.cantidad = cantidad;
+    }
+
+    public static OperacionDTO desdeEntidad(Operacion operacion) {
+        if (operacion == null) {
+            return null;
+        }
+
+        if (operacion instanceof CantidadCoincidencias coincidencias) {
+            return new OperacionDTO(
+                "COINCIDENCIAS",
+                coincidencias.getProgresoObjetivo(),
+                // String.valueOf de un null devuelve el texto "null", no null.
+                // Para una coincidencia sin valor esperado lo correcto es null.
+                // Y hay que usar asText() y no toString(): valorEsperado es un JsonNode,
+                // y toString() devuelve la representacion JSON, o sea "ENTREGADA" CON
+                // comillas. Con eso el flujo GET -> PUT del panel de admin guardaba el
+                // valor entrecomillado, ninguna donacion con estado ENTREGADA volvia a
+                // coincidir, y como la regla dejaba de ser equivalente, cada edicion
+                // reiniciaba el progreso de todos los donantes de la mision.
+                coincidencias.getValorEsperado() == null
+                    ? null
+                    : coincidencias.getValorEsperado().asText(),
+                null
+            );
+        }
+
+        if (operacion instanceof ValoresDistintos distintos) {
+            return new OperacionDTO(
+                "VALORES_DISTINTOS",
+                distintos.getProgresoObjetivo(),
+                null,
+                distintos.getCantValoresDistintos()
+            );
+        }
+
+        if (operacion instanceof SuperaCantidad superaCantidad) {
+            return new OperacionDTO(
+                "SUPERA_CANTIDAD",
+                superaCantidad.getProgresoObjetivo(),
+                null,
+                superaCantidad.getCantidadEsperada()
+            );
+        }
+
+        throw new IllegalArgumentException(
+            "Tipo de operación no soportado: " + operacion.getClass().getSimpleName()
+        );
     }
 }

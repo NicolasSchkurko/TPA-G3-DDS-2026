@@ -13,7 +13,7 @@ Integrantes:
 
 # ddsi-tp-template
 
-Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arquitectura de servicios con Spring Boot y una biblioteca compartida, usando un reactor de Maven multi-módulo.
+Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arquitectura de servicios con Spring Boot, usando un reactor de Maven multi-módulo.
 
 ---
 
@@ -30,12 +30,15 @@ Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arqu
 ```
 ddsi-tp-template/
 ├── pom.xml                    # POM padre: versiones y dependencyManagement
-├── common-lib/                # Librería compartida (JAR), importada por los servicios
-├── donaciones-service/        # Servicio de donaciones — puerto 8080
-└── notificaciones-service/    # Servicio de notificaciones — puerto 8081
+├── common-lib/                # (obsoleto, ver PENDIENTES.md de cada servicio)
+├── donaciones-service/        # Servicio de donaciones — puerto 8084
+├── incentivos-service/         # Servicio de gamificación — puerto 8082
+├── notificaciones-service/    # Servicio de notificaciones — puerto 8083
+└── logisticas-service/        # Servicio de logística — puerto 8086
 ```
 
-Cada servicio es una aplicación Spring Boot independiente que declara `common-lib` como dependencia local del reactor.
+> `common-lib/` ya no participa del build (no está en `<modules>` del POM padre ni lo
+> referencia ningún servicio). Ver la sección de pendientes de cada módulo.
 
 ---
 
@@ -44,12 +47,23 @@ Cada servicio es una aplicación Spring Boot independiente que declara `common-l
 | Tecnología          | Versión       |
 |---------------------|---------------|
 | Java                | 21            |
-| Spring Boot         | 4.0.5         |
+| Spring Boot         | 3.2.5         |
 | Spring Cloud BOM    | 2025.1.1      |
-| Lombok              | 1.18.34       |
+| Lombok              | 1.18.38       |
 | Maven               | 3.9+          |
 
 El BOM de Spring Cloud está declarado en el POM padre para que los módulos puedan incorporar dependencias de Spring Cloud sin especificar versión explícita.
+
+---
+
+## Puertos
+
+| Servicio              | Puerto |
+|-----------------------|--------|
+| `incentivos-service`  | 8082   |
+| `notificaciones-service` | 8083 |
+| `donaciones-service`  | 8084   |
+| `logisticas-service`  | 8086   |
 
 ---
 
@@ -63,55 +77,82 @@ Todos los comandos se ejecutan desde la **raíz del proyecto**.
 mvn clean install
 ```
 
-Esto construye `common-lib` primero y luego los servicios que dependen de ella.
-
 ### Ejecutar un servicio
 
 ```bash
-# Servicio de donaciones (puerto 8080)
-mvn spring-boot:run -pl donaciones-service
-
-# Servicio de notificaciones (puerto 8081)
-mvn spring-boot:run -pl notificaciones-service
+mvn spring-boot:run -pl incentivos-service
 ```
 
-Maven resuelve `common-lib` directamente desde el reactor, por lo que no hace falta instalarla por separado si se ejecuta desde la raíz.
+Maven resuelve las dependencias entre módulos directamente desde el reactor.
+
+### Tests
+
+```bash
+mvn test -pl incentivos-service
+```
 
 ---
 
 ## Construcción de imágenes Docker
 
-Este proyecto utiliza una arquitectura multi-módulo de Maven. Los microservicios dependen del `pom.xml` padre y de `common-lib`, por lo que **el contexto de construcción de Docker siempre debe ser la raíz del proyecto**. Si se limita el contexto a la carpeta del microservicio, Maven fallará al no encontrar el POM padre ni las dependencias comunes.
-
-### Construcción manual (CLI)
-
-Posicionarse en la carpeta raíz del proyecto y pasar el Dockerfile con `-f`, dejando `.` como contexto:
+El contexto de construcción de Docker siempre debe ser la **raíz** del proyecto, porque
+los microservicios dependen del `pom.xml` padre.
 
 ```bash
-# donaciones-service (expone el puerto 8080)
+docker build -t incentivos-img -f incentivos-service/Dockerfile .
 docker build -t donaciones-img -f donaciones-service/Dockerfile .
-
-# notificaciones-service (expone el puerto 8081)
-docker build -t notificaciones-img -f notificaciones-service/Dockerfile .
 ```
 
-### Ejecutar los contenedores
+### Levantar todo junto
 
 ```bash
-docker run -p 8080:8080 donaciones-img
-docker run -p 8081:8081 notificaciones-img
+docker compose up
 ```
 
-### Nota sobre `ARG SERVICE_NAME`
-
-Cada Dockerfile define un `ARG SERVICE_NAME` cuyo valor por defecto ya coincide con el nombre del servicio (p. ej. `donaciones-service`). Solo es necesario sobreescribirlo si se reutiliza un Dockerfile genérico para construir un servicio diferente:
+Para levantar un servicio con su base de datos aislada (MySQL en el puerto 3307):
 
 ```bash
-docker build --build-arg SERVICE_NAME=otro-service -f otro-service/Dockerfile .
+cd incentivos-service
+docker compose -f compose.dev.yml up --build
 ```
 
 ---
 
-## Estado del proyecto
+## Requisito pendiente: visibilidad configurable de insignias
 
-Los servicios son aplicaciones Spring Boot mínimas, listas para extender con controladores, repositorios y lógica de negocio. `common-lib` contiene el código compartido entre servicios.
+> Estado: **no implementado** en `incentivos-service`.
+
+El enunciado pide que las insignias obtenidas puedan visualizarse en el perfil de la
+persona donante *"siempre que la persona usuaria las configure como visibles"*. O sea,
+la visibilidad tiene que ser **una decisión de la persona donante**, no un dato que el
+servicio asuma.
+
+Hoy no hay forma de configurarla:
+
+- `InsigniaObtenida` (`models/entities/Perfil/InsigniaObtenida.java`) solo tiene
+  `perfil`, `insignia` y `fechaObtencion`. **No existe el campo de visibilidad.**
+- En consecuencia, `GET /api/perfiles/{idUsuario}/insignias` devuelve **todas** las
+  insignias otorgadas, sin filtro.
+- No hay endpoint para cambiar ese estado.
+
+### Qué hay que hacer
+
+1. Agregar `Boolean visible` a `InsigniaObtenida`, con `true` por defecto en el
+   constructor para no cambiar el comportamiento de las insignias ya emitidas.
+2. Exponer un endpoint de toggle, por ejemplo
+   `PUT /api/perfiles/{idUsuario}/insignias/{idInsignia}/visibilidad`.
+3. Filtrar por `visible` en el listado de insignias y en el DTO que se expone
+   públicamente, dejando las insignias ocultas fuera de la respuesta pero **sin** borrar
+   el registro (sigue contando para el ranking y para el historial).
+4. Solo la persona dueña del perfil debería poder cambiar la visibilidad.
+
+---
+
+## Documentación por servicio
+
+Cada microservicio tiene su Swagger en `/api-docs`. Además, `incentivos-service`
+mantiene un `PENDIENTES.md` con los problemas técnicos conocidos que quedaron
+abiertos: los puntos 1 al 9 son disposiciones de diseño o requisitos del enunciado sin
+implementar, y del 10 al 23 son los resultados de una auditoría de código (bugs de
+correctitud, falta de idempotencia, consultas N+1, código muerto y deuda de diseño).
+Cada punto indica severidad, archivos afectados y una propuesta concreta.

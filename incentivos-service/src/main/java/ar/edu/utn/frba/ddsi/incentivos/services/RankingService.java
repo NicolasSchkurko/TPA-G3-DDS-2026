@@ -1,67 +1,211 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
+import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioRankings;
-import org.springframework.stereotype.Service;
-
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Consulta y generación del ranking de colaboradores.
+ *
+ * <p>El ranking es un snapshot por mes, no un cálculo en vivo: una vez publicado no se
+ * vuelve a tocar. Eso es lo que permite que cambiar el criterio de las misiones no altere
+ * lo que se vio en meses anteriores.
+ *
+ * <p>Se puntúa por insignias obtenidas en el mes, no por monto donado: lo que el gamificado
+ * busca premiar es la constancia, no la suma.
+ */
 @Service
 public class RankingService {
-    private final RepositorioPerfiles perfiles;
-    private final RepositorioRankings repo;
 
-    public RankingService(RepositorioPerfiles perfiles,
-                         RepositorioRankings rankings) {
-        this.perfiles = perfiles;
-        this.repo = rankings;
+    /**
+     * Cantidad de posiciones que se persisten al snapshot mensual cuando el
+     * scheduler genera el ranking de forma automática.
+     */
+    public static final int RANKING_PREDETERMINADO = 10;
+
+    private final RepositorioRankings repoRankings;
+    private final RepositorioPerfiles repoPerfiles;
+    private final ValidadorAdmin validadorAdmin;
+
+    public RankingService(RepositorioRankings repoRankings,
+                                                RepositorioPerfiles repoPerfiles,
+                                                ValidadorAdmin validadorAdmin) {
+        this.repoRankings = repoRankings;
+        this.repoPerfiles = repoPerfiles;
+        this.validadorAdmin = validadorAdmin;
     }
 
-    public void generarRankingMensual(YearMonth periodo) {
-        List<Perfil> todosLosPerfiles = perfiles.listarTodos();
+    /** El puesto de un donante en el ranking del mes en curso. */
+    @Transactional(readOnly = true)
+    public RankingDTO obtenerPuestoRankingActual(UUID idUsuario) {
 
-        // 1. Generamos lista de perfiles con su cantidad de misiones en el periodo
-        List<Perfil> candidatos = todosLosPerfiles.stream()
-                // solo consideramos perfiles con >0 misiones en el periodo
-                .filter(perfil -> perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() != null
-                        && perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo() > 0)
-                // ordenamos desc por misiones cumplidas
-                .sorted((p1, p2) -> Integer.compare(p2.getPosicionRanking().getMisionesCumplidasEnPeriodo(),
-                        p1.getPosicionRanking().getMisionesCumplidasEnPeriodo()))
-                .toList();
+        Ranking puesto = repoRankings.obtenerPosicionActualDeUsuario(idUsuario);
 
-        // 2. Asignamos puestos teniendo en cuenta empates (misiones iguales -> mismo puesto)
-        int indice = 0;
-        int puestoActual = 1;
-        Integer misionesPrevias = null;
-        for (Perfil perfil : candidatos) {
-            indice++;
-            Integer misiones = perfil.getPosicionRanking().getMisionesCumplidasEnPeriodo();
-            if (misiones.equals(misionesPrevias)) {
-                perfil.getPosicionRanking().setPuesto(puestoActual);
-            } else {
-                puestoActual = indice;
-                perfil.getPosicionRanking().setPuesto(puestoActual);
-            }
-            misionesPrevias = misiones;
-            // Persistimos el cambio en el repo de perfiles
-            perfiles.actualizar(perfil);
+        if (puesto == null) {
+            throw new InexistenteException(
+                    "El usuario " + idUsuario + " no tiene puesto en el ranking actual"
+            );
         }
 
-        // 3. Construimos la lista de PosicionRanking para el RankingMensual
-        List<Ranking> posiciones = new ArrayList<>();
-        for (Perfil candidato : candidatos) {
-            Ranking ranking = new Ranking(candidato.getPosicionRanking(), candidato.getIdUsuario(), candidato.getIdPerfil());
-            posiciones.add(ranking);
+        return this.convertirRankingADTO(puesto);
+    }
+
+    /** Un ranking publicado, con todas sus posiciones. */
+    @Transactional(readOnly = true)
+    public RankingMesDTO obtenerRanking(UUID idRanking) {
+        RankingMensual rank = repoRankings.findById(idRanking)
+                                                                            .orElseThrow(InexistenteException::new);
+
+        return convertirRankingMesADTO(rank);
+    }
+
+    /**
+     * Devuelve las primeras {@code limite} posiciones del ranking. El ranking ya viene
+     * ordenado por puesto, por lo que alcanza con recortar la lista.
+     */
+    @Transactional(readOnly = true)
+    public RankingMesDTO obtenerRankingConLimite(UUID idRanking, int limite) {
+        if (limite <= 0) {
+            throw new IllegalArgumentException("El límite debe ser mayor a cero");
         }
 
-        // 4. Construimos y persistimos el objeto de dominio del ranking mensual
-        RankingMensual rankingDelMes = new RankingMensual(periodo, posiciones);
-        repo.guardar(rankingDelMes);
+        RankingMensual rank = repoRankings.findById(idRanking)
+                                                                            .orElseThrow(InexistenteException::new);
+
+        return new RankingMesDTO(
+                rank.getIdRanking(),
+                rank.getPosiciones().stream()
+                        .limit(limite)
+                        .map(this::convertirRankingADTO).toList(),
+                rank.getPeriodo());
+    }
+
+    /**
+     * Camino del scheduler: genera el ranking del mes anterior sin pedir administrador.
+     *
+     * <p>No es un agujero: el scheduler corre dentro del proceso y no hay request ni cliente
+     * que pueda invocarlo. Por eso NO delega en {@link #crearRankingMensual} sino en el
+     * método privado, que es el que no valida permisos: si delegara, el scheduler tendría que
+     * inventar un id de administrador.
+     */
+    @Transactional
+    public RankingMesDTO crearRankingMensualActual() {
+        return generarYGuardar(YearMonth.now().minusMonths(1));
+    }
+
+    /**
+     * Genera el ranking de un período, desde un request HTTP.
+     *
+     * <p><b>Exige administrador</b> (punto 21). Antes no lo pedía y cualquiera que llegara
+     * al servicio podía generar rankings para meses históricos arbitrarios. Es un problema
+     * distinto del punto 1: allá el admin se valida contra un header que elige el cliente,
+     * acá directamente no había validación de ningún tipo.
+     */
+    @Transactional
+    public RankingMesDTO crearRankingMensual(UUID idAdmin, YearMonth periodo) {
+        validadorAdmin.verificarPermisos(idAdmin);
+
+        if (periodo == null) {
+            throw new DatosInvalidosException("El ranking necesita un período");
+        }
+
+        return generarYGuardar(periodo);
+    }
+
+    /**
+     * Borra un ranking publicado.
+     *
+     * <p><b>Exige administrador</b> (punto 21), por lo mismo que crear: borrar un ranking ya
+     * publicado es una escritura de administración, no una consulta.
+     */
+    @Transactional
+    public void eliminarRanking(UUID idAdmin, UUID idRanking) {
+        validadorAdmin.verificarPermisos(idAdmin);
+
+        if (!repoRankings.existsById(idRanking)) {
+            throw new InexistenteException();
+        }
+        repoRankings.deleteById(idRanking);
+    }
+
+    /** El trabajo en sí, sin permisos: lo comparten el endpoint y el scheduler. */
+    private RankingMesDTO generarYGuardar(YearMonth periodo) {
+        if (repoRankings.findByPeriodo(periodo).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un ranking para el período: " + periodo);
+        }
+
+        RankingMensual rankingCreado = generarRankingMensual(periodo);
+        repoRankings.save(rankingCreado);
+
+        return convertirRankingMesADTO(rankingCreado);
+    }
+
+    /**
+     * El ranking más reciente que se publicó.
+     *
+     * <p>No recalcula nada: si el mes en curso todavía no cerró, devuelve el del mes
+     * anterior.
+     */
+    @Transactional(readOnly = true)
+    public RankingMesDTO obtenerRankingActual() {
+        RankingMensual rank = repoRankings.findFirstByOrderByPeriodoDesc()
+                                                                            .orElseThrow(InexistenteException::new);
+
+        return convertirRankingMesADTO(rank);
+    }
+
+    /** Todos los rankings publicados, del más reciente al más viejo. */
+    @Transactional(readOnly = true)
+    public Page<RankingMesDTO> obtenerHistorialRankings(Pageable pageable) {
+        return repoRankings.findAll(pageable).map(this::convertirRankingMesADTO);
+    }
+
+    private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {
+        return new RankingMesDTO(
+                ranking.getIdRanking(),
+                ranking.getPosiciones().stream()
+               .map(this::convertirRankingADTO)
+               .toList(),
+                ranking.getPeriodo()
+        );
+    }
+
+    private RankingMensual generarRankingMensual(YearMonth periodo) {
+        int mes = periodo.getMonthValue();
+        int anio = periodo.getYear();
+
+        List<Object[]> topPerfiles = repoPerfiles.calcularRankingMensual(
+                mes,
+                anio,
+                PageRequest.of(0, RANKING_PREDETERMINADO)
+        );
+
+        RankingMensual rankingDelMes = new RankingMensual(periodo);
+
+        rankingDelMes.calcularYAgregarPosiciones(topPerfiles);
+
+        return rankingDelMes;
+    }
+
+    private RankingDTO convertirRankingADTO(Ranking ranking) {
+        return new RankingDTO(
+                ranking.getNombreUsuario(),
+                ranking.getPuesto(),
+                ranking.getMisionesCumplidas()
+        );
     }
 }
