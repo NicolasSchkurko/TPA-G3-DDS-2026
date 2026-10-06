@@ -83,7 +83,11 @@ public class AdminService {
             misiones
         );
 
-        gestorSecuencia.desplazarParaCrear(repoCategorias, categoria.getPosicionSecuencia());
+        gestorSecuencia.desplazarParaCrear(
+            repoCategorias,
+            categoria.getPosicionSecuencia(),
+            gestorSecuencia.posicionMaxima(repoCategorias)
+        );
         Categoria categoriaCreada = repoCategorias.save(categoria);
 
         return categoriaToDTO(categoriaCreada);
@@ -113,10 +117,10 @@ public class AdminService {
                     categoriaModificada.getPosicionSecuencia(),
                     gestorSecuencia.posicionMaxima(repoCategorias)
                 );
-                categoriaActual.setPosicionSecuencia(categoriaModificada.getPosicionSecuencia());
+                categoriaActual.moverAPosicion(categoriaModificada.getPosicionSecuencia());
             }
 
-            categoriaActual.copiar(categoriaModificada);
+            categoriaActual.actualizarCon(categoriaModificada);
             gestorSincronizacion.actualizarMisionesPorCambioDeCategoria(
                 categoriaActual,
                 posicionesAnteriores
@@ -216,16 +220,14 @@ public class AdminService {
             )
         );
 
-        if (idMision != null) {
-            mision.setIdMision(idMision);
-        }
-
-        Mision misionActual = repoMisiones.findById(mision.getIdMision()).orElse(null);
+        Mision misionActual = repoMisiones.findById(idMision).orElse(null);
 
         if (misionActual != null) {
-            misionActual.actualizar(mision);
+            boolean cambioElCriterio = misionActual.actualizar(mision);
             Mision actualizada = repoMisiones.save(misionActual);
-            gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
+            if (cambioElCriterio) {
+                gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
+            }
             return misionToDTO(actualizada);
         }
 

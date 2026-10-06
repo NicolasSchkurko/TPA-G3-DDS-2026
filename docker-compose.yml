@@ -50,7 +50,9 @@ services:
   # --- Servicios de dominio ---
 
   notificaciones-service:
-    build: ./notificaciones-service
+    build:
+      context: .
+      dockerfile: notificaciones-service/Dockerfile
     container_name: notificaciones-service
     ports:
       - "8083:8083"
@@ -74,7 +76,9 @@ services:
         condition: service_healthy
 
   incentivos-service:
-    build: ./incentivos-service
+    build:
+      context: .
+      dockerfile: incentivos-service/Dockerfile
     container_name: incentivos-service
     ports:
       - "8082:8082"
@@ -100,7 +104,9 @@ services:
   # Es el broker de integración del enunciado: publica las donaciones asignadas para
   # logística y consume los eventos de trazabilidad para notificar.
   donaciones-service:
-    build: ./donaciones-service
+    build:
+      context: .
+      dockerfile: donaciones-service/Dockerfile
     container_name: donaciones-service
     ports:
       - "8084:8084"
@@ -126,7 +132,9 @@ services:
   # "más de un servicio de logística disponible" del enunciado basta con escalar este
   # servicio con `docker compose up --scale logisticas-service=2`.
   logisticas-service:
-    build: ./logisticas-service
+    build:
+      context: .
+      dockerfile: logisticas-service/Dockerfile
     container_name: logisticas-service
     ports:
       - "8086:8086"
