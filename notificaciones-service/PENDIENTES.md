@@ -24,7 +24,9 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 10 | 10 | `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre |
 | 11 | 11 | Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties` |
 | 12 | 12 | `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null` |
-
+| 13 | 13 | Todos los endpoints devuelven 401: la seguridad por defecto bloquea la integración |
+| 14 | 14 | El DTO de entrada no valida nada y el manejador de excepciones está comentado |
+| 15 | 15 | La cola no tiene dead letter y los errores de conversión se reintentan en loop |
 ---
 
 ## 1. Un test contra n8n sin `@Disabled` rompe `mvn verify`
@@ -553,4 +555,213 @@ sumar un `NotificacionMapperTest`, que hoy no existe (punto 3), y un
 
 ---
 
+## 13. Todos los endpoints devuelven 401: la seguridad por defecto bloquea la integración
+
+**Estado:** abierto
+**Severidad:** crítica
+**Archivos:** `pom.xml`, `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/controllers/NotificadorController.java`
+
+### Qué pasa
+
+`spring-boot-starter-security` es dependencia **directa** de este pom, y el módulo no declara
+ninguna clase de seguridad: no hay `SecurityFilterChain`, ni `SecurityFilterChain` bean, ni
+`permitAll`. Solo dos `@Configuration` en todo el código, y ninguna es de seguridad
+(`RestTemplateConfig` y `RabbitConfig`).
+
+Spring Boot aplica entonces su configuración por defecto. Al arrancar genera una password
+aleatoria:
+
+```
+Using generated security password: 6347ce5f-c3a2-4fab-9578-b14a61d3b13a
+Will secure any request with [...]
+```
+
+y **toda** petición sin credenciales recibe `401`. Incluido `POST /api/notificaciones`.
+
+Comprobado levantando el servicio: `POST /api/notificaciones` con un payload bien formado
+devuelve `401` y la tabla `notificaciones` queda en 0 filas.
+
+### Por qué es el bug más caro del módulo
+
+Es el único módulo de los cuatro con seguridad activa, y por eso es el único que puede
+explicar un `401`. Y explica por qué el problema estuvo invisible tanto tiempo: el síntoma
+observable desde afuera es "no llegan notificaciones", que se lee como "n8n no está
+levantado" o "falta algo de configuración", y no como "el receptor exige autenticación".
+
+Peor: **tienta a un arreglo que rompe la seguridad**. La respuesta obvia cuando se ve un 401
+en un servicio interno es aflojar la autorización, y eso lo haría sin que nadie lo pidiera.
+
+### Propuesta
+
+Definir explícitamente la política de autorización del módulo, en vez de heredar la de Boot.
+Las dos opciones razonables:
+
+- **`permitAll` en `POST /api/notificaciones`** y proteger el resto. Es aceptable si el módulo
+  solo se expone en red interna, que es el supuesto del enunciado.
+- **Autenticación por secreto compartido** entre servicios, verificado en el controller. Más
+  trabajo, y es lo que corresponde si el módulo queda expuesto.
+
+**Lo que no corresponde es quitar `spring-boot-starter-security` del pom** para que desaparezca
+el 401: convertiría un 401 visible en un endpoint abierto, sin ninguna decisión de por medio.
+
+Esta decisión es del equipo y no se aplica sin su acuerdo.
+
+---
+
+## 14. El DTO de entrada no tiene validación de Bean Validation y el manejador de excepciones está comentado
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/SolicitudNotificacionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/exceptions/GlobalExceptionHandler.java`
+
+### Qué pasa
+
+`SolicitudNotificacionDTO` no tiene ni una anotación de validación: `@NotBlank` sobre
+`medioDeContacto`, `direccionDeContacto`, `asuntoMensaje` y `cuerpoMensaje`. Y el controller
+recibe el body **sin `@Valid`**:
+
+```java
+@PostMapping
+public ResponseEntity<String> recibirSolicitudNotificacion(@RequestBody SolicitudNotificacionDTO dto) {
+```
+
+Esos cuatro campos alimentan columnas con `nullable = false` (`Mensaje.asunto`,
+`Mensaje.cuerpo`, `Notificacion.direccionDeContacto`, `Notificacion.tipoMedioDeContacto`). Un
+`null` en cualquiera de ellos no se rechaza en el borde: viaja entero y muere en el INSERT con
+violación de restricción, que es un error de base de datos difícil de leer.
+
+### Y el manejador de excepciones está comentado
+
+`GlobalExceptionHandler` existe pero **todo el archivo está comentado**. Eso es lo que convierte
+el `null` en un `500` genérico sin cuerpo, en vez de un `400` que diga qué campo faltó. El
+controller sí captura `IllegalArgumentException` y devuelve `400`, pero un
+`DataIntegrityViolationException` de JPA no es de esa clase y se escapa.
+
+### Detalle relacionado que va a aparecer después
+
+`incentivos-service` manda un DTO con el campo `direccionContacto` y este módulo espera
+`direccionDeContacto`. Jackson deja el campo en `null` sin error. O sea que **este bug se
+activaría en el momento exacto en que se arregle el 401 del punto 13**: cambiaría el `401` por
+un `500` con un `null` en el log, y parecería un problema nuevo. Está documentado como punto
+38 del backlog de `incentivos-service`.
+
+### Propuesta
+
+1. `@NotBlank` en los cuatro campos del DTO y `@Valid` en el controller.
+2. Descomentar `GlobalExceptionHandler` y agregar un `@ExceptionHandler` para
+   `DataIntegrityViolationException` que devuelva `400` con el nombre del campo.
+3. Agregar `spring-boot-starter-validation`, que no está en el pom: las anotaciones de
+   jakarta.validation no se procesan sin él, y hoy no hay ni una en el módulo.
+
+## 15. La cola de notificaciones no tiene dead letter y los errores de conversión se reintentan en loop
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../config/rabbit/MessageConverterConfig.java`
+
+### Qué pasa
+
+El punto 2 de este mismo backlog propone una dead letter queue y sigue sin implementarse. Se
+volvió urgente por algo concreto y medido: un error de conversión de mensaje dispara el
+`ConditionalRejectingErrorHandler`, que reintenta, y cada intento escribe el stack trace
+completo. Con cuatro servicios publicando en la misma cola, un encabezado mal puesto multiplica
+el log por cada mensaje y cada intento.
+
+En la corrida donde se midió el problema del tipo de mensaje, el log del servicio llegó a
+**1.9 GB**. Corregir la causa lo bajó a 73 KB, pero la falta de freno sigue: cualquier error de
+conversión futuro tiene el mismo comportamiento.
+
+### Propuesta
+
+- Dead letter queue en `RabbitConfig`, con la cola principal configurada para derivar ahí lo que
+  no se puede procesar.
+- Un `RepetirYRechazarSiFalla` con tope de reintentos y delay, o el `RepetirConDeadLetter` de
+  Spring AMQP, para que un error de conversión no se reintente tres veces.
+- Bajar el nivel de log de esos reintentos: un error de conversión es irrecuperable y necesita
+  una línea, no veinte.
+
+**Lo que no se hizo y por qué:** es una decisión de infraestructura que afecta la operación del
+broker, no un bug de integración. Corregir el tipo de mensaje elimina la causa concreta que se
+midió; la dead letter previene la clase de problema, no este caso.
+
+---
+
 # Corregidos
+### 15. El `__TypeId__` del converter rompía la integración entre servicios
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../config/rabbit/MessageConverterConfig.java`, `.../config/rabbit/RabbitConfig.java`
+
+### Qué pasaba
+
+`Jackson2JsonMessageConverter` escribe por defecto un encabezado `__TypeId__` con el nombre de
+la clase Java del mensaje, y del otro lado intenta resolver esa clase para deserializar. El
+resultado medido con el flujo real: cada aviso de `incentivos-service` moría en el consumidor con
+
+```
+MessageConversionException: failed to resolve class name.
+Class not found [ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO]
+```
+
+porque este módulo no tiene —ni debe tener— la clase del productor.
+
+**El síntoma era confuso en un punto clave:** el productor logueaba
+`Notificación publicada para <email>` y el mensaje salía del broker (`routed=true`), así que
+todo parecía correcto. El fallo estaba del lado del consumidor, y el mensaje se perdía ahí.
+
+Además el mensaje provocaba un **ciclo de reintentos**: el error de conversión dispara el
+`ConditionalRejectingErrorHandler`, que reintenta, y el log del servicio llegó a **1.9 GB** en
+una sola corrida de pruebas. `ConditionalRejectingErrorHandler` descarta el mensaje, pero antes
+de eso escribe varias líneas de stack trace por cada intento.
+
+### Por qué rompe una regla del enunciado
+
+El enunciado pide que los servicios de dominio **no compartan modelo**, y el `__TypeId__` es
+exactamente un acoplamiento a nivel de bytecode entre servicios que no se conocen: el productor
+le está diciendo al consumidor "deserializá esta clase", y el consumidor tiene que tenerla en su
+classpath. El contrato que define el enunciado es **el JSON**, o sea los nombres de los campos.
+
+### Por qué no alcanza con desactivar el tipo
+
+La solución obvia es `converter.setAlwaysConvertToInferredType(false)` con un
+`Jackson2JavaTypeMapper` que devuelva `null`. **Se probó y no funciona**: con el tipo en `null`,
+el converter lo desreferencia y tira `NullPointerException` antes de llegar al listener. Es
+decir, desactivar el tipo no alcanza; hay que **evitar el converter de Jackson**.
+
+### Qué se hizo
+
+`MessageConverterConfig` declara un `MessageConverter` propio con la conversión a mano en las
+dos direcciones:
+
+- **Al publicar:** Jackson serializa con el `ObjectMapper` de la aplicación, así respeta los
+  módulos ya registrados (fechas ISO, parámetros nulos). El encabezado `__TypeId__` se borra.
+- **Al recibir:** se devuelve el body como `String` sin deserializar a nada. El listener decide
+  el tipo por el contenido del JSON.
+
+El `RabbitConfig` conserva solo la topología (exchange, colas, bindings) y su comentario
+apunta al `MessageConverterConfig` para la explicación.
+
+### Cómo se verificó
+
+Flujo real end-to-end: se crea un donante en `donaciones-service` (que crea su perfil en
+`incentivos-service` por HTTP), se hace `PATCH /api/perfiles/donacion/{id}` y la misión se
+completa. Los tres avisos que dispara el evento de dominio llegan y quedan persistidos:
+
+```
+¡Misión completada!   Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
+Nueva misión disponible  Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
+Nueva categoría        Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
+```
+
+El log del servicio bajó de **1.9 GB a 73 KB** y la cola quedó en 0 mensajes: no hay reintentos.
+
+### Nota sobre el estado `FALLIDA`
+
+Los tres avisos quedan en `FALLIDA` porque n8n no está corriendo. Es el comportamiento correcto:
+la notificación se encoló, se intentó enviar, el envío externo falló y quedó registrado. Con
+n8n arriba deberían quedar `ENVIADA`.
+
+---
+

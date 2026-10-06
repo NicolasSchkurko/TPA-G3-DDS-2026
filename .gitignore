@@ -56,3 +56,4 @@ build/
 # .m2. En otra maquina no corren, asi que no tiene sentido versionarlos.
 /gen-checkstyle.ps1
 /run-checkstyle.ps1
+/scripts/subir-servicios.ps1

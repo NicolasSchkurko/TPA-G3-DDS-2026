@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -43,12 +44,18 @@ public class GestorNotificaciones {
     /**
      * Guarda la notificación y la publica para que el consumidor la envíe.
      *
-     * <p><b>Guardar antes de publicar es lo correcto y no es un detalle.</b> Si se publicara
-     * primero, el consumidor puede recibir el mensaje y trabajar sobre una fila que todavía
-     * no existe, y la actualización de estado se perdería. Además, si la publicación falla,
+     * <p><b>La transacción es la que hace que el orden sirva.</b> Con @Transactional, el
+     * save() solo encola el INSERT y la publicación ocurre antes del commit. El
+     * consumidor corre en otra transacción, así que al recibir el mensaje todavía no
+     * ve la fila: fallaba con EntityNotFoundException al buscar la notificación por id.
+     * Con la transacción, el commit ocurre al salir del método y recién ahí el
+     * mensaje llega a un registro que ya existe.
+     *
+     * <p><b>Guardar antes de publicar evita perder el aviso.</b> Si la publicación falla,
      * queda el registro en PENDIENTE y se puede reintentar desde la base; al revés no hay
      * forma de saber que la notificación existió.
      */
+    @Transactional
     public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto,
                                               String direccionDeContacto,
                                               String asunto,
@@ -59,8 +66,8 @@ public class GestorNotificaciones {
         notificacion.marcarPendiente();
         repositorioNotificaciones.save(notificacion);
 
-        // Si esto tira, la notificación queda en PENDIENTE en la base y se puede reintentar
-        // desde ahí. Es el motivo de guardar primero.
+        // Si esto tira, la notificación queda en PENDIENTE en la base y se puede
+        // reintentar desde ahí. Es el motivo de guardar primero.
         productorNotificaciones.enviar(notificacion);
     }
 

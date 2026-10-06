@@ -30,7 +30,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 16 | 16 | `procesarPeticion` no valida el payload: NPE e IndexOutOfBounds con requests incompletos |
 | 17 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
 | 18 | 18 | `return null` en el catch del planificador manual: el error se pierde |
-
+| 19 | 19 | La validación de la justificación de una entrega fallida está invertida |
+| 20 | 20 | Verificado: logóstica no invoca a MetaDonacion ni incentivos ni habla con notificaciones |
 ---
 
 ## 1. El módulo no tiene un solo test
@@ -800,6 +801,164 @@ El primero está en el `case "ENTREGADA"` y hace lo que dice. El segundo está e
 Invertir a `if(!comprobarExistencia(...))`. De paso, el `break` que sigue al `throw` es
 código muerto: cuando la condición se cumple el método ya salió por la excepción, así que
 nunca se llega.
+
+---
+## 20. Verificado: logística no invoca a MetaDonacion ni a incentivos, y no habla con notificaciones
+
+**Estado:** verificado, sin cambios necesarios
+**Severidad:** informativa
+**Archivos:** todo `logisticas-service/src/main`
+
+### Qué exigía el enunciado
+
+> *3. El servicio de logística no debe invocar los servicios de donaciones ni incentivos sino
+> dejar disponible la información.*
+>
+> *4. El servicio de logística no debe comunicarse con el servicio de notificaciones.*
+
+### Cómo se verificó
+
+Se revisaron las cuatro vías por las que un servicio podría invocar a otro: imports de código,
+dependencias de Maven, URLs configuradas y llamadas HTTP o por broker.
+
+| Vía | Resultado |
+|---|---|
+| Imports de `...donaciones.` o `...incentivos.` en logística | **ninguno** |
+| Imports de `...notificaciones.` en logística | **ninguno** |
+| URLs de esos servicios en `application.properties` | **ninguna** (solo `spring.datasource.url`) |
+| `RestTemplate`, `WebClient`, `FeignClient`, `HttpClient` | solo el `HttpClient` del proveedor externo de ruteo |
+| Exchanges ajenos declarados en logística | **ninguno** |
+
+Las únicas dos URLs literales del módulo son:
+
+- `ProveedorRutasExternoSimulado` → `http://localhost:8086/api/PlanificacionRutas/callback`,
+  que es **a sí mismo**, el callback que el enunciado exige en el punto 1 de implementación.
+- `GestorPublicacionEventos` → `https://donaciones-app.example.com/seguimiento/`, una plantilla
+  de texto para armar el enlace de seguimiento que pide el caso de "inicio de ruta". No es una
+  llamada.
+
+### Cómo se cumple en la práctica
+
+Logística **deja disponible la información** publicando eventos en
+`logistica.eventos.exchange` (routing key `logistica.evento`). No llama a nadie para que notifique:
+`donaciones-service` está suscrito a esa cola y es quien dispara las notificaciones, porque es
+el que conoce a los donantes, las entidades y los administradores.
+
+Eso es justamente lo que hace posible cumplir los tres casos de notificación exigidos
+(inicio de ruta, entrega realizada, entrega no satisfactoria) sin violar la prohibición: la
+dirección del flujo es invertida respecto de lo que se suele hacer.
+
+Verificado en vivo: se publicó un evento a mano por la management API de Rabbit y el listener
+de `donaciones-service` lo procesó (`Evento 9999 procesado`, hilo `rabbit-simple-0`).
+
+### Lo que queda: una dependencia sin uso
+
+`logisticas-service/pom.xml` declara `notificaciones-service` como dependencia `compile`, pero
+**el módulo no importa ni una sola clase de ese artefacto**. Es una dependencia que no se usa
+y tiene un costo real: obliga a compilar con `-am` o a tener el jar instalado en el `.m2`, y
+rompe `mvn package -pl logisticas-service` con "Could not find artifact".
+
+Es exactamente el punto 4 del backlog de `donaciones-service`, del lado de logística. Se
+anota acá porque el enunciado pide que la separación sea real, y una dependencia de Maven entre
+dos microservicios contradice esa separación aunque no se use. **No se tocó**: quitar una
+dependencia del pom amerita confirmar con el equipo que no hay planes de reusar código de
+notificaciones desde logística, que es lo que induce a esa dependencia.
+
+---
+## Corregidos
+
+### El módulo se commiteó con marcadores de conflicto de merge sin resolver
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `.../gestores/GestorPublicacionEventos.java`
+
+Traía los marcadores `<<<<<<< HEAD`, `=======` y `>>>>>>>` de dos ramas distintas en el mismo
+archivo, y así quedó commiteado: el módulo entero no compilaba.
+
+**Qué se resolvió:** se conservó la versión de `GestorPublicacionEventos` y se descartó la de
+`GestorEventos`, porque `EntregaService` y `RutaService` consumen la primera. Los dos métodos de
+la otra (`buscarEventos` y `guardarEvento`) no los usa nadie en el módulo.
+
+### `RepositorioCamiones` y `RepositorioChoferes` duplicados en dos paquetes
+
+**Estado:** corregido
+**Severidad:** alta
+**Archivos:** `.../repositories/RepositorioCamiones.java`, `.../repositories/RepositorioChoferes.java`
+
+El merge dejó los mismos repositorios en el paquete plano y en subpaquete. Los consumidores
+importaban el del paquete plano, pero usaban métodos que **solo existen en la versión de
+subpaquete** (`findByChofer`, `actualizarEstado`, `findByEstado`, `findByIdDonacion`): el módulo
+no compilaba.
+
+**Qué se resolvió:** se consolidó hacia los subpaquetes, que son superconjunto, y se borraron los
+duplicados del paquete plano. Además, borrar los duplicados evita que Spring Data registre dos
+beans con el mismo nombre.
+
+### Cinco `DataSourceConfig` apuntaban a cinco bases distintas
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../config/CamionesDataSourceConfig.java`, `ChoferesDataSourceConfig.java`,
+`EventosDataSourceConfig.java`, `ItemsDataSourceConfig.java`, `RutasDataSourceConfig.java`
+
+Cada uno creaba su propio `DataSource`, `EntityManagerFactory` y `TransactionManager`, apuntando
+a una base distinta (`camiones`, `choferes`, `eventos`, `items`, `rutas`) con **credenciales
+hardcodeadas** que ignoraban `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`.
+
+**Por qué no podía funcionar:** el modelo es una base por agregado, pero los agregados se
+referencian entre sí. `Ruta` referencia `Camion` y `Parada`; `ItemEntrega` referencia `Parada`,
+`UnidadDeMedida`, `Entidad` y `EventoLogistica`; `Camion` referencia `Chofer`. Al arrancar se
+moría con `AnnotationException: Association 'Camion.chofer' targets an unknown entity`, porque
+`Chofer` no estaba en la unidad de persistencia de `Camion`.
+
+**Qué se resolvió:** se borraron los cinco. Un solo `DataSource` sobre la base `logisticas`, con
+las entidades y los repositorios donde ya estaban. Las 12 tablas se crean ahí.
+
+**Efecto secundario:** las credenciales dejaron de estar hardcodeadas, así que el servicio
+ahora arranca dentro de Docker con las variables de entorno.
+
+### El binding de `solicitudEventosQueue` usaba el exchange equivocado
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `.../config/RabbitMQConfig.java`
+
+Ataba la cola al `donaciones.exchange` en vez de al `logisticas.exchange`. Funcionaba solo
+porque `donaciones-service` declara el mismo binding contra el exchange correcto y el broker
+acumula las dos declaraciones: levantando logística sola, las solicitudes de eventos quedaban
+sin ruta.
+
+**Qué se resolvió:** el binding usa el exchange de integración, que es al que publica
+`LogisticaPollingScheduler`.
+
+### `SolicitudEventosListener` hacía request/response por cola
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `.../RabbitMQ/SolicitudEventosListener.java`
+
+Publicaba la respuesta en el exchange para que volviera a la cola del que preguntó. Eso convierte
+el broker en un request/response: necesita dos colas y dos bindings por consumidor, y se rompe
+entero si el que preguntó se cae antes de leer la respuesta.
+
+**Qué se cambió:** el listener deja de publicar la respuesta. La trazabilidad queda disponible
+por HTTP en `GET /api/eventos`, que es lo que pide el enunciado al describir el despliegue de
+logística como accesible por sus URIs. El polling queda como red de contención.
+
+### `DonacionListener` se tragaba todos los errores
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `.../RabbitMQ/DonacionListener.java`
+
+El `catch (Exception)` con `System.err.println` descartaba el mensaje sin dejar rastro: una donación
+se perdía sin registrar por qué.
+
+**Qué se cambió:** los errores de negocio (`IllegalArgumentException`) no se relanzan, porque van
+a fallar igual en cada reintento y bloquearían la cola compartida de la que salen las N
+instancias de logística. Los demás se relanzan a propósito, para que la dead letter queue los
+reciba.
 
 ---
 # Corregidos

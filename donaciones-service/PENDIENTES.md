@@ -38,6 +38,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 24 | 24 | El PUT de donación deja los bienes anteriores huérfanos |
 | 25 | 25 | La importación CSV se traga los errores y no dice cuántos entraron |
 | 26 | 26 | El PUT de necesidad ignora el id de entidad y castea a ciegas |
+| 27 | 27 | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
+| 28 | 28 | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica |
 
 ---
 
@@ -1122,4 +1124,205 @@ rechazar el cambio con un 400, o reemplazar la entidad en vez de castear.
 
 ---
 
+## 27. La integración con logística ya va por broker, pero el contrato depende de DTOs duplicados a mano
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/EntregaDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/BienDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/DireccionDTO.java`,
+`logisticas-service/src/main/java/.../dto/entrega/EntregaDTO.java`
+
+### Qué se resolvió
+
+El enunciado exige que la integración con logística vaya por broker. Ya va:
+`ProductorLogistica` publica en `logistica.exchange` con la routing key `donaciones.creada`, y
+`DonacionService.asignarPropuesta` lo invoca después de cambiar el estado a `ASIGNADO`. Se
+verificó que la cola compartida `logistica.integracion.queue` tiene consumidores y que el
+mensaje llega.
+
+### Lo que queda frágil
+
+El contrato de integración son **DTOs copiados a mano en los dos módulos**, sin nada que los
+mantenga sincronizados:
+
+| Concepto | DTO en MetaDonacion | DTO en logística |
+|---|---|---|
+| Entrega | `dto.logistica.entrega.EntregaDTO` | `dto.entrega.EntregaDTO` |
+| Bien | `BienDTO` (7 campos) | `dto.entrega.BienDTO` |
+| Dirección | `dto.DireccionDTO` | `dto.entrega.DireccionDTO` |
+
+Los nombres de los campos coinciden hoy. Si uno de los dos lados renombra o agrega un campo,
+no hay nada que avise: el mensaje se publica, llega al broker, y el consumidor falla con
+`Failed to convert message`, que no dice cuál de los dos lados se desalineó.
+
+Ese error se sufrió durante esta tanda: el listener declaraba `List<EventoLogisticaDTO>` y el
+productor mandaba un evento suelto. El mensaje llegó al listener y murió ahí, sin rastro útil.
+
+### Propuesta
+
+Un módulo `common-lib` con los DTO de integración, que ambos servicios usen. Ya existe un
+`common-lib` en el repositorio, aunque está desconectado del build (es el punto 4 del backlog
+de `incentivos-service`).
+
+La alternativa más barata, si no se quiere tocar el build: un test de contrato en cada lado
+que deserialice un ejemplo serializado del otro y verifique que no quedan campos en `null`.
+No evita el problema, lo hace visible al primer test en vez de al primer incidente.
+
+---
+
+## 28. `BienDTO` mezcla el mensaje de integración con el modelo de logística
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/BienDTO.java`
+
+### Qué pasa
+
+`BienDTO` está en el paquete `logistica.entrega` de MetaDonacion pero describe datos de logística:
+`estado`, `fechaCambioEstado`, `fotoComprobante`, `eventos`. Son campos que logistics llena al
+procesar, no que MetaDonacion mande.
+
+Para el mensaje de integración se agregó un constructor de dos parámetros (`cantidad`,
+`unidadDeMedida`) que deja los otros cinco en `null`. Funciona, pero es el síntoma de que la
+misma clase está sirviendo para dos cosas con formas distintas.
+
+Además, el archivo declara un `import` de `EventoLogisticaDTO` y un `List<EventoLogisticaDTO>` que
+solo existen para el constructor de siete parámetros.
+
+### Propuesta
+
+Separar el DTO de transporte del DTO de dominio: uno con lo que MetaDonacion publica (cantidad y
+unidad) y otro con lo que logística devuelve (estado, foto, eventos). Si los dos tienen que
+mantener el mismo nombre de campo para que Jackson los empareje, conviene que eso sea a
+propósito y no accidente de que la clase resultante tenga todos los campos.
+
+---
+## 29. `POST /donaciones/formulario` devuelve 400 sin decir por qué
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonacionController.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/`
+
+### Qué pasa
+
+`POST /api/donaciones/formulario` devuelve `400` con el cuerpo vacío. El log del servidor no
+registra nada: no hay ninguna línea de error ni warning en el momento de la llamada.
+
+Se comprobóError porque no hay diagnosticabilidad, no por la conexión: el mismo endpoint
+funciona con un payload bien armado y falla con uno incompleto, y en los dos casos la
+respuesta es idéntica desde el punto de vista de quien la consume.
+
+### Por qué no se investigó más
+
+Queda fuera del alcance de la revisión de conexiones entre servicios, que es lo que motivó
+esta tanda. Se verificó que no es un problema de integración: los cuatro servicios levantan, se
+comunican, y `POST /personas` —que también dispara notificaciones y llamadas a otros
+servicios— responde `201` con persistencia real.
+
+### Propuesta
+
+1. Registrar la excepción en el punto donde se convierte a `400`. Con `logger.error` y la
+   excepción completa, el próximo `400` dice la causa.
+2. Devolver el mensaje en el cuerpo de la respuesta, como ya hace el resto de los controllers
+   del módulo con `e.getMessage()`.
+3. Agregar validación explícita del `FormularioRequestDTO` con `@Valid` y un
+   `@RestControllerAdvice`, que es lo que convierte los errores de mapeo en un `400` con
+   detalle en vez de un `400` mudo.
+
+**Nota:** el `GlobalExceptionHandler` de este servicio está comentado entero, igual que el de
+`notificaciones-service`. Es la causa de que el `400` no diga nada.
+
+---
+## Corregidos
+
+### `IncentivosClient` publicaba contra la raíz del servicio: 404 y 405 garantizados
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../clients/IncentivosClient.java`
+
+Las dos llamadas entre MetaDonacion e incentivos apuntaban a rutas que no existen:
+
+| Método | Antes | Ahora | Ruta real |
+|---|---|---|---|
+| `peticionCrearPerfil` | `POST http://localhost:8082/` | `POST /api/perfiles` | `POST /api/perfiles` |
+| `notificarDonacionAsignada` | `POST http://localhost:8082/{id}` | `PATCH /api/perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{idUsuario}` |
+
+El método HTTP del avance es **`PATCH`, no `POST`**: `POST` contra un endpoint que solo declara
+`PATCH` devuelve 405, y contra una ruta inexistente devuelve 404.
+
+**Lo que lo escondía:** el `catch (Exception)` con `System.err.println` se tragaba el error y
+el servicio seguía como si la notificación hubiera salido. Ahora loguea con nivel, incluye la
+URL exacta y **relanza**, para que el fallo de una integración no se confunda con un fallo de
+dominio.
+
+**Cómo se verificó:** `POST /api/personas` responde `201` y el perfil queda creado en la base de
+incentivos. Antes devolvía `500` por el `401` que le llegaba de vuelta.
+
+### `NotificacionesClient` apuntaba a la raíz: 404 en cada notificación
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivos:** `.../clients/NotificacionesClient.java`,
+`src/main/resources/application.properties`
+
+El cliente publicaba contra `http://localhost:8083/` (la raíz). La ruta real es
+`POST /api/notificaciones`, porque el controller cuelga de `@RequestMapping("/notificaciones")`
+y el servicio tiene `context-path=/api`.
+
+El error se veía en el log: `No se pudo enviar la notificación a
+http://localhost:8083/notificaciones: 404`. La ruta estaba mal en dos lugares —el default de la
+propiedad y el sufijo que compone el cliente— y los dos hacía falta.
+
+**Qué se cambió:** la propiedad apunta a `http://localhost:8083/api` y el cliente compone
+`/notificaciones`, normalizando la barra final para que no produzca `/api//notificaciones`. Si
+alguien configura la propiedad con el sufijo completo, el cliente lo detecta y no lo duplica.
+
+**Cómo se verificó:** al crear un donante, la notificación "Nuevo Registro en DonaTrack" llega
+y queda persistida en la base de notificaciones.
+
+### Las URLs por defecto no incluían el context-path
+
+**Estado:** corregido
+**Severidad:** alta
+**Archivo:** `src/main/resources/application.properties`
+
+Los defaults apuntaban a la raíz de los servicios que tienen `context-path=/api`, así que
+cualquier llamada sin variable de entorno daba 404 aunque la ruta estuviera bien escrita:
+
+- `servicio.notificaciones.url` era `http://localhost:8083/` → ahora `http://localhost:8083/api`.
+- `servicio.incentivos.url` era `http://localhost:8082/` → ahora `http://localhost:8082`
+  (incentivos **no** tiene context-path, sus rutas ya empiezan con `/api`; el doble `/api`
+  habría sido el error en sentido contrario).
+
+**Cómo se verificó:** levantando los cuatro servicios y recorriendo todas las llamadas
+HTTP entre ellos.
+
+### Faltaba el bloque `spring.rabbitmq.*`
+
+**Estado:** corregido
+**Severidad:** media
+**Archivo:** `src/main/resources/application.properties`
+
+Sin el bloque, el `CachingConnectionFactory` se crea con los defaults de Spring Boot
+(`localhost:5672`, `guest`/`guest`). En la máquina de desarrollo funciona; dentro de un
+contenedor busca `localhost`, que es el propio contenedor, y no encuentra al broker.
+
+**Qué se cambió:** `spring.rabbitmq.host`, `port`, `username` y `password` parametrizados por
+variables de entorno, igual que el resto de la configuración.
+
+### Los DTO de integración están duplicados a mano entre los dos servicios
+
+**Estado:** documentado, no corregido
+**Severidad:** media
+**Archivos:** `.../dto/logistica/entrega/EntregaDTO.java`, `.../dto/logistica/entrega/BienDTO.java`
+
+Ver punto 27. El contrato son DTO copiados en cada módulo sin nada que los mantenga
+sincronizados. Los nombres de campo coinciden hoy; si uno de los dos lados renombra, el mensaje
+llega al listener y falla con `MessageConversionException`, que no dice cuál de los dos se
+desalineó. Ese error se sufrió durante esta tanda y costó tiempo de diagnóstico.
+
+---
 # Corregidos

@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -34,10 +35,14 @@ public class GestorPublicacionEventos {
 
     private final RepositorioEventoLogistica repoEventos;
     private final ObjectMapper objectMapper;
+    private final ProductorEventosLogistica productorEventos;
 
-    public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos, ObjectMapper objectMapper) {
+    public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
+                                   ObjectMapper objectMapper,
+                                   ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
         this.objectMapper = objectMapper;
+        this.productorEventos = productorEventos;
     }
 
     public Ruta publicarInicioRuta(Ruta ruta) {
@@ -64,6 +69,7 @@ public class GestorPublicacionEventos {
 
         ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return ruta;
     }
@@ -80,6 +86,7 @@ public class GestorPublicacionEventos {
 
             item.getEventos().add(evento);
             repoEventos.save(evento);
+            productorEventos.publicar(evento);
         }
         return item;
     }
@@ -94,6 +101,7 @@ public class GestorPublicacionEventos {
 
         item.getEventos().add(evento);
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return item;
     }
@@ -107,6 +115,7 @@ public class GestorPublicacionEventos {
 
         item.getEventos().add(evento);
         repoEventos.save(evento);
+        productorEventos.publicar(evento);
 
         return item;
     }

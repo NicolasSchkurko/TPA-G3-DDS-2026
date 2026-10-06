@@ -2,6 +2,10 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.BienDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.EntregaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.messaging.ProductorLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
@@ -33,6 +37,7 @@ public class DonacionService {
   private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
   private final RepositorioBienes repositorioBienes;
+  private final ProductorLogistica productorLogistica;
 
   public DonacionService(GestorAsignaciones gestorAsignaciones,
                          GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
@@ -42,7 +47,8 @@ public class DonacionService {
                          RepositorioFormularios repositorioFormularios,
                          RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
                          RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
-                         RepositorioBienes repositorioBienes) {
+                         RepositorioBienes repositorioBienes,
+                        ProductorLogistica productorLogistica) {
     this.gestorAsignaciones = gestorAsignaciones;
     this.gestorFormulario = gestorFormulario;
     this.gestorMatchmaking = gestorMatchmaking;
@@ -53,6 +59,7 @@ public class DonacionService {
     this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
     this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
     this.repositorioBienes = repositorioBienes;
+    this.productorLogistica = productorLogistica;
   }
 
   public List<DonacionDTO> obtenerTodas() {
@@ -131,6 +138,48 @@ public class DonacionService {
     gestorAsignaciones.asignarPropuesta(donacion, propuestaAsignacion);
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+
+    // A partir de aca la donacion le corresponde a logistica. El enunciado pide que esta
+    // integracion vaya por broker, asi que se publica el item de entrega en vez de llamar a
+    // logistica por HTTP. Va despues del cambio de estado a proposito: si la publicacion
+    // falla, la excepcion sube y la transaccion se revierte, y no queda una donacion
+    // marcada como asignada que nadie va a entregar nunca.
+    publicarEntregaALogistica(donacionId);
+  }
+
+  /**
+   * Arma el mensaje de entrega y lo publica en el exchange de integracion.
+   *
+   * <p>El mensaje lleva lo minimo que logistica necesita para crear el item: los ids de las
+   * donaciones, los bienes con su cantidad y unidad, y la direccion de la entidad
+   * beneficiaria. Logistica no consulta este servicio para nada mas, que es lo que exige el
+   * enunciado: no debe invocar los servicios de donaciones ni incentivos, sino dejar
+   * disponible la informacion.
+   */
+  private void publicarEntregaALogistica(UUID donacionId) {
+    Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId)
+            .orElseThrow(() -> new IllegalArgumentException("No se encontro la donacion"));
+
+    EntidadBeneficiaria entidad = donacion.getEntidad();
+    if (entidad == null || entidad.getDireccion() == null) {
+      // Sin entidad asignada todavia no hay donde entregar. No es un error: el matchmaking
+      // puede haber asignado solo el estado y la entidad viene en un paso posterior.
+      return;
+    }
+
+    // Bien guarda la cantidad en el campo 'peso' y la unidad en 'unidadUtilizada'; el DTO de
+    // transporte los llama cantidad y unidadDeMedida, asi que se renombran al mapear.
+    List<BienDTO> bienes = donacion.getBienes().stream()
+            .map(b -> new BienDTO(b.getPeso(), b.getUnidadUtilizada().name()))
+            .collect(Collectors.toList());
+
+    EntregaDTO entrega = new EntregaDTO(
+            List.of(donacion.getId()),
+            bienes,
+            DireccionDTO.from(entidad.getDireccion())
+    );
+
+    productorLogistica.publicarDonacionAsignada(entrega);
   }
 
   // Resuelve (o crea) la SubcategoriaBien del catálogo compartido ANTES de construir el Bien,
