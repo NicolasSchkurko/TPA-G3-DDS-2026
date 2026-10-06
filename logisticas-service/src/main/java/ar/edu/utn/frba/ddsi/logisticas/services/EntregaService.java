@@ -10,6 +10,11 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
+// El merge movio estos dos a subpaquetes. El wildcard de arriba no los alcanza, asi que van
+// explicitos: el servicio los escribe contra findByIdDonacion() y findByEstado(), que solo
+// existen en las versiones de subpaquete.
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

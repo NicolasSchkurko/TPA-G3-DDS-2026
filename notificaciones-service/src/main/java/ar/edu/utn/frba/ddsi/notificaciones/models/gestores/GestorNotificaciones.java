@@ -11,71 +11,101 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Recibe las solicitudes de notificación y las publica en la cola.
+ *
+ * <p><b>El procesamiento no es acá.</b> Antes este gestor tenía un
+ * {@link java.util.concurrent.BlockingQueue} en memoria y un método {@code @Scheduled} que
+ * la vaciaba cada dos segundos. El cambio a RabbitMQ reemplazó esa cola por el broker, y el
+ * código se actualizó a medias: el campo {@code cola} se fue pero quedaron las llamadas a
+ * {@code cola.add} y {@code cola.poll}, y el import de {@code @Scheduled} se quitó sin
+ * borrar el método que lo usaba. Dejaba el módulo entero sin compilar.
+ *
+ * <p>Ahora el productor publica y {@code ConsumidorNotificaciones} recibe del broker. No
+ * queda un segundo consumidor en memoria: si quedara, la misma notificación se intentaría
+ * enviar dos veces por dos caminos distintos.
+ */
 @Service
 public class GestorNotificaciones {
+
     private final RepositorioNotificaciones repositorioNotificaciones;
     private final MedioDeEnvioFactory factory;
     private final ProductorNotificaciones productorNotificaciones;
 
-    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory, ProductorNotificaciones productorNotificaciones) {
+    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones,
+                               MedioDeEnvioFactory factory,
+                               ProductorNotificaciones productorNotificaciones) {
         this.repositorioNotificaciones = repositorioNotificaciones;
         this.factory = factory;
         this.productorNotificaciones = productorNotificaciones;
     }
 
-    public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
+    /**
+     * Guarda la notificación y la publica para que el consumidor la envíe.
+     *
+     * <p><b>Guardar antes de publicar es lo correcto y no es un detalle.</b> Si se publicara
+     * primero, el consumidor puede recibir el mensaje y trabajar sobre una fila que todavía
+     * no existe, y la actualización de estado se perdería. Además, si la publicación falla,
+     * queda el registro en PENDIENTE y se puede reintentar desde la base; al revés no hay
+     * forma de saber que la notificación existió.
+     */
+    public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto,
+                                              String direccionDeContacto,
+                                              String asunto,
+                                              String cuerpo) {
+        Notificacion notificacion =
+                crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
 
-        Notificacion notificacion = crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
         notificacion.marcarPendiente();
-        repositorioNotificaciones.guardar(notificacion);
+        repositorioNotificaciones.save(notificacion);
+
+        // Si esto tira, la notificación queda en PENDIENTE en la base y se puede reintentar
+        // desde ahí. Es el motivo de guardar primero.
         productorNotificaciones.enviar(notificacion);
-        repositorioNotificaciones.save(notificacion);
-        cola.add(notificacion);
-
     }
 
-    // Crea una Notificacion a partir de una SolicitudNotificacion y la guarda en el repositorio
-    public Notificacion crearNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
+    /**
+     * Arma la notificación con estado PENDIENTE y la guarda.
+     *
+     * <p>Guarda adentro porque así la usan los dos llamadores por igual. El estado se setea
+     * en el constructor, así que el {@code marcarPendiente()} del flujo de envío es
+     * redundante y quedó solo.
+     */
+    public Notificacion crearNotificacion(String tipoMedioDeContacto,
+                                          String direccionDeContacto,
+                                          String asunto,
+                                          String cuerpo) {
+        Notificacion notificacion = new Notificacion(
+                direccionDeContacto,
+                tipoMedioDeContacto,
+                new Mensaje(asunto, cuerpo)
+        );
 
-        Mensaje mensaje = new Mensaje(asunto, cuerpo);
-        Notificacion notificacion = new Notificacion(direccionDeContacto, tipoMedioDeContacto, mensaje);
-        Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-        repositorioNotificaciones.save(notificacion);
-
-        return notificacion;
+        return repositorioNotificaciones.save(notificacion);
     }
 
-    @Scheduled(fixedDelay = 2000)
-    public void procesarCola() {
-        Notificacion notificacion = cola.poll();
-        if (notificacion != null) {
-            try {
-                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
-                notificacion.marcarEnviada();
-            } catch (Exception e) {
-                notificacion.marcarFallida();
-                cola.add(notificacion);
-            }
-            repositorioNotificaciones.save(notificacion);
-        }
-    }
-
-    // Por ahora solo envia al medio predeterminado
-    public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
-
+    /**
+     * Envía la notificación por el medio que corresponda.
+     *
+     * <p>No persiste el estado: eso es responsabilidad del consumidor, que es quien sabe si
+     * la publicación por el broker funcionó.
+     */
+    public void enviarNotificacion(String tipoMedioContacto,
+                                   String direccionContacto,
+                                   Notificacion notificacion) {
         try {
             MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioContacto);
             medioDeContacto.enviarNotificacion(notificacion);
-            notificacion.marcarEnviada();
-
-        } catch (IllegalArgumentException ex) {
-
+        } catch (RuntimeException excepcion) {
             notificacion.marcarFallida();
 
-            if (ex.getMessage() != null) {
-                throw new IllegalArgumentException("Ocurrió un problema inesperado al enviar la notificación: " + ex.getMessage(), ex);
+            if (excepcion.getMessage() != null) {
+                throw new IllegalArgumentException(
+                        "Ocurrió un problema inesperado al enviar la notificación: "
+                                + excepcion.getMessage(), excepcion);
             }
-            throw new IllegalArgumentException("Ocurrio un problema inesperado al enviar la notificacion", ex);
+            throw new IllegalArgumentException(
+                    "Ocurrió un problema inesperado al enviar la notificación", excepcion);
         }
     }
 

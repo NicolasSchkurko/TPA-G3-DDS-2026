@@ -8,6 +8,13 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Plani
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
+// El merge movio estos cuatro a subpaquetes. El wildcard de arriba no los alcanza, asi que
+// van explicitos: los servicios los escribieron contra findByChofer(), findByEstado() y
+// actualizarEstado(), que solo existen en las versiones de subpaquete.
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;

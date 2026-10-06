@@ -14,13 +14,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Publica los eventos de logística: alta de ruta, entrega confirmada, fallida y reingreso.
+ *
+ * <p><b>Este archivo pasó por un merge sin resolver.</b> Traía los marcadores de conflicto de
+ * {@code GestorEventos.java} (rama HEAD) y de {@code GestorPublicacionEventos.java} (rama
+ * {@code donaciones-y-logistica}) en el mismo archivo, y así quedó commiteado: el módulo
+ * entero no compilaba desde el merge del 2026-10-05.
+ *
+ * <p>Se resolvió quedarse con esta versión y descartar la de {@code GestorEventos} porque
+ * {@code EntregaService} y {@code RutaService} consumen esta clase, y los dos métodos de la
+ * otra —{@code buscarEventos} y {@code guardarEvento}— no los usa nadie en el módulo.
+ */
 @Component
-<<<<<<<< HEAD:logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorEventos.java
-public class GestorEventos {
-    private final RepositorioEventoLogistica repoEventos;
-
-    public GestorEventos(RepositorioEventoLogistica repoEventos) {
-========
 public class GestorPublicacionEventos {
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
@@ -30,18 +36,10 @@ public class GestorPublicacionEventos {
     private final ObjectMapper objectMapper;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos, ObjectMapper objectMapper) {
->>>>>>>> origin/donaciones-y-logistica:logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorPublicacionEventos.java
         this.repoEventos = repoEventos;
+        this.objectMapper = objectMapper;
     }
 
-<<<<<<<< HEAD:logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorEventos.java
-    public List<EventoLogistica> buscarEventos(Long desdeId) {
-        return repoEventos.findByIdGreaterThanOrderByFechaAsc(desdeId);
-    }
-
-    public void guardarEvento(EventoLogistica evento) {
-        repoEventos.save(evento);
-========
     public Ruta publicarInicioRuta(Ruta ruta) {
         ruta.setUrlSeguimiento(TEMPLATE_URL_SEGUIMIENTO + ruta.getIdRuta());
 
@@ -137,6 +135,5 @@ public class GestorPublicacionEventos {
         } catch (Exception e) {
             throw new IllegalStateException("Error serializando payload de evento de logística: " + e.getMessage(), e);
         }
->>>>>>>> origin/donaciones-y-logistica:logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorPublicacionEventos.java
     }
 }
