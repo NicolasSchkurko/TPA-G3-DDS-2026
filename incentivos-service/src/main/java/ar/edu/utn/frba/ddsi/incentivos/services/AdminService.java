@@ -4,7 +4,6 @@ import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.CategoriaMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
@@ -14,8 +13,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSecuenciaCategoria;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.GestorSincronizacionPerfiles;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SecuenciaCategoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -31,18 +30,18 @@ import java.util.UUID;
 public class AdminService {
     private final RepositorioCategorias repoCategorias;
     private final RepositorioMisiones repoMisiones;
-    private final GestorSecuenciaCategoria gestorSecuencia;
+    private final SecuenciaCategoria gestorSecuencia;
     private final DonacionClient donacionClient;
-    private final GestorSincronizacionPerfiles gestorSincronizacion;
+    private final SincronizacionPerfiles gestorSincronizacion;
     private final RepositorioPerfiles repoPerfiles;
     private final MisionFactory misionFactory;
 
     public AdminService(RepositorioCategorias repoCategorias,
                         RepositorioMisiones repoMisiones,
-                        GestorSecuenciaCategoria gestorSecuencia,
+                        SecuenciaCategoria gestorSecuencia,
                         MisionFactory misionFactory,
                         DonacionClient donacionClient,
-                        GestorSincronizacionPerfiles gestorSincronizacion,
+                        SincronizacionPerfiles gestorSincronizacion,
                         RepositorioPerfiles repoPerfiles) {
         this.repoCategorias = repoCategorias;
         this.repoMisiones = repoMisiones;
@@ -61,7 +60,7 @@ public class AdminService {
 
     public List<CategoriaDTO> obtenerCategorias(UUID idAdmin) {
         verificarPermisos(idAdmin);
-        return repoCategorias.obtenerTodas().stream()
+        return repoCategorias.findAllByOrderByPosicionSecuenciaAsc().stream()
                              .map(this::categoriaToDTO)
                              .toList();
     }
@@ -84,7 +83,7 @@ public class AdminService {
             misiones
         );
 
-        gestorSecuencia.desplazarParaCrear(categoria.getPosicionSecuencia());
+        gestorSecuencia.desplazarParaCrear(repoCategorias, categoria.getPosicionSecuencia());
         Categoria categoriaCreada = repoCategorias.save(categoria);
 
         return categoriaToDTO(categoriaCreada);
@@ -109,9 +108,10 @@ public class AdminService {
 
             if (categoriaModificada.getPosicionSecuencia() != null) {
                 gestorSecuencia.desplazarParaActualizar(
+                    repoCategorias,
                     categoriaActual.getPosicionSecuencia(),
                     categoriaModificada.getPosicionSecuencia(),
-                    repoCategorias.count()
+                    gestorSecuencia.posicionMaxima(repoCategorias)
                 );
                 categoriaActual.setPosicionSecuencia(categoriaModificada.getPosicionSecuencia());
             }
@@ -147,16 +147,13 @@ public class AdminService {
             Mision misionAnterior = perfil.getProgresoMisionActual() != null
                 ? perfil.getProgresoMisionActual().getMision()
                 : null;
-            MedioContacto contacto = categoriaSiguiente != null
-                ? donacionClient.obtenerContactoPersona(perfil.getIdUsuario())
-                : null;
-            perfil.cambiarCategoria(categoriaSiguiente, categoria, misionAnterior, contacto);
+            perfil.cambiarCategoria(categoriaSiguiente, categoria, misionAnterior);
         }
 
         repoPerfiles.saveAllAndFlush(perfiles);
         repoCategorias.delete(categoria);
-        gestorSecuencia.desplazarParaEliminar(posicionLiberada);
-        return repoCategorias.obtenerTodas().stream()
+        gestorSecuencia.desplazarParaEliminar(repoCategorias, posicionLiberada);
+        return repoCategorias.findAllByOrderByPosicionSecuenciaAsc().stream()
                              .map(this::categoriaToDTO)
                              .toList();
     }
@@ -226,7 +223,8 @@ public class AdminService {
         Mision misionActual = repoMisiones.findById(mision.getIdMision()).orElse(null);
 
         if (misionActual != null) {
-            Mision actualizada = repoMisiones.actualizarMision(misionActual, mision);
+            misionActual.actualizar(mision);
+            Mision actualizada = repoMisiones.save(misionActual);
             gestorSincronizacion.reiniciarProgresoDeMision(actualizada.getIdMision());
             return misionToDTO(actualizada);
         }
@@ -246,18 +244,15 @@ public class AdminService {
         List<Perfil> perfiles = repoPerfiles.findAllByMisionActual(idMision);
         for (Perfil perfil : perfiles) {
             Mision misionSiguiente = obtenerMisionSiguiente(perfil.getCategoriaActual(), idMision);
-            MedioContacto contacto = misionSiguiente != null
-                ? donacionClient.obtenerContactoPersona(perfil.getIdUsuario())
-                : null;
-            perfil.cambiarMision(misionSiguiente, mision, contacto);
+            perfil.cambiarMision(misionSiguiente, mision);
         }
         repoPerfiles.saveAllAndFlush(perfiles);
 
-        List<Categoria> categoriasConMision = repoCategorias.findAllByMisionId(idMision);
+        List<Categoria> categoriasConMision = repoCategorias.findAllByCategoriaMisionesMision(mision);
         categoriasConMision.forEach(categoria -> categoria.eliminarMision(mision));
         repoCategorias.saveAllAndFlush(categoriasConMision);
 
-        repoMisiones.eliminarMision(idMision);
+        repoMisiones.delete(mision);
         return misionEliminada;
     }
 

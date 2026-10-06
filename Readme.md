@@ -93,28 +93,47 @@ mvn test -pl incentivos-service
 
 ---
 
-## Construcción de imágenes Docker
+## Docker Compose
 
-El contexto de construcción de Docker siempre debe ser la **raíz** del proyecto, porque
-los microservicios dependen del `pom.xml` padre.
-
-```bash
-docker build -t incentivos-img -f incentivos-service/Dockerfile .
-docker build -t donaciones-img -f donaciones-service/Dockerfile .
-```
-
-### Levantar todo junto
+Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto
+del proyecto y levanta una base MySQL independiente para cada uno, además de RabbitMQ
+y n8n:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-Para levantar un servicio con su base de datos aislada (MySQL en el puerto 3307):
+Para ejecutar en segundo plano:
 
 ```bash
-cd incentivos-service
-docker compose -f compose.dev.yml up --build
+docker compose up --build -d
+docker compose ps
 ```
+
+Puertos disponibles desde la máquina local:
+
+| Componente | Puerto |
+|------------|--------|
+| Incentivos | 8082 |
+| Notificaciones | 8083 |
+| Donaciones | 8084 |
+| Logísticas | 8086 |
+| RabbitMQ AMQP | 5672 |
+| Panel de RabbitMQ | 15672 |
+| n8n | 5679 |
+| MySQL Incentivos | 3309 |
+| MySQL Notificaciones | 3310 |
+| MySQL Donaciones | 3311 |
+| MySQL Logísticas | 3312 |
+
+Los contenedores se comunican usando los nombres de servicio de Compose y el puerto
+interno del contenedor. Los volúmenes mantienen los datos al recrear contenedores; no
+usar `docker compose down -v` salvo que se quiera borrar también esos datos.
+
+RabbitMQ está incluido en la infraestructura y configurado para Donaciones y Logísticas.
+La comunicación de notificaciones por cola requiere además publicadores y consumidores
+RabbitMQ en el código de los servicios; configurar el broker en Compose por sí solo no
+la implementa.
 
 ---
 
