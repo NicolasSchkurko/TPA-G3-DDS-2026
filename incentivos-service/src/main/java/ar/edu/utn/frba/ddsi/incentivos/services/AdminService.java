@@ -1,7 +1,10 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
-import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.*;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.CategoriaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.ConstanciaDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.MisionDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Admin.OperacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.CategoriaMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
@@ -242,7 +245,7 @@ public class AdminService {
             return null;
         }
 
-        MisionDTO misionEliminada = misionToDTO(mision);
+        final MisionDTO misionEliminada = misionToDTO(mision);
         List<Perfil> perfiles = repoPerfiles.findAllByMisionActual(idMision);
         for (Perfil perfil : perfiles) {
             Mision misionSiguiente = obtenerMisionSiguiente(perfil.getCategoriaActual(), idMision);
@@ -301,7 +304,7 @@ public class AdminService {
                                    ? null
                                    : new ConstanciaDTO(
             reglaConstancia.getCantidad(),
-            reglaConstancia.getUnidadTiempo().toString()
+            reglaConstancia.getUnidadTiempo().name()
         );
 
         return new MisionDTO(

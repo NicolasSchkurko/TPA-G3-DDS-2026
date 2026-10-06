@@ -6,8 +6,8 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.text.Normalizer;
-import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -37,34 +37,32 @@ public class MisionFactory {
     );
 
     /**
-     * Traduce el nombre de la unidad a su {@link ChronoUnit}. Se aceptan los nombres
-     * en español y los de {@link ChronoUnit} en inglés.
+     * Traduce el nombre de unidad. Se aceptan los nombres en español y los identificadores
+     * en inglés que ya se persistían.
      *
      * <p>El comentario de {@link ReglaConstancia} ya declaraba que la ventana temporal
      * iba de minutos a años, pero el código hacía {@code ChronoUnit.valueOf} sobre
      * cualquier texto y aceptaba {@code FOREVER} o {@code NANOS}, que no significan
      * nada para una racha de donaciones.
      */
-    private static final Map<String, ChronoUnit> UNIDADES_PERMITIDAS = unidadesPermitidas();
+    private static final Map<String, UnidadTiempo> UNIDADES_PERMITIDAS = unidadesPermitidas();
 
-    private static Map<String, ChronoUnit> unidadesPermitidas() {
-        Map<String, ChronoUnit> unidades = new LinkedHashMap<>();
+    private static Map<String, UnidadTiempo> unidadesPermitidas() {
+        Map<String, UnidadTiempo> unidades = new LinkedHashMap<>();
 
-        unidades.put("MINUTOS", ChronoUnit.MINUTES);
-        unidades.put("HORAS", ChronoUnit.HOURS);
-        unidades.put("DIAS", ChronoUnit.DAYS);
-        unidades.put("SEMANAS", ChronoUnit.WEEKS);
-        unidades.put("MESES", ChronoUnit.MONTHS);
-        unidades.put("ANOS", ChronoUnit.YEARS);
+        unidades.put("MINUTOS", UnidadTiempo.MINUTES);
+        unidades.put("HORAS", UnidadTiempo.HOURS);
+        unidades.put("DIAS", UnidadTiempo.DAYS);
+        unidades.put("SEMANAS", UnidadTiempo.WEEKS);
+        unidades.put("MESES", UnidadTiempo.MONTHS);
+        unidades.put("ANOS", UnidadTiempo.YEARS);
 
-        // Los nombres en inglés quedan aceptados porque así se guardaron en la base:
-        // la columna es un enum con EnumType.STRING.
-        unidades.put("MINUTES", ChronoUnit.MINUTES);
-        unidades.put("HOURS", ChronoUnit.HOURS);
-        unidades.put("DAYS", ChronoUnit.DAYS);
-        unidades.put("WEEKS", ChronoUnit.WEEKS);
-        unidades.put("MONTHS", ChronoUnit.MONTHS);
-        unidades.put("YEARS", ChronoUnit.YEARS);
+        unidades.put("MINUTES", UnidadTiempo.MINUTES);
+        unidades.put("HOURS", UnidadTiempo.HOURS);
+        unidades.put("DAYS", UnidadTiempo.DAYS);
+        unidades.put("WEEKS", UnidadTiempo.WEEKS);
+        unidades.put("MONTHS", UnidadTiempo.MONTHS);
+        unidades.put("YEARS", UnidadTiempo.YEARS);
 
         return Map.copyOf(unidades);
     }
@@ -224,7 +222,7 @@ public class MisionFactory {
             );
         }
 
-        ChronoUnit unidad = UNIDADES_PERMITIDAS.get(normalizar(unidadTiempo));
+        UnidadTiempo unidad = UNIDADES_PERMITIDAS.get(normalizar(unidadTiempo));
         if (unidad == null) {
             throw new DatosInvalidosException(
                 "'" + unidadTiempo + "' no es una unidad de tiempo válida. Se aceptan: "
@@ -282,7 +280,7 @@ public class MisionFactory {
     /**
      * Pasa a mayúsculas y saca los acentos, así el cliente puede mandar "AÑOS",
      * "años", "Anos" o "ANOS" y todas funcionan. Antes había que adivinar si el
-     * valor era un nombre de {@link ChronoUnit} en inglés o en español.
+     * valor era un nombre de unidad en inglés o en español.
      *
      * <p><b>Es público y estático por el punto 34.</b> {@code RepositorioMisiones.obtenerTodas}
      * tenía su propio {@code valueOf(str.trim().toUpperCase())}, sin normalizar: el mismo

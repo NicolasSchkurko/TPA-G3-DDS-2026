@@ -96,8 +96,8 @@ mvn test -pl incentivos-service
 ## Docker Compose
 
 Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto
-del proyecto y levanta una base MySQL independiente para cada uno, además de RabbitMQ
-y n8n:
+del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5679`
+y conserva su configuración en un volumen:
 
 ```bash
 docker compose up --build
@@ -129,6 +129,10 @@ Puertos disponibles desde la máquina local:
 Los contenedores se comunican usando los nombres de servicio de Compose y el puerto
 interno del contenedor. Los volúmenes mantienen los datos al recrear contenedores; no
 usar `docker compose down -v` salvo que se quiera borrar también esos datos.
+
+n8n arranca sin workflows. Para que se procesen publicaciones, hay que configurar y activar
+los webhooks `incentivos` y `notificaciones`; los servicios ya apuntan a
+`http://n8n:5678/webhook/<ruta>` dentro de Compose.
 
 RabbitMQ está incluido en la infraestructura y configurado para Donaciones y Logísticas.
 La comunicación de notificaciones por cola requiere además publicadores y consumidores

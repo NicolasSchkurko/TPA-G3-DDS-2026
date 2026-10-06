@@ -18,7 +18,7 @@ services:
     image: mysql:8.0
     container_name: tpa-mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
@@ -47,6 +47,24 @@ services:
       timeout: 5s
       retries: 12
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tpa-n8n
+    ports:
+      - "5679:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5679/
+      WEBHOOK_URL: http://localhost:5679/
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
   # --- Servicios de dominio ---
 
   notificaciones-service:
@@ -68,12 +86,14 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
       RABBITMQ_PASSWORD: guest
-      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
+      N8N_URL: http://n8n:5678/webhook/notificaciones
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      n8n:
+        condition: service_started
 
   incentivos-service:
     build:
@@ -87,7 +107,7 @@ services:
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
-      N8N_URL: http://host.docker.internal:5678/webhook/incentivos
+      N8N_URL: http://n8n:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: incentivos_user
       DB_PASSWORD: ""
@@ -99,6 +119,8 @@ services:
       mysql:
         condition: service_healthy
       notificaciones-service:
+        condition: service_started
+      n8n:
         condition: service_started
 
   # Es el broker de integración del enunciado: publica las donaciones asignadas para
@@ -156,3 +178,4 @@ services:
 volumes:
   mysql-data:
   rabbit-data:
+  n8n-data:

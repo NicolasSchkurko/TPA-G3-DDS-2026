@@ -21,7 +21,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import java.lang.reflect.Field;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -123,12 +123,12 @@ class OrphanRemovalTest {
         // Mision.reglaDeProgreso borraría la regla de la otra. El factory construye una por
         // misión, así que no hay riesgo.
         Mision primera = new Mision("A", null, "d", "i",
-                new Regla(new ReglaConstancia(1, ChronoUnit.MONTHS),
+                new Regla(new ReglaConstancia(1, UnidadTiempo.MONTHS),
                         ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas
                                 .AtributoImpacto.CANTIDAD_BIENES,
                         new SuperaCantidad(1, 3)));
         Mision segunda = new Mision("B", null, "d", "i",
-                new Regla(new ReglaConstancia(2, ChronoUnit.MONTHS),
+                new Regla(new ReglaConstancia(2, UnidadTiempo.MONTHS),
                         ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas
                                 .AtributoImpacto.CANTIDAD_BIENES,
                         new CantidadCoincidencias(2, null)));

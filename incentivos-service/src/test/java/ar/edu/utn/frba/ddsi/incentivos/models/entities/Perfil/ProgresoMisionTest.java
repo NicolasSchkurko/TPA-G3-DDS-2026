@@ -13,7 +13,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -78,7 +78,7 @@ class ProgresoMisionTest {
     @Test
     @DisplayName("la constancia cuenta racha y se reinicia al vencer el plazo")
     void laConstanciaSeReiniciaAlVencerseElPlazo() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,
@@ -105,7 +105,7 @@ class ProgresoMisionTest {
     @Test
     @DisplayName("la constancia ignora las donaciones que no hicieron progresar la mision")
     void laConstanciaIgnoraDonacionesQueNoProgresaron() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,
@@ -131,7 +131,7 @@ class ProgresoMisionTest {
     @Test
     @DisplayName("sin donaciones la constancia deja el progreso en cero")
     void sinDonacionesElProgresoEsCero() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(constancia, AtributoImpacto.ESTADO,
                 new CantidadCoincidencias(1, MAPPER.valueToTree("ENTREGADA")));
         ProgresoMision progreso = new ProgresoMision(mision(regla, "Constante"));
@@ -249,7 +249,7 @@ class ProgresoMisionTest {
         @Test
         @DisplayName("al romperse la constancia se descartan los valores de la racha vieja")
         void alRomperseLaConstanciaSeDescartanLosValoresViejos() {
-            ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+            ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
             Regla regla = new Regla(
                     constancia,
                     AtributoImpacto.CATEGORIA,
