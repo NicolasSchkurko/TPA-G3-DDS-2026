@@ -37,9 +37,9 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 ### Qué pasa
 
-`N8nIntegrationTest.deberiaEnviarMailRealAN8n` hace `POST` a
-`http://localhost:5678/webhook/`, que es n8n. Si n8n no está corriendo, falla con
-`ResourceAccess I/O error: Connection refused` y el reactor se detiene en
+`N8nIntegrationTest.deberiaEnviarMailRealAN8n` construye un `Mail` y lo manda por el
+`NotificacionGateway`, o sea que sale por HTTP a la URL de `servicio.n8n.url`. Si n8n no está
+corriendo, falla con `ResourceAccess I/O error: Connection refused` y el reactor se detiene en
 `notificaciones-service`: los tres módulos siguientes no se ejecutan.
 
 El nombre del método dice lo que es: envía un mail real. No es un test unitario, es un test de
@@ -51,6 +51,17 @@ condición que lo saltee.
 Es preexistente, pero no es inocuo: hace que `mvn verify` no pueda usarse como criterio de
 "¿está todo bien?" sin tener n8n andando. En este repo pasó: el fallo se vio primero como si
 fuera del módulo de notificaciones, escondido detrás de un error de MySQL.
+
+### Estado después de levantar n8n
+
+Con n8n corriendo el test **pasa**: `Tests run: 1, Failures: 0, Errors: 0`. El `mvn verify`
+completo queda en verde y los 330 tests del reactor pasan.
+
+Eso no cierra el punto, y conviene que quede claro por qué: el test pasó porque se corrigió la
+URL por defecto (punto 17 de la sección `# Corregidos`), no porque el test sea independiente de
+n8n. Sigue siendo un test que depende de un servicio externo para decidir si el build del equipo
+pasa, y mañana vuelve a fallar con `Connection refused` en la máquina de cualquiera que no
+tenga n8n levantado.
 
 ### Propuesta
 
@@ -688,7 +699,76 @@ midió; la dead letter previene la clase de problema, no este caso.
 ---
 
 # Corregidos
-### 15. El `__TypeId__` del converter rompía la integración entre servicios
+### 17. El default de `servicio.n8n.url` apuntaba a `/webhook/` pelado y daba 404
+
+**Estado:** corregido
+**Severidad:** crítica
+**Archivo:** `src/main/resources/application.properties:6`
+
+### Qué pasaba
+
+El default de la URL de n8n terminaba en el prefijo, sin el nombre del webhook:
+
+```properties
+servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/}
+```
+
+El endpoint real es `http://localhost:5678/webhook/notificaciones`. Con el default, cada
+notificación terminaba en `FALLIDA` y el error era un `404` que **no distinguía una URL mal
+configurada de un webhook que no existe**:
+
+```
+IllegalArgumentException: Ocurrió un problema inesperado al enviar la notificación:
+404 Not Found: "<!DOCTYPE html>..."
+Caused by: HttpClientErrorException$NotFound
+```
+
+`incentivos-service` ya tenía el default correcto (`.../webhook/incentivos`), así que la
+asimetría era solo de un lado.
+
+### Por qué estaba escondido
+
+Es el mismo patrón que el punto 4: **el servicio responde sano y el problema aparece un salto
+después**. El `POST /api/personas` devuelve `201`, la notificación se encola, el consumidor la
+toma, intenta mandarla, falla y la marca `FALLIDA`. Nada en el log dice "la URL está mal",
+porque el 404 parece un webhook inexistente y no una variable de configuración sin completar.
+
+Además `docker-compose.yml` **sí** pasaba la URL correcta por variable de entorno
+(`N8N_URL: http://host.docker.internal:5678/webhook/notificaciones`), así que el compose
+funcionaba y el default nunca se exercise. El bug solo aparecía corriendo con Maven, que es
+como se levanta en desarrollo.
+
+### Qué se hizo
+
+El default ahora es el endpoint completo:
+
+```properties
+servicio.n8n.url=${N8N_URL:http://localhost:5678/webhook/notificaciones}
+```
+
+### Cómo se verificó
+
+Con n8n andando, los cuatro servicios levantados y la base limpia, las cinco notificaciones de
+dos flujos distintos quedaron `ENVIADA` con `fecha_envio` puesta:
+
+```
+ENVIADA  ana@test.com   2026-10-06 12:28:29  Nuevo Registro en DonaTrack
+ENVIADA  luis@test.com  2026-10-06 12:28:48  Nuevo Registro en DonaTrack
+ENVIADA  luis@test.com  2026-10-06 12:28:49  ¡Misión completada!
+ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva categoría
+ENVIADA  luis@test.com  2026-10-06 12:28:49  Nueva misión disponible
+```
+
+La primera viene de `donaciones-service` (webhook `notificaciones`) y las otras cuatro de
+`incentivos-service` (webhook `incentivos`), así que los dos endpoints quedaron probados.
+
+De paso **el `N8nIntegrationTest` dejó de fallar**: usa `Mail` → `NotificacionGateway` →
+`N8nClient`, o sea la misma URL que estaba rota. Con el default anterior, y con n8n ya
+levantado, el test fallaba con 404. Antes de este commit fallaba por `Connection refused`.
+Ver punto 1.
+
+---
+### 16. El `__TypeId__` del converter rompía la integración entre servicios
 
 **Estado:** corregido
 **Severidad:** crítica
