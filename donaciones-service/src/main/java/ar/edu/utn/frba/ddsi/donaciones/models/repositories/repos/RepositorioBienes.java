@@ -42,6 +42,9 @@ public class RepositorioBienes {
     return jpaRepository.findAll();
   }
 
+  public Optional<Bien> buscarPorId(UUID id) {
+    return jpaRepository.findById(id);
+  }
 
 
   public void actualizar(UUID idOriginal, Bien bienActualizado) {

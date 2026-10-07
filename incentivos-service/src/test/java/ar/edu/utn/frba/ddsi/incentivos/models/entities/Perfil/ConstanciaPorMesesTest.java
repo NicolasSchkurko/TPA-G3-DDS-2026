@@ -10,7 +10,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +23,7 @@ class ConstanciaPorMesesTest {
 
     /** La misión "Racha" del enunciado: 1 donación durante 3 meses consecutivos. */
     private static ProgresoMision rachaDeTresMeses() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,

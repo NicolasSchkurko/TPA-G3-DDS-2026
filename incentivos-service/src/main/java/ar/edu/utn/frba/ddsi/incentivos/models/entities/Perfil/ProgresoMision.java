@@ -108,7 +108,7 @@ public class ProgresoMision implements ProgresoDelDonante {
 
         ImpactoDonacion ultima = donacionesQueProgresaron.get(donacionesQueProgresaron.size() - 1);
         LocalDateTime limite = ultima.getFechaEntrega()
-                .plus(constancia.getCantidad(), constancia.getUnidadTiempo());
+                .plus(constancia.getCantidad(), constancia.getUnidadTiempo().comoChronoUnit());
 
         if (fechaEvaluacion.isAfter(limite)) {
             // La racha caduco: el donante arranca de cero.

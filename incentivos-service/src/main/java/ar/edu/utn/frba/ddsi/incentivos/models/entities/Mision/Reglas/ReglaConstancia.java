@@ -6,7 +6,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,11 +25,11 @@ public class ReglaConstancia {
     private Integer cantidad;
 
     @Enumerated(EnumType.STRING)
-    private ChronoUnit unidadTiempo;
+    private UnidadTiempo unidadTiempo;
 
     public ReglaConstancia(
             Integer cantidad,
-            ChronoUnit unidadTiempo
+            UnidadTiempo unidadTiempo
     ) {
         this.cantidad = cantidad;
         this.unidadTiempo = unidadTiempo;

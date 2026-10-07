@@ -16,7 +16,8 @@ public class DonacionesServiceApplication {
         // Si no hay .env (ej. en CI/Docker, donde las variables vienen del entorno real), no falla.
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         dotenv.entries().forEach(entry -> {
-            if (System.getProperty(entry.getKey()) == null) {
+            if (System.getProperty(entry.getKey()) == null
+                    && System.getenv(entry.getKey()) == null) {
                 System.setProperty(entry.getKey(), entry.getValue());
             }
         });

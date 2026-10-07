@@ -1621,7 +1621,8 @@ comportamiento del punto 2.
 
 **Estado:** corregido el 2026-10-07, sin commit
 **Severidad:** media
-**Archivos:** `src/main/resources/application.properties`, `docker-compose.yml` (raiz del repo), `.env.example`
+**Archivos:** `src/main/resources/application.properties`, `docker-compose.yml` (raiz del repo),
+`.env` / `.env.example` de cada modulo
 
 #### Que pasaba
 
@@ -1633,8 +1634,11 @@ quedando commiteada en el historial de git.
 #### Que se cambio
 
 `application.properties` quedo sin default: si falta la variable, el servicio no levanta, que es
-lo correcto. El compose lee del entorno con `${DB_USERNAME:?...}`, y se agrego `.env.example`
-para documentar como se define. No hizo falta tocar `.gitignore`: el del repo ya cubria `.env`.
+lo correcto. No hizo falta tocar `.gitignore`: el del repo ya cubria `.env`.
+
+**Actualizacion posterior:** el `.env` general de la raiz se reemplazo por **un `.env` por
+modulo** (`<servicio>/.env`, con su `<servicio>/.env.example`), y `docker-compose.yml` los carga
+con `env_file`. Ya no se usa `${DB_USERNAME:?...}` ni hay `.env` en la raiz.
 
 #### Como se verifico
 

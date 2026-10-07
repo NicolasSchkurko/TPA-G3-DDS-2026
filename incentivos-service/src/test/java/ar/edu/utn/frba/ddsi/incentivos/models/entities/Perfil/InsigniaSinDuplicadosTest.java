@@ -11,7 +11,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +26,7 @@ class InsigniaSinDuplicadosTest {
 
     /** Misión con constancia de 1 mes, como la "Racha" del seed. */
     private static Mision racha() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,

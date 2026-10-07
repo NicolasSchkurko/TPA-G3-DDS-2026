@@ -28,21 +28,46 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!--
-                NO hay plugin de Checkstyle aca a proposito. Se probo y rompe `mvn verify`
-                en una maquina sin internet: el plugin necesita descargar (ademas del
-                maven-reporting, del doxia y del plexus) el artifact com.puppycrawl:checkstyle
-                y las dependencias de reporting, y ninguna esta en el .m2 local. Un build que
-                falla por una dependencia que no se puede bajar es peor que un build que no
-                valida estilo.
-
-                La validacion corre por `run-checkstyle.ps1` en la raiz del repo, que usa el
-                jar de Checkstyle que ya trae el plugin de IntelliJ. Para meterla al build de
-                verdad hace falta una maquina con acceso a Maven Central: ver el punto 37 de
-                PENDIENTES.md, que tiene el XML listo para pegar.
-            -->
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>checkstyle</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.puppycrawl.tools</groupId>
+                                <artifactId>checkstyle</artifactId>
+                                <version>14.1.0</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <configLocation>config/checkstyle/checkstyle.xml</configLocation>
+                            <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                            <violationSeverity>warning</violationSeverity>
+                            <consoleOutput>true</consoleOutput>
+                            <failOnViolation>true</failOnViolation>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>validar-estilo</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencies>
         <dependency>
@@ -65,6 +90,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

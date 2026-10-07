@@ -15,10 +15,10 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -138,7 +138,7 @@ class GuardasQueFaltabanTest {
             ReglaConstancia constancia = factory.crearConstancia(3, "MESES");
 
             assertThat(constancia.getCantidad()).isEqualTo(3);
-            assertThat(constancia.getUnidadTiempo()).isEqualTo(ChronoUnit.MONTHS);
+            assertThat(constancia.getUnidadTiempo()).isEqualTo(UnidadTiempo.MONTHS);
         }
     }
 }

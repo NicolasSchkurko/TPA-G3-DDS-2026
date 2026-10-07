@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +23,7 @@ public class ValidadorAdmin {
      * Lanza {@link SecurityException} (403) si el usuario no es administrador o no existe.
      * El mensaje es el mismo en ambos casos para no filtrar qué ids existen.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void verificarPermisos(UUID idAdmin) {
         if (!donacionClient.verificarAdmin(idAdmin)) {
             throw new SecurityException("El usuario no tiene permisos de administrador o no existe.");
