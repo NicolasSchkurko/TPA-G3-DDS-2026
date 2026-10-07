@@ -17,6 +17,11 @@ import org.springframework.stereotype.Component;
  * un request/response: un patrón que necesita dos colas y dos bindings por cada consumidor, y
  * que se rompe entero si el que pidió se cae antes de leer la respuesta.
  *
+ * <p><b>Va a una cola propia y no a las particionadas.</b> Esta consulta es de solo lectura y no
+ * necesita orden: si compartiera cola con el trabajo de reparto, todas caerian en el mismo
+ * shard por no tener encabezado de particion, y una instancia se quedaria con todo el
+ * sondeo.
+ *
  * <p><b>La alternativa es consultar por HTTP.</b> El enunciado pide que logística esté
  * accesible por web a través de sus URIs, y {@code GET /api/eventos} ya expone exactamente
  * esto. El polling queda como red de contención para cuando quien consulta no quiere
@@ -38,7 +43,7 @@ public class SolicitudEventosListener {
         this.eventoService = eventoService;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.COLA_INTEGRACION)
+    @RabbitListener(queues = RabbitMQConfig.COLA_SONDEO)
     public void recibirSolicitud(SolicitudEventosDTO solicitud) {
         if (solicitud == null || solicitud.getDesdeId() == null) {
             log.warn("LLEGA una solicitud de eventos sin desdeId, se responde vacía");

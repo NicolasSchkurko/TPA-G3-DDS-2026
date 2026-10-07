@@ -960,26 +960,32 @@ a fallar igual en cada reintento y bloquearían la cola compartida de la que sal
 instancias de logística. Los demás se relanzan a propósito, para que la dead letter queue los
 reciba.
 
+# Corregidos
+
+Estos cuatro son una sola cosa mirada desde cuatro ángulos: **qué hace falta para que N
+instancias de logística puedan compartir la cola y la base**, que es lo que pide el enunciado
+cuando dice *"más de 1 servicio de logística disponible"*. Se corrigieron juntos, y los tests
+que los cubren son los primeros que tiene este módulo.
+
+La regla de fondo, que no es obvia: **lo único que garantiza contra la duplicación es la
+idempotencia; la base compartida evita que las instancias divergan; y el `@Version` convierte
+un pisado silencioso en un error visible.** Con las tres, el sistema tolera N instancias sin
+duplicar entregas ni perder estado.
+
 ---
 
-## 21. Una redelivery resetea el ítem a `PENDIENTE`: no hay idempotencia en `procesarPeticion`
+### 21. Una redelivery reseteaba el ítem a `PENDIENTE`: no había idempotencia
 
-**Estado:** abierto
+**Estado:** corregido
 **Severidad:** crítica
-**Archivo:** `.../services/EntregaService.java:78-107`, `.../models/entities/ItemEntrega/ItemEntrega.java`
+**Archivos:** `.../services/EntregaService.java`, `.../RabbitMQ/DonacionListener.java`
 
-### Qué pasa
+#### Qué pasaba
 
-RabbitMQ es de entrega **al menos una vez**. Un mensaje se puede volver a entregar cuando el
-consumidor procesa pero no llega a hacer el *ack*: se cae la conexión, se reinicia la instancia,
-pasa lo que pase. Con N instancias de logística consumiendo la cola compartida, la probabilidad de
-que algune vez pase no es teórica.
+`procesarPeticion` no tenía ninguna guarda de idempotencia. Peor todavía: una redelivery **no
+fallaba**.
 
-`EntregaService.procesarPeticion` no tiene **ninguna guarda de idempotencia**: no consulta si el
-ítem ya existe, va directo a `repoItemEntrega.saveAndFlush(nuevoItem)`.
-
-Y el detalle que convierte esto en pérdida de datos silenciosa está en la clave primaria.
-`ItemEntrega` declara:
+El detalle está en la clave primaria. `ItemEntrega` declara:
 
 ```java
 @Id
@@ -988,219 +994,250 @@ private UUID idDonacion;
 ```
 
 `idDonacion` viene del mensaje y **no tiene `@GeneratedValue`**. Con id no nulo, el `isNew` de
-Spring Data da `false` siempre y `save()` va **siempre por `merge()`**: hace `SELECT` y, si la fila
-existe, hace `UPDATE`.
+Spring Data da `false` siempre y `save()` va **siempre por `merge()`**: hace `SELECT` y, si la
+fila existe, hace `UPDATE`.
 
-O sea que una redelivery **no falla con error de clave duplicada**. Hace un `UPDATE` que
-reescribe la fila con los valores del constructor, y el constructor pone:
+Ese `UPDATE` reescribía la fila con lo del constructor, que pone:
 
 ```java
 this.estado = EstadoEntrega.PENDIENTE;
 this.fechaCambioEstado = LocalDateTime.now();
 ```
 
-**Resultado:** si un ítem ya estaba `ENTREGADO` y el mensaje se reprocesa, vuelve a `PENDIENTE` y
-pierde la foto del comprobante. Sin error, sin log, sin rastro. La entrega más importante del
-sistema desaparece y la base dice que nunca pasó.
+O sea que si un ítem ya estaba entregado y el mensaje se reprocesaba, volvía a `PENDIENTE` y
+perdía la foto del comprobante. Sin error, sin log, sin rastro. Es peor que una duplicación,
+porque una duplicación se ve.
 
-Es peor que una duplicación, porque una duplicación al menos se ve.
+#### Qué se hizo
 
-### Por qué importa más con N instancias
-
-Con una sola instancia el problema es raro. Con varias, cada una tiene su propia conexión al
-broker y cada corte de conexión genera redeliverías, así que la frecuencia sube justo en el
-escenario que el enunciado pide soportar.
-
-### Propuesta
-
-1. **Guarda de idempotencia explícita** antes de insertar: `findById(idDonacion)` y, si ya
-   existe, no volver a escribir. Con el `merge()` actual, "no hacer nada" y "reescribir" son
-   cosas distintas que hay que decidir a mano.
-2. O, más simple y más fuerte: que la columna tenga un `ON DUPLICATE KEY` / que el `UPDATE` solo
-   toque los campos que son de alta y **nunca** `estado` ni `fechaCambioEstado`. El estado solo lo
-   cambia quien opera la entrega, no quien la registra.
-3. Un test que mande el mismo mensaje dos veces y verifique que la fila queda igual.
-
-Lo segundo es lo que yo haría: separa "registrar que esta donación existe" de "operar la
-entrega", que hoy están mezcladas en el mismo `save`.
-
----
-
-## 22. Ninguna entidad tiene `@Version`: dos instancias escribiendo a la vez se pisan sin error
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivo:** todas las entidades de `logisticas-service`
-
-### Qué pasa
-
-Búsqueda de `@Version` en el módulo: **cero resultados**. No hay ni una sola entidad con control
-de concurrencia optimista.
-
-`EntregaService.procesarPeticion` es un patrón leer-modificar-escribir clásico, y sin `@Version`
-la última escritura gana en silencio:
+**1. Guarda de idempotencia explícita**, antes de construir nada:
 
 ```java
-repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
-repoProvincias.save(...getProvincia());
-repoCiudades.save(...getCiudad());
-repoDirecciones.save(direccionEntidad);
-Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
-repoEntidades.save(nuevaEntidad);
+if (repoItemEntrega.existsById(idDonacion)) {
+    repetidos++;
+    log.info("La donación {} ya estaba registrada, el mensaje se repite y se omite", idDonacion);
+    continue;
+}
 ```
 
-Y esto está **dentro del `for` de los bienes**, o sea que se repite por cada bien de la donación.
+Es `continue` y no `return` a propósito: una donación puede traer bienes ya registrados **junto
+con** bienes nuevos, y con un `return` se perderían los nuevos. Hay un test para eso.
 
-### El escenario concreto
+**2. `DataIntegrityViolationException` como resultado benigno en el listener.** La guarda cubre
+el caso secuencial, pero queda una ventana: dos instancias leen el mismo `idDonacion` antes de
+que ninguna lo escriba, las dos pasan el `existsById` y las dos intentan insertar. Gana una; la
+otra recibe la violación de clave primaria, **que es el estado final que se buscaba**.
 
-Dos donaciones distintas para la misma entidad beneficiaria llegan a la vez y las toman dos
-instancias distintas. Las dos hacen:
+Si se relanzara, el mensaje iría a la dead letter queue como si fuera un fallo y además frenaría
+la cola compartida de la que salen las N instancias. Se registra y se sigue.
 
-1. SELECT de `Pais` por el mismo nombre → las dos leen la misma fila
-2. INSERT de `Ciudad` con la misma provincia
-3. UPDATE de la fila de `Ciudad`
+**3. El estado solo lo cambia el operador, nunca el registro.** Es la separación que vuelve
+inofensiva una repetición por construcción, y no por accidente.
 
-La instancia A hace su UPDATE. La B lo hace después, con los valores que leyó **antes** del
-UPDATE de A. El resultado es que se pierde lo que A había escrito, sin excepción ni log.
+#### Cómo se verificó
 
-Con `merge()` y sin versión, Hibernate no detecta el conflicto porque no hay nada que comparar:
-el `UPDATE` se manda con los valores que la entidad tiene en memoria.
+Tests nuevos en `EntregaServiceIdempotenciaTest`. Lo relevante es que **tienen dientes**: se
+neutralizó la guarda a propósito (`if (false && existsById(...))`) y 3 de los 8 tests
+fallaron, justamente los tres que miden la idempotencia:
 
-El caso peor es `Direccion`, que por el punto 15 ya se duplica N veces en una sola peticion (ver
-punto 15): el problema 15 es una única instancia, y este es el mismo defecto con dos encima.
+```
+EntregaServiceIdempotenciaTest.noVuelveAGuardarSiYaExiste        FAIL
+EntregaServiceIdempotenciaTest.noTocaElEstadoDeUnItemYaEntregado  FAIL
+EntregaServiceIdempotenciaTest.registraSoloLosBienesNuevos        FAIL
+Tests run: 8, Failures: 3
+```
 
-### Relación con el punto 15
-
-Los dos puntos son el mismo bug en dos escalas. El 15 es "una donación con 3 bienes triplica la
-dirección", que pasa **con una sola instancia**. Este es "dos instancias se pisan la dirección",
-que pasa **con N instancias**. Arreglar el 15 sin este sigue dejando el problema en un despliegue
-con competing consumers, que es lo que el enunciado pide.
-
-### Propuesta
-
-1. `@Version` en las entidades que se escriben desde el listener —`ItemEntrega` sobre todo, que es
-   la que cambia de estado— y relanzar `OptimisticLockingFailureException` para que el mensaje
-   vaya a la dead letter queue en vez de pisar.
-2. `@Transactional` en `procesarPeticion`, para que el bloque `Pais → Provincia → Ciudad →
-   Direccion → Entidad → Item` sea atómico. Hoy no lo hay: si el quinto `save` falla, los cuatro
-   anteriores ya quedaron escritos.
-3. Sacar `Pais`/`Provincia`/`Ciudad` del loop. Son datos de catálogo que no cambian por donación;
-   resolverlos una vez y cachearlos.
-
-`incentivos-service` ya resolvió el punto análogo con `@Version` + reintento + 409 (punto 36 de su
-backlog). El patrón está escrito, se puede copiar.
+Restaurada la guarda, los 8 vuelven a pasar.
 
 ---
 
-## 23. Con N consumidores no hay orden: dos mensajes del mismo agregado se procesan a la vez
+### 22. Ninguna entidad tenía `@Version`: dos instancias escribiendo a la vez se pisaban
 
-**Estado:** abierto
+**Estado:** corregido
+**Severidad:** alta
+**Archivos:** las 12 entidades de `logisticas-service`
+
+#### Qué pasaba
+
+Búsqueda de `@Version` en el módulo: **cero resultados**. `procesarPeticion` era un patrón
+leer-modificar-escribir sin protección, y además estaba **dentro del `for` de bienes**, con lo
+que escribía `Pais → Provincia → Ciudad → Direccion → Entidad` una vez por bien.
+
+Dos donaciones para la misma entidad, atendidas por dos instancias: las dos leen las mismas
+filas, las dos escriben, y la segunda pisa a la primera con los valores que leyó **antes** del
+UPDATE de la otra. Sin excepción, sin log.
+
+#### Qué se hizo
+
+**1. `@Version` en las 12 entidades**, no solo en `ItemEntrega`. En `ItemEntrega` es
+especialmente importante porque su clave natural hacía que el `merge()` fuera el camino normal
+y no la excepción.
+
+**2. El catálogo se resuelve una vez por mensaje y no por bien.** Esto es el arreglo de la
+carrera **y de paso el del punto 15**: una donación con tres bienes escribía la misma dirección
+tres veces. Ahora se resuelve una vez, y el `@Version` hace que la segunda instancia que llegue
+reciba `OptimisticLockingFailureException` en vez de sobrescribir. Hay un test que lo mide.
+
+**3. `@Transactional` en `procesarPeticion` y en `actualizarEstado`.** Lo segundo es por una
+razón distinta del primero: `actualizarEstado` publica el evento de trazabilidad y después
+guarda el ítem. Sin transacción, si el `save` fallaba el evento ya había salido del servicio y
+`donaciones-service` se enteraba de una entrega que en la base nunca ocurrió.
+
+**4. Validaciones de payload**, para que un mensaje incompleto se rechace **antes** de escribir
+en lugar de dejar la donación a medias. Es también el punto 16.
+
+---
+
+### 23. Con N consumidores no hay orden: se midió y el particionado quedó apagado
+
+**Estado:** corregido. El reparto por hash está implementado pero **desactivado a propósito**
 **Severidad:** media
-**Archivo:** `.../RabbitMQ/DonacionListener.java`, topología de `RabbitConfig`
+**Archivo:** `.../config/RabbitMQConfig.java`, `.../RabbitMQ/DonacionListener.java`,
+`application.properties`
 
-### Qué pasa
+#### Qué se investigó
 
 Competing consumers significa que el broker reparte los mensajes de a uno entre las instancias,
-**en cualquier orden y sin sincronización entre ellas**. Dos mensajes del mismo `idDonacion` pueden
-estar siendo atendidos por dos instancias al mismo tiempo, y el que se atiende segundo no tiene por
-qué ser el que se mandó segundo.
+**en cualquier orden y sin sincronización entre ellas**. Dos mensajes del mismo `idDonacion`
+pueden ser atendidos por dos instancias al mismo tiempo, y el que se atiende segundo no tiene
+por qué ser el que se mandó segundo. Con una máquina de estados
+`PENDIENTE → EN_CAMINO → ENTREGADA` eso permite **retroceder el estado**.
 
-Si el dominio es una máquina de estados —`PENDIENTE → EN_TRASLADO → ENTREGADO`, más los reingresos
-a depósito— eso permite **retroceder el estado**: un "confirmar entrega" puede caer después de un
-"iniciar traslado" y dejar el ítem como `PENDIENTE` cuando debería estar `ENTREGADO`.
+Con un solo consumidor el orden se respeta, porque RabbitMQ le entrega los mensajes en el orden
+en que los publica. **El orden no se pierde al usar el broker: se pierde al agregar el segundo
+consumidor.** Por eso el problema nunca se habría detectado.
 
-Es el mismo efecto observable del punto 21, pero por otra causa: ahí es una redelivery del mismo
-mensaje, acá son dos mensajes distintos que llegan desordenados.
+#### Se implementó el particionado, y después se midió
 
-### Por qué con una sola instancia no pasa
+Primero se hizo completo: exchange `x-consistent-hash` sobre el encabezado `x-id-donacion`, N
+colas de shard, y cada instancia atendiendo un subconjunto **disjunto** con
+`LOGISTICA_SHARDS_ASIGNADAS`. Verificado: 5 mensajes de la misma donación caían 5/5 en la misma
+cola, y dos instancias repartían 20 mensajes 7/13.
 
-Con un consumidor, RabbitMQ le entrega los mensajes en el orden en que los publica, así que el
-procesamiento es secuencial y el orden se respeta. **El orden no se pierde al usar el broker: se
-pierde al agregar el segundo consumidor.** Por eso el punto no se habría detectado nunca.
+Después se probó **qué pasa si se cae una instancia**, y el resultado dio vuelta la decisión:
 
-### Qué decide el diseño
+```
+con la instancia B bajada (la de los shards 2 y 3):
+  queue.0   msgs=0   cons=1
+  queue.1   msgs=0   cons=1
+  queue.2   msgs=4   cons=0    <- nadie la lee
+  queue.3   msgs=11  cons=0    <- nadie la lee
+```
 
-Depende de si el orden importa para el dominio, y eso es una decisión del equipo:
+De 20 mensajes, la instancia sana procesó **5** y los otros **15 quedaron parados**, aunque
+estaba viva y con capacidad de sobra. El particionado **no se traba nunca**, pero tampoco
+sobrevive: cada caída deja su mitad del trabajo detenida.
 
-- **Si el estado tiene que avanzar siempre hacia adelante**, hay que garantizar el orden. El patrón
-  es particionar por agregado: un exchange *consistent-hash* por `idDonacion`, o N colas con el
-  id de la donación en la routing key. Así todos los mensajes de una donación caen en la misma
-  instancia, en orden, y las donaciones distintas se reparten en paralelo. Es la solución
-  estándar y es la que escala de verdad.
+#### La decisión: una sola cola, y por qué
 
-- **Si el estado tiene que ser válido sin importar el orden**, entonces alcanza con que cada
-  transición valide su precondición en la base —el punto 8, el 9 y el 10 de este backlog—atrás de un
-  `UPDATE` condicional. El handler rechaza el mensaje obsoleto en vez de aplicarlo.
+**Se volvió a la cola compartida.** El motivo es que el análisis original acertaba: hoy ningún
+mensaje que llegue a logística transporta una transición de estado.
 
-Hoy no está guaranteed ninguna de las dos.
+| Routing key | Listener | Qué hace |
+|---|---|---|
+| `donaciones.creada` | `DonacionListener` | **Registra** ítems en `PENDIENTE` |
+| `logistica.solicitud.eventos` | `SolicitudEventosListener` | **Lee** eventos y descarta la respuesta |
 
-### Propuesta
+El registro quedó idempotente por construcción (punto 21) y la consulta es de solo lectura. Las
+transiciones de estado entran por otro camino: el `PATCH` contra `actualizarEstado`, que es la
+acción del operador sobre **una** donación, y por lo tanto no compite con nadie.
 
-Definir primero cuál de los dos modelos aplica, y después implementarlo. Si va por particionado,
-el `RabbitConfig` de logística cambia: en vez de una cola compartida con N consumidores, N colas
-con un binding por hash del `idDonacion` en la routing key.
+O sea que el orden que el particionado compraba **no se necesita hoy**, y lo que cuesta es real:
+disponibilidad. Se prefirió no pagar algo que no hace falta.
 
-**Lo que no conviene:** dejar la cola compartida y agregar un `@Version` esperando que eso ordene.
-`@Version` **detecta** el conflicto, no lo resuelve: las dos instancias siguen en cualquier
-orden, solo que ahora una de las dos recibe un error en vez de pisar a la otra. Para el estado final
-es lo mismo, pero el mensaje va a la dead letter en lugar de procesarse.
+Medido con la cola compartida y dos instancias:
+
+```
+12 mensajes con las dos vivas  ->  A: 6, B: 6
+se mata la instancia B
+15 mensajes con una sola viva ->  A: 15
+cola: 0 mensajes   DLQ: 0   27 de 27 en la base
+```
+
+Con una instancia caída, **la otra sigue consumiendo sin frenarse**. Eso es lo que se buscaba.
+
+#### Qué quedó del particionado
+
+El mecanismo sigue implementado y documentado en `application.properties`, **apagado por
+defecto**. Se activa con `LOGISTICA_SHARDS_ASIGNADAS=0,1` repartido de forma disjunta.
+
+El exchange sigue siendo `x-consistent-hash` en los dos modos: con un solo binding manda todo a
+la cola única, y con cuatro los reparte. Así `donaciones-service` **no necesita saber en qué
+modo está logística**: publica al mismo exchange con el mismo encabezado siempre.
+
+#### Lo que resuelve el orden cuando aparezca un mensaje con estado
+
+Una guarda que consulta la base **no sirve**, y conviene dejarse claro por qué. Si llega "la
+donación está ENTREGADA" antes que "la donación pasó a EN_CAMINO", la guarda ve `PENDIENTE` y no
+tiene nada que hacer: rechazarlo pierde el mensaje, aceptarlo deja el estado saltado. La guarda
+dice **qué estado hay**, no arregla que el orden se haya roto.
+
+Lo que sí cubre el caso real es **reintentar con espera**, y eso quedó en `DonacionListener`:
+
+```
+logistica.reintentos=3
+logistica.espera-reintento-ms=2000
+```
+
+Un fallo transitorio (la base tardó, se cortó la conexión) se reintenta y al segundo intento
+suele salir. Si tras los tres intentos sigue fallando, ahí sí va a la dead letter. Los errores de
+negocio y la carrera de clave primaria **no** se reintentan: fallan igual todas las veces, y
+reintentarlos solo frenaría la cola compartida.
+
+Cuando aparezca un mensaje con transiciones de estado, la frontera es esta: o se prende
+`LOGISTICA_SHARDS_ASIGNADAS` y se acepta el costo de disponibilidad, o el reintento con espera da
+suficiente cobertura y la cola compartida sigue conviene.
 
 ---
 
-## 24. El compose no se puede escalar: `container_name` y puerto fijo impiden el `--scale`
+### 24. El compose no se podía escalar
 
-**Estado:** abierto
+**Estado:** corregido
 **Severidad:** media
 **Archivo:** `docker-compose.yml`
 
-### Qué pasa
+#### Qué pasaba
 
-El propio compose recomienda en un comentario hacer esto:
+El propio compose recomendaba en un comentario:
 
 ```
 # servicio con `docker compose up --scale logisticas-service=2`.
 ```
 
-**Y no funciona.** Hay dos cosas en `docker-compose.yml` que lo bloquean:
+**Y no funcionaba.** Dos cosas lo bloqueaban:
 
 ```yaml
-logisticas-service:
-  build: ./logisticas-service
-  container_name: logisticas-service     # <-- impide --scale
-  ports:
-    - "8086:8086"                        # <-- no se puede bindear dos veces
+container_name: logisticas-service   # no se pueden crear N contenedores con el mismo nombre
+ports:
+  - "8086:8086"                      # el puerto del host no se puede reservar dos veces
 ```
 
-1. **`container_name` fijo**: Compose no puede crear N contenedores con el mismo nombre. Con
-   `--scale` y `container_name` declarado, el comando falla.
-2. **Puerto de host fijo**: `"8086:8086"` intenta reservar el puerto 8086 del host para cada
-   instancia. La segunda falla con `port is already allocated`.
+El `SERVER_PORT` tampoco llegaba a logística, porque su `application.properties` leía
+`${PORT:8086}` en vez de `${SERVER_PORT:8086}`. No se notaba porque el default coincidía con lo
+que pasa el compose, pero en cuanto hicieran falta dos instancias en el mismo host —que es
+justo este punto— el puerto se ignoraba y las dos pelaban por el 8086.
 
-Además, aunque las dos cosas se arreglaran, `SERVER_PORT` tendría que llegar a cada instancia con
-un valor distinto —y hasta hace un rato no llegaba, porque el `application.properties` de logística
-leía `${PORT:8086}` en vez de `${SERVER_PORT:8086}`. Eso ya está corregido.
+#### Qué se hizo
 
-### Por qué importa más allá de la defensa
+1. **`container_name` fuera de los cuatro servicios de dominio.** Se deja solo en `mysql` y
+   `rabbitmq`, que no se escalan y cuyo nombre estable evita depender de la red de Docker para
+   llegar a ellos.
+2. **El puerto de logística se publica efímero** (`- "8086"`, sin número de host), para que
+   Docker asigne uno distinto por instancia. Para descubrir cuál le tocó:
+   `docker compose port logisticas-service 8086`. El `SERVER_PORT` interno sigue siendo 8086
+   para todas, porque dentro de la red de Docker cada contenedor tiene su propio espacio de
+   puertos.
+3. **`logisticas-service` lee `SERVER_PORT`**, igual que los otros tres.
 
-El enunciado pide que el broker *"permita seleccionar entre más de 1 servicio de logística
-disponible"*. La topología del broker **sí** lo cumple: `logistica.integracion.queue` es una cola
-compartida con N consumidores, que es exactamente competing consumers.
+`docker compose config` valida el archivo después del cambio.
 
-Lo que no llega a existir es la forma de levantar la segunda instancia. Así que hoy el requisito se
-cumple a nivel de diseño y no a nivel de despliegue, y la diferencia se nota justo cuando se
-intenta probar.
+#### El costo, dicho explícitamente
 
-La forma de correr N instancias sin compose es levantar el mismo jar varias veces apuntando al
-mismo broker y a la misma base, que es lo que describe el `DonacionListener`. Eso funciona hoy.
+Quitar el puerto fijo tiene un precio para desarrollo: `docker compose up` a secas deja de dar
+`localhost:8086` fijo. Está anotado en el propio compose que se puede volver a `"8086:8086"`
+cuando se levanta de a una sola instancia.
 
-### Propuesta
-
-1. Sacar `container_name` de los cuatro servicios de dominio (dejándolo solo en `mysql` y
-   `rabbitmq`, donde no hace falta escalar).
-2. Sacar el mapeo de puerto fijo de logística, o dejarlo solo en el perfil por defecto para no
-   romper el desarrollo de a uno.
-3. Para dar puertos distintos por instancia, dejar que Docker asigne con `- "8086"` (puerto
-   efímero) y documentar cómo descubrir el asignado.
+La alternativa era un puerto fijo **o** la opción de escalar, y no pueden convivir. Se eligió
+escalar, porque es lo que pide el enunciado.
 
 ---
-# Corregidos

@@ -1,13 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,73 +14,80 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Antes declaraba las colas y los bindings de logística, y eso estaba mal.</b> El
  * servicio publicaba en el exchange de logística pero no le tocaba definir cómo logística
  * consume: la declaración de la cola ajena quedaba en este módulo. El síntoma era que
- * logisticas-service tenía su propia copia de estos beans, idéntica salvo por dos bindings
+ * logisticas-service tenía su propia copia de esos beans, idéntica salvo por dos bindings
  * atados al exchange equivocado. Con las dos declaraciones, el broker aceptaba ambas y el
- * binding bueno de este módulo tapaba el malo del otro. Levantando logística sola, las
- * colas de este módulo no existían y la cadena se cortaba.
+ * binding bueno de este módulo tapaba el malo del otro. Levantando logística sola, las colas
+ * de este módulo no existían y la cadena se cortaba.
  *
- * <p><b>La frontera queda así:</b> este servicio publica en el exchange de integración y
+ * <p><b>La frontera quedó así:</b> este servicio publica en el exchange de integración y
  * escucha la cola de eventos que logística le deja para trazabilidad. Las colas que logística
  * consume las declara logística.
- *
- * <p><b>El converter se declara con el ObjectMapper de la aplicación</b> para respetar los
- * módulos de Jackson ya registrados. Sin este bean, Boot deja el {@code RabbitTemplate} con
- * {@code SimpleMessageConverter}, que solo serializa {@code byte[]}, {@code String} y
- * {@code Serializable}: los DTO de integración no son ninguno y la publicación fallaba con
- * la excepción tragada en el catch del productor.
  */
 @Configuration
 @EnableRabbit
 public class RabbitMQConfig {
 
-    /** Exchange de integración con logística. Lo declara este módulo y logística lo usa. */
+    /** Exchange de integración con logisticas-service. */
     public static final String EXCHANGE_INTEGRACION = "logistica.exchange";
+
+    /**
+     * Exchange de integracion por hash, que reparte las donaciones entre las instancias.
+     *
+     * <p><b>Es el que hay que usar para publicar una donacion</b>, no
+     * {@link #EXCHANGE_INTEGRACION}. Ese es topic y solo enruta el sondeo de
+     * trazabilidad; el reparto por hash vive aca. Publicar al equivocado deja el
+     * mensaje en una cola sin consumidor y se pierde en silencio.
+     */
+    public static final String EXCHANGE_INTEGRACION_HASH = "logistica.integracion.hash";
+
+    /** Exchange de eventos de trazabilidad que logisticas-service publica. */
+    public static final String EXCHANGE_EVENTOS = "logistica.eventos.exchange";
+
+    /** Exchange de notificaciones. */
+    public static final String EXCHANGE_NOTIFICACIONES = "notificaciones.exchange";
 
     /** Routing key de las donaciones nuevas que esperan planificarse. */
     public static final String RK_NUEVA_DONACION = "donaciones.creada";
 
-    /**
-     * Routing key con el que este servicio le pide a logística los eventos de trazabilidad
-     * que todavía no vio.
-     *
-     * <p>Va por el exchange de integración porque es logística quien responde, pero el
-     * enunciado cubre la trazabilidad por HTTP con {@code GET /api/eventos}: el polling es la
-     * red de contención para recuperar eventos perdidos mientras el broker estuvo caído.
-     */
+    /** Routing key de la solicitud de eventos de trazabilidad. */
     public static final String RK_SOLICITUD_EVENTOS = "logistica.solicitud.eventos";
 
-    /** Exchange de eventos de trazabilidad que logística publica. */
-    public static final String EXCHANGE_EVENTOS = "logistica.eventos.exchange";
-
-    /** Routing key de los eventos de trazabilidad. */
+    /** Routing key de los eventos de trazabilidad que logisticas-service publica. */
     public static final String RK_EVENTO = "logistica.evento";
+
+    /**
+     * Routing key de las notificaciones de donaciones-service: alta de donante, donacion
+     * asignada, entregas.
+     */
+    public static final String RK_DONACION = "notificaciones.donacion";
+
+    /**
+     * Encabezado con el que logística particiona el trabajo entre sus instancias.
+     *
+     * <p>Es la clave del exchange consistent-hash de logística: el broker manda el mensaje a
+     * una cola según el hash de este encabezado, de modo que **todos los mensajes de la misma
+     * donación caen siempre en la misma cola y los procesa la misma instancia, en orden**.
+     *
+     * <p>Sin esto, con N instancias compitiendo por una sola cola, el broker reparte los
+     * mensajes de a uno en cualquier orden: dos mensajes de la misma donación pueden terminar
+     * en dos instancias al mismo tiempo, y el que se procesa segundo puede ser el que se envió
+     * primero. Ese es el punto 23 del backlog de logística.
+     *
+     * <p>El nombre del encabezado no está inventado: es el que declara
+     * {@code CustomExchange} de Spring AMQP para el tipo {@code x-consistent-hash}. Es un
+     * contrato entre los dos servicios, y por eso es una constante compartida en el
+     * lado de quien publica.
+     */
+    public static final String HEADER_PARTICION = "x-id-donacion";
 
     /** Cola propia donde este servicio consume los eventos de trazabilidad. */
     public static final String COLA_EVENTOS = "donaciones.eventos.queue";
 
     /**
-     * Exchange de notificaciones.
-     *
-     * <p>Lo declara este servicio porque es el que publica, y notificaciones ata su cola. El
-     * enunciado pide que la integracion con el servicio de notificaciones sea asincrona por
-     * cola de mensajes, y lo dice para los dos servicios de dominio: este y el de incentivos.
-     * Los dos publican al mismo exchange con routing keys distintas.
-     */
-    public static final String EXCHANGE_NOTIFICACIONES = "notificaciones.exchange";
-
-    /** Routing key de las notificaciones de donaciones-service: alta de donante, donacion asignada, entregas. */
-    public static final String RK_DONACION = "notificaciones.donacion";
-
-    @Bean
-    public TopicExchange exchangeNotificaciones() {
-        return new TopicExchange(EXCHANGE_NOTIFICACIONES, true, false);
-    }
-
-    /**
-     * Declara solo el exchange, no la cola de entrada de logística.
+     * Declara solo el exchange, no la cola de entrada de logisticas-service.
      *
      * <p>Un exchange es un punto de encuentro: lo declara quien publica y lo usan todos los
-     * que consumen. Por eso este módulo lo define y logística se limita a atar su cola.
+     * consumidores, sin que ninguno tenga que saber el nombre de la cola del otro.
      */
     @Bean
     public TopicExchange exchangeIntegracion() {
@@ -96,8 +100,8 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue colaEventos() {
-        return new Queue(COLA_EVENTOS, true);
+    public TopicExchange exchangeNotificaciones() {
+        return new TopicExchange(EXCHANGE_NOTIFICACIONES, true, false);
     }
 
     @Bean
@@ -105,10 +109,5 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(colaEventos)
                 .to(exchangeEventos)
                 .with(RK_EVENTO + ".#");
-    }
-
-    @Bean
-    public MessageConverter messageConverter(ObjectMapper objectMapper) {
-        return new Jackson2JsonMessageConverter(objectMapper);
     }
 }

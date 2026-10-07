@@ -24,6 +24,21 @@ public class Parada {
     @Column(name = "id_parada", nullable = false, updatable = false)
     private UUID idParada;
 
+    /**
+     * Control de concurrencia optimista.
+     *
+     * <p>Sin esto, dos instancias de logistica que leen esta fila y escriben sobre ella lo
+     * hacen en silencio: la segunda sobrescribe a la primera con los valores que leyo antes
+     * del UPDATE de la otra. Con la version, el UPDATE lleva {@code WHERE version = ?} y si
+     * otra instancia escribio en el medio Hibernate tira {@code OptimisticLockingFailureException}
+     * en vez de pisar. Es lo que hace seguro el requisito de mas de un servicio de logistica.
+     *
+     * <p>La columna la crea sola {@code ddl-auto=update}.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne
     @JoinColumn(name = "id_ruta", referencedColumnName = "id_ruta", nullable = false)
     private Ruta ruta;
