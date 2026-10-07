@@ -92,9 +92,8 @@ public class MisionDTO {
                                    ? null
                                    : new ConstanciaDTO(
             reglaConstancia.getCantidad(),
-            // name() y no toString(): ChronoUnit.toString() devuelve "Months" en
-            // camelCase y el resto de la API usa mayúsculas ("COINCIDENCIAS",
-            // "CANTIDAD_BIENES"). Al leerlo, MisionFactory normaliza las dos formas.
+            // Se conserva el identificador en inglés usado por la API y por las filas
+            // existentes en la base; MisionFactory también admite los nombres en español.
             reglaConstancia.getUnidadTiempo() == null
                 ? null
                 : reglaConstancia.getUnidadTiempo().name()

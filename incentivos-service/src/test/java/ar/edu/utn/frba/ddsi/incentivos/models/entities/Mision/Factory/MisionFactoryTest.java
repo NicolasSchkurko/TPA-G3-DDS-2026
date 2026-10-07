@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class MisionFactoryTest {
                 "ANOS, YEARS"
         })
         @DisplayName("acepta las unidades en español, que es el idioma de la API")
-        void aceptaLasUnidadesEnEspanol(String enviada, ChronoUnit esperada) {
+        void aceptaLasUnidadesEnEspanol(String enviada, UnidadTiempo esperada) {
             ReglaConstancia constancia = factory.crearConstancia(3, enviada);
 
             assertThat(constancia.getUnidadTiempo()).isEqualTo(esperada);
@@ -45,21 +45,21 @@ class MisionFactoryTest {
         @DisplayName("acepta 'AÑOS' con tilde, que ChronoUnit.valueOf nunca reconoceria")
         void aceptaAniosConTilde() {
             assertThat(factory.crearConstancia(1, "AÑOS").getUnidadTiempo())
-                    .isEqualTo(ChronoUnit.YEARS);
+                    .isEqualTo(UnidadTiempo.YEARS);
         }
 
         @Test
         @DisplayName("tolera espacios y minusculas")
         void toleraEspaciosYMinusculas() {
             assertThat(factory.crearConstancia(1, "  dias  ").getUnidadTiempo())
-                    .isEqualTo(ChronoUnit.DAYS);
+                    .isEqualTo(UnidadTiempo.DAYS);
         }
 
         @Test
         @DisplayName("sigue aceptando los nombres en ingles que ya estan en la base")
         void sigueAceptandoLosNombresEnIngles() {
             assertThat(factory.crearConstancia(1, "MONTHS").getUnidadTiempo())
-                    .isEqualTo(ChronoUnit.MONTHS);
+                    .isEqualTo(UnidadTiempo.MONTHS);
         }
 
         @Test

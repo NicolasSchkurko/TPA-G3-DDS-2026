@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.incentivos.clients;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -10,8 +12,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioPublicacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.services.PublicacionesN8nService;
+import ar.edu.utn.frba.ddsi.incentivos.services.PublicacionesN8nService.PublicacionReclamada;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,15 +31,15 @@ class N8nClientTest {
 
     private RestTemplate restTemplate;
     private MockRestServiceServer server;
-    private RepositorioPublicacionesPendientes pendientes;
+    private PublicacionesN8nService publicaciones;
     private N8nClient client;
 
     @BeforeEach
     void setUp() {
         restTemplate = new RestTemplate();
         server = MockRestServiceServer.bindTo(restTemplate).build();
-        pendientes = new RepositorioPublicacionesPendientes();
-        client = new N8nClient(restTemplate, pendientes);
+        publicaciones = org.mockito.Mockito.mock(PublicacionesN8nService.class);
+        client = new N8nClient(restTemplate, publicaciones);
     }
 
     private void givenWebhook(String url) throws Exception {
@@ -61,25 +65,47 @@ class N8nClientTest {
     }
 
     @Test
-    @DisplayName("publica en el webhook al completar una mision")
-    void publicaAlCompletarLaMision() throws Exception {
+    @DisplayName("encola la publicacion al completar una mision")
+    void encolaLaPublicacionAlCompletarLaMision() {
+        client.encolarInsignia(eventoCompletada());
+
+        var publicacion = org.mockito.ArgumentCaptor.forClass(PerfilPublicacionDTO.class);
+        verify(publicaciones).encolar(publicacion.capture());
+        assertThat(publicacion.getValue().getRedSocial()).isEqualTo("discord");
+        assertThat(publicacion.getValue().getNomUsuario()).isEqualTo("Ana");
+    }
+
+    @Test
+    @DisplayName("publica una fila reclamada en el webhook y la elimina al confirmarse")
+    void publicaUnaFilaReclamada() throws Exception {
         givenWebhook(WEBHOOK);
+        UUID id = UUID.randomUUID();
+        PerfilPublicacionDTO contenido = new PerfilPublicacionDTO(
+                "Primer paso", "Primera donacion", "discord", "Ana", UUID.randomUUID());
+        when(publicaciones.reclamarSiguiente(any()))
+                .thenReturn(Optional.of(new PublicacionReclamada(id, contenido, 1)))
+                .thenReturn(Optional.empty());
 
         server.expect(requestTo(WEBHOOK))
               .andExpect(jsonPath("$.redSocial").value("discord"))
               .andExpect(jsonPath("$.nomUsuario").value("Ana"))
               .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        client.publicarInsignia(eventoCompletada());
+        client.procesarPendientes();
 
         server.verify();
-        assertThat(pendientes.listarTodas()).isEmpty();
+        verify(publicaciones).confirmar(id);
     }
 
     @Test
     @DisplayName("usa la insignia ganada en el prompt de la imagen")
     void usaLaInsigniaGanadaEnElPrompt() throws Exception {
         givenWebhook(WEBHOOK);
+        PerfilPublicacionDTO contenido = new PerfilPublicacionDTO(
+                "Primer paso", "Primera donacion", "discord", "Ana", UUID.randomUUID());
+        when(publicaciones.reclamarSiguiente(any()))
+                .thenReturn(Optional.of(new PublicacionReclamada(UUID.randomUUID(), contenido, 1)))
+                .thenReturn(Optional.empty());
 
         server.expect(requestTo(WEBHOOK))
               .andExpect(jsonPath("$.prompt")
@@ -88,40 +114,28 @@ class N8nClientTest {
                           .value(org.hamcrest.Matchers.containsString("Primera donacion")))
               .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        client.publicarInsignia(eventoCompletada());
+        client.procesarPendientes();
 
         server.verify();
     }
 
     @Test
-    @DisplayName("si el webhook falla, guarda la publicación como pendiente y NO propaga")
-    void guardaLaPublicacionPendienteSiFalla() throws Exception {
+    @DisplayName("si el webhook falla, agenda el reintento y no lo propaga")
+    void reintentaLaPublicacionSiFalla() throws Exception {
         givenWebhook(WEBHOOK);
+        UUID id = UUID.randomUUID();
+        PerfilPublicacionDTO contenido = new PerfilPublicacionDTO(
+                "img", "texto", "discord", "Ana", UUID.randomUUID());
+        when(publicaciones.reclamarSiguiente(any()))
+                .thenReturn(Optional.of(new PublicacionReclamada(id, contenido, 1)))
+                .thenReturn(Optional.empty());
 
         server.expect(requestTo(WEBHOOK)).andRespond(withServerError());
 
-        // Este listener corre dentro del afterCommit, que Spring invoca sin try/catch: si
-        // la excepcion sale de aca, sube por el commit y el donante recibe un 500 aunque
-        // la donacion ya este guardada. Con ese 500 el cliente reintenta y la segunda pasada
-        // vuelve a sumar progreso (punto 14).
-        assertThatNoException().isThrownBy(() -> client.publicarInsignia(eventoCompletada()));
+        client.procesarPendientes();
 
-        assertThat(pendientes.listarTodas()).hasSize(1);
+        verify(publicaciones).reintentar(org.mockito.ArgumentMatchers.eq(id), any(),
+                org.mockito.ArgumentMatchers.anyString());
         server.verify();
-    }
-
-    @Test
-    @DisplayName("los pendientes no se duplican")
-    void losPendientesNoSeDuplican() {
-        PerfilPublicacionDTO publicacion =
-                new PerfilPublicacionDTO("img", "texto", "discord", "Ana", UUID.randomUUID());
-
-        pendientes.guardar(publicacion);
-        pendientes.guardar(publicacion);
-
-        assertThat(pendientes.listarTodas()).hasSize(1);
-
-        pendientes.eliminar(publicacion);
-        assertThat(pendientes.listarTodas()).isEmpty();
     }
 }

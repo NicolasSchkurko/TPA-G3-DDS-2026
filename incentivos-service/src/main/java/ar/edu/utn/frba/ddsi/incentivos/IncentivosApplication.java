@@ -7,8 +7,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * Arranque del servicio de incentivos.
  *
- * <p>{@code @EnableScheduling} es lo que hace que corran los dos schedulers: el que
- * evalúa la constancia de las misiones y el que arma el ranking mensual.
+ * <p>{@code @EnableScheduling} activa los schedulers de constancia de misiones, ranking
+ * mensual y reintentos de publicaciones a n8n.
  */
 @SpringBootApplication
 @EnableScheduling

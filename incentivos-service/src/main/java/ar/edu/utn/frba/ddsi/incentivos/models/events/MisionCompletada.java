@@ -9,10 +9,10 @@ import java.util.UUID;
  * <p>Lo consumen {@code N8nClient}, que arma la publicación para las redes, y
  * {@code NotificacionClient}, que le avisa al donante.
  *
- * <p>Lleva el {@code idUsuario} en vez del medio de contacto resuelto a propósito: si el
- * evento llevara el contacto, habría que resolverlo <em>dentro</em> de la transacción que
- * otorga la insignia, y esa llamada HTTP no corresponde a la base. El listener lo busca en
- * su propio {@code AFTER_COMMIT}, cuando ya se sabe que el progreso quedó guardado.
+ * <p>Lleva el {@code idUsuario} en vez del medio de contacto resuelto a propósito. El
+ * listener de notificaciones resuelve el contacto después del commit, mientras que el de
+ * n8n guarda el contenido del webhook en la outbox dentro de la transacción; ninguno hace
+ * una llamada HTTP dentro de la transacción que otorga la insignia.
  */
 public record MisionCompletada(String misionAnterior,
                                String insigniaObtenida,
