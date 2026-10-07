@@ -832,3 +832,42 @@ Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del con
 rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
 n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
 llega pero muere del otro lado.
+
+### `GET /api/metricas/{id}/periodo` respondía 500: el `Optional<Object[]>` traía el array de filas
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../dto/Perfil/ResumenMetricaDTO.java`, `.../services/MetricasService.java`,
+`.../services/MetricaPorPeriodoJpaTest.java`
+
+El método declaraba `Optional<Object[]>` y Spring Data devuelve ahí el *array de filas*, no la
+fila: con donaciones, `resumen[0]` era la fila entera (`ClassCastException ... cannot be cast to
+class java.util.UUID`) y sin donaciones un array vacío (`ArrayIndexOutOfBoundsException: Index 0
+out of bounds for length 0`), o sea que el caso "no hay métrica para ese donante" daba 500 en vez
+del 404. Ahora hay una proyección tipada (`ResumenMetricaDTO`, record) con expresión de
+constructor JPQL, y el service usa los campos sin casts.
+
+**Decisión del equipo (2026-10-07): el borde superior del período es inclusivo (`<= :hasta`)** —
+una donación guardada a las 00:00 del día siguiente a `hasta` cuenta dentro del período. Lo
+cubren los tests de `MetricaPorPeriodoJpaTest` (H2 real, 4 tests); no lo "arreglen" después.
+
+### La pasada de constancia tocaba `valoresObservados` (LAZY) sobre entidades desligadas
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../services/PerfilService.java`,
+`.../services/PerfilServiceConstanciaTransaccionalTest.java`
+
+`evaluarConstanciaPerfiles` no era transaccional: consultaba los perfiles (que llegan desligados
+de la transacción propia del repositorio) y recién después abría la transacción del bloque. Si la
+racha caducaba, o el donante no tenía donaciones que hicieran progresar la misión,
+`reiniciarProgreso()` tocaba el `@ElementCollection` LAZY `valoresObservados` sobre una entidad
+desligada y lanzaba `LazyInitializationException`, con lo que la pasada entera se caía. La
+consulta y el recálculo ahora corren dentro del mismo `transactionTemplate.execute(...)`, con el
+bloque de 500 y el orden por `idUsuario` intactos.
+
+**Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre con
+transacción activa; con el código anterior el test falla. Suite completa 313 en verde.

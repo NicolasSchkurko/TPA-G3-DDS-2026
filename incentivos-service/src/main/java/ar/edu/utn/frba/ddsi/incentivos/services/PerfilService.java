@@ -134,21 +134,28 @@ public class PerfilService {
         int bloque = 0;
 
         while (true) {
-            List<Perfil> perfilesDelBloque = repositorioPerfiles
-                    .buscarPerfilesConMisionQueRequiereConstancia(corte)
-                    .getContent();
+            // La consulta y el recálculo van en la MISMA transacción del bloque: fuera de ella
+            // los perfiles llegan desligados y tocar valoresObservados (LAZY) lanza
+            // LazyInitializationException (punto 6).
+            Pageable pagina = corte; // efectivamente final para el lambda
+            int procesados = transactionTemplate.execute(estado -> {
+                List<Perfil> perfilesDelBloque = repositorioPerfiles
+                        .buscarPerfilesConMisionQueRequiereConstancia(pagina)
+                        .getContent();
+                if (perfilesDelBloque.isEmpty()) {
+                    return 0;
+                }
+                recalcularConstanciaDe(perfilesDelBloque);
+                return perfilesDelBloque.size();
+            });
 
-            if (perfilesDelBloque.isEmpty()) {
+            if (procesados == 0) {
                 return;
             }
 
-            transactionTemplate.executeWithoutResult(estado ->
-                    recalcularConstanciaDe(perfilesDelBloque));
+            log.debug("Bloque {} de constancia: {} perfiles recalculados", bloque, procesados);
 
-            log.debug("Bloque {} de constancia: {} perfiles recalculados",
-                    bloque, perfilesDelBloque.size());
-
-            if (perfilesDelBloque.size() < TAMANO_BLOQUE_CONSTANCIA) {
+            if (procesados < TAMANO_BLOQUE_CONSTANCIA) {
                 // Última página: no hay más. Sin esto el bucle daría una vuelta de más
                 // buscando una página vacía, que es una consulta inútil pero no un bug.
                 return;

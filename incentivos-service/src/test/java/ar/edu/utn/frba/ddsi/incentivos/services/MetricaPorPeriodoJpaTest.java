@@ -64,8 +64,13 @@ class MetricaPorPeriodoJpaTest {
         assertThat(dto.getCantidadBienes()).isEqualTo(3);
     }
 
+    /**
+     * Decisión del equipo (2026-10-07): el límite superior del período es inclusivo ({@code <=}).
+     * Una donación guardada a las 00:00 del día siguiente a {@code hasta} también entra. Ver
+     * PENDIENTES.md (Corregidos) para que nadie lo "arregle" después.
+     */
     @Test
-    void unaDonacionJustoALasCeroDelDiaSiguienteNoEntraEnElPeriodo() {
+    void unaDonacionJustoALasCeroDelDiaSiguienteEntraEnElPeriodo() {
         UUID idUsuario = UUID.randomUUID();
         LocalDate desde = LocalDate.of(2026, 10, 1);
         LocalDate hasta = LocalDate.of(2026, 10, 7);
@@ -78,8 +83,8 @@ class MetricaPorPeriodoJpaTest {
                 .obtenerMetrica(idUsuario, desde, hasta)
                 .orElseThrow();
 
-        assertThat(dto.getCantidadDonaciones()).isEqualTo(1);
-        assertThat(dto.getCantidadBienes()).isEqualTo(2);
+        assertThat(dto.getCantidadDonaciones()).isEqualTo(2);
+        assertThat(dto.getCantidadBienes()).isEqualTo(11);
         assertThat(dto.getEntidadesBeneficiarias()).containsExactly("Comedor");
     }
 
