@@ -153,7 +153,15 @@ public class RutaService {
     return new ParadaDTO(convertirADireccionDTO(parada.getEntidadDestino()), new BienesDTO(obtenerIdDonaciones(parada.getItems()), convertirItemsADTO(parada.getItems())));
   }
 
+  /**
+   * Convierte la entidad a DTO, tolerando que no haya.
+   *
+   * <p>Una parada todavia sin items devuelve {@code null} desde {@code getEntidadDestino()}, y sin
+   * este guardia la conversion tiraba NullPointerException en vez de devolver una parada sin
+   * direccion.
+   */
   private DireccionDTO convertirADireccionDTO(Entidad entidad){
+    if (entidad == null) return null;
     return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
   }
 

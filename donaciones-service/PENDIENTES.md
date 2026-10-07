@@ -37,6 +37,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 26 | 26    | El PUT de necesidad ignora el id de entidad y castea a ciegas                                     |
 | 27 | 27    | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
 | 28 | 28    | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica                             |
+| 29 | 29    | `POST /donaciones/formulario` devuelve 400 sin decir por qué                                    |
+| 30 | 30    | El payload de la donación no cumple el contrato de incentivos: toda asignación responde 400       |
 
 ---
 
@@ -1135,6 +1137,68 @@ servicios— responde `201` con persistencia real.
 
 **Nota:** el `GlobalExceptionHandler` de este servicio está comentado entero, igual que el de
 `notificaciones-service`. Es la causa de que el `400` no diga nada.
+
+---
+
+## 30. El payload de la donación no cumple el contrato de incentivos: toda asignación responde 400
+
+**Estado:** abierto
+**Severidad:** crítica
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/incentivos/IncentivosDonacionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorAsignaciones.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/IncentivosClient.java`
+
+### Qué pasa
+
+Rutas y verbo de `IncentivosClient` ya están corregidos (ver *Corregidos*: las llamadas apuntan
+a `POST /api/perfiles` y `PATCH /api/perfiles/donacion/{id}`). Lo que quedó sin alinear es el
+**payload**, y `incentivos-service` es deliberadamente estricto en ese DTO:
+
+| | Este servicio manda | Incentivos exige |
+|---|---|---|
+| `idDonacion` | **no existe el campo** en `IncentivosDonacionDTO` | `@NotNull UUID` — es la primary local y la clave de idempotencia (punto 14 del otro backlog) |
+| `fechaEntrega` | `LocalDate` (`"2026-10-07"`) | `@NotNull LocalDateTime` |
+
+`GestorAsignaciones.procesarAccionesPostCambioEstado` (líneas 93-99) arma el DTO sin id, y
+Jackson no convierte un `LocalDate` en `LocalDateTime`: el endpoint responde **400 siempre**,
+por `MethodArgumentNotValidException` (falta `idDonacion`) o por `HttpMessageNotReadableException`
+(la fecha no parsea). Y `fechaEntrega` además puede venir null, porque nunca se persiste: es el
+punto 10 de este archivo.
+
+El requisito estaba escrito del otro lado y no se cumplió: el backlog de incentivos dice
+textual *"`donaciones-service` tiene que mandar el id de la donación o toda donación entra con
+400"* (Tanda 3, punto 14), y su punto 5 documenta el mismo contrato roto con más detalle.
+
+### Qué se rompe
+
+`IncentivosClient.notificarDonacionAsignada` **relanza** la excepción (decisión registrada en
+*Corregidos*: un fallo de integración no se confunde con un fallo de dominio), y
+`procesarAccionesPostCambioEstado` no la captura en la línea 102. La excepción sube por
+`DonacionService.asignarPropuesta`, que llama `cambiarEstado(..., "ASIGNADO", ...)` en la línea
+140, y **`publicarEntregaALogistica` (línea 147) nunca se ejecuta**: la asignación entera
+responde 500 y logística no se entera de la entrega. O sea que el 400 de incentivos corta un
+flujo que no tiene nada que ver con incentivos.
+
+### Por qué no lo detecta nadie
+
+- `test-conexiones.ps1` (línea 231) manda el contrato *correcto* —con `idDonacion` y con
+  hora—, así que su verificación pasa y no refleja lo que manda este código.
+- El smoke de incentivos (`incentivos-smoke.postman_collection.json:122`) manda el payload
+  **sin** `idDonacion` y espera 200: ese test no puede pasar hoy.
+
+**Propuesta**
+
+1. Agregar `private UUID idDonacion;` a `IncentivosDonacionDTO` y setearlo en
+   `GestorAsignaciones`: `dto.setIdDonacion(donacion.getId())`.
+2. Alinear `fechaEntrega`: `LocalDateTime` acá, o `LocalDate` de los dos lados (incentivos solo
+   usa `YearMonth.from(...)`), decidiendo de una vez. El id, en cambio, no se puede omitir: es
+   la clave de idempotencia del otro lado.
+3. De paso, este arreglo toca el punto 10 (`fechaEntrega` nunca se persiste): sin ese valor el
+   `@NotNull` del otro lado tampoco deja pasar el pedido.
+4. Un test de contrato en este servicio, que es donde se detecta este desfasaje antes de llegar
+   al 400 del otro lado.
+
+Espejado como punto 5 de `incentivos-service/PENDIENTES.md`.
 
 ---
 

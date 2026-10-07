@@ -66,7 +66,21 @@ public class Parada {
         items.add(item);
     }
 
+    /**
+     * La entidad a la que lleva el primer item de la parada, o {@code null} si no tiene ninguno.
+     *
+     * <p><b>No puede usar {@code getFirst()}.</b> Con Java 21, {@code List.getFirst()} sobre una
+     * lista vacia tira {@code NoSuchElementException}, y eso no loitte en un log: revienta el
+     * endpoint entero.
+     *
+     * <p>Se vio con {@code GET /api/rutas}: una parada puede quedar sin items (la entrega se
+     * elimino, o la ruta se planifico y todavia no se le asigno nada), y con una sola parada asi
+     * el listado de rutas devolvia 500 y no habia forma de ver las otras.
+     *
+     * <p>Devolver {@code null} es lo que corresponde: "esta parada no tiene destino todavia" es
+     * un estado valido de una parada a medio planificar, no un error.
+     */
     public Entidad getEntidadDestino() {
-        return items.getFirst().getEntidadDestino();
+        return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
     }
 }

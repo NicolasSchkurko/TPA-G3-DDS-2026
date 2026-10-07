@@ -12,64 +12,37 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 1 | No tiene ni un test: nada de lo que hay adentro está verificado |
+| 1 | 3 | Terminar una ruta borra un ítem y después tira excepción: corta el recorrido y deja chofer y camión bloqueados |
 | 2 | 2 | Iniciar o terminar una ruta nunca persiste el estado: la operación responde OK y no pasa nada |
-| 3 | 3 | Terminar una ruta borra un ítem y después tira excepción: corta el recorrido a mitad de camino |
-| 4 | 4 | La condición del camión está invertida: el caso normal responde "Camión no encontrado" |
+| 3 | 4 | La condición del camión está invertida: el caso normal responde "Camión no encontrado" |
+| 4 | 25 | Un mensaje malformado se reencola para siempre: la cola compartida se traba y la DLQ nunca recibe |
 | 5 | 5 | Los tres DELETE devuelven 404 después de borrar bien, y con razón equivocada |
-| 6 | 6 | La relación ítem-evento apunta al id equivocado: la trazabilidad no se persiste |
-| 7 | 7 | El getter de Parada ignora su propio campo y lee el primer ítem: revienta con la lista vacía |
-| 8 | 8 | Confirmar una entrega que no está en camino se ignora en silencio y responde 200 |
-| 9 | 9 | Reportar una entrega fallida no valida el estado previo: una entrega_ok se puede revertir |
-| 10 | 10 | El reingreso a depósito no valida nada y su comentario cita un método que no existe |
-| 11 | 11 | El mismo evento se mete en la lista de todos los ítems con `orphanRemoval` |
-| 12 | 12 | El polling de eventos reenvía el último evento y explota si `desdeId` viene null |
-| 13 | 13 | `findByIdGreaterThanOrderByIdAsc` no ordena: el nombre promete algo que el código no hace |
-| 14 | 14 | `GET /entregas` y `GET /entregas/{id}` devuelven la entidad cruda: recursión infinita de Jackson |
-| 15 | 15 | Registrar una donación con N bienes duplica país, provincia, ciudad y dirección N veces |
-| 16 | 16 | `procesarPeticion` no valida el payload: NPE e IndexOutOfBounds con requests incompletos |
-| 17 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
-| 18 | 18 | `return null` en el catch del planificador manual: el error se pierde |
-| 19 | 19 | La validación de la justificación de una entrega fallida está invertida |
-| 20 | 20 | Verificado: logóstica no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
----
-
-## 1. El módulo no tiene un solo test
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** todo `logisticas-service/src/main`
-
-### Qué pasa
-
-`logisticas-service/src/test` no existe. Es el único módulo del proyecto sin cobertura, y es
-justamente el que recibió un merge sin resolver: el compilador era la única red de seguridad y
-esa red no avisó.
-
-No es una observación estética. Los bugs que se listan abajo son de la clase que un test
-atrapa con dos líneas y que se descubren tarde: un JPQL mal formado, un método que se borra y
-deja la llamada colgando, imports que apuntan al paquete viejo.
-
-### Qué había que haber atrapado
-
-1. `GestorPublicacionEventos.java` se commiteó con marcadores de conflicto de merge
-   (`<<<<<<< HEAD`, `=======`, `>>>>>>>`). El módulo entero no compilaba.
-2. `RepositorioBienes.buscarPorId` se borró dejando la llamada colgando (esto fue en
-   `donaciones-service`, mismo patrón).
-3. Un `@Query` sin `FROM` hacía que el bean del repositorio no se pudiera crear y el servicio
-   no arrancara, con los tests en verde.
-
-Los tres son fallos que un `mvn compile` o un test de arranque los muestran en segundos.
-
-### Propuesta
-
-Un `@SpringBootTest` que levante el contexto ya cubre el punto 1 y el 3: el contexto no
-arranca si un JPQL está mal o si una entidad referencia a otra que no está en la unidad de
-persistencia. Cuesta un test y es la red que falta.
-
-Después, tests sobre `GestorPublicacionEventos` y sobre los `default` de los repositorios,
-que son la lógica que más se toca.
-
+| 6 | 26 | Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual |
+| 7 | 6 | La relación ítem-evento apunta al id equivocado: la trazabilidad no se persiste |
+| 8 | 27 | `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada |
+| 9 | 8 | Confirmar una entrega que no está en camino se ignora en silencio y responde 200 |
+| 10 | 9 | Reportar una entrega fallida no valida el estado previo: una entrega_ok se puede revertir |
+| 11 | 10 | El reingreso a depósito no valida nada y su comentario cita un método que no existe |
+| 12 | 28 | Publica el evento antes del commit: un rollback deja un evento fantasma en el broker |
+| 13 | 29 | Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta |
+| 14 | 30 | `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null |
+| 15 | 32 | Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ |
+| 16 | 11 | El mismo evento se mete en la lista de todos los ítems con `orphanRemoval` |
+| 17 | 12 | El polling de eventos reenvía el último evento y explota si `desdeId` viene null |
+| 18 | 13 | `findByIdGreaterThanOrderByIdAsc` no ordena: el nombre promete algo que el código no hace |
+| 19 | 14 | `GET /entregas` y `GET /entregas/{id}` devuelven la entidad cruda: recursión infinita de Jackson |
+| 20 | 35 | Cada mensaje inserta país, provincia, ciudad y dirección nuevos aunque la entidad ya exista |
+| 21 | 31 | El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio |
+| 22 | 33 | Credenciales de la base hardcodeadas como default y en el compose |
+| 23 | 34 | `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas |
+| 24 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
+| 25 | 7 | El getter de Parada ignora su propio campo: la columna persistida no se usa y depende de la lista |
+| 26 | 18 | `return null` en el catch del planificador manual: el error se pierde |
+| 27 | 36 | El callback devuelve 500 con internals para payloads que su contrato documenta como 400 |
+| 28 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 29 | 38 | Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long` |
+| 30 | 39 | El cron de planificación corre a las 02:00 UTC, no a las 02:00 de Argentina |
+| 31 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 ---
 
 ## 2. Iniciar o terminar una ruta nunca persiste el estado
@@ -283,8 +256,8 @@ funciona el polling del punto 13.
 ## 7. El getter de Parada ignora su propio campo
 
 **Estado:** abierto
-**Severidad:** alta
-**Archivos:** `models/entities/Parada/Parada.java:37`, `models/entities/Parada/Parada.java:54-56`
+**Severidad:** baja
+**Archivos:** `models/entities/Parada/Parada.java:50-52`, `models/entities/Parada/Parada.java:83-84`, `models/entities/Ruta/Ruta.java:69`
 
 ### Qué pasa
 
@@ -294,31 +267,47 @@ funciona el polling del punto 13.
 private Entidad entidadDestino; //quedo raro porque hay un metodo que te da la entidad pero creo que es necesario pala la DB
 
 public Entidad getEntidadDestino() {
-    return items.getFirst().getEntidadDestino();
+    return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
 }
 ```
 
 El getter escrito a mano **pisa** el que genera Lombok con `@Getter` a nivel de clase. O sea:
 la columna `id_entidad_beneficiaria` de `parada` se persiste y se lee, y después se tira a la
-basura, porque el getter devuelve otra cosa.
+basura: el getter devuelve la entidad del **primer ítem**, no la de la parada, y `null` cuando
+no hay ítems.
 
-Y lo que devuelve no es seguro:
+**Por qué bajó de severidad:** el `NoSuchElementException` del `getFirst()` sobre lista vacía
+(que reventaba `GET /rutas` con 500) está cubierto en el árbol de trabajo, y bien: el guard
+`items.isEmpty() ? null : ...` más el `convertirADireccionDTO` tolerante a `null` de
+`RutaService:163-164` son correctos. **Pero están sin commitear** — en el último commit la
+parada vacía sigue tirando 500, así que el punto cierra recién cuando eso se commitee.
 
-- `List.getFirst()` lanza `NoSuchElementException` sobre una lista vacía. Una `Parada` recién
-  leída de la base puede no tener ítems cargados todavía, y `items` es LAZY.
-- Devuelve el `entidadDestino` del **primer ítem**, no el de la parada. Si algún día una parada
-  agrupara ítems de entidades distintas, el getter miente.
-- El propio comentario de la línea 37 admite que la relación quedó rara. La solución fue
-  agregar un `@JoinColumn` nullable y después un getter que lo ignora: el `@ManyToOne` sobra.
+Lo que queda abierto son dos cosas:
 
-Los dos llamadores del getter son `RutaService.convertirAParadaDTO:153` y
-`Ruta.agregarEntrega:54`, o sea que un `GET /rutas` puede reventar con 500.
+- **La columna sigue muerta.** El `@ManyToOne` de la línea 50-52 persiste un destino que
+  nadie lee nunca: todo lo que importa sale de `items`. O se usa el campo, o se borra.
+- **El `null` nuevo viaja hasta `Ruta.agregarEntrega:69`:**
+
+  ```java
+  .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
+  ```
+
+  Si alguna parada de la ruta quedó sin ítems (el javadoc del propio getter admite que pasa:
+  "la entrega se elimino, o la ruta se planifico y todavia no se le asigno nada"), ese
+  `equals` sobre `null` es un `NullPointerException` en plena planificación.
+
+### Cómo se dispara
+
+1. Con el último commit (sin los guards): `GET /api/rutas` con una parada sin ítems → 500.
+2. Con el árbol de trabajo: una ruta que ya tiene una parada sin ítems a la que se le
+   planifica otra entrega → `NullPointerException` en `Ruta.java:69`.
 
 ### Propuesta
 
-Borrar el getter manual de las líneas 54-56 y dejar que Lombok genere el del campo, que es
-lo que el mapeo JPA ya persiste. Si de verdad el destino se deriva del ítem, entonces el
-`@ManyToOne` de la línea 35-37 no debería estar.
+Commitear los guards que ya están escritos. Y atacar la raíz: borrar el getter manual y
+dejar que Lombok genere el del campo (que es lo que el mapeo JPA persiste), o si el destino
+se deriva del ítem, sacar el `@ManyToOne`. Si se mantiene el getter derivado, el filtro de
+`agregarEntrega` tiene que tolerar `null` (`Objects::equals`).
 
 ---
 
@@ -583,92 +572,6 @@ como red, para que un mapping equivocado no se convierta en un DoS.
 
 ---
 
-## 15. Registrar una donación duplica la dirección N veces
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:84-106`
-
-### Qué pasa
-
-El `for` sobre los bienes tiene adentro la construcción de la dirección:
-
-```java
-for (int j = 0; j < bienes.size(); j++) {
-    BienDTO bien = bienes.get(j);
-    Direccion direccionEntidad = this.convertirDireccionDTO(request.getEntidadBeneficiaria());
-    repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
-    repoProvincias.save(direccionEntidad.getCiudad().getProvincia());
-    repoCiudades.save(direccionEntidad.getCiudad());
-    repoDirecciones.save(direccionEntidad);
-    Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
-    repoEntidades.save(nuevaEntidad);
-    ...
-}
-```
-
-`request.getEntidadBeneficiaria()` es **el mismo objeto para todos los bienes**, pero
-`convertirDireccionDTO` (líneas 187-194) construye un `Direccion` nuevo, y el constructor de
-`Direccion` (línea 49) construye un `Pais` nuevo, que a su vez trae un `Provincia` nueva, que
-trae una `Ciudad` nueva.
-
-Con una donación de 3 bienes, quedan en la base 3 países, 3 provincias, 3 ciudades y 3
-direcciones con el mismo contenido. `Pais`, `Provincia` y `Ciudad` usan
-`GenerationType.IDENTITY`, así que cada iteración inserta una fila nueva sin deduplicar. Con
-las rutas de una campaña de donaciones, la tabla `ciudad` se infla de forma lineal con la
-cantidad de bienes.
-
-El `repoEntidades.save` en la línea 93 es peor: `Entidad` tiene id manual
-(`id_entidad_beneficiaria`), así que en la segunda iteración no inserta: hace merge de la misma
-fila y le **cambia la `id_direccion_destino` a la dirección de la iteración 2**. Al terminar,
-la entidad apunta a la última de las tres direcciones duplicadas y las otras dos quedan
-huérfanas.
-
-### Propuesta
-
-Sacar la construcción de la dirección y de la entidad fuera del `for`: se calculan una vez y se
-reusan para todos los bienes. Y para el lado del `save`, resolver país/provincia/ciudad por
-nombre (`findByNombre`) antes de insertar, en vez de confiar en que se dupliquen.
-
----
-
-## 16. `procesarPeticion` no valida el payload
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:78-106`
-
-### Qué pasa
-
-El método valida `request` y `bienes`, y nada más. Tres caminos a excepción:
-
-**`request.getEntidadBeneficiaria()` en null.** `convertirDireccionDTO:188` devuelve `null`
-para un dto `null`, y la línea 87 hace `direccionEntidad.getCiudad()` sobre ese `null`:
-`NullPointerException` en la primera iteración. La línea 92 desreferencia
-`request.getEntidadBeneficiaria()` otra vez, así que aunque se evitara el 87, el 92 revienta
-igualmente.
-
-**`getIdsDonaciones()` en null o corto.** La línea 100 indexa
-`request.getDonacionResumen().getIdsDonaciones().get(j)` con el mismo `j` que recorre
-`bienes`, sin verificar que ambas listas tengan la misma longitud. Si el producer manda tres
-bienes y dos ids, `IndexOutOfBoundsException` después de haber insertado país, provincia,
-ciudad, dirección y entidad: la base queda a medias.
-
-**`getDonacionResumen()` en null.** La línea 81 desreferencia sin chequear, y solo se valida
-`getBienes()`, que es un nivel más adentro.
-
-`EntregaController:69` lo transforma todo en un 400 con el mensaje del `NullPointerException`,
-que es `null`. Y `DonacionListener:21` lo traga con un `System.err.println`, así que el mensaje
-de RabbitMQ se acepta igual y el evento se pierde en silencio.
-
-### Propuesta
-
-Validar la estructura del payload una vez, arriba, antes de tocar la base: `entidadBeneficiaria`,
-`donacionResumen`, `idsDonaciones` no nulos y `idsDonaciones.size() == bienes.size()`. Con un
-`@Valid` y anotaciones en el DTO sale bastante más limpio que la validación a mano.
-
----
-
 ## 17. El planificador resetea la carga de los camiones y nunca la persiste
 
 **Estado:** abierto
@@ -760,49 +663,6 @@ controller. Y bajar los `println` a `log.error` con la excepción completa.
 
 ---
 
-## 19. La validación de la justificación de una entrega fallida está invertida
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/logisticas/services/EntregaService.java:143-145`
-
-### Qué pasa
-
-```java
-case "NO_RECIBIDA":
-  if(comprobarExistencia(request.getJustificacion())) {
-    throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
-  }
-```
-
-La condición está al revés. `comprobarExistencia(...)` devuelve verdadero cuando el texto
-**sí** está escrito, así que el endpoint:
-
-- Rechaza la entrega fallida cuando el donante escribió la justificación.
-- Acepta la entrega fallida sin justificación, que es justo lo que el mensaje dice impedir.
-
-### Por qué es el más grave del módulo
-
-Es el único de los dieciocho donde una validación hace lo contrario de lo que dice. Los
-demás fallan de forma ruidosa: un 404, un 500, un estado que no se persiste. Este acepta
-datos inválidos en silencio y rechaza los válidos, así que en producción el síntoma va a ser
-"los donantes no pueden reportar una entrega fallida" más entregas fallidas sin motivo.
-
-Los dos `if` de alrededor repiten el patrón, lo cual sugiere que se copiaron sin revisar:
-
-- `EntregaService.java:134` — `if(comprobarExistencia(request.getFotoUrl()))` exige la foto.
-- `EntregaService.java:143` — `if(comprobarExistencia(request.getJustificacion()))` exige el motivo.
-
-El primero está en el `case "ENTREGADA"` y hace lo que dice. El segundo está en
-`case "NO_RECIBIDA"` y hace lo contrario. La misma función, el mismo helper, sentido opuesto.
-
-### Propuesta
-
-Invertir a `if(!comprobarExistencia(...))`. De paso, el `break` que sigue al `throw` es
-código muerto: cuando la condición se cumple el método ya salió por la excepción, así que
-nunca se llega.
-
----
 ## 20. Verificado: logística no invoca a `donaciones-service` ni a `incentivos`, y no habla con notificaciones
 
 **Estado:** verificado, sin cambios necesarios
@@ -865,7 +725,657 @@ dependencia del pom amerita confirmar con el equipo que no hay planes de reusar 
 notificaciones desde logística, que es lo que induce a esa dependencia.
 
 ---
+## 25. Un mensaje malformado se reencola para siempre: la cola compartida se traba y la DLQ nunca recibe
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `RabbitMQ/DonacionListener.java:74-86`, `config/RabbitMQConfig.java:43-44,227-232`
+
+### Qué pasa
+
+Cuando los `logistica.reintentos` (3 por defecto) intentos se agotan, el listener hace
+`throw ultimoFallo` (línea 86) y el log dice "va a la cola de mensajes muertos". No es así.
+En todo el repo no está configurado
+`spring.rabbitmq.listener.simple.default-requeue-rejected=false` (búsqueda: cero resultados),
+así que rige el default de Spring AMQP, que es `true`: el mensaje **se reencola** y vuelve a
+entrar a la cola. Nunca pasa por el dead letter.
+
+Las colas sí declaran `deadLetterExchange` (`RabbitMQConfig:229-230`) y la javadoc de la clase
+promete "los fallos no quedan dando vueltas... termina en DLQ en vez de rebotar entre
+consumidores", pero el dead letter solo se activa cuando el mensaje se rechaza **sin**
+requeue. Con el default en `true`, un lanzamiento no activa nada.
+
+El resultado es un ciclo infinito: un payload que falla siempre —por ejemplo
+`"bienes": [null]`, que produce `NullPointerException` en `EntregaService:230` y no entra en
+los `catch` de negocio ni de integridad— repite 3 intentos con 2 s de espera, `throw`,
+requeue, y otra vez 3 intentos. RabbitMQ devuelve el mensaje rechazado a su posición
+original en la cola, así que el mismo mensaje enzoque bloquea `logistica.integracion.queue`,
+la cola compartida de la que dependen todas las instancias: no se procesa ninguna otra
+donación mientras tanto, y la DLQ recibe cero mensajes.
+
+### Cómo se dispara
+
+Publicar en `donaciones.creada` un mensaje con `"bienes": [null]` y observar: el log del
+listener gira en "intento 3 de 3" / "va a la cola de mensajes muertos" para siempre, la
+profundidad de la cola no baja, y `DLQ_INTEGRACION` queda vacía.
+
+### Propuesta
+
+`spring.rabbitmq.listener.simple.default-requeue-rejected=false`, para que el rechazo vaya de
+verdad a la dead letter —los reintentos con espera ya están hechos en el propio código, que
+es donde corresponde—, o lanzar `AmqpRejectAndDontRequeueException` después de agotarlos. De
+paso, corregir el log y la javadoc, que prometen una DLQ que hoy no recibe nada.
+
+---
+
+## 26. Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `Scheduler/PlanificadorDeRutasScheduler.java:36,44`, `controllers/PlanificadorDeRutasController.java:88-91`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java:45-90`, `services/PlanificadorRutasService.java:80-97`
+
+### Qué pasa
+
+El cron de las 02:00 (y `POST /PlanificacionRutas/planificar-manual`, que llama al mismo
+método) busca `repoItemEntrega.findByEstado(PENDIENTE)` y manda esos items al proveedor. El
+callback construye `new Ruta(camion)` por cada asignación y la guarda **sin consultar si esos
+items ya tienen una ruta** (`PlanificadorDeRutas:63`, `PlanificadorRutasService:83-97`).
+
+El estado del ítem no cambia al crear la ruta: pasa a `EN_CAMINO` recién cuando el chofer la
+inicia (`publicarInicioRuta`). Mientras la ruta siga `PROGRAMADA` y sin iniciar, sus items
+siguen siendo `PENDIENTE`, y a la noche siguiente el cron los vuelve a planificar: otra
+`Ruta` nueva con los mismos ítems y las mismas paradas. Cada noche suma una ruta más para las
+mismas donaciones —el mismo ítem termina en dos camiones distintos—, y cada ejecución del
+endpoint manual hace lo mismo. Las rutas anteriores quedan colgando en `PROGRAMADA` para
+siempre, con chofer y camión tomados por `asignarChoferes`.
+
+### Cómo se dispara
+
+Crear una ruta por callback sin iniciarla y correr `POST /PlanificacionRutas/planificar-manual`
+(o esperar al cron): aparece una segunda fila en `ruta` que contiene los mismos `idDonacion`
+que la primera.
+
+### Propuesta
+
+Antes de mandar al proveedor, filtrar los items que ya pertenezcan a una ruta que no esté
+`FINALIZADA`, o darles un estado `PLANIFICADO` al crear la ruta para que no vuelvan a entrar
+en `findByEstado(PENDIENTE)`. La segunda opción además mata el síntoma de "el mismo ítem en
+dos camiones".
+
+---
+
+## 27. `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `models/repositories/rutas/RepositorioRutas.java:21-27`, `services/RutaService.java:82-91,93-97`
+
+### Qué pasa
+
+```java
+default Optional<Ruta> findByChofer(Chofer chofer){
+    if (chofer == null) return Optional.empty();
+    return this.findAll().stream()
+            .filter(ruta -> ruta.getCamionAsignado() != null &&
+                    chofer.equals(ruta.getCamionAsignado().getChofer()))
+            .findFirst();
+}
+```
+
+`findAll().stream()...findFirst()` devuelve la **primera** fila de la tabla (orden de
+inserción) cuyo camión tenga ese chofer: no filtra por estado ni ordena, o sea que devuelve
+la ruta más vieja.
+
+Los dos únicos llamadores son `iniciarRuta` y `terminarRuta` (`RutaService:83,94`), que
+interpretan el resultado como "la ruta del chofer". Con más de una ruta en la historia del
+chofer —que es el caso normal—:
+
+- `PATCH /rutas/chofer/{id}/iniciar` marca `EN_CURSO` una ruta **ya finalizada** y publica
+  `INICIO_RUTA` con sus paradas viejas; la ruta recién planificada sigue `PROGRAMADA`.
+- `PATCH /rutas/chofer/{id}/terminar` pone `FINALIZADA` sobre la ruta vieja, libera un chofer
+  y un camión que quizá están en otra ruta, y hace el barrido de items sobre las paradas
+  equivocadas.
+
+### Cómo se dispara
+
+Un chofer con una ruta `FINALIZADA` histórica y una `PROGRAMADA` recién creada →
+`PATCH /rutas/chofer/{id}/iniciar` → la que pasa a `EN_CURSO` es la vieja (se ve con
+`GET /rutas`).
+
+### Propuesta
+
+Filtrar por estado (`PROGRAMADA` para iniciar, `EN_CURSO` para terminar) o, mejor, recibir el
+`idRuta` en el endpoint: el chofer no identifica una ruta.
+
+---
+
+## 28. Publica el evento antes del commit: un rollback deja un evento fantasma en el broker
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java:71-72`, `services/EntregaService.java:287-326`, `services/RutaService.java:82-91`
+
+### Qué pasa
+
+`productorEventos.publicar(evento)` se llama **dentro** de la transacción, no después del
+commit. En `actualizarEstado` (que es `@Transactional`) el orden es publicar y después
+`saveAndFlush` (líneas 301/310/318 y 325). Si cualquiera de esos `save` falla —por ejemplo
+`OptimisticLockingFailureException` cuando dos operadores confirman la misma entrega casi
+simultáneamente—, la transacción hace rollback en la base pero el mensaje **ya salió** por el
+broker: `donaciones-service` notifica a los usuarios una entrega que en logística nunca
+ocurrió.
+
+El otro camino es parecido: `iniciarRuta` no tiene transacción. `publicarInicioRuta` publica
+el evento (línea 72) y recién después `RutaService:87-90` persiste los items con el estado
+`EN_CAMINO` que se les puso en memoria. Si esos `saveAndFlush` fallan, queda el evento
+`INICIO_RUTA` en el broker con los items sin cambios en la base.
+
+No hay ningún `TransactionSynchronization.afterCommit` ni publicación post-commit en el
+módulo.
+
+### Cómo se dispara
+
+Dos operadores haciendo `PATCH /entregas/{id}/estado` casi al mismo tiempo sobre el mismo
+ítem: la segunda transacción falla por `@Version` y hace rollback, y el evento de la segunda
+igual aparece en `logistica.eventos.exchange`.
+
+### Propuesta
+
+Registrar la publicación con `TransactionSynchronizationManager.registerSynchronization` y
+mandar el mensaje en `afterCommit` (descartándolo en `afterRollback`), o publicar desde el
+controller después de que el service confirmó. Para `iniciarRuta`, envolver en transacción y
+publicar al commitear.
+
+---
+
+## 29. Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `services/CamionService.java:75-90`, `services/ChoferService.java:48-52,66-72`, `dto/chofer/ChoferDTO.java:13`, `models/gestores/GestorCamiones.java:19-31`
+
+### Qué pasa
+
+Las tres vías que actualizan disponibilidad tratan "campo ausente" como "poner en ocupado":
+
+- **`PATCH /camiones/{patente}/estado`**: `body.get("disponible")` devuelve `null` si el
+  campo no viene → el `else` de la línea 83 ejecuta `camion.ocupado()` y responde
+  **200 "Camión marcado como ocupado"**. La semántica de un PATCH es "no tocar lo que no se
+  envía"; acá un body `{}` ocupa el camión.
+- **`PATCH /choferes/{id}/estado`**: mismo patrón en `ChoferService:66-72`.
+- **`PUT /choferes/{id}`**: `ChoferDTO.disponible` es primitiva `boolean` (línea 13), así
+  que un JSON sin el campo se deserializa en `false` y la línea 52 hace
+  `choferExistente.setDisponible(false)` → 200, chofer ocupado.
+- **`PUT /camiones/{patente}`**: `CamionDTO.disponible` es `Boolean`, el `null` llega a
+  `GestorCamiones.actualizarCamion:27` que hace `setDisponible(null)` sobre una columna
+  `nullable = false` → `DataIntegrityViolationException`, que el controller no atrapa (solo
+  catchea `IllegalArgumentException`) → **500**.
+
+### Cómo se dispara
+
+```bash
+curl -X PATCH http://localhost:8086/api/camiones/ABC123/estado \
+  -H "Content-Type: application/json" -d '{}'
+# 200 "Camión marcado como ocupado" — sin haber pedido nada
+
+curl -X PUT http://localhost:8086/api/choferes/<id> \
+  -H "Content-Type: application/json" -d '{"nombre":"Juan"}'
+# 200, y el chofer quedó disponible=false
+```
+
+### Propuesta
+
+Distinguir "campo ausente" de "campo en false": en el PATCH, verificar
+`body.containsKey("disponible")` y no tocar nada si no viene; en el PUT, usar `Boolean` en
+`ChoferDTO` y no pisar el valor cuando es `null`.
+
+---
+
+## 30. `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `services/EntregaService.java:119,131`, `controllers/EntregaController.java:62-72`
+
+### Qué pasa
+
+`procesarPeticion` tiene dos salidas silenciosas:
+
+```java
+if (request == null) return;                                  // línea 119
+if (bienes == null || idsDonaciones == null) return;          // línea 131
+```
+
+Un `return` sin registrar nada y sin lanzar excepción hace que `EntregaController.crearItems`
+responda **201 "Petición procesada exitosamente"**. La donación no se persiste, no se loguea,
+no se descarta con warning: no pasó nada y el caller queda creyendo que sí.
+
+Cuando el mismo endpoint lo invoca RabbitMQ (el flujo normal), el `return` además cuenta como
+éxito: el mensaje se hace *ack* y se pierde para siempre — no hay reintentos ni DLQ porque
+nadie falló.
+
+### Cómo se dispara
+
+```bash
+curl -X POST http://localhost:8086/api/entregas -H "Content-Type: application/json" \
+  -d '{"donacionResumen":{"idsDonaciones":null},"entidadBeneficiaria":{...}}'
+# 201 "Petición procesada exitosamente mediante el proveedor: PROPIO"
+# SELECT COUNT(*) FROM item_entrega -> sin cambios
+```
+
+### Propuesta
+
+Reemplazar los `return` por `throw new IllegalArgumentException(...)`, igual que las demás
+validaciones del método: el controller lo traduce en 400 y el listener lo descarta con
+warning sin gastar reintentos, que es el comportamiento que ya existe para el resto de los
+payloads inválidos.
+
+---
+
+## 31. El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../ProveedorRutasExternoSimulado.java:22,40-47`
+
+### Qué pasa
+
+Dos fallas en la misma llamada:
+
+1. **Sin timeout.** `HttpClient.newHttpClient()` (línea 22) no define `connectTimeout` y el
+   `HttpRequest` no define `.timeout()`. Si el callback no acepta la conexión o la respuesta
+   nunca llega, `httpClient.send(...)` (línea 46) puede bloquear el hilo del
+   `CompletableFuture.runAsync(...)` indefinidamente.
+2. **El status se ignora.** `send(...)` devuelve la respuesta y el resultado se descarta. Si
+   el callback responde 400 o 500 —payload que el propio controller rechaza—, el simulador
+   no lo ve: no reintenta, no loguea, no avisa. El lote de rutas se planificó y nunca llegó,
+   y los items quedan `PENDIENTE` sin que nadie se entere.
+
+Todo el manejo de errores es un `System.err.println` dentro de una tarea asíncrona sin
+supervisión: un fallo del lote no afecta al scheduler, que ya respondió 200.
+
+### Cómo se dispara
+
+Bajar el endpoint del callback (o poner cualquier cosa en el 8086 que responda 500) y
+disparar `POST /PlanificacionRutas/planificar-manual`: el scheduler responde "Proceso de
+planificación disparado", la simulación imprime su banner de error (o queda colgada si es
+timeout) y ningún lote queda registrado.
+
+### Propuesta
+
+`HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))` y
+`HttpRequest.newBuilder().timeout(Duration.ofSeconds(10))`; chequear
+`respuesta.statusCode() != 200` y, ante cualquier fallo, reintentar o al menos dejar el lote
+registrado en un log con nivel ERROR.
+
+---
+
+## 32. Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `RabbitMQ/DonacionListener.java:66-73`
+
+### Qué pasa
+
+```java
+} catch (DataIntegrityViolationException yaRegistrada) {
+    log.info("La donación ya fue registrada por otra instancia, mensaje descartado ...");
+    return;
+}
+```
+
+El `catch` asume que **toda** `DataIntegrityViolationException` es la carrera de clave
+primaria entre dos instancias —y en ese caso descartar es correcto—, pero la misma excepción
+la levantan el resto de las violaciones: dato fuera de rango, columna excedida, `NOT NULL`
+violado, clave foránea rota. Esos casos **no** significan "ya registrada": significan "este
+mensaje tiene datos inválidos", y acá se tragan igual. `return` (ack), un log a nivel `info`
+con un mensaje que dice lo contrario de lo que pasó, y la donación se pierde sin DLQ ni registro
+útil.
+
+Es el espejo del punto 25: ahí un fallo que **debería** ir a la DLQ se reencola para siempre;
+acá uno que **debería** ir a la DLQ se descarta como éxito.
+
+### Cómo se dispara
+
+Mandar un mensaje cuyo dato reviente una restricción de la base dentro de
+`itemsEnUnaTransaccion` (por ejemplo una `cantidad` que la columna DECIMAL no admite): el
+log muestra "La donación ya fue registrada por otra instancia" y el mensaje se acepta.
+
+### Propuesta
+
+Acotar el `catch` al caso que se quiere (clave primaria duplicada, que ya está cubierta por
+la guarda de idempotencia `existsById`), y dejar que cualquier otra violación siga el camino
+de reintento y termine en la DLQ con el error original visible.
+
+---
+
+## 33. Credenciales de la base hardcodeadas como default y en el compose
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/resources/application.properties:14-15`, `docker-compose.yml:166-167`
+
+### Qué pasa
+
+```properties
+spring.datasource.username=${DB_USERNAME:valentin}
+spring.datasource.password=${DB_PASSWORD:10032001}
+```
+
+La credencial real de la base está como **default** de la property: cualquier arranque sin
+`DB_USERNAME`/`DB_PASSWORD` —un `java -jar` a secas, un deploy que olvidó las variables—
+conecta con `valentin`/`10032001` sin ningún aviso. Y el `docker-compose.yml` del repo la
+repite en claro (líneas 166-167), así que queda commiteada en el historial de git para
+cualquiera que clone el proyecto.
+
+### Cómo se dispara
+
+`grep -rn "10032001" .` en el repo, o arrancar el servicio sin variables de entorno y ver
+que levante contra MySQL sin pedir credenciales.
+
+### Propuesta
+
+Dejar los defaults vacíos —que el servicio falle al arrancar si falta la variable, que es lo
+correcto— y sacar las credenciales del compose hacia un `.env` fuera de git o a secrets de
+Docker. Rotar la contraseña: ya estuvo en el historial.
+
+---
+
+## 34. `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `models/entities/ItemEntrega/UnidadDeMedida.java:16-23`, `services/EntregaService.java:233-234`
+
+### Qué pasa
+
+`UNIDADES`, `KILOGRAMOS` y `LITROS` son objetos Java `static final` (líneas 16-18) con
+`@GeneratedValue(strategy = GenerationType.UUID)`. En `itemsEnUnaTransaccion` se hace
+`repoUnidades.save(unidadDominio)` (línea 234) con esa constante: la primera vez su
+`idUnidad` es `null`, Hibernate inserta **una fila nueva** y le asigna un UUID.
+
+Dentro de una misma JVM la constante sobrevive, así que los mensajes siguientes reutilizan la
+fila. Pero:
+
+- **Cada reinicio o redeploy** genera constantes nuevas con id `null` → otras 3 filas
+  "Unidades", "Kilogramos", "Litros" en `unidad_medida`.
+- **Cada una de las N instancias de logística** (el requisito del enunciado) tiene sus
+  propias constantes → cada instancia inserta las suyas.
+
+La tabla se llena de filas repetidas en proporción a los arranques, y dos instancias pueden
+estar apuntando a filas distintas para "Kilogramos": el catálogo deja de ser único, que es
+justamente lo que un catálogo tiene que ser.
+
+### Cómo se dispara
+
+Reiniciar el servicio después de haber procesado algunos mensajes y correr
+`SELECT nombre, COUNT(*) FROM unidad_medida GROUP BY nombre` → `Kilogramos: 2, 3, ...`.
+
+### Propuesta
+
+Resolver la unidad por nombre (`findByNombre`) antes de insertar, o fijar el id de las tres
+filas catálogo en el `schema.sql` de modo que el `save` siempre haga merge de la misma fila.
+Mejor todavía: cargar el catálogo una sola vez al inicializar y que el servicio solo lea.
+
+---
+
+## 35. Cada mensaje inserta país, provincia, ciudad y dirección nuevos aunque la entidad ya exista
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `services/EntregaService.java:173-204`
+
+### Qué pasa
+
+Es el residual del punto 15: la duplicación **por bien** se corrigió (`1e75220` movió el
+catálogo fuera del `for`), pero dentro de `resolverEntidad` los `save` del catálogo siguen
+corriendo **antes** de mirar si la entidad ya existe:
+
+```java
+repoPaises.save(direccion.getCiudad().getProvincia().getPais());   // 180
+repoProvincias.save(direccion.getCiudad().getProvincia());         // 181
+repoCiudades.save(direccion.getCiudad());                          // 182
+repoDirecciones.save(direccion);                                   // 183
+...
+Optional<Entidad> yaExistente = repoEntidades.findById(idEntidad); // 187
+if (yaExistente.isPresent()) return yaExistente.get();
+```
+
+`convertirDireccionDTO` construye objetos nuevos en cada mensaje (no hay ninguna búsqueda por
+nombre), así que los cuatro `save` insertan filas nuevas **cada vez**, incluso cuando a la
+línea 187 se devuelve la entidad existente: la dirección recién insertada queda huérfana.
+`Pais`, `Provincia` y `Ciudad` usan `GenerationType.IDENTITY` y no tienen constraint único,
+así que nadie protesta y la tabla `ciudad` crece lineal con la cantidad de mensajes.
+
+### Cómo se dispara
+
+Mandar dos mensajes para la misma entidad beneficiaria → `SELECT COUNT(*) FROM ciudad` sube
+en 2, y la `Entidad` sigue apuntando a su primera dirección (la segunda queda sin usar).
+
+### Propuesta
+
+Buscar primero la entidad (línea 187) y solo construir el catálogo si no existe; o resolver
+país/provincia/ciudad por `findByNombre` antes de cada `save`, que es lo que decía la
+propuesta original del punto 15.
+
+---
+
+## 36. El callback devuelve 500 con internals para payloads que su contrato documenta como 400
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `controllers/PlanificadorDeRutasController.java:64-75`, `services/PlanificadorRutasService.java:69-77`
+
+### Qué pasa
+
+El `@ApiResponses` del endpoint documenta **400** para "JSON malformado o IDs inexistentes".
+El JSON malformado efectivamente devuelve 400 (lo envuelve en `IllegalArgumentException`,
+líneas 54-58), pero los IDs inexistentes no: `procesarCallbackRutas` busca los items dentro
+de un `try` cuyo `catch (Exception e)` (línea 75) envuelve **todo** —incluida la propia
+`IllegalArgumentException("Entrega no encontrada")` de la línea 73— en un
+`RuntimeException("Falla en la base de datos al recuperar información para el ruteo")`. Ese
+`RuntimeException` no es `IllegalArgumentException`, así que en el controller cae en el
+`catch (Exception)` → **500**, y el body filtra lo interno:
+`"Error interno del servidor: Faila en la base de datos al recuperar información para el
+ruteo"`.
+
+Además, el 500 de la última línea del controller concatena `e.getMessage()` en la respuesta:
+información interna del servicio hacia el cliente.
+
+### Cómo se dispara
+
+Callback con un `idDonacion` que no existe en la base → 500 en vez del 400 documentado.
+
+### Propuesta
+
+No envolver las `IllegalArgumentException` de negocio en el `catch` de BD (o relanzarlas tal
+cuál), y dejar de concatenar `e.getMessage()` en la respuesta del 500.
+
+---
+
+## 37. El CRUD de camiones/choferes devuelve 500 para errores de validación
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `controllers/CamionController.java:47-59`, `controllers/ChoferController.java:51-58`, `services/CamionService.java:43-52`, `services/ChoferService.java`
+
+### Qué pasa
+
+`POST /camiones` y `POST /choferes` no tienen `try/catch` ni `@Valid`, y los PUT/PATCH solo
+atrapan `IllegalArgumentException`. Cualquier otra excepción de validación o de la base se
+escapa y responde **500**:
+
+- `POST /camiones` sin los campos obligatorios (`capacidad_volumen_m3`, `altura_m`,
+  `capacidad_carga_kg` son `nullable = false`) → `DataIntegrityViolationException` → 500.
+- `POST /choferes` sin `nombre` (`nullable = false`) → 500.
+- `PUT` con campos null sobre columnas `NOT NULL` → 500 (mismo camino que el punto 29).
+
+No hay forma de distinguir "dato inválido" (400) de "conflicto" (409) de "no existe" (404):
+lo que no entra en el `catch` de `IllegalArgumentException` es 500, y el cliente se queda sin
+saber qué corregir.
+
+### Cómo se dispara
+
+```bash
+curl -X POST http://localhost:8086/api/camiones -H "Content-Type: application/json" -d '{}'
+# 500
+```
+
+### Propuesta
+
+`@Valid` con anotaciones en los DTO, y un `@ControllerAdvice` que traduzca
+`DataIntegrityViolationException` en 409/400 con un mensaje entendible, en lugar de que cada
+controlador decida con su propio `try`.
+
+---
+
+## 38. Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long`
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/repositories/RepositorioPaises.java:10`, `RepositorioProvincias.java:10`, `RepositorioCiudades.java:10` vs. `models/entities/Direccion/Pais.java:18`, `Provincia.java:17`, `Ciudad.java:17`
+
+### Qué pasa
+
+```java
+public interface RepositorioPaises extends JpaRepository<Pais, UUID> { }
+// pero en la entidad:
+private Long idPais;   // @GeneratedValue(strategy = IDENTITY)
+```
+
+El tipo de id del repositorio (`UUID`) no coincide con el tipo real de la clave (`Long`) en
+los tres. Hoy no se nota porque a esos repos **solo se les llama `save`**
+(`EntregaService:180-182`) y `save` no depende del tipo de id. Pero cualquier `findById(...)`,
+`existsById(...)` o `deleteById(...)` con el tipo declarado revientaría al bindear un `UUID`
+contra una columna `BIGINT`. Es deuda latente: compila, arranca, y falla recién en el primer
+uso.
+
+### Cómo se dispara
+
+Agregar en cualquier punto `repoPaises.findById(algunUUID)` y ejecutarlo: excepción de
+bindeo de Hibernate en lugar de un `Optional` vacío.
+
+### Propuesta
+
+Cambiar los tres a `JpaRepository<Pais, Long>` (y `Provincia`, `Ciudad`), que es lo que la
+entidad declara. Es una línea por archivo.
+
+---
+
+## 39. El cron de planificación corre a las 02:00 UTC, no a las 02:00 de Argentina
+
+**Estado:** sospechado
+**Severidad:** baja
+**Archivos:** `Scheduler/PlanificadorDeRutasScheduler.java:36`, `Dockerfile`, `docker-compose.yml`
+
+### Qué pasa
+
+```java
+@Scheduled(cron = "0 0 2 * * ?")
+```
+
+El cron no declara `zone`, así que Spring usa la zona de la JVM. La imagen final
+(`eclipse-temurin:21-jre`, `Dockerfile:22`) no define `TZ`, el compose tampoco le pasa `TZ`
+a `logisticas-service`, y el `DB_URL` del compose hasta fuerza `serverTimezone=UTC`: en
+Docker la JVM corre en UTC y la planificación automática ocurre a las **02:00 UTC = 23:00 de
+Argentina**, no a las 02:00 locales.
+
+Se anota como **sospechado** y no confirmado: no se observó el comportamiento con la hora del
+contenedor controlada. Fuera de Docker depende de la zona del host, que es justamente el
+problema: el comportamiento cambia según dónde corra.
+
+### Cómo se dispara
+
+Levantar en Docker (`date` dentro del contenedor mostrando UTC) y esperar a las 02:00 UTC
+(23:00 ART): el log "Iniciando proceso automático de planificación de rutas..." aparece a las
+23:00.
+
+### Propuesta
+
+Declarar `zone = "America/Argentina/Buenos_Aires"` en `@Scheduled` —explícito, independiente
+de la imagen y del host—, o fijar `TZ` en el Dockerfile/compose.
+
+---
+
 ## Corregidos
+
+### 1. El módulo no tiene un solo test
+
+**Estado:** corregido el 2026-10-07 en `1e75220`
+**Severidad:** alta
+**Archivos:** `logisticas-service/src/test/`
+
+`logisticas-service/src/test` no existía: el módulo era el único del proyecto sin cobertura
+y justamente el que recibió un merge sin resolver. Con `1e75220` llegaron los primeros tests,
+y no son decorativos: `EntregaServiceIdempotenciaTest` tiene 8 tests que miden la idempotencia
+del registro de donaciones, y se verificó que tienen dientes (neutralizando la guarda a
+propósito, 3 de 8 fallaron). También hay tests que levantan el contexto, que es la red que
+falta contra un JPQL mal formado o una entidad fuera de la unidad de persistencia.
+
+Lo que queda —cobertura de dominio, de la API y de los planificadores— es una mejora
+continua, no el punto crítico que era: ya existe al menos una red que corre en cada build.
+
+### 15. Registrar una donación duplica la dirección N veces
+
+**Estado:** corregido el 2026-10-07 en `1e75220`
+**Severidad:** media
+**Archivos:** `.../services/EntregaService.java`
+
+El `for` de bienes construía la dirección adentro: con una donación de 3 bienes quedaban 3
+países, 3 provincias, 3 ciudades y 3 direcciones con el mismo contenido, y el `save` de
+`Entidad` (clave natural) terminaba apuntando a la última dirección, dejando las otras dos
+huérfanas.
+
+**Qué se resolvió:** el catálogo salió del `for`: ahora `procesarPeticion` resuelve la
+entidad una sola vez por mensaje, antes de registrar los items. Junto con el `@Version` de
+esas entidades, dos instancias que lleguen a la vez reciben `OptimisticLockingFailureException`
+en vez de pisarse. Hay test que lo mide.
+
+**Residual:** la duplicación **por mensaje** sigue abierta y quedó registrada como el
+punto 35: los `save` de país/provincia/ciudad corren antes de buscar si la entidad ya existe.
+
+### 16. `procesarPeticion` no valida el payload
+
+**Estado:** corregido el 2026-10-07 en `1e75220`
+**Severidad:** media
+**Archivos:** `.../services/EntregaService.java`, `.../RabbitMQ/DonacionListener.java`
+
+El método validaba `request` y nada más: `donacionResumen` null, `entidadBeneficiaria` null,
+listas de longitudes distintas o `null` revientaban con NPE/IndexOutOfBounds a mitad de la
+escritura, y la base quedaba a medias.
+
+**Qué se resolvió:** validaciones arriba, antes de tocar la base: resumen no nulo, entidad no
+nula, `bienes`/`idsDonaciones` no nulos y de la misma longitud, unidad no nula y soportada, y
+dirección no nula en `resolverEntidad`. Todas lanzan `IllegalArgumentException`, que el
+controller traduce en 400 y el listener descarta con warning sin gastar reintentos.
+
+### 19. La validación de la justificación de una entrega fallida está invertida
+
+**Estado:** cerrado el 2026-10-07 como **falso positivo** (verificado contra el código actual)
+**Severidad:** crítica (declarada)
+**Archivo:** `.../services/EntregaService.java:334-336`
+
+El punto sostenía que `comprobarExistencia` devuelve `true` cuando el texto **sí** está
+escrito, con lo cual el `case "NO_RECIBIDA"` rechazaría las justificadas y aceptaría las que
+faltan. Verificado contra el código, la premisa es falsa:
+
+```java
+private boolean comprobarExistencia(String elemento){
+    return (elemento == null || elemento.trim().isEmpty());
+}
+```
+
+Devuelve `true` cuando el texto **falta**, o sea que
+`if (comprobarExistencia(request.getJustificacion())) throw "Se requiere justificar..."` lanza
+exactamente cuando no hay justificación, que es lo que dice el mensaje. El caso `ENTREGADA`
+(línea 298, foto) usa el mismo patrón con el mismo sentido y también es correcto.
+
+El helper tiene un nombre engañoso —comprobarExistencia devuelve true cuando **no** existe—,
+pero la lógica de los dos call-sites es la correcta y no se tocó ningún código. Comportamiento
+ya correcto desde `cb8910a`.
+
+---
 
 ### El módulo se commiteó con marcadores de conflicto de merge sin resolver
 

@@ -14,18 +14,24 @@ rompe cuando pasa, y qué tan fácil es que pase.
 |---|---|---|
 | 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
 | 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 4 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 3 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 4 | 39 | El PUT y el DELETE de perfiles prometen `Admin-Id` y no lo validan |
 | 5 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 6 | 23 | Higiene: código muerto, logs, encapsulación |
-| 7 | 4 | `common-lib` es código muerto |
-| 8 | 9 | No es un faltante: es una decisión de arquitectura |
-| 9 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
-| 10 | 38 | Incentivos no publica por Rabbit y hoy no llega ninguna notificación a nadie |
+| 6 | 4 | `common-lib` es código muerto |
+| 7 | 9 | No es un faltante: es una decisión de arquitectura |
+| 8 | 37 | La config de Checkstyle está en el repo pero el build no la ejecuta |
+| 9 | 40 | La documentación de seguridad promete controles que no existen |
+| 10 | 41 | `GET /api/metricas/{id}/actividad` promete un 404 que nunca devuelve |
+| 11 | 42 | La publicación de n8n arranca con una coma |
+| 12 | 23 | Higiene: código muerto, logs, encapsulación |
 
-Quedan nueve abiertos y uno a medias, que ya no son los mismos del principio. **Tres de los
-que quedan son decisiones, no faltantes**: el 1 (autorización por header), el 9 (logística no
-integrada) y el 10 (el ranking cuenta insignias). Los tres están anotados como aceptados a
-propósito, y cerrarlos o no es una decisión del equipo, no una deuda técnica.
+El ex-38 (publicaciones por Rabbit) no está en la tabla: se corrigió y pasó a
+[Corregidos](#corregidos). El 35 tampoco, por el motivo que se explica más abajo.
+
+Quedan once abiertos, más el anexo del ex-35 (los buffers en memoria), y el 23 a medias. **Tres
+de los que quedan son decisiones, no faltantes**: el 1 (autorización por header), el 9
+(logística no integrada) y el 10 (el ranking cuenta insignias). Los tres están anotados como
+aceptados a propósito, y cerrarlos o no es una decisión del equipo, no una deuda técnica.
 
 Los cerrados se agruparon en tandas porque se corrigieron juntos:
 
@@ -40,21 +46,89 @@ Los cerrados se agruparon en tandas porque se corrigieron juntos:
 
 El detalle de cada fix está en [Corregidos](#corregidos), un ítem por corrección.
 
-El punto 23 no aparece en la tabla porque está en la sección de su propio detalle más abajo, y
-tampoco cuenta como "abierto a medias": su parte grande se hizo y lo que queda son tres cosas
-anotadas.
+El punto 23 figura en la tabla, pero su detalle queda al fondo de la lista a propósito: su
+parte grande se hizo y lo que quedan son tres cosas anotadas, así que es el único que se cuenta
+como "a medias" y no como abierto del todo.
 
 El punto 35 (los "pendientes" en memoria dicen deduplicar y no deduplican) **ya no es un punto
 aparte**: quedó absorbido por el
 [anexo del punto 3](#punto-anexo-los-buffers-pendientes-en-memoria-absorbe-el-ex-punto-35), que
 es el código que hay que tocar para arreglarlo.
 
-**Por qué se absorbió y no se cerró.** No es que el 35 quede resuelto por el 3: el buffer de
-**notificaciones** sí desaparece con la cola, pero el de **publicaciones de n8n** sigue igual,
-porque el requisito de asincronía del enunciado no cubre esa integración. Dejarlo como punto
-propio daba la falsa impresión de que cerrando el 3 se cerraba también el 35, y el bug quedaba
-sin dueño. El anexo deja escrito cuál de las dos mitades se va con la cola y cuál no, y que la
-de n8n necesita la tabla de outbox.
+**Por qué se absorbió y no se cerró.** No es que el 35 quede resuelto por el 3: con la cola,
+el buffer de **notificaciones** solo se llena si el broker está caído (sigue siendo el mismo
+`ArrayList` sin deduplicar), pero el de **publicaciones de n8n** queda igual, porque el
+requisito de asincronía del enunciado no cubre esa integración. Dejarlo como punto propio daba
+la falsa impresión de que cerrando el 3 se cerraba también el 35, y el bug quedaba sin dueño.
+El anexo deja escrito cuál de las dos mitades se va con la cola y cuál no, y que la de n8n
+necesita la tabla de outbox.
+
+---
+
+## 5. El contrato de `PATCH /api/perfiles/donacion/{idUsuario}` está roto: toda donación entra con 400
+
+**Estado:** abierto (requiere tocar `donaciones-service`)
+**Severidad:** crítica
+**Archivos:** `.../dto/Persona/ImpactoDonacionDTO.java`, `.../exceptions/GlobalExceptionHandler.java`;
+del otro lado: `donaciones-service/.../dto/incentivos/IncentivosDonacionDTO.java`,
+`donaciones-service/.../models/gestores/GestorAsignaciones.java`
+
+### Qué pasa
+
+Este servicio expone `PATCH /api/perfiles/donacion/{idUsuario}` para registrar el impacto de una
+donación, y su DTO de entrada es deliberadamente estricto:
+
+- `ImpactoDonacionDTO.idDonacion` es `@NotNull` (línea 35): es la primary local y la clave de
+  idempotencia del punto 14 — sin un id estable no se distingue una donación nueva de un
+  reintento de la misma.
+- `ImpactoDonacionDTO.fechaEntrega` es `@NotNull LocalDateTime` (línea 39): las métricas
+  mensuales hacen `YearMonth.from(...)` sobre ese campo.
+
+El emisor no cumple ninguno de los dos:
+
+| | `donaciones-service` manda | Este servicio exige |
+|---|---|---|
+| `idDonacion` | **no existe el campo** en `IncentivosDonacionDTO` | `@NotNull UUID` |
+| `fechaEntrega` | `LocalDate` (`"2026-10-07"`) | `@NotNull LocalDateTime` |
+
+`GestorAsignaciones.procesarAccionesPostCambioEstado` (líneas 93-99) arma el payload sin id, y
+Jackson no convierte un `LocalDate` en `LocalDateTime`: el pedido cae en
+`MethodArgumentNotValidException` o `HttpMessageNotReadableException` y el handler devuelve
+**400 siempre** (`GlobalExceptionHandler`, líneas 126-150). Y si la fecha viniera null —el
+punto 10 de `donaciones-service` dice que `fechaEntrega` nunca se persiste— el `@NotNull` tampoco
+lo deja pasar.
+
+El requisito ya estaba escrito y no se cumplió: ver *Tanda 3*, punto 14 — *"`donaciones-service`
+tiene que mandar el id de la donación o toda donación entra con 400"*.
+
+### Qué rompe del otro lado
+
+Rutas y verbo ya están corregidos: `IncentivosClient` apunta a `PATCH /api/perfiles/donacion/{id}`
+(ver *Corregidos* de `donaciones-service`). Lo que quedó sin alinear es el **payload**. Como el
+cliente **relanza** y `GestorAsignaciones` no captura en la línea 102, la excepción sube por
+`DonacionService.asignarPropuesta` en la línea 140 y **`publicarEntregaALogistica` (línea 147)
+nunca se ejecuta**: la asignación entera responde 500 y logística no se entera de la entrega.
+
+### Por qué no lo detecta nadie
+
+- `test-conexiones.ps1` (línea 231) manda el contrato *correcto* —con `idDonacion` y con
+  hora—, así que su verificación pasa y no refleja lo que manda el código.
+- La colección de smoke de este servicio (`incentivos-smoke.postman_collection.json:122`) manda
+  el payload **sin** `idDonacion`, así que su propio test "3 - Registrar impacto" (espera 200)
+  no puede pasar hoy.
+
+**Propuesta**
+
+1. Del lado que manda: agregar `private UUID idDonacion;` a `IncentivosDonacionDTO` y setearlo
+   en `GestorAsignaciones` con `dto.setIdDonacion(donacion.getId())`.
+2. Alinear `fechaEntrega`: `LocalDateTime` del lado de acá, o `LocalDate` de los dos (este
+   servicio solo usa `YearMonth.from(...)`, así que también serviría), pero decidiendo de una
+   vez. *`idDonacion` no es negociable*: es la clave del punto 14.
+3. Actualizar `incentivos-smoke.postman_collection.json` para que mande el contrato real.
+4. Un test de contrato en el emisor, que es donde este tipo de desfasaje se detecta antes de
+   llegar al 400 del otro lado.
+
+Espejado como punto 30 de `donaciones-service/PENDIENTES.md`.
 
 ---
 
@@ -165,6 +239,40 @@ misión.
    donaciones con `hizoProgresarMision = true` cuya misión estaba dentro del período.
    Como el progreso solo avanza una misión por vez, "misiones cumplidas en el mes" se
    puede reconstruir, aunque hay que definir bien el período.
+
+## 39. El PUT y el DELETE de perfiles prometen `Admin-Id` y no lo validan
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../controllers/PerfilController.java`, `.../services/PerfilService.java`
+
+### Qué pasa
+
+El javadoc de `PerfilController` (líneas 38-40) dice que las escrituras exigen además el header
+`Admin-Id`, y el Swagger del `PUT` documenta un `403 "No autorizado"` (línea 178). Pero:
+
+- `PUT /{id}` (líneas 180-186) y `DELETE /{idUsuario}` (líneas 197-203) **no reciben ni
+  validan** ese header, y tampoco llaman a `ValidadorAdmin`: en todo el módulo solo lo usan
+  `RankingService` (líneas 131 y 148), `MisionService` (92, 104, 138) y `CategoriaService`
+  (93, 125, 187).
+- El `403` del Swagger es **imposible**: no hay mecanismo que lo devuelva. El `DELETE`, que es
+  destructivo, ni siquiera lo documenta (solo 200/404) y queda sin ninguna autorización.
+- Además, el `PUT` describe el path variable como *"UUID del perfil a actualizar"* (línea 182),
+  pero `PerfilService.actualizarDatosPerfil` (líneas 447-452) busca con `findByIdUsuario`:
+  quien siga el Swagger y pase el id de la fila del perfil recibe 404.
+
+Convive con la decisión del punto 1 (servicio abierto). El defecto de acá es doble: el código y
+el Swagger prometen un control que no existe, y `perfiles` no hace siquiera lo mismo que el
+resto de los endpoints de escritura del módulo.
+
+**Propuesta**
+
+1. Validar `Admin-Id` con `ValidadorAdmin` en el `PUT` y el `DELETE` —o, si la decisión es
+   dejarlos abiertos, corregir el javadoc y sacar el `403` del Swagger para que el código deje
+   de prometerlo.
+2. Renombrar `{id}` a `{idUsuario}` en el `PUT` y ajustar la descripción del parámetro.
+
+---
 
 ## 6. `open-in-view` desactivado: revisar cargas perezosas al agregar endpoints
 
@@ -390,6 +498,171 @@ Los warnings del panel no eran todos de estilo. Estos sí son defectos, y se cor
   (`Operacion` por abstracta, `ImpactoDonacion` por su setter de `idDonacion`) salen por un
   filtro explícito y cada uno tiene su propio test. Los tests subieron de 208 a 210.
 - Campos y parámetros sin usar en tests: `OTRO`, `ENTIDADES`, `MISION_FACTORY`, `CONTACTO`.
+
+---
+
+### Punto anexo: los buffers "pendientes" en memoria (absorbe el ex punto 35)
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../models/repositories/RepositorioNotificacionesPendientes.java`,
+`.../models/repositories/RepositorioPublicacionesPendientes.java`,
+`.../clients/NotificacionClient.java`, `.../clients/N8nClient.java`
+
+`RepositorioNotificacionesPendientes` y `RepositorioPublicacionesPendientes` son `ArrayList`
+dentro de beans `@Repository`, y los dos son el mismo código conceptual: el buffer de lo que no
+se pudo entregar. Se agrupan acá porque **el 35 (deduplicación que no deduplica) es parte del
+mismo código que hay que tocar**, y separarlos hacía que el primero pareciera arreglarse solo con
+lo que arregla el segundo. No se arregla.
+
+**Lo que tienen en común:** solo se llenan en el camino de **fallo**. `NotificacionClient`
+guarda si el broker no acepta el mensaje (línea 74) y `N8nClient` si el `POST` a n8n falla; el
+camino normal nunca toca el buffer. Eso cambia cómo se lee todo lo demás de acá.
+
+**Lo que hay que arreglar, en orden de gravedad:**
+
+1. **El buffer se pierde al reiniciar y no se comparte entre réplicas.** Una publicación que
+   falló a las 23:59 está perdida a las 00:01 si alguien reinicia el proceso, y con dos
+   réplicas cada una tiene su propia lista. Es el problema de fondo de los dos.
+
+2. **La deduplicación no deduplica (era el punto 35).** `guardar(...)` hace
+   `!pendientes.contains(dto)`, y `PerfilNotificacionDTO` y `PerfilPublicacionDTO` solo tienen
+   `@Getter/@Setter`, sin `@EqualsAndHashCode`. El `contains` compara por **identidad**, así que
+   nunca reconoce dos DTO con los mismos datos.
+
+   La consecuencia real es más chica de lo que parece, y conviene entender por qué: como el
+   buffer solo se llena en el camino de fallo, y `contains` por identidad solo reconoce *el
+   mismo objeto*, para que la deduplicación fallara haría falta que el mismo DTO se guardara dos
+   veces en la misma instancia del bean. **Es decir: hoy no es una deduplicación rota, es una
+   deduplicación que no puede deduplicar nunca.** El código afirma una propiedad que no tiene, y
+   lo que engaña es leerlo como "deduplica, con un defecto" en vez de "no deduplica, por
+   construcción".
+
+3. **Que no haya deduplicación es lo que hace que el problema de (1) duela más.** El buffer de
+   publicaciones de n8n puede acabar con varias copias casi idénticas de la misma publicación, y
+   cuando se reintentan salen varias publicaciones repetidas en redes sociales. Hoy eso no pasa
+   por el motivo de (2), no porque esté controlado.
+
+4. **La lista no es thread-safe (agregado en la revisión de 2026-10-07).** Los dos buffers son
+   `ArrayList` mutados desde los listeners `AFTER_COMMIT`, que corren en hilos concurrentes
+   (`N8nClient.publicarInsignia`, `NotificacionClient`), sin ninguna sincronización, mientras
+   `listarTodas()` hace `List.copyOf(pendientes)`: un `add` concurrente a una `ArrayList` que se
+   está copiando no tiene por qué terminar bien.
+
+**Qué se resuelve con la cola y qué no.**
+
+| | Con RabbitMQ | Sin nada más |
+|---|---|---|
+| Notificaciones | El camino normal ya va por broker y el requisito del enunciado queda satisfecho, pero el buffer **sigue ahí como fallback** si el broker está caído (`NotificacionClient:70-75`): lo que se ganó es que el receptor no bloquea, no que el fallback sea durable. (1), (2) y (4) siguen vigentes en ese fallback. | Sigue igual de roto. |
+| Publicaciones n8n | **No cambia nada.** El requisito de asincronía del enunciado cubre la comunicación con `notificaciones-service`, no la integración con n8n. (1), (2), (3) y (4) siguen vigentes. | Sigue igual de roto. |
+
+**Lo que no hay que hacer, y es la trampa de este punto:** reemplazar el buffer por la cola sin
+cola de mensajes muertos. `RabbitTemplate.send()` dentro del `AFTER_COMMIT` también puede
+fallar, y si el broker está caído y no hay DLQ, se cambia "buffer en memoria que se pierde al
+reiniciar" por "mensaje que se pierde igual, sin log y sin reintento". Mismo daño, peor
+visibilidad. Por eso la DLQ y los reintentos no son un extra: son la condición para que eliminar
+el buffer sea una mejora y no un borrón.
+
+**Propuesta para las publicaciones de n8n:** tabla de outbox transaccional + scheduler de
+reintento con backoff exponencial. Y al pasarla a tabla, deduplicar por clave en el `INSERT` —una
+columna única con la clave idempotente del evento—, no con `@EqualsAndHashCode` sobre el DTO: un
+DTO con setters dentro de un `HashSet` cambia de hash si alguien lo muta después de insertado, y
+el set deja de encontrarlo.
+
+**Lo que NO se hizo todavía** (anotado para que no se pierda): el `@EqualsAndHashCode` no está
+puesto y las dos listas siguen siendo `ArrayList` sin sincronizar. No se corrigió porque el
+arreglo real es la tabla de outbox, que es un cambio de diseño bastante más grande, y meter un
+`Set` o un candado encima sería tapar el síntoma y dejar la pérdida al reinicio intacta.
+
+---
+
+## 40. La documentación de seguridad promete controles que no existen, y el smoke espera un 401 imposible
+
+**Estado:** abierto (es de documentación y del smoke)
+**Severidad:** baja
+**Archivos:** `.../controllers/PerfilController.java`, `.../config/SecurityConfig.java`,
+`incentivos-smoke.postman_collection.json`, y la tabla del punto 1 de este archivo
+
+### Qué pasa
+
+Cuatro lugares dicen que hay autenticación, y no la hay:
+
+1. El javadoc de `PerfilController` (líneas 38-40): *"El resto necesita credenciales, y las
+   escrituras además el header `Admin-Id`"*. Falso: `SecurityConfig.java:50` es
+   `anyRequest().permitAll()` — todo abierto, que es la decisión documentada en *Corregidos*
+   ("`SecurityConfig` exigía HTTP Basic con contraseña autogenerada...").
+2. El javadoc del endpoint público (líneas 134-136): *"El `permitAll()` está en `SecurityConfig`,
+   como una regla por método y ruta: solo el GET de ese path"*. Tampoco: no hay regla por
+   método ni por ruta, hay una sola regla para todo.
+3. La tabla del punto 1 de este archivo todavía describe `SecurityConfig` como *"HTTP Basic sobre
+   `anyRequest().authenticated()`"*: quedó sin actualizar cuando se sacó HTTP Basic.
+4. La colección de smoke espera un `401` que no puede llegar:
+   `incentivos-smoke.postman_collection.json:77-89` prueba *"Error - Credenciales inválidas
+   (401)"* y manda credenciales Basic en el encabezado, pero sin `httpBasic()` no hay mecanismo
+   que devuelva 401: el pedido contesta 200 y ese test nunca pasa.
+
+El riesgo no es un bug de seguridad nuevo —eso está anotado como punto 1, y es una decisión del
+equipo—: es que quien llegue cree que hay autenticación y deje de mirar.
+
+**Propuesta**
+
+1. Alinear los dos javadocs y la tabla del punto 1 con `SecurityConfig` tal como está hoy.
+2. Sobre el smoke, quitar o reemplazar el test del 401 —o declarar `httpBasic()` de verdad, que
+   es exactamente lo que pide el punto 1 como arreglo de fondo.
+
+---
+
+## 41. `GET /api/metricas/{id}/actividad` promete un 404 que nunca devuelve
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `.../controllers/MetricaController.java`, `.../services/MetricasService.java`
+
+### Qué pasa
+
+El controller chequea `actividad == null` y devuelve 404 en ese caso (líneas 78-80), y el
+Swagger documenta `404 "Perfil o actividad no encontrada"` (línea 70). Pero
+`MetricasService.obtenerEvolucionHistorica` (líneas 47-64) **nunca devuelve null**: siempre
+construye un `ActividadDTO` (línea 59). Un UUID inexistente responde **200 con totales en
+ceros**, y la rama del 404 es código muerto.
+
+Contrasta con los otros endpoints de métricas, que sí devuelven 404 con
+`Optional.orElseGet(ResponseEntity.notFound())` (líneas 58-60).
+
+**Propuesta:** decidir el contrato. Si "perfil sin actividad" es 404, verificar la existencia
+del perfil (o que haya filas) antes de responder; si es 200 con ceros, borrar la rama null y el
+`@ApiResponse(404)` del Swagger para que el código deje de prometer lo que no hace.
+
+---
+
+## 42. La publicación de n8n arranca con una coma
+
+**Estado:** abierto
+**Severidad:** baja (pero sale publicada en redes)
+**Archivos:** `.../clients/N8nClient.java`, `.../N8nClientTest.java`
+
+### Qué pasa
+
+`publicarInsignia` arma el `mensaje` de la publicación así (líneas 52-55):
+
+```java
+new PerfilPublicacionDTO(
+    "en el centro debe decir " + event.insigniaObtenida(),
+    ", por ganar la insignia " + event.insigniaObtenida()
+        + " tras haber completado la mision " + event.misionAnterior(),
+    ...
+```
+
+El `mensaje` **arranca con `", "`**: es el resto de una concatenación que perdió su prefijo.
+Lo que debería decir "Luis ganó la insignia..." empieza por la coma. (El primer campo es el
+`prompt` para n8n y ese sí parece indicación a propósito; el problema es solo el `mensaje`.)
+
+El test no lo agarra: `N8nClientTest.java:84-89` solo verifica `containsString`, que pasa igual
+con la coma.
+
+**Propuesta:** armar el mensaje completo —por ejemplo
+`event.nombreUsuario() + " ganó la insignia ..."`— y cambiar el test a igualdad exacta sobre
+`mensaje`, que es lo que impide que este corte de string vuelva a publicarse.
 
 ---
 

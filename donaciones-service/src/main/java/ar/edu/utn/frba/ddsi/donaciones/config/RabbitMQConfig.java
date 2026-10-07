@@ -3,8 +3,11 @@ package ar.edu.utn.frba.ddsi.donaciones.config;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -104,10 +107,61 @@ public class RabbitMQConfig {
         return new TopicExchange(EXCHANGE_NOTIFICACIONES, true, false);
     }
 
+    /**
+     * La cola propia donde este servicio consume los eventos de trazabilidad de logistica.
+     *
+     * <p><b>Este bean no es opcional y el build no te avisa si falta.</b> El binding de abajo lo
+     * recibe por parametro, asi que sin esta cola el contexto no arranca:
+     *
+     * <pre>
+     * Parameter 0 of method bindingEventos required a bean of type 'Queue' that could not be found
+     * </pre>
+     *
+     * Compila perfecto sin el. Solo se ve al levantar el servicio.
+     */
+    @Bean
+    public Queue colaEventos() {
+        return QueueBuilder.durable(COLA_EVENTOS).build();
+    }
+
+    /**
+     * Atea la cola de eventos al exchange de trazabilidad.
+     *
+     * <p>Usa {@code RK_EVENTO + ".#"} y no la clave exacta porque acá sí se quiere toda la
+     * jerarquía de tipos de evento, no una clave en particular.
+     */
     @Bean
     public Binding bindingEventos(Queue colaEventos, TopicExchange exchangeEventos) {
         return BindingBuilder.bind(colaEventos)
                 .to(exchangeEventos)
                 .with(RK_EVENTO + ".#");
+    }
+
+    /**
+     * Serializa a JSON. Sin este bean la conexion de logistica a donating esta ROTA.
+     *
+     * <p><b>Este servicio consume, asi que necesita el converter.</b> {@code EventosListener}
+     * escucha {@link #COLA_EVENTOS} y pide un {@code EventoLogisticaDTO}. Sin este bean, Boot
+     * deja el {@code RabbitTemplate} con {@code SimpleMessageConverter}, que solo sabe manejar
+     * {@code byte[]}, {@code String} y {@code Serializable}, y el listener recibe el body crudo:
+     *
+     * <pre>
+     * MessageConversionException: Cannot convert from [[B] to [EventoLogisticaDTO]
+     * </pre>
+     *
+     * <p><b>Los servicios que solo publican no lo necesitan.</b> {@code incentivos-service} tampoco
+     * declara uno, y esta bien: no escucha ninguna cola. Lo que importa es que todos los que
+     * <em>consumen</em> lo tengan: este y {@code logisticas-service}.
+     *
+     * <p><b>Compila igual sin el.</b> El error aparece unicamente cuando llega un evento de
+     * logistica de verdad, que es lo que hacia el E2E: el mensaje se pierde en silencio, el log
+     * del productor dice que salio, y donating nunca se entera.
+     *
+     * <p>Este servicio si puede usar el converter de Jackson: no comparte modelo con logistica,
+     * solo viaja el JSON, y el nombre de la clase no le hace falta a nadie.
+     */
+    @Bean
+    public MessageConverter messageConverter() {
+        return new Jackson2JsonMessageConverter();
     }
 }

@@ -12,8 +12,10 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
+| 18 | 18 | Publica antes del commit y, si el broker falla, el rollback borra la fila: pierde notificaciones sin rastro |
 | 1 | 1 | Un test contra n8n sin `@Disabled` rompe `mvn verify` en cualquier máquina sin n8n |
 | 2 | 2 | El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas |
+| 20 | 20 | El reintento manual que prometen los comentarios no existe: ni endpoint, ni scheduler, ni uso de `findByEstado` |
 | 3 | 3 | Solo hay dos tests, y ninguno cubre el camino de Rabbit |
 | 6 | 6 | El `id_mensaje` no viaja en el JSON: el consumidor vuelve con un UUID nuevo y pisa la FK |
 | 8 | 8 | Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500 |
@@ -22,6 +24,10 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 12 | 12 | `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null` |
 | 14 | 14 | El DTO de entrada no valida nada y el manejador de excepciones está comentado |
 | 15 | 15 | La cola no tiene dead letter y los errores de conversión se reintentan en loop |
+| 19 | 19 | `enviarNotificacion` ignora el parámetro de dirección: el fallback del consumidor es código muerto |
+| 21 | 21 | La idempotencia es check-then-act sin lock: dos entregas concurrentes mandan dos mails |
+| 22 | 22 | Binding de `notificaciones.evento.logistica` que ningún servicio publica |
+| 23 | 23 | Código muerto y comentarios que ya no describen el código (repositorio "en memoria", etc.) |
 ---
 
 ## 1. Un test contra n8n sin `@Disabled` rompe `mvn verify`
@@ -200,6 +206,17 @@ en un `Set` sobre estas entidades compara referencias, no contenido. Es la razó
 - Sacar el `save` de la línea 65 de la ecuación del id: el consumidor solo tiene que actualizar el
   estado, y para eso alcanza con un update por id en lugar de un `save` de la entidad entera. Así el
   mensaje que llega por Rabbit nunca se persiste.
+
+### Nota (2026-10-07): este punto parece no ser reproducible con el código actual
+
+El mecanismo del punto depende de que el consumidor deserialice la entidad `Notificacion` con su
+`Mensaje` y haga `save` sobre eso. Hoy `recibir` lee JSON crudo y arma un
+`ConsumidorNotificaciones.AvisoNotificacion` (solo id, medio y dirección) o un
+`SolicitudNotificacionDTO`, y en ninguno de los dos casos entra un `Mensaje` con UUID nuevo: el de
+la fila sale de la base con su `id_mensaje` correcto, y el de una solicitud es una entidad nueva
+que se inserta junto con su notificación por el cascade. La descripción de las líneas 167-187 ya
+no corresponde al flujo actual. Conviene re-verificarlo contra una base real y cerrarlo si no se
+reproduce.
 
 ---
 
@@ -453,6 +470,190 @@ midió; la dead letter previene la clase de problema, no este caso.
 
 ---
 
+## 18. Se publica antes del commit y, si el broker falla, el rollback borra la fila
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificaciones.java:58-72`,
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/messaging/ConsumidorNotificaciones.java:104`
+
+### Qué pasa
+
+`enviarSolicitudDeNotificacion` es `@Transactional` y llama a `productorNotificaciones.enviar()`
+**adentro** de la transacción, o sea antes del commit. El INSERT recién se ejecuta en el commit,
+pero el mensaje sale al broker en el instante. Si el consumidor hace `findById` antes de que la
+fila sea visible para su conexión, `encontrada.isEmpty()` y la línea 104 descarta el mensaje con
+`log.warn("La notificación {} no existe, el mensaje se descarta")`. La fila queda `PENDIENTE` y
+nadie la va a retomar (ver punto 20).
+
+El Javadoc del método dice lo contrario de lo que hace el código: *"el commit ocurre al salir del
+método y recién ahí el mensaje llega a un registro que ya existe"*. RabbitMQ no espera al commit:
+entrega tan pronto se publica. La carrera existe, y ese `warn` es exactamente su síntoma.
+
+### La otra mitad: si la publicación falla, la fila no queda
+
+Las líneas 69-70 dicen que si la publicación tira, *"la notificación queda en PENDIENTE en la base
+y se puede reintentar desde ahí"*. No es así: `AmqpException` es una `RuntimeException`, el
+`@Transactional` hace rollback y el INSERT se deshace. El caller recibe un 500 y no queda registro
+de que la notificación existió. El escenario de recuperación que documenta el comentario no
+existe.
+
+Con una sola transacción no se pueden tener las dos cosas: o se conserva la fila ante un fallo del
+broker o se responde error, no las dos.
+
+### Propuesta
+
+- Publicar después del commit: `TransactionSynchronizationManager.registerSynchronization` con
+  `afterCommit`, o mover la publicación a un `@TransactionalEventListener(phase = AFTER_COMMIT)`,
+  que es el patrón que ya usa `incentivos-service`.
+- Si se quiere que el fallo del broker conserve la fila: guardar en una transacción propia
+  (`REQUIRES_NEW`) y publicar afuera, o capturar la excepción de publicación adentro sin relanzar
+  (así no hay rollback) y responder 202 dejando el estado `PENDIENTE` registrado.
+- El test que propone el punto 3 (`GestorNotificacionesTest` con el productor mockeado, verificando
+  el orden guardar → publicar) es lo que habría detectado esto: hoy el orden está protegido solo
+  por un comentario.
+
+---
+
+## 19. `GestorNotificaciones.enviarNotificacion` ignora el parámetro `direccionContacto`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivo:** `.../models/gestores/GestorNotificaciones.java:100-117`
+
+### Qué pasa
+
+La firma es `enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion
+notificacion)` y el cuerpo no lee `direccionContacto` en ninguna línea: arma el medio con
+`tipoMedioContacto` y llama a `medioDeContacto.enviarNotificacion(notificacion)`, que internamente
+usa `notificacion.getDireccionDeContacto()`.
+
+Consecuencia: el fallback que armó el consumidor en `ConsumidorNotificaciones.java:156-162` —usar
+la dirección del mensaje si trae una, y la de la fila si no— no hace nada, porque el gestor siempre
+toma la de la fila. Hoy no se nota porque el aviso interno publica justamente esa misma dirección
+(`ProductorNotificaciones.java:59`). Es un bug latente: cualquier aviso con dirección propia se
+ignora en silencio y el mail sale al destinatario viejo.
+
+### Propuesta
+
+- Usar el parámetro (seteando la dirección en la notificación antes de enviar), o mejor: que
+  `enviarNotificacion` reciba la dirección como única fuente de verdad y deje de leerla de la
+  entidad.
+- Si la intención es que la dirección sea siempre la de la fila, borrar el parámetro y el fallback
+  del consumidor: es código muerto que hoy lee como si hiciera algo.
+
+---
+
+## 20. El reintento manual que prometen los comentarios no existe
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:**
+`.../controllers/NotificadorController.java`,
+`.../models/repositories/RepositorioNotificaciones.java:19`
+
+### Qué pasa
+
+El Javadoc del gestor (líneas 69-70) y el del consumidor (líneas 45-46) dicen que una notificación
+fallida *"se puede reintentar desde la base"*, y el punto 2 de este backlog repite que *"el
+reintento manual es posible hoy"*. No lo es: el único endpoint del servicio es
+`GET /notificaciones/{id}`. No hay POST de reintento, no hay scheduler, y `findByEstado` —el método
+que serviría para buscar las `PENDIENTE` y `FALLIDA`— no se usa en ningún lado del módulo.
+
+O sea que hoy toda fila que no llega a `ENVIADA` es terminal: queda el registro como única
+evidencia, sin ningún camino de recuperación, ni automatizado ni manual por API.
+
+### Propuesta
+
+- `POST /notificaciones/{id}/reintento` que republica el aviso, pasando por el mismo camino
+  post-commit del punto 18.
+- Un `@Scheduled` que reintente las `PENDIENTE` con fecha de creación antigua, con tope de
+  intentos: es el automatismo que pide el punto 2.
+
+---
+
+## 21. La idempotencia es check-then-act sin lock
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivo:** `.../messaging/ConsumidorNotificaciones.java:111-118`
+
+### Qué pasa
+
+`procesarAvisoDeNotificacionExistente` lee el estado, decide y envía, todo sin transacción ni lock:
+dos entregas concurrentes del mismo aviso (reentrega del broker con más de un consumidor, o un
+doble publicado) pasan ambas el control de `ENVIADA` antes de que ninguna escriba el resultado, y
+la notificación sale dos veces.
+
+Hoy lo evita la configuración, no el diseño: el container levanta un consumidor por cola y la
+ventana entre el `findById` y el `save` final es chica. Con `concurrency > 1` o dos instancias del
+servicio apuntando a la misma cola, deja de ser gratis.
+
+### Propuesta
+
+- Update condicional de estado (`UPDATE notificaciones SET estado='ENVIADA' WHERE id=? AND
+  estado<>'ENVIADA'`) y solo enviar si afectó una fila, o bloqueo pesimista al leerla.
+- Es la misma alternativa que ya propone el punto 6 para reemplazar el `save` de la entidad
+  entera: un solo cambio cerraría los dos.
+
+---
+
+## 22. La cola escucha `notificaciones.evento.logistica` y ningún servicio publica esa clave
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivo:** `.../config/rabbit/RabbitConfig.java:70-76`
+
+### Qué pasa
+
+`bindingNotificacionesEventosLogistica` ata la cola al routing key `notificaciones.evento.logistica`
+y no hay ningún productor que lo use. `logisticas-service` publica en `logistica.eventos.exchange`
+con `logistica.evento` (`ProductorEventosLogistica.java:44-47`), y este servicio recibe esos hechos
+recién cuando `donaciones-service` los reenvía por `notificaciones.donacion`.
+
+No rompe nada: es un binding sin tráfico. El riesgo es de lectura, no de runtime: invita a pensar
+que logística habla directo con este servicio, que es exactamente lo que el enunciado prohíbe.
+
+### Propuesta
+
+- Sacar el binding y la constante `RK_EVENTO_LOGISTICA`, o dejar en ambos un comentario que diga
+  que la ruta real es logística → donaciones → notificaciones.
+
+---
+
+## 23. Código muerto y comentarios que ya no describen el código
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** varios
+
+### Qué pasa
+
+- `RepositorioNotificaciones.java:11-13`: el javadoc dice *"Repositorio en memoria de
+  notificaciones"* y describe listas por estado, pero es un `JpaRepository` contra MySQL. De la
+  línea 24 a la 67 está la implementación vieja comentada entera.
+- `GestorNotificaciones.java:74-80`: dice *"así la usan los dos llamadores por igual"*, pero
+  `crearNotificacion` tiene un solo caller (`enviarSolicitudDeNotificacion`).
+- `ConsumidorNotificaciones.java:69`: `cuerpoCrudo == null` después de `new String(...)` nunca se
+  cumple: ese constructor no devuelve null.
+- Imports sin usar: `MedioDeEnvio` en el gestor; `MedioDeEnvioFactory` y
+  `RepositorioNotificaciones` en `NotificadorService`.
+- `NotificadorController.java:24` llama `NotificacionMapper` al campo, con mayúscula inicial, como
+  si fuera el tipo.
+- `docker-compose.yml:97,120`: `NOTIFICACIONES_URL` no lo lee ningún `@Value` de Java desde que los
+  clientes pasaron a publicar por Rabbit.
+
+Nada de esto rompe, pero los dos primeros engañan al que lee el archivo buscando entender el
+comportamiento real, que es como aparecen la mayoría de los bugs de esta lista.
+
+### Propuesta
+
+- Borrar el bloque comentado del repositorio y corregir su javadoc.
+- Corregir o borrar los comentarios obsoletos y limpiar los imports.
+
+---
+
 # Corregidos
 
 ### 4. No había converter de mensajes: `RabbitTemplate` publicaba con `SimpleMessageConverter`
@@ -683,6 +884,14 @@ con la diferencia entre los dos caminos, que es fácil de confundir:
 
 Que el consumidor descarte en vez de reencolar en loop es lo correcto y ya está corregido; lo que
 falta es que el id viaje.
+
+#### Nota (2026-10-07): el id ya viaja, y el warn restante lo explica el punto 18
+
+`ProductorNotificaciones.enviar(Notificacion)` publica un `AvisoNotificacion` con
+`notificacion.getId().toString()` (líneas 55-60), así que el aviso propio **sí** lleva id y el
+camino del `POST` directo ya no debería descartarse por esa causa. Si el warn *"no existe, el
+mensaje se descarta"* sigue apareciendo, la causa ya no es el id: es la carrera del punto 18,
+publicar antes del commit.
 
 ---
 
