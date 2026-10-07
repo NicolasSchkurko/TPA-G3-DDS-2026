@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/personas") //legacy, deberiamos cambiarlo a donantes
+@RequestMapping("/api/personas") //legacy, deberiamos cambiarlo a donantes
 public class DonanteController {
 
   private final DonanteService donanteService;

@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @RestController
 @Tag(name = "Servicio de entidades beneficiarias", description = "Endpoints para operaciones CRUD de Entidades beneficiarias y la administracion de sus necesidades")
-@RequestMapping("/entidades")
+@RequestMapping("/api/entidades")
 public class EntidadBeneficiariaController {
 
     private final EntidadBeneficiariaService service;

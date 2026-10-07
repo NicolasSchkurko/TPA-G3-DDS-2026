@@ -160,6 +160,17 @@ class PersistenciaJpaTest {
                 .isPresent();
     }
 
+    @Test
+    void reclamarSiguienteConVariasPublicacionesVencidasDevuelveSoloUna() {
+        publicacionesN8nService.encolar(new PerfilPublicacionDTO(
+                "insignia", "mensaje", "discord", "Ana", UUID.randomUUID()));
+        publicacionesN8nService.encolar(new PerfilPublicacionDTO(
+                "insignia", "mensaje", "discord", "Beto", UUID.randomUUID()));
+        LocalDateTime ahora = LocalDateTime.now().plusSeconds(1);
+
+        assertThat(publicacionesN8nService.reclamarSiguiente(ahora)).isPresent();
+    }
+
     private Mision crearMision(AtributoImpacto atributo) {
         Regla regla = new Regla(
             new ReglaConstancia(3, UnidadTiempo.MONTHS),

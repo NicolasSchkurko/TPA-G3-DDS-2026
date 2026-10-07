@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/donaciones")
+@RequestMapping("/api/donaciones")
 @Tag(name = "Servicio de donaciones", description = "Endpoints para operaciones CRUD de Donaciones")
 public class DonacionController {
 

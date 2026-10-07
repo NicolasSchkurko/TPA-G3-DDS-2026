@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ResumenMetricaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,15 +30,15 @@ public interface RepositorioDonaciones
     );
 
     @Query("""
-            SELECT d.idUsuario, COUNT(d), COALESCE(SUM(d.cantidadBienes), 0),
+                        SELECT d.idUsuario, COUNT(d), COALESCE(SUM(d.cantidadBienes), 0),
                    MIN(d.fechaEntrega), MAX(d.fechaEntrega)
             FROM ImpactoDonacion d
             WHERE d.idUsuario = :idUsuario
               AND d.fechaEntrega >= :desde
-              AND d.fechaEntrega < :hasta
+              AND d.fechaEntrega <= :hasta
             GROUP BY d.idUsuario
             """)
-    Optional<Object[]> obtenerResumenMetrica(
+    Optional<ResumenMetricaDTO> obtenerResumenMetrica(
             @Param("idUsuario") UUID idUsuario,
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta
