@@ -8,24 +8,13 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notifica
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Recibe las solicitudes de notificación y las publica en la cola.
- *
- * <p><b>El procesamiento no es acá.</b> Antes este gestor tenía un
- * {@link java.util.concurrent.BlockingQueue} en memoria y un método {@code @Scheduled} que
- * la vaciaba cada dos segundos. El cambio a RabbitMQ reemplazó esa cola por el broker, y el
- * código se actualizó a medias: el campo {@code cola} se fue pero quedaron las llamadas a
- * {@code cola.add} y {@code cola.poll}, y el import de {@code @Scheduled} se quitó sin
- * borrar el método que lo usaba. Dejaba el módulo entero sin compilar.
- *
- * <p>Ahora el productor publica y {@code ConsumidorNotificaciones} recibe del broker. No
- * queda un segundo consumidor en memoria: si quedara, la misma notificación se intentaría
- * enviar dos veces por dos caminos distintos.
- */
+/** Guarda las solicitudes de notificación y las publica para que el consumidor las despache. */
 @Service
 public class GestorNotificaciones {
 
@@ -41,20 +30,6 @@ public class GestorNotificaciones {
         this.productorNotificaciones = productorNotificaciones;
     }
 
-    /**
-     * Guarda la notificación y la publica para que el consumidor la envíe.
-     *
-     * <p><b>La transacción es la que hace que el orden sirva.</b> Con @Transactional, el
-     * save() solo encola el INSERT y la publicación ocurre antes del commit. El
-     * consumidor corre en otra transacción, así que al recibir el mensaje todavía no
-     * ve la fila: fallaba con EntityNotFoundException al buscar la notificación por id.
-     * Con la transacción, el commit ocurre al salir del método y recién ahí el
-     * mensaje llega a un registro que ya existe.
-     *
-     * <p><b>Guardar antes de publicar evita perder el aviso.</b> Si la publicación falla,
-     * queda el registro en PENDIENTE y se puede reintentar desde la base; al revés no hay
-     * forma de saber que la notificación existió.
-     */
     @Transactional
     public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto,
                                               String direccionDeContacto,
@@ -63,21 +38,16 @@ public class GestorNotificaciones {
         Notificacion notificacion =
                 crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
 
-        notificacion.marcarPendiente();
-        repositorioNotificaciones.save(notificacion);
-
-        // Si esto tira, la notificación queda en PENDIENTE en la base y se puede
-        // reintentar desde ahí. Es el motivo de guardar primero.
-        productorNotificaciones.enviar(notificacion);
+        // En afterCommit: antes del commit el consumidor no ve la fila, y si el broker falla el
+        // commit ya hecho deja la notificación PENDIENTE para reintentar.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                productorNotificaciones.enviar(notificacion);
+            }
+        });
     }
 
-    /**
-     * Arma la notificación con estado PENDIENTE y la guarda.
-     *
-     * <p>Guarda adentro porque así la usan los dos llamadores por igual. El estado se setea
-     * en el constructor, así que el {@code marcarPendiente()} del flujo de envío es
-     * redundante y quedó solo.
-     */
     public Notificacion crearNotificacion(String tipoMedioDeContacto,
                                           String direccionDeContacto,
                                           String asunto,
@@ -91,29 +61,29 @@ public class GestorNotificaciones {
         return repositorioNotificaciones.save(notificacion);
     }
 
-    /**
-     * Envía la notificación por el medio que corresponda.
-     *
-     * <p>No persiste el estado: eso es responsabilidad del consumidor, que es quien sabe si
-     * la publicación por el broker funcionó.
-     */
-    public void enviarNotificacion(String tipoMedioContacto,
+    public void enviarNotificacion(String tipoMedioDeContacto,
                                    String direccionContacto,
                                    Notificacion notificacion) {
         try {
-            MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioContacto);
+            // La dirección del mensaje gana; los medios leen la de la entidad.
+            if (direccionContacto != null && !direccionContacto.isBlank()) {
+                notificacion.setDireccionDeContacto(direccionContacto);
+            }
+
+            MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioDeContacto);
             medioDeContacto.enviarNotificacion(notificacion);
         } catch (RuntimeException excepcion) {
             notificacion.marcarFallida();
-
-            if (excepcion.getMessage() != null) {
-                throw new IllegalArgumentException(
-                        "Ocurrió un problema inesperado al enviar la notificación: "
-                                + excepcion.getMessage(), excepcion);
-            }
-            throw new IllegalArgumentException(
-                    "Ocurrió un problema inesperado al enviar la notificación", excepcion);
+            throw new IllegalArgumentException(mensajeDeEnvioFallido(excepcion), excepcion);
         }
+    }
+
+    private static String mensajeDeEnvioFallido(RuntimeException excepcion) {
+        String detalle = excepcion.getMessage();
+
+        return detalle == null
+                ? "Ocurrió un problema inesperado al enviar la notificación"
+                : "Ocurrió un problema inesperado al enviar la notificación: " + detalle;
     }
 
     public Optional<Notificacion> obtenerNotificacionPorId(UUID id) {

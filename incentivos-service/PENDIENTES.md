@@ -12,23 +12,20 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
-| 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 3 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 4 | 39 | El PUT y el DELETE de perfiles prometen `Admin-Id` y no lo validan |
-| 5 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 6 | 4 | `common-lib` es código muerto |
-| 7 | 9 | No es un faltante: es una decisión de arquitectura |
-| 8 | 37 | La config de Checkstyle está en el repo pero el build no la ejecuta |
-| 9 | 40 | La documentación de seguridad promete controles que no existen |
-| 10 | 41 | `GET /api/metricas/{id}/actividad` promete un 404 que nunca devuelve |
-| 11 | 42 | La publicación de n8n arranca con una coma |
-| 12 | 23 | Higiene: código muerto, logs, encapsulación |
+| 1 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
+| 2 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
+| 3 | 4 | `common-lib` es código muerto |
+| 4 | 9 | No es un faltante: es una decisión de arquitectura |
+| 5 | 37 | La config de Checkstyle está en el repo pero el build no la ejecuta |
+| 6 | 40 | La documentación de seguridad promete controles que no existen |
+| 7 | 42 | La publicación de n8n arranca con una coma |
+| 8 | 23 | Higiene: código muerto, logs, encapsulación |
 
-El ex-38 (publicaciones por Rabbit) no está en la tabla: se corrigió y pasó a
+El ex-38 (publicaciones por Rabbit) no está en la tabla: se corrigió antes y pasó a
+[Corregidos](#corregidos). Los puntos 5, 39, 6 y 41 también se corrigieron y están en
 [Corregidos](#corregidos). El 35 tampoco, por el motivo que se explica más abajo.
 
-Quedan once abiertos, más el anexo del ex-35 (los buffers en memoria), y el 23 a medias. **Tres
+Quedan siete abiertos, más el anexo del ex-35 (los buffers en memoria), y el 23 a medias. **Tres
 de los que quedan son decisiones, no faltantes**: el 1 (autorización por header), el 9
 (logística no integrada) y el 10 (el ranking cuenta insignias). Los tres están anotados como
 aceptados a propósito, y cerrarlos o no es una decisión del equipo, no una deuda técnica.
@@ -62,73 +59,6 @@ requisito de asincronía del enunciado no cubre esa integración. Dejarlo como p
 la falsa impresión de que cerrando el 3 se cerraba también el 35, y el bug quedaba sin dueño.
 El anexo deja escrito cuál de las dos mitades se va con la cola y cuál no, y que la de n8n
 necesita la tabla de outbox.
-
----
-
-## 5. El contrato de `PATCH /api/perfiles/donacion/{idUsuario}` está roto: toda donación entra con 400
-
-**Estado:** abierto (requiere tocar `donaciones-service`)
-**Severidad:** crítica
-**Archivos:** `.../dto/Persona/ImpactoDonacionDTO.java`, `.../exceptions/GlobalExceptionHandler.java`;
-del otro lado: `donaciones-service/.../dto/incentivos/IncentivosDonacionDTO.java`,
-`donaciones-service/.../models/gestores/GestorAsignaciones.java`
-
-### Qué pasa
-
-Este servicio expone `PATCH /api/perfiles/donacion/{idUsuario}` para registrar el impacto de una
-donación, y su DTO de entrada es deliberadamente estricto:
-
-- `ImpactoDonacionDTO.idDonacion` es `@NotNull` (línea 35): es la primary local y la clave de
-  idempotencia del punto 14 — sin un id estable no se distingue una donación nueva de un
-  reintento de la misma.
-- `ImpactoDonacionDTO.fechaEntrega` es `@NotNull LocalDateTime` (línea 39): las métricas
-  mensuales hacen `YearMonth.from(...)` sobre ese campo.
-
-El emisor no cumple ninguno de los dos:
-
-| | `donaciones-service` manda | Este servicio exige |
-|---|---|---|
-| `idDonacion` | **no existe el campo** en `IncentivosDonacionDTO` | `@NotNull UUID` |
-| `fechaEntrega` | `LocalDate` (`"2026-10-07"`) | `@NotNull LocalDateTime` |
-
-`GestorAsignaciones.procesarAccionesPostCambioEstado` (líneas 93-99) arma el payload sin id, y
-Jackson no convierte un `LocalDate` en `LocalDateTime`: el pedido cae en
-`MethodArgumentNotValidException` o `HttpMessageNotReadableException` y el handler devuelve
-**400 siempre** (`GlobalExceptionHandler`, líneas 126-150). Y si la fecha viniera null —el
-punto 10 de `donaciones-service` dice que `fechaEntrega` nunca se persiste— el `@NotNull` tampoco
-lo deja pasar.
-
-El requisito ya estaba escrito y no se cumplió: ver *Tanda 3*, punto 14 — *"`donaciones-service`
-tiene que mandar el id de la donación o toda donación entra con 400"*.
-
-### Qué rompe del otro lado
-
-Rutas y verbo ya están corregidos: `IncentivosClient` apunta a `PATCH /api/perfiles/donacion/{id}`
-(ver *Corregidos* de `donaciones-service`). Lo que quedó sin alinear es el **payload**. Como el
-cliente **relanza** y `GestorAsignaciones` no captura en la línea 102, la excepción sube por
-`DonacionService.asignarPropuesta` en la línea 140 y **`publicarEntregaALogistica` (línea 147)
-nunca se ejecuta**: la asignación entera responde 500 y logística no se entera de la entrega.
-
-### Por qué no lo detecta nadie
-
-- `test-conexiones.ps1` (línea 231) manda el contrato *correcto* —con `idDonacion` y con
-  hora—, así que su verificación pasa y no refleja lo que manda el código.
-- La colección de smoke de este servicio (`incentivos-smoke.postman_collection.json:122`) manda
-  el payload **sin** `idDonacion`, así que su propio test "3 - Registrar impacto" (espera 200)
-  no puede pasar hoy.
-
-**Propuesta**
-
-1. Del lado que manda: agregar `private UUID idDonacion;` a `IncentivosDonacionDTO` y setearlo
-   en `GestorAsignaciones` con `dto.setIdDonacion(donacion.getId())`.
-2. Alinear `fechaEntrega`: `LocalDateTime` del lado de acá, o `LocalDate` de los dos (este
-   servicio solo usa `YearMonth.from(...)`, así que también serviría), pero decidiendo de una
-   vez. *`idDonacion` no es negociable*: es la clave del punto 14.
-3. Actualizar `incentivos-smoke.postman_collection.json` para que mande el contrato real.
-4. Un test de contrato en el emisor, que es donde este tipo de desfasaje se detecta antes de
-   llegar al 400 del otro lado.
-
-Espejado como punto 30 de `donaciones-service/PENDIENTES.md`.
 
 ---
 
@@ -239,63 +169,6 @@ misión.
    donaciones con `hizoProgresarMision = true` cuya misión estaba dentro del período.
    Como el progreso solo avanza una misión por vez, "misiones cumplidas en el mes" se
    puede reconstruir, aunque hay que definir bien el período.
-
-## 39. El PUT y el DELETE de perfiles prometen `Admin-Id` y no lo validan
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../controllers/PerfilController.java`, `.../services/PerfilService.java`
-
-### Qué pasa
-
-El javadoc de `PerfilController` (líneas 38-40) dice que las escrituras exigen además el header
-`Admin-Id`, y el Swagger del `PUT` documenta un `403 "No autorizado"` (línea 178). Pero:
-
-- `PUT /{id}` (líneas 180-186) y `DELETE /{idUsuario}` (líneas 197-203) **no reciben ni
-  validan** ese header, y tampoco llaman a `ValidadorAdmin`: en todo el módulo solo lo usan
-  `RankingService` (líneas 131 y 148), `MisionService` (92, 104, 138) y `CategoriaService`
-  (93, 125, 187).
-- El `403` del Swagger es **imposible**: no hay mecanismo que lo devuelva. El `DELETE`, que es
-  destructivo, ni siquiera lo documenta (solo 200/404) y queda sin ninguna autorización.
-- Además, el `PUT` describe el path variable como *"UUID del perfil a actualizar"* (línea 182),
-  pero `PerfilService.actualizarDatosPerfil` (líneas 447-452) busca con `findByIdUsuario`:
-  quien siga el Swagger y pase el id de la fila del perfil recibe 404.
-
-Convive con la decisión del punto 1 (servicio abierto). El defecto de acá es doble: el código y
-el Swagger prometen un control que no existe, y `perfiles` no hace siquiera lo mismo que el
-resto de los endpoints de escritura del módulo.
-
-**Propuesta**
-
-1. Validar `Admin-Id` con `ValidadorAdmin` en el `PUT` y el `DELETE` —o, si la decisión es
-   dejarlos abiertos, corregir el javadoc y sacar el `403` del Swagger para que el código deje
-   de prometerlo.
-2. Renombrar `{id}` a `{idUsuario}` en el `PUT` y ajustar la descripción del parámetro.
-
----
-
-## 6. `open-in-view` desactivado: revisar cargas perezosas al agregar endpoints
-
-**Estado:** vigilancia
-**Archivo:** `src/main/resources/application.properties`
-
-Se fijó `spring.jpa.open-in-view=false` y se marcaron con
-`@Transactional(readOnly = true)` los métodos de lectura que tocan colecciones perezosas
-(`Categoria.categoriaMisiones`, `RankingMensual.posiciones`, `Perfil.insigniasObtenidas`).
-
-El riesgo es el habitual: un endpoint nuevo que mapee una entidad a DTO **fuera** de una
-transacción va a fallar con `LazyInitializationException` en runtime, no al compilar.
-
-**Regla:** todo método de lectura que llame a un `...DTO.desdeEntidad(...)` sobre una
-colección necesita `@Transactional(readOnly = true)`.
-
-**Relación nueva que hay que tener en cuenta desde el punto 22:**
-`InsigniaObtenida.insignia` pasó de `EAGER` a `LAZY`. No es una relación más que "está
-perezosamente": `convertirPerfilADTO` lee `io.getInsignia().getNombre()`, así que cualquier
-lectura del perfil tiene que traerla. Hoy lo cubre el `@EntityGraph` de `findByIdUsuario` y
-el de `paginaInsigniasPorIdUsuario`, pero un endpoint nuevo que mapee un perfil por otro
-camino va a necesitar el suyo.
----
 
 ## 4. `common-lib` está en el repositorio pero no en el build
 
@@ -609,29 +482,6 @@ equipo—: es que quien llegue cree que hay autenticación y deje de mirar.
 1. Alinear los dos javadocs y la tabla del punto 1 con `SecurityConfig` tal como está hoy.
 2. Sobre el smoke, quitar o reemplazar el test del 401 —o declarar `httpBasic()` de verdad, que
    es exactamente lo que pide el punto 1 como arreglo de fondo.
-
----
-
-## 41. `GET /api/metricas/{id}/actividad` promete un 404 que nunca devuelve
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `.../controllers/MetricaController.java`, `.../services/MetricasService.java`
-
-### Qué pasa
-
-El controller chequea `actividad == null` y devuelve 404 en ese caso (líneas 78-80), y el
-Swagger documenta `404 "Perfil o actividad no encontrada"` (línea 70). Pero
-`MetricasService.obtenerEvolucionHistorica` (líneas 47-64) **nunca devuelve null**: siempre
-construye un `ActividadDTO` (línea 59). Un UUID inexistente responde **200 con totales en
-ceros**, y la rama del 404 es código muerto.
-
-Contrasta con los otros endpoints de métricas, que sí devuelven 404 con
-`Optional.orElseGet(ResponseEntity.notFound())` (líneas 58-60).
-
-**Propuesta:** decidir el contrato. Si "perfil sin actividad" es 404, verificar la existencia
-del perfil (o que haya filas) antes de responder; si es 200 con ceros, borrar la rama null y el
-`@ApiResponse(404)` del Swagger para que el código deje de prometer lo que no hace.
 
 ---
 
@@ -1155,4 +1005,82 @@ Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del con
 rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
 n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
 llega pero muere del otro lado.
+
+---
+
+## Corregidos — corrida de `bug-fixer` (2026-10-07)
+
+### 5. El contrato de `PATCH /api/perfiles/donacion/{idUsuario}` estaba roto
+
+**Estado:** corregido
+**Severidad:** crítica
+**Corregido:** 2026-10-07 · sin commit (el fix vive en `donaciones-service` y ya estaba staged)
+**Archivos:** `donaciones-service/.../dto/incentivos/IncentivosDonacionDTO.java`,
+`donaciones-service/.../models/gestores/GestorAsignaciones.java`
+
+**Qué pasaba:** el emisor mandaba el payload sin `idDonacion` y con `fechaEntrega` como
+`LocalDate`, mientras este servicio exige `@NotNull UUID` y `LocalDateTime`: toda donación
+asignada respondía 400, `IncentivosClient` relanzaba y `publicarEntregaALogistica` no corría.
+
+**Qué se cambió:** del lado que manda, `IncentivosDonacionDTO` declara `idDonacion` (UUID) y
+`fechaEntrega` como `LocalDateTime`; `GestorAsignaciones` setea `donacion.getId()` y
+`donacion.getFechaEntrega().atStartOfDay()`.
+
+**Cómo se verificó:** `ContratoIncentivosTest` (donaciones-service) captura el DTO que sale hacia
+incentivos y lo valida contra un espejo del `ImpactoDonacionDTO`; 33 tests del módulo en verde.
+
+### 39. El PUT y el DELETE de perfiles no validaban `Admin-Id`
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../controllers/PerfilController.java`, `.../services/PerfilService.java`,
+`.../services/AdministracionYPerfilPublicoTest.java` (+ los 4 tests que construyen `PerfilService`)
+
+**Qué pasaba:** `PUT` y `DELETE` prometían el header `Admin-Id` (javadoc y Swagger) y no lo
+validaban; el `403` del `PUT` era imposible y el `DELETE` quedaba sin autorización.
+
+**Qué se cambió:** ambos endpoints reciben `@RequestHeader("Admin-Id")` y `PerfilService` valida
+con `validadorAdmin.verificarPermisos(idAdmin)` antes de tocar la base; se renombró el path
+variable del `PUT` a `{idUsuario}` y se agregó el `403` al `DELETE`.
+
+**Cómo se verificó:** `AdministracionYPerfilPublicoTest$EscriturasDePerfil` (4 tests) verifica la
+llamada y que no se guarde ni borre sin permisos; suite completa en verde (309 tests).
+
+### 6. La constancia tocaba `valoresObservados` (LAZY) sobre entidades detached
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../services/PerfilService.java`,
+`.../services/PerfilServiceConstanciaTransaccionalTest.java`
+
+**Qué pasaba:** `evaluarConstanciaPerfiles` no era transaccional: la consulta del repositorio
+devolvía los perfiles detached y recién después se abría la transacción del bloque, así que
+`reiniciarProgreso()` → `limpiarValoresObservados()` podía lanzar `LazyInitializationException`
+sobre el `@ElementCollection` perezoso.
+
+**Qué se cambió:** la consulta y el recálculo corren dentro del mismo
+`transactionTemplate.execute(...)`, así las entidades quedan managed; se mantiene el bloque de
+500 y el orden por `idUsuario`.
+
+**Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre
+dentro de la transacción; se comprobó que fallaba con el código anterior.
+
+### 41. `GET /api/metricas/{id}/actividad` no devolvía el 404 documentado
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../controllers/MetricaController.java`, `.../services/MetricasService.java`,
+`.../services/MetricasServiceTest.java`
+
+**Qué pasaba:** el controller tenía una rama `== null` que nunca se cumplía: el service siempre
+construía un `ActividadDTO`, así que un UUID inexistente respondía 200 con totales en cero.
+
+**Qué se cambió:** `MetricasService` inyecta `RepositorioPerfiles` y lanza `InexistenteException`
+si el perfil no existe (el handler lo traduce a 404); el controller devuelve directo.
+
+**Cómo se verificó:** `MetricasServiceTest` (2 tests: perfil inexistente lanza, perfil existente
+devuelve el DTO); suite completa en verde.
 

@@ -10,9 +10,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-// El merge movio estos dos a subpaquetes. El wildcard de arriba no los alcanza, asi que van
-// explicitos: el servicio los escribe contra findByIdDonacion() y findByEstado(), que solo
-// existen en las versiones de subpaquete.
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import org.slf4j.Logger;
@@ -73,48 +70,37 @@ public class EntregaService {
       return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
   }
 
-  public ItemEntrega findById(UUID id) {
-    return repoItemEntrega.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada"));
+  /**
+   * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
+   * los getters de la entidad y entraría en ciclo al serializar.
+   */
+  public BienDTO findById(UUID id) {
+    return convertirABienDTO(repoItemEntrega.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")));
   }
 
+  /**
+   * Borra el item de entrega. El {@code findById} previo no evita nada: {@code deleteById} ya es
+   * no-op si no existe. Está para devolver el 404 que documenta el controller.
+   */
   public void delete(UUID id) {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
-    if(item.isPresent()){
-      repoItemEntrega.deleteById(id);
+    if(item.isEmpty()){
       throw new IllegalArgumentException("Entrega no encontrada");
     }
+    repoItemEntrega.deleteById(id);
   }
 
   // --- MÉTODOS DE NEGOCIO ---
 
   /**
-   * Registra los items de entrega de una donacion que llega por el broker.
-   *
-   * <p><b>Es idempotente, y por una razon que no es obvia.</b> RabbitMQ es de entrega al menos
-   * una vez: un mensaje vuelve a llegar si el consumidor procesa pero no llega a hacer el
-   * <i>ack</i>, por ejemplo si se cae la conexion o se reinicia la instancia. Con N instancias
-   * de logistica consumiendo la cola compartida eso no es teorico, y pasa.
-   *
-   * <p>Antes de agregar la guarda de existencia, una redelivery <b>no fallaba</b>: el
-   * {@code idDonacion} es clave natural sin {@code @GeneratedValue}, asi que el {@code isNew} de
-   * Spring Data da {@code false} y {@code save()} va siempre por {@code merge()}, que hace
-   * {@code SELECT} y despues {@code UPDATE}. El {@code UPDATE} reescribia la fila con lo que
-   * pone el constructor, que es {@code estado = PENDIENTE}, con lo que una entrega ya
-   * confirmada volvia a PENDIENTE. Sin error y sin log, que es peor que una duplicacion porque
-   * una duplicacion se ve.
-   *
-   * <p><b>El catalogo se resuelve una vez por mensaje y no por bien.</b> Antes estaba dentro del
-   * {@code for}, asi que una donacion con tres bienes escribia la misma direccion tres veces (el
-   * punto 15 del backlog), y con dos instancias dos donaciones para la misma entidad se pisaban
-   * {@code Pais -> Provincia -> Ciudad -> Direccion} en silencio. Ahora se resuelve una vez, y el
-   * {@code @Version} de esas entidades hace que la segunda que llegue reciba
-   * {@code OptimisticLockingFailureException} en vez de sobrescribir.
-   *
-   * <p><b>La transaccion es lo que hace el bloque atomico.</b> Sin ella, si el quinto
-   * {@code save} fallaba los cuatro anteriores ya estaban escritos y la donacion quedaba
-   * registrada a medias: los items de unos bienes y no los de otros.
-   */
+ * Registra los items de entrega de una donacion que llega por el broker.
+ *
+ * <p>Es idempotente porque RabbitMQ es de entrega al menos una vez: la guarda de existencia por
+ * {@code idDonacion} evita que una redelivery vuelva a pasar por {@code save()}, que como la
+ * clave es natural sin {@code @GeneratedValue} siempre va por {@code merge()} y reescribiría la
+ * fila con {@code estado = PENDIENTE}.
+ */
 public void procesarPeticion(EntregaDTO request) {
     if (request == null) return;
 
@@ -135,17 +121,8 @@ public void procesarPeticion(EntregaDTO request) {
               + ") no coincide con la cantidad de donaciones (" + idsDonaciones.size() + ")");
     }
 
-    // El catalogo y la entidad van en SU PROPIA transaccion, y no junto con los items.
-    //
-    // Esto se midio con dos instancias: las dos recibieron una donacion para la misma entidad
-    // beneficiaria, las dos insertaron la entidad, y una gano mientras la otra recibia la
-    // violacion de clave primaria. Con todo en una sola transaccion, esa violacion marcaba el
-    // rollback de TODO, y los items que la instancia perdedora estaba registrando se perdian: de
-    // diez mensajes solo quedo uno en la base, y el listener se comio la excepcion creyendo que
-    // era la carrera benigna del punto 21.
-    //
-    // Que dos instancias escriban el catalogo a la vez es normal y no puede arrastrar al trabajo
-    // real, asi que va aparte.
+    // El catalogo va en su propia transaccion: que dos instancias lo escriban a la vez es normal y
+    // no puede arrastrar al trabajo real.
     Entidad entidadDestino = resolverEntidad(request.getEntidadBeneficiaria());
 
     // Los items si van en una transaccion: o se registran todos los bienes del mensaje, o
@@ -157,19 +134,10 @@ public void procesarPeticion(EntregaDTO request) {
   }
 
   /**
-   * Resuelve la entidad beneficiaria en su propia transaccion, tolerando la carrera entre
-   * instancias.
-   *
-   * <p><b>Solo la entidad puede colisionar.</b> {@code Pais}, {@code Provincia},
-   * {@code Ciudad} y {@code Direccion} generan su id, así que dos instancias pueden insertar filas
-   * distintas sin problema (que es el punto 15, otra cosa). La que tiene clave natural es
-   * {@code Entidad}, con {@code idEntidad} que viene del mensaje, y ahí sí las dos instancias
-   * pueden pelear por el mismo INSERT.
-   *
-   * <p>Se busca antes de insertar, y si aun así choca, se vuelve a leer la que quedó. En los dos
-   * caminos el resultado es el mismo, que es lo único que importa: que exista la entidad para
-   * poder guardar el item.
-   */
+ * Resuelve la entidad beneficiaria en su propia transaccion, tolerando la carrera entre
+ * instancias. Solo {@code Entidad} puede colisionar: es la única con clave natural, y su
+ * {@code idEntidad} viene del mensaje.
+ */
   private Entidad resolverEntidad(DireccionDTO dto) {
     Direccion direccion = this.convertirDireccionDTO(dto);
     if (direccion == null) {
@@ -192,8 +160,7 @@ public void procesarPeticion(EntregaDTO request) {
       try {
         return repoEntidades.saveAndFlush(new Entidad(idEntidad, direccion));
       } catch (DataIntegrityViolationException carrera) {
-        // Otra instancia la inserto entre el findById y el save. Se relee y se sigue con la
-        // que quedo: el resultado es exactamente el que se buscaba.
+        // Otra instancia la insertó entre el findById y el save: se relee la que quedó.
         log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente",
                 idEntidad);
         return repoEntidades.findById(idEntidad).orElseThrow(
@@ -217,9 +184,8 @@ public void procesarPeticion(EntregaDTO request) {
       for (int j = 0; j < bienes.size(); j++) {
         UUID idDonacion = idsDonaciones.get(j);
 
-        // Guarda de idempotencia: si el item ya existe, el mensaje es una repeticion. Se omite y
-        // sigue con el resto de los bienes. Un `continue` y no un `return` porque la donacion
-        // puede traer bienes nuevos junto con otros ya registrados.
+        // Un `continue` y no un `return` porque la donacion puede traer bienes nuevos junto con
+        // otros ya registrados.
         if (repoItemEntrega.existsById(idDonacion)) {
           repetidos++;
           log.info("La donacion {} ya estaba registrada, el mensaje se repite y se omite",
@@ -229,7 +195,6 @@ public void procesarPeticion(EntregaDTO request) {
 
         BienDTO bien = bienes.get(j);
 
-        // Mapeo mediante el switch delegado al servicio
         UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
         repoUnidades.save(unidadDominio);
 
@@ -244,11 +209,11 @@ public void procesarPeticion(EntregaDTO request) {
   }
 
   /**
-   * Corre un bloque en una transaccion propia, independiente de la que tenga abierta el caller.
-   *
-   * <p>Se usa {@code REQUIRES_NEW} y no el_transactional del metodo porque aqui hace falta que el
-   * rollback del catalogo <b>no</b> se lleve por delante los items.
-   */
+ * Corre un bloque en una transaccion propia, independiente de la que tenga abierta el caller.
+ *
+ * <p>{@code REQUIRES_NEW} y no el {@code @Transactional} del metodo porque hace falta que el
+ * rollback del catalogo <b>no</b> se lleve por delante los items.
+ */
   private <T> T enSuPropiaTransaccion(java.util.function.Supplier<T> bloque) {
     org.springframework.transaction.support.TransactionTemplate plantilla =
             new org.springframework.transaction.support.TransactionTemplate(gestorTransacciones);
@@ -275,14 +240,10 @@ public void procesarPeticion(EntregaDTO request) {
   /**
    * Cambia el estado de un item. Es la unica via por la que el estado se mueve.
    *
-   * <p><b>Transaccional por una razon concreta.</b> Publica el evento de trazabilidad y despues
-   * guarda el item: sin transaccion, si el {@code save} fallaba el evento ya habia salido del
-   * servicio y donaciones-service se enteraba de una entrega que en la base no ocurrio.
-   *
-   * <p>Con N instancias, dos operadores pueden confirmar la misma entrega casi al mismo tiempo.
-   * El {@code @Version} del {@code ItemEntrega} hace que el segundo reciba
-   * {@code OptimisticLockingFailureException} en vez de sobrescribir al primero, y el mensaje de
-   * error le dice al operador que la entrega ya fue confirmada por otra peticion.
+   * <p>Transaccional porque publica el evento de trazabilidad y despues guarda el item: sin
+   * transaccion, un {@code save} fallado dejaba el evento afuera y donaciones-service se enteraba
+   * de una entrega que en la base no ocurrio. El {@code @Version} del {@code ItemEntrega} hace
+   * que dos operadores que confirmen la misma entrega al mismo tiempo no se pisen.
    */
   @Transactional
   public void actualizarEstado(UUID idDonacion, ActualizacionEntregaDTO request) {
@@ -295,7 +256,7 @@ public void procesarPeticion(EntregaDTO request) {
 
     switch (request.getEstado().toUpperCase()) {
       case "ENTREGADA":
-        if(comprobarExistencia(request.getFotoUrl())) {
+        if(faltaTexto(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
         repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
@@ -304,7 +265,7 @@ public void procesarPeticion(EntregaDTO request) {
         break;
 
       case "NO_RECIBIDA":
-        if(comprobarExistencia(request.getJustificacion())) {
+        if(faltaTexto(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
         repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
@@ -325,16 +286,16 @@ public void procesarPeticion(EntregaDTO request) {
     repoItemEntrega.saveAndFlush(item);
   }
 
+  /** {@code true} si el texto vino nulo o vacío. */
+  private boolean faltaTexto(String elemento){
+    return (elemento == null || elemento.trim().isEmpty());
+  }
+
   /**
    * Ítems en estado NO_RECIBIDA, pendientes de revisión (reingreso a depósito
    * o replanificación). El control de quién puede llamar a este endpoint
    * es responsabilidad del front/capa de autorización, no de este servicio.
    */
-
-  private boolean comprobarExistencia(String elemento){
-    return (elemento == null || elemento.trim().isEmpty());
-  }
-
   public BienesDTO obtenerEntregasNoRecibidas() {
     List<ItemEntrega> items = repoItemEntrega.findByEstado(EstadoEntrega.NO_RECIBIDA);
     return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));

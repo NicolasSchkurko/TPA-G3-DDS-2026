@@ -27,13 +27,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-/**
- * Las dos guardas que el código decía tener y no tenía (punto 34).
- *
- * <p>Las dos son el mismo error en dos lugares: <b>el código afirma una propiedad que no
- * tiene</b>. El enum se parseaba sin la normalización que sí usaba el POST, y la constancia
- * aceptaba medio dato cuando su javadoc decía que lo rechazaba.
- */
 @DisplayName("Punto 34: guardas que el codigo decia tener y no tenia")
 class GuardasQueFaltabanTest {
 
@@ -41,14 +34,7 @@ class GuardasQueFaltabanTest {
     @DisplayName("a) el enum se parseaba sin normalizar en el filtro del listado")
     class ElEnumDelListado {
 
-        /**
-         * Un repositorio de misiones con el filtro de {@code obtenerTodas} de verdad detrás.
-         *
-         * <p>El {@code CALLS_REAL_METHODS} es lo que hace posible el test: {@code obtenerTodas}
-         * es un {@code default method} de la interfaz, y un mock normal devuelve {@code null}
-         * sin ejecutar nada. Así los métodos abstractos quedan mockeados (no hay base de
-         * datos) y los default se ejecutan de verdad, que es lo que se quiere probar.
-         */
+        /** Un repositorio con el filtro de {@code obtenerTodas} de verdad (CALLS_REAL_METHODS). */
         private RepositorioMisiones repositorioConFiltroReal() {
             RepositorioMisiones repo = mock(RepositorioMisiones.class,
                     withSettings().defaultAnswer(CALLS_REAL_METHODS));
@@ -107,10 +93,7 @@ class GuardasQueFaltabanTest {
                     .hasMessageContaining("CATEGORIA")
                     .hasMessageContaining("ESTADO");
 
-            // Antes el IllegalArgumentException desnudo sobrevivía solo porque
-            // GlobalExceptionHandler lo mapea a 400. Eso ataba el comportamiento a un handler
-            // que puede cambiar, y el mensaje era "No enum constant ...", que no le dice
-            // nada a quien está usando la API.
+            // Antes salía un IllegalArgumentException crudo, atado al GlobalExceptionHandler.
         }
 
         @Test

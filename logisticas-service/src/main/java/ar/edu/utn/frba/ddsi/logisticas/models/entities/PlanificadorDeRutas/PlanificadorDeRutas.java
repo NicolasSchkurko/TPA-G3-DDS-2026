@@ -19,15 +19,14 @@ public class PlanificadorDeRutas {
 
   private static final int TAMANO_LOTE_MAXIMO = 100;
 
-  // Se inyecta la dependencia del proveedor externo (puede ser un mock/simulador para el TP)
   private ProveedorRutasExterno proveedorExterno;
 
-    /**
-   * Toma las donaciones pendientes y las envía al proveedor externo en lotes.
+  /**
+   * Manda las donaciones pendientes al proveedor externo en lotes de
+   * {@value #TAMANO_LOTE_MAXIMO}.
    */
   public void iniciarPlanificacion(List<ItemEntrega> itemsPendientes, List<Camion> camionesDisponibles) {
 
-    // Requerimiento: Procesar en lotes de máximo 100 donaciones
     for (int i = 0; i < itemsPendientes.size(); i += TAMANO_LOTE_MAXIMO) {
       int fin = Math.min(itemsPendientes.size(), i + TAMANO_LOTE_MAXIMO);
       List<ItemEntrega> lote = itemsPendientes.subList(i, fin);
@@ -36,11 +35,9 @@ public class PlanificadorDeRutas {
   }
 
   /**
-   * Paso 2: Ejecutado cuando el controlador HTTP recibe el POST en la URL de callback (/api/logistica/rutas/callback).
-   * Reconstruye los objetos de dominio (Rutas, Paradas) a partir de la respuesta del proveedor.
-   * @param itemsPorPatenteCamion Mapa que asocia la patente del camión con los IDs de las donaciones que debe llevar.
-   * @param repositorioCamiones Lista/Repositorio de camiones para buscar las instancias.
-   * @param repositorioItems Lista/Repositorio de ítems pendientes para buscar las instancias.
+   * Reconstruye las rutas que devolvio el proveedor externo.
+   *
+   * @param itemsPorPatenteCamion patente del camion -> ids de las donaciones que debe llevar
    */
   public List<Ruta> procesarCallbackRutas(
       Map<String, List<UUID>> itemsPorPatenteCamion,
@@ -53,17 +50,14 @@ public class PlanificadorDeRutas {
       String patente = asignacion.getKey();
       List<UUID> idsItemsAsignados = asignacion.getValue();
 
-      // 1. Buscar el camión instanciado
       Camion camion = repositorioCamiones.stream()
                                          .filter(c -> c.getPatente().equals(patente))
                                          .findFirst()
                                          .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado con patente: " + patente));
 
-      // 2. Instanciar la nueva Ruta
-      Ruta nuevaRuta = new Ruta(camion); // Se planifica para el día siguiente
+      Ruta nuevaRuta = new Ruta(camion);
 
-      // 3. Vincular donaciones.
-      // Al llamar a agregarEntrega, la clase Ruta agrupa automáticamente por Parada/Entidad.
+      // agregarEntrega agrupa solo, creando una parada por entidad destino.
       for (UUID idItem : idsItemsAsignados) {
         ItemEntrega item = repositorioItems.stream()
                                            .filter(i -> i.getIdDonacion().equals(idItem))
@@ -73,8 +67,7 @@ public class PlanificadorDeRutas {
         nuevaRuta.agregarEntrega(item);
       }
 
-      // 4. Validación de consistencia: El dominio es el responsable de verificar
-      // que el proveedor externo no haya violado las reglas de negocio (capacidad).
+      // El dominio es quien valida que el proveedor no haya violado las reglas de negocio.
       if (nuevaRuta.excedeCapacidadDelCamion()) {
         throw new IllegalStateException(
             "Error de Integración: El proveedor externo generó una ruta inválida que excede " +
@@ -82,7 +75,6 @@ public class PlanificadorDeRutas {
         );
       }
 
-      // 5. Finalizar estado
       nuevaRuta.setEstado(EstadoRuta.PROGRAMADA);
       rutasGeneradas.add(nuevaRuta);
     }

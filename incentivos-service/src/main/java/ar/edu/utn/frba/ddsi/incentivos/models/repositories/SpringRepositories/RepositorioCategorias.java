@@ -14,11 +14,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * Consultas sobre las categorías y su secuencia de posiciones.
- *
- * <p>Además de las consultas, tiene los {@code UPDATE} en bloque que desplazan las
- * posiciones cuando entra, sale o se mueve una categoría. Son consultas y no código de
- * aplicación porque hay que mover varias filas de a uno en una sola sentencia.
+ * Consultas sobre las categorías y su secuencia de posiciones, incluidos los {@code UPDATE}
+ * en bloque que desplazan posiciones en una sola sentencia.
  */
 @Repository
 public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
@@ -26,17 +23,8 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     List<Categoria> findAllByOrderByPosicionSecuenciaAsc();
 
     /**
-     * La categoría base, o sea la primera del programa, con su secuencia de misiones ya
-     * cargada.
-     *
-     * <p>Existe para el alta de un donante (punto 25), y el {@code fetch} no es
-     * cosmético: {@code categoriaMisiones} es LAZY y {@code open-in-view} está
-     * desactivado, así que sin traerse la colección en la misma consulta, el
-     * {@code Categoria} vuelve desligado y el primer {@code primeraMision()} falla o, peor,
-     * devuelve {@code null} en silencio dejando al donante sin misión para siempre.
-     *
-     * <p>{@code Optional} y no {@code null}: el llamador distingue "no hay categoría base
-     * configurada" de "hay pero no tiene misiones", que son dos errores distintos.
+     * La categoría base (la primera) con su secuencia de misiones ya cargada: sin el
+     * {@code fetch}, la colección LAZY volvería desligada.
      */
     @Query("SELECT c FROM Categoria c LEFT JOIN FETCH c.categoriaMisiones WHERE c.posicionSecuencia = "
             + "(SELECT MIN(c2.posicionSecuencia) FROM Categoria c2)")
@@ -58,15 +46,8 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
         Pageable pageable
     );
 
-    // ===== Secuencia de posiciones (punto 19) =====
-    // Todos los @Modifying llevan flushAutomatically para que el UPDATE masivo parta del
-    // estado real de la base y no pise inserts que todavía estan en el contexto de
-    // persistencia sin flushear.
-    // NO se pone clearAutomatically a proposito: en actualizarCategoria el contexto
-    // contiene la Categoria que se esta editando, y limpiarla la dejaria detached en
-    // mitad de la operacion; el setPosicionSecuencia y el copiar de esa misma entidad
-    // vendrían despues sobre un objeto desligado, y el save final terminaria haciendo
-    // merge de un CategoriaMision que ya no esta gestionado.
+    // Secuencia de posiciones: los @Modifying usan flushAutomatically para no pisar inserts
+    // sin flushear. Sin clearAutomatically, para no desligar la Categoria que se está editando.
 
     @Modifying(flushAutomatically = true)
     @Query("UPDATE Categoria c SET c.posicionSecuencia = c.posicionSecuencia + 1 WHERE c.posicionSecuencia >= :inicio AND c.posicionSecuencia <= :fin")
@@ -85,22 +66,18 @@ public interface RepositorioCategorias extends JpaRepository<Categoria, UUID> {
     void desplazarHaciaArribaDesde(@Param("inicio") Integer inicio);
 
     /**
-     * Posiciones ocupadas, ordenadas. Se usa en vez de {@code count()} porque la secuencia
-     * asume que las posiciones van de 1 a N, y eso solo es cierto si no hay huecos ni
-     * duplicados: con un hueco, {@code count()} da un limite superior mayor que la
-     * posicion realmente ocupada y el desplazamiento mueve categorias que no deberia.
+     * Posiciones ocupadas, ordenadas. Se usa en vez de {@code count()}: con huecos,
+     * {@code count()} daría un límite superior mayor que la posición realmente ocupada.
      */
     @Query("SELECT c.posicionSecuencia FROM Categoria c WHERE c.posicionSecuencia IS NOT NULL ORDER BY c.posicionSecuencia ASC")
     List<Integer> listarPosiciones();
 
-    /** Si la posición ya está tomada por otra categoría (punto 19). */
+    /** Si la posición ya está tomada por otra categoría. */
     boolean existsByPosicionSecuencia(Integer posicionSecuencia);
 
     /**
-     * Categorías que tienen esta misión en su secuencia. Es la tercera referencia que
-     * bloquea borrar una misión (punto 18): {@code CategoriaMision} es el lado propietario
-     * de la relación y no tiene cascada, así que borrar una misión que pertenece a una
-     * categoría revienta por FK si nadie la saca antes.
+     * Categorías que tienen esta misión en su secuencia. Hay que soltar la referencia antes
+     * de borrarla: {@code CategoriaMision} es el lado propietario y no tiene cascada.
      */
     List<Categoria> findAllByCategoriaMisionesMision(Mision mision);
 

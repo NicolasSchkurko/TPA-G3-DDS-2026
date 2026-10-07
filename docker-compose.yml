@@ -6,7 +6,7 @@
 # construye desde su módulo con `build:`.
 #
 # La cadena de integración que exige el enunciado va por RabbitMQ, no por HTTP entre
-# contenedores: `donaciones-service` publica en `logistica.exchange`, `logisticas-service`
+# contenedores: `donaciones-service` publica en `logistica.integracion.hash`, `logisticas-service`
 # publica en `logistica.eventos.exchange`, y los dos servicios de dominio publican en
 # `notificaciones.exchange`. Todos son consumidores de esas colas.
 
@@ -156,6 +156,20 @@ services:
   # logisticas-service/src/main/resources/application.properties, pero apagado a proposito:
   # compra orden por donacion a cambio de disponibilidad, y hoy ningun mensaje que llegue a
   # logistica lleva una transicion de estado, asi que el orden no hace falta.
+  #   DB_USERNAME y DB_PASSWORD NO tienen valor aqui a proposito.
+  #
+  #   Estaban en claro, y con eso la credencial quedaba en el historial de git para cualquiera
+  #   que clone el repo, aunque uno la sacara despues del archivo. Ahora se leen del entorno, y el
+  #   servicio falla al arrancar si no estan: `application.properties` ya no tiene default.
+  #
+  #   Definilas en un `.env` al lado de este archivo, que Docker Compose lee solo y que no hay
+  #   que commitear (copialo de `.env.example`).
+  #
+  #   Y cambiala en MySQL antes de usarla: la que estaba commiteada hay que rotarla.
+  #
+  #   Ojo: esto cubre SOLO logisticas. `donaciones-service` mas arriba delega la MISMA clave en
+  #   claro, y `notificaciones-service` tiene la suya. Si el objetivo era sacarlas del repo, cada
+  #   una es un arreglo aparte en su PENDIENTES.md.
   logisticas-service:
     build: ./logisticas-service
     ports:
@@ -163,8 +177,8 @@ services:
     environment:
       SERVER_PORT: 8086
       DB_URL: jdbc:mysql://mysql:3306/logisticas?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: valentin
-      DB_PASSWORD: "10032001"
+      DB_USERNAME: ${DB_USERNAME:?definí DB_USERNAME en un .env junto al docker-compose.yml}
+      DB_PASSWORD: ${DB_PASSWORD:?definí DB_PASSWORD en un .env junto al docker-compose.yml}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest

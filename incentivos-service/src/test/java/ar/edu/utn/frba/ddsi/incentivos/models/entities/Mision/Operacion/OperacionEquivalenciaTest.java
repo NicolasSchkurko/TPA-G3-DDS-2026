@@ -10,12 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * Qué cambios en una regla invalidan el progreso ya acumulado, y cuáles no (punto 15).
- *
- * <p>Esto es lo que evita que retocar el texto de una misión le borre el avance a todos
- * los que estaban por completarla.
- */
 @DisplayName("Comparación de operaciones: qué cuenta como cambio de verdad")
 class OperacionEquivalenciaTest {
 
@@ -58,9 +52,7 @@ class OperacionEquivalenciaTest {
         @Test
         @DisplayName("subir el minimo NO invalida lo ya acreditado")
         void subirElMinimoNoInvalidaLoAcreditado() {
-            // Una donación de 5 bienes contaba con mínimo 4 y sigue contando con mínimo 6.
-            // Si esto devolviera false, un retoque en el umbral les borraría el progreso a
-            // todos los que estaban en la misión.
+            // Subir el mínimo no invalida una donación que ya lo superaba.
             assertThat(new SuperaCantidad(5, 4)
                     .esEquivalenteA(new SuperaCantidad(5, 6))).isTrue();
         }
@@ -100,9 +92,7 @@ class OperacionEquivalenciaTest {
         @Test
         @DisplayName("el mismo valor esperado con otro objeto JsonNode es equivalente")
         void mismoValorEsperadoEsEquivalente() {
-            // Dos TextNode distintos en memoria pero con el mismo texto: el equals de
-            // JsonNode compara estructura, no referencia. Si comparara referencia, cada
-            // edicion de la misión pareceria un cambio y se perderia todo el progreso.
+            // JsonNode compara estructura, no referencia: mismo texto, mismo valor.
             assertThat(new CantidadCoincidencias(5, MAPPER.valueToTree("ENTREGADA"))
                     .esEquivalenteA(new CantidadCoincidencias(5, MAPPER.valueToTree("ENTREGADA"))))
                     .isTrue();

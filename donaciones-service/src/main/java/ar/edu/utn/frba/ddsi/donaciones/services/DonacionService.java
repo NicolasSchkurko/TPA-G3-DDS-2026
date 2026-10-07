@@ -13,6 +13,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Propu
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -21,7 +22,10 @@ import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -95,10 +99,8 @@ public class DonacionService {
     asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
   }
 
-  // A diferencia de dto.toDomain() (que sólo completa id/descripcion/bienes, dejando
-  // donante/entidad/estado/subcategoria/fechaEntrega en null), acá partimos de la Donacion
-  // existente y sólo pisamos los campos que vienen en el DTO. Con persistencia real (merge()),
-  // guardar un objeto mayormente-null hubiera nuleado esas columnas en la base.
+  // Partimos de la Donación existente y sólo pisamos los campos que trae el DTO:
+  // guardar un objeto mayormente-null nulearía el resto de las columnas en el merge().
   public DonacionDTO actualizarDonacion(UUID id, DonacionDTO dto) {
     Donacion existente = repositorioDonaciones.obtenerPorId(id)
             .orElseThrow(() -> new RuntimeException("Donación no encontrada con ID: " + id));
@@ -139,23 +141,14 @@ public class DonacionService {
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
 
-    // A partir de aca la donacion le corresponde a logistica. El enunciado pide que esta
-    // integracion vaya por broker, asi que se publica el item de entrega en vez de llamar a
-    // logistica por HTTP. Va despues del cambio de estado a proposito: si la publicacion
-    // falla, la excepcion sube y la transaccion se revierte, y no queda una donacion
-    // marcada como asignada que nadie va a entregar nunca.
+    // A partir de acá la donación le corresponde a logística, por broker (el enunciado lo pide).
+    // Va después del cambio de estado a propósito: si la publicación falla, la excepción sube.
     publicarEntregaALogistica(donacionId);
   }
 
-  /**
-   * Arma el mensaje de entrega y lo publica en el exchange de integracion.
-   *
-   * <p>El mensaje lleva lo minimo que logistica necesita para crear el item: los ids de las
-   * donaciones, los bienes con su cantidad y unidad, y la direccion de la entidad
-   * beneficiaria. Logistica no consulta este servicio para nada mas, que es lo que exige el
-   * enunciado: no debe invocar los servicios de donaciones ni incentivos, sino dejar
-   * disponible la informacion.
-   */
+  /** Publica el item de entrega: los ids de donación, los bienes agregados por unidad y la
+   *  dirección de la entidad. Es todo lo que logística necesita para crear los ítems de entrega;
+   *  por contrato, no consulta este servicio para nada más. */
   private void publicarEntregaALogistica(UUID donacionId) {
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId)
             .orElseThrow(() -> new IllegalArgumentException("No se encontro la donacion"));
@@ -167,16 +160,35 @@ public class DonacionService {
       return;
     }
 
-    // Bien guarda la cantidad en el campo 'peso' y la unidad en 'unidadUtilizada'; el DTO de
-    // transporte los llama cantidad y unidadDeMedida, asi que se renombran al mapear.
-    List<BienDTO> bienes = donacion.getBienes().stream()
-            .map(b -> new BienDTO(b.getPeso(), b.getUnidadUtilizada().name()))
-            .collect(Collectors.toList());
+    // Bien guarda 'peso' y 'unidadUtilizada'; el DTO de transporte los llama cantidad y
+    // unidadDeMedida. Se suma por unidad: logística guarda UN ItemEntrega por donación con un
+    // solo par cantidad+unidad, y su dedupe descartaría los bienes 2..N (punto 31).
+    Map<UnidadDeMedida, Integer> cantidadesPorUnidad = new LinkedHashMap<>();
+    donacion.getBienes().forEach(b ->
+            cantidadesPorUnidad.merge(b.getUnidadUtilizada(),
+                    b.getPeso() != null ? b.getPeso() : 0, Integer::sum));
+
+    List<BienDTO> bienes = new ArrayList<>();
+    List<UUID> idsParaLogistica = new ArrayList<>();
+    // Un id de donación por entrada: el receptor exige bienes.size() == idsDonaciones.size()
+    // (punto 27) y ProductorLogistica particiona por el menor de los ids, que con id repetido
+    // sigue siendo estable.
+    cantidadesPorUnidad.forEach((unidad, cantidad) -> {
+        // Unidad null es el punto 38 (UNIDADES en el formulario se mapea a null): el receptor
+        // lo rechaza con un warn visible en vez de un 500 sin contexto.
+        bienes.add(new BienDTO(cantidad, unidad != null ? unidad.name() : null));
+        idsParaLogistica.add(donacion.getId());
+    });
+
+    // La dirección viaja con el id de la entidad: logística resuelve el destino con
+    // findById(idEntidad) y sin él descarta el mensaje (contrato, punto 27 de PENDIENTES.md).
+    DireccionDTO direccionEntidad = DireccionDTO.from(entidad.getDireccion());
+    direccionEntidad.setIdEntidad(entidad.getId());
 
     EntregaDTO entrega = new EntregaDTO(
-            List.of(donacion.getId()),
+            idsParaLogistica,
             bienes,
-            DireccionDTO.from(entidad.getDireccion())
+            direccionEntidad
     );
 
     productorLogistica.publicarDonacionAsignada(entrega);

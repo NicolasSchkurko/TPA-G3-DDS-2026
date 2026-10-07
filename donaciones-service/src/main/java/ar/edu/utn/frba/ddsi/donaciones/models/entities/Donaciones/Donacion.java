@@ -30,57 +30,49 @@ import java.util.UUID;
 @Setter
 public class Donacion {
     @Id
-    private UUID id = UUID.randomUUID(); // Identificador único como UUID autogenerado
+    private UUID id = UUID.randomUUID();
 
-    // ManyToOne (no OneToOne): el Donante vive en su propio repositorio (RepositorioDonantes),
-    // igual que Administrador.humano/Donante.persona. Sin cascade REMOVE: eliminar la donación
-    // no debe borrar el Donante asociado.
+    // ManyToOne porque el Donante vive en su propio repositorio; sin cascade REMOVE:
+    // eliminar la donación no debe borrar al donante.
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "donante_id")
     private Donante donante;
 
-    // Igual que arriba pero para EntidadBeneficiaria: al crearse la Donacion todavía no tiene
-    // entidad asignada (se completa después vía matchmaking, GestorAsignaciones.asignarEntidad).
+    // Al crearse la Donacion todavía no tiene entidad: se asigna después vía matchmaking.
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "entidad_id")
     private EntidadBeneficiaria entidad;
 
-    // Lado dueño de la relación con Necesidad (inversa: Necesidad.donaciones, mappedBy="necesidad").
-    // Sin cascade: la Necesidad vive en su propio repositorio, se asigna vía
-    // GestorAsignaciones.agregarDonacionANecesidad una vez matcheada.
+    // Lado dueño de la relación con Necesidad (inversa: Necesidad.donaciones).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "necesidad_id")
     private Necesidad necesidad;
 
     private String descripcion;
 
-    // Los Bien ya se persisten individualmente vía RepositorioBienes ANTES de armar la Donacion
-    // (ver DonacionService.procesarFormulario: cada Bien se guarda, luego se segmenta en
-    // Donaciones). Cascade PERSIST/MERGE (no ALL, sin orphanRemoval): cada Bien "pertenece" a
-    // este segmento, pero su ciclo de vida propio sigue gestionado por su propio repositorio,
-    // mismo criterio que Donante.persona/Administrador.humano.
+    // Cada Bien pertenece a este segmento pero su ciclo de vida sigue en su propio
+    // repositorio: cascade PERSIST/MERGE, sin orphanRemoval.
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "donacion_id")
     private List<Bien> bienes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
-    private Estado estado; // Cambiado a minúscula por convención
+    private Estado estado;
 
-    // Catálogo compartido (buscar-o-crear vía RepositorioSubcategoriasDeBienes), igual que
-    // Necesidad.subcategoria y Bien.subcategoria: sin cascade.
+    // Catálogo compartido (buscar-o-crear vía RepositorioSubcategoriasDeBienes), sin cascade.
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
     private SubcategoriaBien subcategoria;
 
     private LocalDate fechaEntrega;
 
-    // Lista para garantizar trazabilidad y auditoría de los estados.
+    /** Trazabilidad de los cambios de estado. */
     @ElementCollection
     @CollectionTable(name = "donacion_historial_estados", joinColumns = @JoinColumn(name = "donacion_id"))
     @Column(name = "registro", length = 1000)
     private List<String> historialEstados = new ArrayList<>();
 
-    // Constructor vacío necesario para la deserialización (JSON a Objeto) de Spring y para JPA/Hibernate.
+    // Constructor vacío requerido por JPA y la deserialización de Spring.
     public Donacion() {
     }
 

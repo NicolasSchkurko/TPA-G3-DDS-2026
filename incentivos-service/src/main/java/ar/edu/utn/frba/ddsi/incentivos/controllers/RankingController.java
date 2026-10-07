@@ -28,11 +28,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de consulta del ranking: el de un mes, el de un período concreto y el puesto
- * de un donante.
- *
- * <p>No expone la generación del ranking: eso corre solo, una vez al mes, por
- * {@code RankingScheduler}.
+ * Endpoints de consulta del ranking. No expone la generación: eso corre solo, una vez al mes,
+ * por {@code RankingScheduler}.
  */
 @RestController
 @RequestMapping("/api/rankings")

@@ -12,10 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ReglaDTO {
 
-    /**
-     * Opcional: solo hay missions con constancia (por ejemplo "Racha"). Si viene, se
-     * valida en cascada con {@link ConstanciaDTO}.
-     */
+    /** Opcional: solo las misiones con constancia la usan. Se valida en cascada. */
     @Valid
     private ConstanciaDTO constancia;
 

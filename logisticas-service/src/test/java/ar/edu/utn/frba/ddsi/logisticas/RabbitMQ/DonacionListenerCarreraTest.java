@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -124,9 +126,34 @@ class DonacionListenerCarreraTest {
                 .when(entregaService).procesarPeticion(dto);
 
         assertThatCode(() -> listener(INTENTOS).recibirDonacionParaEntregar(dto))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class);
 
         verify(entregaService, times(INTENTOS)).procesarPeticion(dto);
+    }
+
+    /**
+     * El mensaje tiene que salir del listener como un rechazo SIN reencolar.
+     *
+     * <p><b>Por que importa el tipo de la excepcion y no solo que salga alguna.</b> Spring AMQP
+     * reencola por defecto todo lo que sale del listener, asi que un {@code throw ultimoFallo} a
+     * secas devuelve el mensaje a su posicion original en la cola compartida y vuelve a entrar:
+     * el mismo payload falla tres veces mas, para siempre. Con la cola compartida de la que
+     * dependen todas las instancias, un unico mensaje malformado frena las notificaciones de
+     * toda la base, y la dead letter queda vacia porque nunca se activo nada.
+     *
+     * <p>Por eso la causa original se conserva: el operador que mira la DLQ tiene que ver por que
+     * fallo el mensaje, no solo que se descarto.
+     */
+    @Test
+    @DisplayName("Agotados los intentos el mensaje se rechaza sin reencolar, no vuelve a la cola")
+    void falloPersistenteRechazaSinReencolar() {
+        EntregaDTO dto = peticion();
+        doThrow(new IllegalStateException("La base no responde"))
+                .when(entregaService).procesarPeticion(dto);
+
+        assertThatThrownBy(() -> listener(INTENTOS).recibirDonacionParaEntregar(dto))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class)
+                .hasCauseInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -139,7 +166,7 @@ class DonacionListenerCarreraTest {
                 .when(entregaService).procesarPeticion(dto);
 
         assertThatCode(() -> listener(1).recibirDonacionParaEntregar(dto))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class);
 
         verify(entregaService, times(1)).procesarPeticion(dto);
     }

@@ -12,34 +12,25 @@ import java.util.PriorityQueue;
 
 public class SubAtendidos implements AlgoritmoAsignacion {
 
+    /** Prioriza a las entidades con menos donaciones en el último trimestre, con un
+     *  Max-Heap de 10 (el score más alto queda en el peek y sale primero). */
     @Override
     public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
 
-        /*
-         * EXPLICACIÓN DEL MAX-HEAP:
-         * Priorizamos a las necesidades con MENOS donaciones en el último trimestre.
-         * Usamos .reversed() para convertir el Heap en un Max-Heap.
-         * El elemento con el score MÁS ALTO (el que tiene más donaciones, o sea,
-         * el "peor" de nuestro Top 10) se queda en la puerta (peek).
-         * Si encontramos una propuesta con MENOS donaciones, sacamos al peor y metemos el nuevo.
-         */
         PriorityQueue<PropuestaAsignacion> top10 = new PriorityQueue<>(
             Comparator.comparingDouble(PropuestaAsignacion::getScore).reversed()
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
-
-            // Usamos -1 como flag de evaluación perezosa (lazy evaluation).
+            // El historial se calcula una sola vez por entidad, con inicialización perezosa.
             double cantidadDonaciones = -1;
 
             for (Necesidad necesidad : entidad.getNecesidades()) {
-
                 if (!necesidad.esCompatibleCon(donacion)) {
                     continue;
                 }
 
-                // Calculamos el historial de la entidad solo al confirmar compatibilidad
                 if (cantidadDonaciones == -1) {
                     cantidadDonaciones = (double) cantidadDonacionesUltimoTrimestre(entidad);
                 }
@@ -47,6 +38,7 @@ public class SubAtendidos implements AlgoritmoAsignacion {
                 if (top10.size() < 10) {
                     agregarPropuesta(top10, entidad, necesidad, cantidadDonaciones);
                 } else if (cantidadDonaciones < top10.peek().getScore()) {
+                    // Una entidad más sub-atendida que la peor del top-10 la reemplaza.
                     reemplazarPeorPropuesta(top10, entidad, necesidad, cantidadDonaciones);
                 }
             }

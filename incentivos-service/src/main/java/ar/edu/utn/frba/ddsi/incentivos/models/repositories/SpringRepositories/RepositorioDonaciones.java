@@ -11,11 +11,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * Consultas sobre las donaciones, que es la fuente de la que se calcula todo el progreso.
- *
- * <p>Los impactos de donación los copia {@code donaciones-service} cuando una donación se
- * entrega. Los métodos que filtran por rango de fechas son los que usan las métricas y el
- * cálculo de constancia, que necesita los meses calendario.
+ * Consultas sobre las donaciones, fuente de la que se calcula todo el progreso. Las copia
+ * {@code donaciones-service} cuando una donación se entrega.
  */
 @Repository
 public interface RepositorioDonaciones
@@ -60,25 +57,9 @@ public interface RepositorioDonaciones
     );
 
     /**
-     * La evolución mensual de un donante, ya agregada (punto 22).
-     *
-     * <p>Antes esto se armaba en Java: se traían <em>todas</em> las donaciones del donante y
-     * después se agrupaban por mes con un {@code groupingBy}. Con un donante que donó 500
-     * veces, el endpoint traía 500 filas enteras para devolver cinco números.
-     *
-     * <p>Acá la base devuelve una fila por mes, que es lo que el gráfico realmente necesita.
-     * El filtro sigue siendo sargable porque la función está en el {@code GROUP BY} y no en
-     * un {@code WHERE}: agrupar por mes es inevitable, y hacerlo sobre una columna indexada
-     * con la función proyectada no impide que el índice se use para el {@code WHERE} de la
-     * consulta de la otra mitad.
-     *
-     * <p>El {@code CASE} del {@code COUNT DISTINCT} no es adorno: el código anterior en Java
-     * filtraba las entidades nulas y vacías antes de contarlas, y un {@code COUNT(DISTINCT
-     * columna)} a secas cuenta la cadena vacía como una entidad distinta más.
-     *
-     * <p>El {@code TRIM} hace que {@code "Fundacion"} y {@code "Fundacion "} cuenten como la
-     * misma entidad. El código anterior las contaba como dos, así que esto corrige un
-     * sobreconteo que solo se notaba con datos mal cargados.
+     * La evolución mensual de un donante, agregada en la base: una fila por mes. El
+     * {@code TRIM} y el {@code CASE} evitan contar la cadena vacía o con espacios como otra
+     * entidad.
      *
      * @return una fila por mes con {@code [año, mes, cantidad, entidades distintas]}
      */
@@ -94,12 +75,8 @@ public interface RepositorioDonaciones
     List<Object[]> obtenerEvolucionMensual(@Param("idUsuario") UUID idUsuario);
 
     /**
-     * Los totales históricos del donante, ya agregados (punto 22).
-     *
-     * <p>Con la misma lógica de filtrado y {@code TRIM} que
-     * {@link #obtenerEvolucionMensual}: si las dos mitades de la respuesta usan reglas
-     * distintas de qué es una entidad distinta, el gráfico muestra un total que no cuadra
-     * con la suma de los meses.
+     * Los totales históricos del donante, con el mismo {@code TRIM} que
+     * {@link #obtenerEvolucionMensual}.
      *
      * @return {@code [total de donaciones, entidades receptoras distintas]}
      */

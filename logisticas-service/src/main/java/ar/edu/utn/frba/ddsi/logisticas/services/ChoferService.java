@@ -54,29 +54,27 @@ public class ChoferService {
     return convertirAChoferDTO(choferExistente);
   }
 
+  /** Borra el chofer: el 404 es para lo que dice (el recurso no estaba). */
   public void delete(UUID id) {
     Optional<Chofer> chofer = repoChoferes.findById(id);
-    if(chofer.isPresent()){
-      repoChoferes.deleteById(id);
+    if(chofer.isEmpty()){
       throw new IllegalArgumentException("Chofer no encontrado");
     }
+    repoChoferes.deleteById(id);
   }
 
   public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
-    Boolean disponible = body.get("disponible");
-    if (disponible != null && disponible) {
-      Chofer chofer  = repoChoferes.findById(id)
-              .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+    boolean disponible = Boolean.TRUE.equals(body.get("disponible"));
+
+    Chofer chofer = repoChoferes.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+    if (disponible) {
       chofer.disponible();
-      repoChoferes.save(chofer);
-      return "Chofer marcado como disponible.";
     } else {
-      Chofer chofer = repoChoferes.findById(id)
-              .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
       chofer.ocupado();
-      repoChoferes.save(chofer);
-      return "Chofer marcado como ocupado.";
     }
+    repoChoferes.save(chofer);
+    return disponible ? "Chofer marcado como disponible." : "Chofer marcado como ocupado.";
   }
 
   // --- MAPPERS ---

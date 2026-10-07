@@ -24,10 +24,6 @@ public class EventoLogisticaController {
     this.eventoService = eventoService;
   }
 
-  /**
-   * ENDPOINT DE HTTP POLLING.
-   * Ejemplo de uso: GET /api/logistica/eventos?desdeId=15
-   */
   @Operation(summary = "Obtener eventos logísticos nuevos",
       description = "Permite a otros módulos (como el Servicio de Notificaciones) consultar los últimos eventos logísticos (inicio de rutas, entregas, fallos) utilizando un ID de referencia (desdeId).")
   @ApiResponses(value = {
@@ -35,8 +31,8 @@ public class EventoLogisticaController {
   })
   @GetMapping
   public ResponseEntity<EventoLogisticaResponseDTO> obtenerEventos(
-      @Parameter(description = "ID del último evento que el cliente ya procesó. Se devolverán los eventos con ID estrictamente mayor a este valor.", example = "15")
-      @RequestParam(defaultValue = "0") Long desdeId) {
+      @Parameter(description = "ID del último evento que el cliente ya procesó. Se devolverán los eventos con ID estrictamente mayor a este valor. Omitido o 0 significan 'desde el principio'.", example = "15")
+      @RequestParam(required = false, defaultValue = "0") Long desdeId) {
     return ResponseEntity.ok(eventoService.obtenerEventosNuevos(desdeId));
   }
 }

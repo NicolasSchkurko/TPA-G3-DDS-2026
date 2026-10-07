@@ -100,10 +100,8 @@ class N8nClientTest {
 
         server.expect(requestTo(WEBHOOK)).andRespond(withServerError());
 
-        // Este listener corre dentro del afterCommit, que Spring invoca sin try/catch: si
-        // la excepcion sale de aca, sube por el commit y el donante recibe un 500 aunque
-        // la donacion ya este guardada. Con ese 500 el cliente reintenta y la segunda pasada
-        // vuelve a sumar progreso (punto 14).
+        // El afterCommit no tiene try/catch: si la excepción sale, el donante recibe un 500
+        // aunque la donación ya esté guardada, y el reintento suma progreso de nuevo.
         assertThatNoException().isThrownBy(() -> client.publicarInsignia(eventoCompletada()));
 
         assertThat(pendientes.listarTodas()).hasSize(1);

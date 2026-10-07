@@ -10,12 +10,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Impacto de una donación, reportado por donaciones-service.
- *
- * <p>{@code fechaEntrega} es obligatoria a propósito: las métricas mensuales hacen
- * {@code YearMonth.from(fechaEntrega)} y las reglas de constancia comparan contra
- * ella, así que una fecha nula reventaba con un NullPointerException (500) en lugar
- * de rechazar el pedido con un 400.
+ * Impacto de una donación, reportado por {@code donaciones-service}. {@code fechaEntrega} es
+ * obligatoria porque las métricas y la constancia la usan.
  */
 @Getter
 @Setter
@@ -23,14 +19,8 @@ import lombok.Setter;
 public class ImpactoDonacionDTO {
 
     /**
-     * Id de la DONACION en el servicio de origen. Se guarda tal cual: es la primary key de
-     * la donación local y lo que hace idempotente el endpoint (punto 14).
-     *
-     * <p>Es obligatorio a propósito. Si el servicio de origen no manda un id estable no hay
-     * forma de distinguir una donación nueva de un reintento de la misma, y el proceso
-     * opcional era justamente el que daba origen al bug: cada reintento insertaba una fila
-     * y volvía a aplicar la regla. Preferimos un 400 explícito a guardar una fila que no se
-     * puede deduplicar.
+     * Id de la donación en el servicio de origen: la primary key local que hace idempotente
+     * el endpoint. Obligatorio para poder deduplicar.
      */
     @NotNull(message = "La donación requiere su id de origen")
     private UUID idDonacion;

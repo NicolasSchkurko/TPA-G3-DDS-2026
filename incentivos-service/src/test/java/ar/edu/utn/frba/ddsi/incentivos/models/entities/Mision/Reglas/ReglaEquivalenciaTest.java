@@ -8,10 +8,6 @@ import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * La regla completa (atributo + constancia + operación) es lo que define qué tiene que
- * hacer el donante. Si no cambia, su avance sigue siendo válido (punto 15).
- */
 @DisplayName("Comparación de reglas")
 class ReglaEquivalenciaTest {
 
@@ -50,9 +46,7 @@ class ReglaEquivalenciaTest {
     @Test
     @DisplayName("misma constancia es equivalente aunque sea otro objeto")
     void mismaConstanciaEsEquivalente() {
-        // La constancia se compara campo por campo: si se comparara por equals (que no
-        // esta definido en la entidad), dos objetos distintos darian siempre "cambio" y
-        // cada edicion borraria el progreso de todos.
+        // La constancia se compara campo por campo: equals no está definido en la entidad.
         Regla una = new Regla(new ReglaConstancia(2, ChronoUnit.WEEKS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
         Regla otra = new Regla(new ReglaConstancia(2, ChronoUnit.WEEKS),

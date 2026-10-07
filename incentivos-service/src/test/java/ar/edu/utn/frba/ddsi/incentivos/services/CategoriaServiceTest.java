@@ -24,10 +24,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * CategoriaService: borrado protegido (punto 18) y secuencia sin posiciones repetidas
- * (punto 19).
- */
 @DisplayName("CategoriaService")
 class CategoriaServiceTest {
 
@@ -97,8 +93,7 @@ class CategoriaServiceTest {
             assertThatThrownBy(() -> service.eliminarCategoria(ADMIN, id))
                     .isInstanceOf(ConflictoException.class);
 
-            // Antes el borrado fallaba por FK DESPUES de haber desplazado las posiciones,
-            // dejando la secuencia movida sin haber borrado nada.
+            // Antes fallaba por FK después de desplazar las posiciones.
             verify(gestorSecuencia, never()).desplazarParaEliminar(any(), any());
         }
 

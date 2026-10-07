@@ -17,25 +17,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * La insignia que un donante ya obtuvo, y cuándo.
- *
- * <p>No tiene setters: la fila se crea cuando el donante obtiene la insignia y no se
- * edita. La fecha de obtención la pone el constructor.
- *
- * <p><b>Los tres índices no son adorno</b> (punto 22). Esta es la tabla que más crece: una
- * fila por cada insignia que obtiene cada donante. Las consultas que la leen filtran por
- * columnas distintas y sin índice cada una es un recorrido completo de la tabla:
- *
- * <ul>
- *   <li>{@code (insignia_id)} para el detalle de una insignia en particular.</li>
- *   <li>{@code (perfil_id, fecha_obtencion)} para la paginación de las insignias de un
- *       donante, que ordena por fecha de obtención. El orden de las columnas importa: al
- *       revés, la base puede usar el índice para filtrar por perfil pero igual tiene que
- *       ordenar por fecha, que es la parte cara.</li>
- *   <li>{@code (fecha_obtencion)} a secas, para el ranking mensual. Ese filtro no sabe
- *       todavía de qué perfil se trata: agrupa por donante sobre todo el mes, así que
- *       ninguno de los otros dos índices le sirve.</li>
- * </ul>
+ * La insignia que un donante ya obtuvo, y cuándo. No se edita: la fila se crea al obtenerla.
+ * Los tres índices cubren el detalle por insignia, la paginación por perfil y el ranking
+ * mensual.
  */
 @Getter
 @Entity
@@ -57,14 +41,8 @@ public class InsigniaObtenida {
     private Perfil perfil;
 
     /**
-     * La insignia conseguida.
-     *
-     * <p><b>LAZY y no EAGER</b> (punto 22). Con {@code EAGER}, Hibernate la trae siempre, y
-     * como las consultas que devuelven {@code InsigniaObtenida} suelen devolver una lista, eso
-     * es una consulta extra por cada fila: la paginación de 20 insignias de un donante eran
-     * 21 consultas. Ahora es una sola, y las dos lecturas que necesitan el nombre de la
-     * insignia usan {@code paginaInsigniasPorIdUsuario}, que trae la relación en la misma
-     * consulta con un {@code @EntityGraph}.
+     * La insignia conseguida, {@code LAZY} para no disparar una consulta por fila. Quien
+     * necesita el nombre la trae con {@code @EntityGraph}.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "insignia_id")
@@ -79,14 +57,8 @@ public class InsigniaObtenida {
     }
 
     /**
-     * Dos Obtenidas son la misma si son del mismo perfil y de la misma insignia.
-     *
-     * <p>Hace falta para que {@code Perfil.insigniasObtenidas} sea un {@code Set} y sirva
-     * de deduplicación: sin {@code equals}, un {@code Set} de entidades compara por
-     * identidad y nunca reconoce dos filas que son la misma insignia (punto 28).
-     *
-     * <p>La clave es (perfil, insignia) y no el id, justamente para que dos objetos
-     * distintos que representan lo mismo se reconozcan.
+     * Dos Obtenidas son la misma si son del mismo perfil y de la misma insignia. Es lo que
+     * permite deduplicar en el {@code Set} de {@code Perfil}.
      */
     @Override
     public boolean equals(Object otro) {

@@ -12,33 +12,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Topología del broker desde el lado de {@code donaciones-service}.
- *
- * <p><b>Antes declaraba las colas y los bindings de logística, y eso estaba mal.</b> El
- * servicio publicaba en el exchange de logística pero no le tocaba definir cómo logística
- * consume: la declaración de la cola ajena quedaba en este módulo. El síntoma era que
- * logisticas-service tenía su propia copia de esos beans, idéntica salvo por dos bindings
- * atados al exchange equivocado. Con las dos declaraciones, el broker aceptaba ambas y el
- * binding bueno de este módulo tapaba el malo del otro. Levantando logística sola, las colas
- * de este módulo no existían y la cadena se cortaba.
- *
- * <p><b>La frontera quedó así:</b> este servicio publica en el exchange de integración y
- * escucha la cola de eventos que logística le deja para trazabilidad. Las colas que logística
- * consume las declara logística.
+ * Topología del broker desde el lado de donaciones-service: publica en el exchange de
+ * integración, consume la cola de eventos de trazabilidad y las notificaciones. Cada
+ * servicio declara lo suyo: las colas que consume logística las declara logística.
  */
 @Configuration
 @EnableRabbit
 public class RabbitMQConfig {
 
-    /** Exchange de integración con logisticas-service. */
-    public static final String EXCHANGE_INTEGRACION = "logistica.exchange";
-
     /**
-     * Exchange de integracion por hash, que reparte las donaciones entre las instancias.
-     *
-     * <p><b>Es el que hay que usar para publicar una donacion</b>, no
-     * {@link #EXCHANGE_INTEGRACION}. Ese es topic y solo enruta el sondeo de
-     * trazabilidad; el reparto por hash vive aca. Publicar al equivocado deja el
+     * Exchange consistent-hash que reparte las donaciones entre las instancias de logística.
+     * Es el que hay que usar para publicar una donación: publicar a otro exchange deja el
      * mensaje en una cola sin consumidor y se pierde en silencio.
      */
     public static final String EXCHANGE_INTEGRACION_HASH = "logistica.integracion.hash";
@@ -52,9 +36,6 @@ public class RabbitMQConfig {
     /** Routing key de las donaciones nuevas que esperan planificarse. */
     public static final String RK_NUEVA_DONACION = "donaciones.creada";
 
-    /** Routing key de la solicitud de eventos de trazabilidad. */
-    public static final String RK_SOLICITUD_EVENTOS = "logistica.solicitud.eventos";
-
     /** Routing key de los eventos de trazabilidad que logisticas-service publica. */
     public static final String RK_EVENTO = "logistica.evento";
 
@@ -64,39 +45,20 @@ public class RabbitMQConfig {
      */
     public static final String RK_DONACION = "notificaciones.donacion";
 
-    /**
-     * Encabezado con el que logística particiona el trabajo entre sus instancias.
-     *
-     * <p>Es la clave del exchange consistent-hash de logística: el broker manda el mensaje a
-     * una cola según el hash de este encabezado, de modo que **todos los mensajes de la misma
-     * donación caen siempre en la misma cola y los procesa la misma instancia, en orden**.
-     *
-     * <p>Sin esto, con N instancias compitiendo por una sola cola, el broker reparte los
-     * mensajes de a uno en cualquier orden: dos mensajes de la misma donación pueden terminar
-     * en dos instancias al mismo tiempo, y el que se procesa segundo puede ser el que se envió
-     * primero. Ese es el punto 23 del backlog de logística.
-     *
-     * <p>El nombre del encabezado no está inventado: es el que declara
-     * {@code CustomExchange} de Spring AMQP para el tipo {@code x-consistent-hash}. Es un
-     * contrato entre los dos servicios, y por eso es una constante compartida en el
-     * lado de quien publica.
-     */
+    /** Clave del exchange consistent-hash de logística: el broker enruta por el hash de este
+     *  encabezado, así todos los mensajes de la misma donación caen en la misma cola y los
+     *  procesa la misma instancia en orden. El nombre lo declara {@code CustomExchange} de
+     *  Spring AMQP: es contrato entre los dos servicios. */
     public static final String HEADER_PARTICION = "x-id-donacion";
 
     /** Cola propia donde este servicio consume los eventos de trazabilidad. */
     public static final String COLA_EVENTOS = "donaciones.eventos.queue";
 
     /**
-     * Declara solo el exchange, no la cola de entrada de logisticas-service.
-     *
-     * <p>Un exchange es un punto de encuentro: lo declara quien publica y lo usan todos los
-     * consumidores, sin que ninguno tenga que saber el nombre de la cola del otro.
+     * El exchange de eventos de trazabilidad: lo declara logística como quien publica, y este
+     * servicio lo usa para consumir. Un exchange es un punto de encuentro: ninguno de los dos
+     * tiene que saber el nombre de la cola del otro.
      */
-    @Bean
-    public TopicExchange exchangeIntegracion() {
-        return new TopicExchange(EXCHANGE_INTEGRACION, true, false);
-    }
-
     @Bean
     public TopicExchange exchangeEventos() {
         return new TopicExchange(EXCHANGE_EVENTOS, true, false);
@@ -107,29 +69,15 @@ public class RabbitMQConfig {
         return new TopicExchange(EXCHANGE_NOTIFICACIONES, true, false);
     }
 
-    /**
-     * La cola propia donde este servicio consume los eventos de trazabilidad de logistica.
-     *
-     * <p><b>Este bean no es opcional y el build no te avisa si falta.</b> El binding de abajo lo
-     * recibe por parametro, asi que sin esta cola el contexto no arranca:
-     *
-     * <pre>
-     * Parameter 0 of method bindingEventos required a bean of type 'Queue' that could not be found
-     * </pre>
-     *
-     * Compila perfecto sin el. Solo se ve al levantar el servicio.
-     */
+    /** La cola donde este servicio consume los eventos de trazabilidad. El binding de abajo
+     *  la recibe por parámetro: sin este bean el contexto no arranca, y compila igual. */
     @Bean
     public Queue colaEventos() {
         return QueueBuilder.durable(COLA_EVENTOS).build();
     }
 
-    /**
-     * Atea la cola de eventos al exchange de trazabilidad.
-     *
-     * <p>Usa {@code RK_EVENTO + ".#"} y no la clave exacta porque acá sí se quiere toda la
-     * jerarquía de tipos de evento, no una clave en particular.
-     */
+    /** Con {@code RK_EVENTO + ".#"} y no la clave exacta: acá se quiere toda la jerarquía de
+     *  tipos de evento, no una clave en particular. */
     @Bean
     public Binding bindingEventos(Queue colaEventos, TopicExchange exchangeEventos) {
         return BindingBuilder.bind(colaEventos)
@@ -137,29 +85,10 @@ public class RabbitMQConfig {
                 .with(RK_EVENTO + ".#");
     }
 
-    /**
-     * Serializa a JSON. Sin este bean la conexion de logistica a donating esta ROTA.
-     *
-     * <p><b>Este servicio consume, asi que necesita el converter.</b> {@code EventosListener}
-     * escucha {@link #COLA_EVENTOS} y pide un {@code EventoLogisticaDTO}. Sin este bean, Boot
-     * deja el {@code RabbitTemplate} con {@code SimpleMessageConverter}, que solo sabe manejar
-     * {@code byte[]}, {@code String} y {@code Serializable}, y el listener recibe el body crudo:
-     *
-     * <pre>
-     * MessageConversionException: Cannot convert from [[B] to [EventoLogisticaDTO]
-     * </pre>
-     *
-     * <p><b>Los servicios que solo publican no lo necesitan.</b> {@code incentivos-service} tampoco
-     * declara uno, y esta bien: no escucha ninguna cola. Lo que importa es que todos los que
-     * <em>consumen</em> lo tengan: este y {@code logisticas-service}.
-     *
-     * <p><b>Compila igual sin el.</b> El error aparece unicamente cuando llega un evento de
-     * logistica de verdad, que es lo que hacia el E2E: el mensaje se pierde en silencio, el log
-     * del productor dice que salio, y donating nunca se entera.
-     *
-     * <p>Este servicio si puede usar el converter de Jackson: no comparte modelo con logistica,
-     * solo viaja el JSON, y el nombre de la clase no le hace falta a nadie.
-     */
+    /** Serializa a JSON. Sin este bean el listener recibe el body crudo y falla con
+     *  {@code MessageConversionException: Cannot convert from [[B] to [EventoLogisticaDTO]}:
+     *  el {@code RabbitTemplate} default solo sabe manejar {@code byte[]/String/Serializable}.
+     *  Compila igual sin él; el error aparece solo cuando llega un evento de verdad. */
     @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();

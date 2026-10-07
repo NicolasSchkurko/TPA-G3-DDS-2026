@@ -5,14 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Repository
 public interface RepositorioEventoLogistica extends JpaRepository<EventoLogistica, Long> {
-  default List<EventoLogistica> findByIdGreaterThanOrderByIdAsc(Long id) {
-    return this.findAll().stream()
-                  .filter(e -> e.getId() > id)
-                  // Al guardarse secuencialmente en la lista, el orden de fecha y de ID coinciden
-                  .collect(Collectors.toList());
-  }
+
+    /**
+     * Derived query: {@code WHERE id > :id ORDER BY id ASC}. El orden lo garantiza el nombre,
+     * que es lo que necesita un consumidor que hace polling por id.
+     */
+    List<EventoLogistica> findByIdGreaterThanOrderByIdAsc(Long id);
 }

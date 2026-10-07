@@ -27,26 +27,12 @@ public class MisionDTO {
     private String insigniaObjetivo;
 
     /**
-     * El texto propio de la insignia objetivo (punto 24).
-     *
-     * <p>Es opcional a propósito, y no por pereza: el enunciado pide que la insignia tenga
-     * nombre, descripción e imagen, pero obligar a los tres en el alta rompe a cualquier
-     * cliente que hoy solo mande el nombre. Con esto los tres se pueden cargar, y los que no
-     * se manden quedan en null.
-     *
-     * <p>Ojo con la asimetría: {@code descripcion} es el texto de la <b>misión</b> y este es
-     * el de la <b>insignia</b>. Antes el de la insignia se rellenaba solo con el nombre de la
-     * misión, así que el campo directamente no existía y lo que se guardaba era el texto que
-     * no correspondía.
+     * El texto propio de la insignia objetivo. Opcional. Ojo: {@code descripcion} es el de la
+     * misión y este el de la insignia.
      */
     private String insigniaDescripcion;
 
-    /**
-     * Dónde se puede ver la imagen de la insignia objetivo.
-     *
-     * <p>Una URL, no la imagen: el campo lleva el enlace y no los bytes. Ver el javadoc de
-     * {@code Insignia.urlImagen} para por qué.
-     */
+    /** La URL de la imagen de la insignia, no los bytes. */
     private String insigniaUrlImagen;
 
     @NotNull(message = "La misión requiere una regla de progreso")
@@ -73,11 +59,7 @@ public class MisionDTO {
         this.regla = new ReglaDTO(cia, atributo, op);
     }
 
-    /**
-     * Proyecta una misión a DTO. Es null-safe en toda la cadena: una sola misión con la
-     * regla incompleta no puede romper el listado completo de misiones, que es lo que
-     * pasaba antes con un {@code NullPointerException} a mitad del {@code map}.
-     */
+    /** Proyecta una misión a DTO. Es null-safe en toda la cadena. */
     public static MisionDTO desdeEntidad(Mision mision) {
         if (mision == null) {
             return null;
@@ -92,9 +74,7 @@ public class MisionDTO {
                                    ? null
                                    : new ConstanciaDTO(
             reglaConstancia.getCantidad(),
-            // name() y no toString(): ChronoUnit.toString() devuelve "Months" en
-            // camelCase y el resto de la API usa mayúsculas ("COINCIDENCIAS",
-            // "CANTIDAD_BIENES"). Al leerlo, MisionFactory normaliza las dos formas.
+            // name() y no toString(): toString() devuelve "Months" en camelCase.
             reglaConstancia.getUnidadTiempo() == null
                 ? null
                 : reglaConstancia.getUnidadTiempo().name()

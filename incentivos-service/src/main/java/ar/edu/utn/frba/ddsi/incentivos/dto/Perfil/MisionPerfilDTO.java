@@ -3,14 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.dto.Perfil;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * Misión vigente de un donante, con su avance.
- *
- * <p>Los parámetros del constructor se llaman igual que los campos que asignan a
- * propósito: antes se llamaban {@code (nomM, nomI, descripcion)} en un orden que no
- * coincidía con el orden de la llamada, y por eso {@code descripcion} e
- * {@code insigniaObjetivo} salían invertidos en la respuesta.
- */
+/** Misión vigente de un donante, con su avance. */
 @Getter
 @Setter
 public class MisionPerfilDTO {

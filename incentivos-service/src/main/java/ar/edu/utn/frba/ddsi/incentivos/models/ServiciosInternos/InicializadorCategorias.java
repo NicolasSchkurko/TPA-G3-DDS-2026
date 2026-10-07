@@ -13,29 +13,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Siembra el programa base de categorías y misiones la primera vez que arranca el
- * servicio, en una base vacía.
- *
- * <p>{@code @Order(1)} lo hace correr primero: las categorías son la raíz de la que cuelga
- * todo lo demás.
+ * Siembra el programa base de categorías y misiones la primera vez que arranca el servicio,
+ * en una base vacía. {@code @Order(1)} lo hace correr primero.
  */
 @Component
 @Order(1)
 public class InicializadorCategorias implements CommandLineRunner {
 
-    /**
-     * Dónde están publicadas las insignias del seed.
-     *
-     * <p><b>Es una URL, y no una ruta dentro de este servicio.</b> La insignia guarda la
-     * <em>referencia</em> a su imagen, nunca los bytes: el enunciado pide que la insignia
-     * tenga una imagen y lo que el dominio tiene que saber es dónde se la puede ver. Dónde
-     * vivan los bytes es una decisión del servicio que los publica, y separarla del modelo
-     * es lo que permite que mañana ese servicio sea un CDN o un bucket sin tocar nada acá.
-     *
-     * <p>Es una constante y no una propiedad de configuración porque son datos de ejemplo
-     * del programa semilla, no un parámetro del despliegue. Si algún día el servicio expone
-     * las insignias, acá pasa a ser su endpoint y el resto no se toca.
-     */
+    /** Dónde están publicadas las insignias del seed: se guarda la referencia, no los bytes. */
     private static final String URL_INSIGNIA = "https://incentivos.example.edu.ar/img/";
 
     private final RepositorioCategorias repositorioCategorias;
@@ -57,13 +42,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             return;
         }
 
-        // Cada insignia lleva su propio texto (punto 24). Antes el seed no lo daba y la
-        // insignia se quedaba con el nombre de la misión como descripción, o sea que el
-        // "texto propio de la insignia" era literalmente el título de otra cosa.
-        //
-        // La imagen es una URL completa y no una ruta: el enunciado pide que la insignia
-        // tenga imagen, y lo que el sistema guarda es la referencia a ella. Dónde vivan los
-        // bytes es una decisión del servicio que publica las insignias, no del modelo.
+        // Cada insignia lleva su propio texto e imagen; la imagen es una URL de referencia.
         Mision misionPrimera = misionFactory.crearMision(
             null,
             "Primera donación",
@@ -106,7 +85,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             URL_INSIGNIA + "manos-a-la-obra.png",
             null,
             misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
-            // El umbral es exclusivo: "supera 6" significa 7 o más (punto 33).
+            // El umbral es exclusivo: "supera 6" significa 7 o más.
             misionFactory.crearOperacion("SUPERA_CANTIDAD", 1, 6, null)
         );
         Mision misionDonacionesExitosas = misionFactory.crearMision(

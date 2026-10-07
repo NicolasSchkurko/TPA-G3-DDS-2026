@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,17 +25,7 @@ public class EventoLogistica {
   @Column(name = "id_evento")
   private Long id;
 
-    /**
-     * Control de concurrencia optimista.
-     *
-     * <p>Sin esto, dos instancias de logistica que leen esta fila y escriben sobre ella lo
-     * hacen en silencio: la segunda sobrescribe a la primera con los valores que leyo antes
-     * del UPDATE de la otra. Con la version, el UPDATE lleva {@code WHERE version = ?} y si
-     * otra instancia escribio en el medio Hibernate tira {@code OptimisticLockingFailureException}
-     * en vez de pisar. Es lo que hace seguro el requisito de mas de un servicio de logistica.
-     *
-     * <p>La columna la crea sola {@code ddl-auto=update}.
-     */
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -53,6 +45,14 @@ public class EventoLogistica {
 
   @Column(name = "payload_json", columnDefinition = "TEXT")
   private String payloadJson;
+
+  /** El ítem al que pertenece el evento (lado dueño; el lado muchos es
+   *  {@code ItemEntrega.eventos}, mapeado por {@code mappedBy} sin {@code @JoinColumn}).
+   *  Nullable a propósito: el {@code INICIO_RUTA} es de la ruta y lo dice su {@code referenciaId}. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_donacion", referencedColumnName = "id_donacion")
+    @JsonIgnore
+    private ItemEntrega item;
 
   public EventoLogistica(String tipoEvento, String referenciaId, LocalDateTime fecha, String justificacion) {
     this.tipoEvento = tipoEvento;

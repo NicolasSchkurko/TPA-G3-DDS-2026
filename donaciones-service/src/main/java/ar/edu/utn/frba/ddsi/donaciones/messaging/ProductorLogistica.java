@@ -13,32 +13,17 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Publica las donaciones asignadas para que logisticas las planifique.
+ * Publica las donaciones asignadas para que logística las planifique (el enunciado exige
+ * integración por broker y con más de un servicio de logística).
  *
- * <p><b>Esta es la integración que el enunciado pide con broker.</b> Dice textualmente que la
- * integración entre el servicio de donaciones y el de logística debe hacerse a través de un
- * broker, y que ese broker debe permitir seleccionar entre más de un servicio de logística
- * disponible.
+ * <p>Publica al exchange y no a la cola: declarar la cola del otro lado dejaba mensajes
+ * perdidos en silencio si el nombre no coincidía. El encabezado de partición es la clave del
+ * exchange consistent-hash: todos los mensajes de la misma donación caen en la misma cola
+ * y los procesa la misma instancia en orden. Por eso se manda el MENOR de los ids y no el
+ * primero: es estable para el mismo conjunto.
  *
- * <p><b>Publica al exchange, no a una cola.</b> Con la cola suelta, este módulo tenía que
- * declarar la cola que logística consume, y la declaración quedaba de este lado: si logística
- * se levantaba con otro nombre de cola, el mensaje se perdía en silencio.
- *
- * <p><b>El encabezado de partición es lo que da orden.</b> El exchange de logística es
- * consistent-hash y este encabezado es su clave: el broker manda el mensaje a una cola según su
- * hash, así que **todos los mensajes de la misma donación caen en la misma cola y los procesa
- * la misma instancia, en orden**. Sin el encabezado, con N instancias compitiendo por una sola
- * cola, dos mensajes de la misma donación pueden terminar en dos instancias a la vez y
- * procesarse al revés. Es el punto 23 del backlog de logisticas-service.
- *
- * <p><b>Por qué se manda el menor id y no el primero de la lista.</b> El mensaje lleva un id de
- * donación por bien. Si se mandara el primero, dos mensajes que compartieran ese primer id
- * pero tuvieran el resto distinto caerían en la misma cola sin ser la misma donación. El menor
- * de todos es estable para el mismo conjunto, que es lo que hay que particionar.
- *
- * <p><b>El fallo de publicación se relanza.</b> Si no se publica, la donación queda asignada en
- * la base y nadie la entrega nunca. Es el único punto donde perder el mensaje significa perder
- * trabajo humano, así que el error sube y la transacción que llama a esto se revierte.
+ * <p>El fallo de publicación se relanza: si no se publica, la donación queda asignada en
+ * la base y nadie la entrega nunca.
  */
 @Component
 public class ProductorLogistica {

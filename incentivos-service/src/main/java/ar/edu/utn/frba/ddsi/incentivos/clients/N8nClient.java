@@ -11,15 +11,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Publica en n8n cuando un donante gana una insignia, para que se comparta en redes.
- *
- * <p>n8n es un flujo externo al que no le podemos exigir disponibilidad: si está caído, la
- * insignia ya está guardada y hay que avisar igual. Por eso este listener no relanza.
+ * Publica en n8n cuando un donante gana una insignia, para compartirla en redes. No relanza si
+ * n8n está caído: la insignia ya está guardada.
  */
 @Slf4j
 @Service
 public class N8nClient {
-    // cliente para consumir n8n y publicar cuando perfil gana una insignia
     @Value("${servicio.n8n.url}")
     private String n8nUrl;
     private final RepositorioPublicacionesPendientes repositorio;
@@ -32,20 +29,9 @@ public class N8nClient {
     }
 
     /**
-     * Publica en n8n que el donante ganó una insignia.
-     *
-     * <p><b>No relanza.</b> Este listener corre dentro del {@code afterCommit} de la
-     * transacción, que Spring invoca sin try/catch
-     * ({@code TransactionSynchronizationUtils.invokeAfterCommit}): si la excepción sale de
-     * acá, sube por el {@code processCommit}, sale del {@code @Transactional} y llega al
-     * handler HTTP. O sea que el donante recibía un 500 **aunque la transacción ya se
-     * hubiera confirmado**, la donación estuviera guardada y la insignia otorgada. Con ese
-     * 500, {@code donaciones-service} reintenta y la segunda pasada vuelve a sumar
-     * progreso, que es el punto 14.
-     *
-     * <p>Por eso la falla se registra y queda en pendientes para reintentar, en vez de
-     * propagarse. Es la misma asimetría que ya estaba resuelta en
-     * {@link NotificacionClient}, cuyo helper privado captura la excepción y solo loguea.
+     * Publica en n8n que el donante ganó una insignia. No relanza: si el listener dejara
+     * salir la excepción, el donante vería un 500 con la transacción ya confirmada. La falla
+     * se registra y queda en pendientes.
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publicarInsignia(MisionCompletada event) {

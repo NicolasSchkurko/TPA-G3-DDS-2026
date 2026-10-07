@@ -10,6 +10,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -29,17 +30,11 @@ class PerfilServiceTest {
             mock(RepositorioPerfiles.class),
             mock(RepositorioCategorias.class),
             mock(RepositorioDonaciones.class),
-            mock(TransactionTemplate.class)
+            mock(TransactionTemplate.class),
+            mock(ValidadorAdmin.class)
     );
 
-    /**
-     * Un progreso con el avance dado.
-     *
-     * <p>Se llega al avance con donaciones reales en vez de con un setter: la regla es
-     * "N donaciones en estado ENTREGADA", así que cada donación entregada suma uno. Un
-     * {@code avance} en null deja el progreso sin valor, que es el caso que cubre el
-     * último test.
-     */
+    /** Un progreso con el avance dado, logrado con donaciones reales. */
     private static ProgresoMision progresoDe(Integer avance, Integer objetivo) {
         Mision mision = new Mision(
                 "Diez dones",

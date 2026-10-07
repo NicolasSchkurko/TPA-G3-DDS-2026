@@ -21,17 +21,7 @@ public class Camion {
     @Column(name = "patente", length = 20, nullable = false)
     private String patente;
 
-    /**
-     * Control de concurrencia optimista.
-     *
-     * <p>Sin esto, dos instancias de logistica que leen esta fila y escriben sobre ella lo
-     * hacen en silencio: la segunda sobrescribe a la primera con los valores que leyo antes
-     * del UPDATE de la otra. Con la version, el UPDATE lleva {@code WHERE version = ?} y si
-     * otra instancia escribio en el medio Hibernate tira {@code OptimisticLockingFailureException}
-     * en vez de pisar. Es lo que hace seguro el requisito de mas de un servicio de logistica.
-     *
-     * <p>La columna la crea sola {@code ddl-auto=update}.
-     */
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -81,13 +71,10 @@ public class Camion {
         this.ciudadDestinoActual = null;
     }
 
-    // Atributos de estado para la planificación (transitorios)
-
     public boolean puedeCargar(Double pesoKg, Double volumenM3) {
         return pesoKg <= capacidadCarga && volumenM3 <= capacidadVolumen;
     }
 
-    // Lógica expresiva para el planificador
     public boolean puedeCargar(ItemEntrega item) {
         return puedeCargar(this.pesoOcupado + item.getPesoEstimadoKg(),
                            this.volumenOcupado + item.getVolumenEstimadoM3());

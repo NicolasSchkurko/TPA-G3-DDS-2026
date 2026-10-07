@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienConEstado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.BienPerecedero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
@@ -51,7 +52,7 @@ public class SegmentadorDonacionesTest {
 
     List<Bien> bienesRecibidos = Arrays.asList(bienRopa1, bienRopa2, bienAlimento);
 
-    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos);
+    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos, null);
 
     // Debería generar 2 donaciones, una para Ropa y otra para Alimentos
     assertEquals(2, donaciones.size());
@@ -86,7 +87,7 @@ public class SegmentadorDonacionesTest {
 
     List<Bien> bienesRecibidos = Arrays.asList(alimentoHoy1, alimentoHoy2, alimentoManana);
 
-    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos);
+    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos, null);
 
     // Debería generar 2 donaciones porque hay 2 fechas distintas, aunque sean la misma subcategoría
     assertEquals(2, donaciones.size());
@@ -109,16 +110,36 @@ public class SegmentadorDonacionesTest {
 
     List<Bien> bienesRecibidos = Arrays.asList(ropaNueva1, ropaNueva2, ropaUsada);
 
-    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos);
+    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos, null);
 
     // Debería generar 2 donaciones: una para Ropa-NUEVO (2 ítems) y otra para Ropa-USADO (1 ítem)
     assertEquals(2, donaciones.size());
   }
 
   @Test
+  @DisplayName("Debe separar bienes de la misma subcategoría si cambia la unidad de medida")
+  void segmentar_BienesDeDistintaUnidad_NoSeSuman() {
+    Bien bienKilos = mock(Bien.class);
+    when(bienKilos.getSubcategoria()).thenReturn(subCategoriaRopaMock);
+    when(bienKilos.getUnidadUtilizada()).thenReturn(UnidadDeMedida.KILOGRAMOS);
+
+    Bien bienLitros = mock(Bien.class);
+    when(bienLitros.getSubcategoria()).thenReturn(subCategoriaRopaMock);
+    when(bienLitros.getUnidadUtilizada()).thenReturn(UnidadDeMedida.LITROS);
+
+    List<Bien> bienesRecibidos = Arrays.asList(bienKilos, bienLitros);
+
+    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, bienesRecibidos, null);
+
+    // Kilos no son litros: cada unidad es su propio segmento (punto 23 de PENDIENTES.md),
+    // que es lo que hace que el item que recibe logística sea sumable con sentido.
+    assertEquals(2, donaciones.size());
+  }
+
+  @Test
   @DisplayName("Debe devolver lista vacía si no se envían bienes")
   void segmentar_SinBienes_DevuelveVacio() {
-    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, new ArrayList<>());
+    List<Donacion> donaciones = SegmentadorDonaciones.segmentar(donanteMock, new ArrayList<>(), null);
 
     assertTrue(donaciones.isEmpty());
   }

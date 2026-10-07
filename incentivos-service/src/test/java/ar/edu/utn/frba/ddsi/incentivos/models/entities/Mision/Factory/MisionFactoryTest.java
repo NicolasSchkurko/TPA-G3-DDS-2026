@@ -72,10 +72,7 @@ class MisionFactoryTest {
         @Test
         @DisplayName("si viene solo una de las dos partes se rechaza, no se ignora (punto 34)")
         void conMedioDatoSeRechaza() {
-            // Antes estos tres devolvían null y la misión se guardaba sin exigencia de racha.
-            // Por HTTP no se notaba (el ConstanciaDTO tiene @NotNull en los dos campos), pero
-            // una llamada interna creaba una misión más permisiva que la que el admin quiso,
-            // sin que nada lo indicara.
+            // Antes devolvían null y la misión se guardaba sin exigencia de racha.
             assertThatThrownBy(() -> factory.crearConstancia(null, "MESES"))
                     .isInstanceOf(DatosInvalidosException.class)
                     .hasMessageContaining("solo la unidad");

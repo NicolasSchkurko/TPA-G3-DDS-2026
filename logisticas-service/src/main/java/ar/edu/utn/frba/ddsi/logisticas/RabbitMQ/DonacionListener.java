@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,25 +13,14 @@ import org.springframework.stereotype.Component;
 /**
  * Recibe las donaciones que esperan ser entregadas y las registra como ítems de entrega.
  *
- * <p><b>Por defecto todas las instancias escuchan la misma cola.</b> El SpEL de
- * {@code @RabbitListener} resuelve el bean {@code colasDeEstaInstancia}, que devuelve la cola
- * única salvo que esté configurado el reparto por shards. Con una cola compartida, si una
- * instancia se cae las demás siguen consumiendo y no se traba nada.
+ * <p>Todas las instancias escuchan la misma cola salvo que esté configurado el reparto por shards:
+ * el SpEL de {@code @RabbitListener} resuelve el bean {@code colasDeEstaInstancia}.
  *
- * <p><b>Reintenta antes de rendirse.</b> Un fallo de infraestructura (la base tardó, se cortó la
- * conexión) no va derecho a la cola de mensajes muertos: se reintenta con espera. Reintentar
- * convierte un fallo duro en uno blando, y a la vez cubre el caso de que aparezca un mensaje con
- * una transición de estado y llegue un poco antes que el que la habilita.
- *
- * <p><b>Los errores de negocio no se reintentan.</b> Un payload inválido va a fallar igual en
- * cada intento, y reintentarlo solo|frena la cola compartida de la que salen todas las
- * instancias.
- *
- * <p><b>Una violación de clave primaria tampoco.</b> Es la carrera entre dos instancias que leen
- * el mismo {@code idDonacion} antes de que ninguna lo escriba: gana una y la otra recibe el
- * error, que es el estado final buscado. Va en su propio {@code catch} porque es
- * {@code IllegalStateException}, que sí es de las que se reintentan, y sin ese {@code catch}
- * un resultado correcto se gastaría los tres intentos.
+ * <p>Reintenta con espera antes de rendirse, así que un fallo de infraestructura se vuelve blando.
+ * Agotados los intentos, rendirse es lanzar {@link AmqpRejectAndDontRequeueException}: Spring AMQP
+ * reencola por defecto, y reencolar lo devuelto a la cola compartida lo haría fallar otra vez y
+ * frenarla para siempre. El rechazo sin requeue es lo que activa el dead letter de
+ * {@code RabbitMQConfig}.
  */
 @Component
 public class DonacionListener {
@@ -59,15 +49,13 @@ public class DonacionListener {
                 entregaService.procesarPeticion(peticion);
                 return;
             } catch (IllegalArgumentException errorDeNegocio) {
-                // Un payload invalido falla igual las veces que lo intentes: se descarta y se
-                // sigue, sin gastar mas intentos ni frenar la cola.
+                // Un payload inválido falla igual las veces que lo intentes: no se gasta más
+                // intentos ni se frena la cola.
                 log.warn("Donación descartada por datos inválidos: {}", errorDeNegocio.getMessage());
                 return;
             } catch (DataIntegrityViolationException yaRegistrada) {
                 // La carrera benigna entre dos instancias: gana una y la otra recibe el error,
-                // que es justo el estado final buscado. Relanzarlo mandaria el mensaje a la
-                // dead letter queue como si fuera un fallo, y bloquearia la cola compartida de
-                // la que salen todas las instancias.
+                // que es justo el estado final buscado.
                 log.info("La donación ya fue registrada por otra instancia, mensaje descartado "
                         + "sin ir a la cola de mensajes muertos");
                 return;
@@ -81,19 +69,17 @@ public class DonacionListener {
             }
         }
 
+        // Rechazo sin requeue explícito: es lo que manda el mensaje a la DLQ.
         log.error("La donación no se pudo procesar en {} intentos, va a la cola de mensajes "
                 + "muertos", intentos, ultimoFallo);
-        throw ultimoFallo;
+        throw new AmqpRejectAndDontRequeueException(
+                "Donación no procesable tras " + intentos + " intentos", ultimoFallo);
     }
 
     /**
-     * Espera entre intentos.
-     *
-     * <p><b>Duerme el hilo del listener, y es a proposito.</b> La alternativa, tirar el mensaje y
-     * que otro lo tome, no sirve: el mensaje ya se consumio de la cola y nadie mas lo va a leer.
-     *
-     * <p><b>Si la espera falla, se sigue igual.</b> {@code InterruptedException} no es un fallo de
-     * negocio: siRestorea el flag y se deja que el reintento siga su curso.
+     * Espera entre intentos. Duerme el hilo del listener a propósito: la alternativa es tirar el
+     * mensaje y que otro lo tome, y el mensaje ya se consumió de la cola, así que nadie más lo
+     * va a leer.
      */
     private void dormir() {
         try {

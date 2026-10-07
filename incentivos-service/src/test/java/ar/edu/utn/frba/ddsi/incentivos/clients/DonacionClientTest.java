@@ -34,9 +34,7 @@ class DonacionClientTest {
         client = new DonacionClient(restTemplate);
     }
 
-    /**
-     * La URL se inyecta por @Value, asi que en tests se fija por reflexion.
-     */
+    /** La URL se inyecta por @Value: en tests se fija por reflexión. */
     private void givenBaseUrl(String url) throws Exception {
         var field = DonacionClient.class.getDeclaredField("donacionesUrl");
         field.setAccessible(true);

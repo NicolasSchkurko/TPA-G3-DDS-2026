@@ -13,14 +13,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * La condición de tiempo de una regla: "una donación cada {@code cantidad}
- * {@code unidadTiempo}".
- *
- * <p>{@code ChronoUnit} permite minutos, horas, días, semanas, meses y años. En la
- * práctica solo meses y días son útiles, porque {@code ImpactoDonacion} guarda la fecha
- * como {@code LocalDateTime} y la unidad tiene que ser una que el servicio de donaciones
- * pueda mandar.
- *
- * <p>No tiene setters: la constancia se define al crear la misión.
+ * {@code unidadTiempo}". No tiene setters.
  */
 @Getter
 @Entity

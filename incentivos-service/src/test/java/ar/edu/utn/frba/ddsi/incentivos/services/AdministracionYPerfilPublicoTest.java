@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
@@ -29,10 +30,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/**
- * Las escrituras de administración tienen que exigir administrador (punto 21) y el perfil
- * tiene que poder consultarse públicamente (punto 8).
- */
 @DisplayName("Puntos 21 y 8: control de admin y vista pública")
 class AdministracionYPerfilPublicoTest {
 
@@ -130,7 +127,8 @@ class AdministracionYPerfilPublicoTest {
                     repoPerfiles,
                     mock(RepositorioCategorias.class),
                     mock(RepositorioDonaciones.class),
-                    mock(TransactionTemplate.class));
+                    mock(TransactionTemplate.class),
+                    mock(ValidadorAdmin.class));
         }
 
         @Test
@@ -171,6 +169,80 @@ class AdministracionYPerfilPublicoTest {
 
             assertThatThrownBy(() -> perfilService.obtenerPerfilPublico(idUsuario))
                     .isInstanceOf(InexistenteException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Punto 39: editar y borrar perfiles exigen administrador")
+    class EscriturasDePerfil {
+
+        private RepositorioPerfiles repoPerfiles;
+        private ValidadorAdmin validadorAdmin;
+        private PerfilService perfilService;
+
+        @BeforeEach
+        void setUpPerfil() {
+            repoPerfiles = mock(RepositorioPerfiles.class);
+            validadorAdmin = mock(ValidadorAdmin.class);
+            perfilService = new PerfilService(
+                    repoPerfiles,
+                    mock(RepositorioCategorias.class),
+                    mock(RepositorioDonaciones.class),
+                    mock(TransactionTemplate.class),
+                    validadorAdmin);
+        }
+
+        @Test
+        @DisplayName("actualizar un perfil verifica los permisos del administrador")
+        void actualizarVerificaPermisos() {
+            UUID idUsuario = UUID.randomUUID();
+            when(repoPerfiles.findByIdUsuario(idUsuario))
+                    .thenReturn(Optional.of(new Perfil(idUsuario, "Ana")));
+            when(repoPerfiles.save(any(Perfil.class)))
+                    .thenAnswer(invoc -> invoc.getArgument(0));
+
+            perfilService.actualizarDatosPerfil(
+                    idUsuario, ADMIN, new PerfilDTO("Ana2", null, null, null));
+
+            verify(validadorAdmin).verificarPermisos(ADMIN);
+        }
+
+        @Test
+        @DisplayName("actualizar un perfil NO guarda si el administrador no tiene permisos")
+        void actualizarNoGuardaSiNoTienePermisos() {
+            UUID idUsuario = UUID.randomUUID();
+            Mockito.doThrow(new SecurityException("no es admin"))
+                   .when(validadorAdmin).verificarPermisos(ADMIN);
+
+            assertThatThrownBy(() -> perfilService.actualizarDatosPerfil(
+                    idUsuario, ADMIN, new PerfilDTO("Ana2", null, null, null)))
+                    .isInstanceOf(SecurityException.class);
+
+            verify(repoPerfiles, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("borrar un perfil verifica los permisos del administrador")
+        void borrarVerificaPermisos() {
+            UUID idUsuario = UUID.randomUUID();
+            when(repoPerfiles.existsByIdUsuario(idUsuario)).thenReturn(true);
+
+            perfilService.eliminarPerfil(idUsuario, ADMIN);
+
+            verify(validadorAdmin).verificarPermisos(ADMIN);
+        }
+
+        @Test
+        @DisplayName("borrar un perfil NO borra si el administrador no tiene permisos")
+        void borrarNoBorraSiNoTienePermisos() {
+            UUID idUsuario = UUID.randomUUID();
+            Mockito.doThrow(new SecurityException("no es admin"))
+                   .when(validadorAdmin).verificarPermisos(ADMIN);
+
+            assertThatThrownBy(() -> perfilService.eliminarPerfil(idUsuario, ADMIN))
+                    .isInstanceOf(SecurityException.class);
+
+            verify(repoPerfiles, never()).deleteByIdUsuario(any());
         }
     }
 }

@@ -28,16 +28,9 @@ public class AdminService {
     }
 
 public AdminDTO getAdminPorId(UUID id) {
-        // Sin .get(): sobre un Optional vacio eso tira NoSuchElementException y el endpoint
-        // devolvia 500 en vez del 404 que el controller ya sabe armar.
-        //
-        // El `if (admin == null)` que venia despues era codigo muerto: Optional.get() nunca
-        // devuelve null, o trae el valor o revienta antes de llegar ahi. Por eso el mensaje de
-        // "No se encontro el administrador" nunca llego a imprimirse nunca.
-        //
-        // Y no es un caso teorico: es el endpoint que consulta incentivos-service para saber si
-        // un usuario es administrador (DonacionClient). Un id que no existe le devolvia 500.
-        Administrador admin = repositorioAdministradores.buscarPorId(id)
+    // orElseThrow y no get(): sobre el Optional vacío esto era un 500 en vez del 404 del
+    // controller, y afectaba al chequeo de admins que hace incentivos-service.
+    Administrador admin = repositorioAdministradores.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No se encontro el administrador con ID: " + id));
         return AdminDTO.from(admin);

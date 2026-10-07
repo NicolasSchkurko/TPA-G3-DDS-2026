@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,30 +25,23 @@ public class ItemEntrega {
     private UUID idDonacion;
 
     /**
-     * Control de concurrencia optimista.
-     *
-     * <p><b>Es lo que hace seguro correr N instancias sobre la misma base.</b> Sin esto, dos
-     * instancias que leen el mismo item y escriben sobre el lo hacen en silencio: la segunda
-     * sobrescribe a la primera con los valores que leyo <i>antes</i> del UPDATE de la otra, y
-     * no hay excepcion, no hay log, no queda rastro. Con la version, el UPDATE lleva
-     * {@code WHERE version = ?}; si otra instancia escribio en el medio, la cantidad de filas
-     * afectadas es cero y Hibernate tira {@code OptimisticLockingFailureException} en vez de
-     * pisar.
-     *
-     * <p>En esta entidad es especialmente importante porque {@code idDonacion} es clave natural
-     * sin {@code @GeneratedValue}: {@code save()} va siempre por {@code merge()}, asi que el
-     * UPDATE silencioso era el camino normal y no la excepcion. Y como {@code estado} y
-     * {@code fechaCambioEstado} los cambia el operador de logistica por HTTP mientras el
-     * listener de Rabbit puede estar registrando la misma donacion, la carrera es real.
-     *
-     * <p>La columna la crea sola {@code ddl-auto=update}.
+     * Control de concurrencia optimista: el UPDATE lleva {@code WHERE version = ?} y si otra
+     * instancia escribió en el medio Hibernate tira {@code OptimisticLockingFailureException} en
+     * vez de pisar. Hace falta sobre todo porque {@code idDonacion} es clave natural, así que
+     * {@code save()} va siempre por {@code merge()}.
      */
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
+    /**
+     * La parada a la que pertenece el ítem. Se ignora al serializar porque
+     * {@code item.parada} → {@code parada.ruta} → {@code ruta.paradas} vuelve al mismo objeto y
+     * Jackson reventaría con {@code StackOverflowError}.
+     */
     @ManyToOne
     @JoinColumn(name = "id_parada", referencedColumnName = "id_parada")
+    @JsonIgnore
     private Parada parada;
 
     @Column(name = "cantidad", nullable = false)
@@ -71,7 +65,13 @@ public class ItemEntrega {
     @JoinColumn(name = "id_entidad_beneficiaria")
     private Entidad entidadDestino;
 
-    @OneToMany(mappedBy = "id", cascade = CascadeType.ALL, orphanRemoval = true)
+    /**
+     * Los eventos de trazabilidad de este ítem: el lado inverso de la relación.
+     *
+     * <p>El {@code cascade} es lo que hace que el ítem se pueda borrar: MySQL rechaza el
+     * {@code DELETE} de un ítem con eventos, así que el remove borra primero los hijos.
+     */
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EventoLogistica> eventos;
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {

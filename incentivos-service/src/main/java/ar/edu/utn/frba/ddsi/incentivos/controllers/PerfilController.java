@@ -28,16 +28,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de perfiles de donante: datos, misión en curso, insignias e historial.
- *
- * <p>Es el único controller con un endpoint sin autenticación:
- * {@code GET /{idUsuario}/publico}, que devuelve solo el nombre de usuario y su categoría
- * (punto 8). El resto necesita credenciales, y las escrituras además el header
- * {@code Admin-Id}.
+ * Endpoints de perfiles de donante: datos, misión en curso, insignias e historial. El perfil
+ * público es el único abierto; las escrituras exigen el header {@code Admin-Id}.
  */
 @RestController
 @RequestMapping("/api/perfiles")
@@ -120,20 +117,8 @@ public class PerfilController {
     // ========== PÚBLICO (sin autenticación) ==========
 
     /**
-     * Único endpoint del servicio abierto (punto 8), y vive acá con los demás de perfiles
-     * en vez de en un controller aparte.
-     *
-     * <p>El path no colisiona con el {@code GET /{idUsuario}} de más arriba: este tiene
-     * tres segmentos con un literal al final, y aquel tiene dos. La diferencia es que el de
-     * arriba responde con un {@code PerfilDTO} completo y este no.
-     *
-     * <p>Lo que sale de acá es visible sin credenciales, así que devuelve un DTO propio y
-     * acotado: nombre de usuario y nombre de categoría, nada más. Ni misión vigente, ni
-     * insignias, ni identificadores internos.
-     *
-     * <p>El {@code permitAll()} está en {@code SecurityConfig}, como una regla por método
-     * y ruta: solo el GET de ese path. No un prefijo, que abriría de más cualquier cosa
-     * que se agregara después.
+     * Único endpoint abierto del servicio. Devuelve un DTO acotado (nombre de usuario y
+     * categoría), sin misión, insignias ni ids internos.
      */
     @Operation(
         summary = "Consultar la categoría actual de un donante (público)",
@@ -177,12 +162,14 @@ public class PerfilController {
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado"),
         @ApiResponse(responseCode = "403", description = "No autorizado")
     })
-    @PutMapping("/{id}")
+    @PutMapping("/{idUsuario}")
     public ResponseEntity<PerfilDTO> actualizarPerfil(
-        @Parameter(description = "UUID del perfil a actualizar")
-        @PathVariable UUID id,
+        @Parameter(description = "UUID del administrador", required = true)
+        @RequestHeader("Admin-Id") UUID idAdmin,
+        @Parameter(description = "UUID del usuario")
+        @PathVariable UUID idUsuario,
         @RequestBody PerfilDTO perfil) {
-        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(id, perfil));
+        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(idUsuario, idAdmin, perfil));
     }
 
     // ========== ELIMINAR ==========
@@ -192,13 +179,16 @@ public class PerfilController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil eliminado con éxito"),
+        @ApiResponse(responseCode = "403", description = "No autorizado"),
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
     @DeleteMapping("/{idUsuario}")
     public ResponseEntity<Void> eliminarPerfil(
+        @Parameter(description = "UUID del administrador", required = true)
+        @RequestHeader("Admin-Id") UUID idAdmin,
         @Parameter(description = "UUID del perfil a eliminar")
         @PathVariable UUID idUsuario) {
-        perfilService.eliminarPerfil(idUsuario);
+        perfilService.eliminarPerfil(idUsuario, idAdmin);
         return ResponseEntity.ok().build();
     }
 }

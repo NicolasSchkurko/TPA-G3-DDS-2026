@@ -6,15 +6,10 @@ import java.util.List;
 import org.springframework.stereotype.Repository;
 
 /**
- * Cola en memoria de publicaciones que no se pudieron enviar a n8n.
- *
- * <p>Es solo un buffer transitorio: se pierde al reiniciar el servicio y no se
- * comparte entre replicas. El reemplazo por una tabla de outbox con scheduler
- * de reintento esta trackeado en {@code PENDIENTES.md} (punto 3).
+ * Cola en memoria de publicaciones que no se pudieron enviar a n8n. Es un buffer transitorio:
+ * se pierde al reiniciar y no se comparte entre réplicas.
  */
 @Repository
-// guardar las publicaciones y es decision de la empresa pensar que hacer con ellas
-// al fallar la publicacion en redes sociales
 public class RepositorioPublicacionesPendientes {
     private final List<PerfilPublicacionDTO> pendientes;
 

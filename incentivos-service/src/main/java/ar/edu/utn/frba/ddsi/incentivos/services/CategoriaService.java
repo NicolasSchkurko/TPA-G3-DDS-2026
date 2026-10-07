@@ -23,12 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Alta, edición, consulta y borrado de categorías.
- *
- * <p>Lo que este servicio garantiza, y que es lo que lo hace más que un CRUD, son las tres
- * invariantes de la secuencia: no puede haber dos categorías en la misma posición, no puede
- * haber huecos, y no se puede borrar una que todavía tiene donantes. Las tres se verifican
- * <em>antes</em> de escribir nada, así que un error no deja la secuencia a medias.
+ * Alta, edición, consulta y borrado de categorías. Garantiza las invariantes de la secuencia:
+ * sin posiciones repetidas ni huecos, y no borra una categoría con donantes. Se verifican
+ * antes de escribir.
  */
 @Service
 public class CategoriaService {
@@ -55,10 +52,8 @@ public class CategoriaService {
     }
 
     /**
-     * Lista paginada, con filtro opcional por nombre, posición o misión incluida.
-     *
-     * <p>La búsqueda por nombre es parcial y sin distinguir mayúsculas; los filtros que no
-     * vienen se ignoran en vez de filtrar por null.
+     * Lista paginada, con filtro opcional por nombre, posición o misión. La búsqueda por
+     * nombre es parcial y sin distinguir mayúsculas.
      */
     @Transactional(readOnly = true)
     public Page<CategoriaDTO> obtenerCategorias(CategoriaFiltroRequest filtros, Pageable pageable) {
@@ -81,12 +76,8 @@ public class CategoriaService {
     }
 
     /**
-     * Crea una categoría y abre un hueco en la secuencia en su posición.
-     *
-     * <p>Si no se pasa posición, la nueva queda al final del programa. Si se pasa y ya está
-     * ocupada, se rechaza con {@link ConflictoException} (409) antes de desplazar nada. Y si
-     * se pasa una posición fuera de rango, se rechaza con 400 (punto 31): antes el gestor
-     * se salía sin hacer nada y el alta guardaba igual, dejando la secuencia con huecos.
+     * Crea una categoría y abre un hueco en su posición. Sin posición queda al final. Una
+     * posición ocupada da 409 y una fuera de rango da 400.
      */
     @Transactional
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
@@ -115,10 +106,8 @@ public class CategoriaService {
     }
 
     /**
-     * Edita una categoría: nombre, posición en el programa y secuencia de misiones.
-     *
-     * <p>Si cambian las misiones o sus posiciones, {@link SincronizacionPerfiles} le
-     * reacomoda la misión a los donantes que estaban en la posición anterior (punto 19).
+     * Edita nombre, posición y secuencia de misiones. Si cambian las misiones o sus
+     * posiciones, {@link SincronizacionPerfiles} reacomoda a los donantes.
      */
     @Transactional
     public CategoriaDTO actualizarCategoria(UUID idAdmin, UUID id, CategoriaDTO dto) {
@@ -174,13 +163,8 @@ public class CategoriaService {
     }
 
     /**
-     * Borra una categoría, salvo que todavía tenga donantes asignados.
-     *
-     * <p>Sin la guarda, {@code Perfil.categoriaActual} es un {@code ManyToOne} y el borrado
-     * reventaba por violación de FK: un 500 sin explicación. Además el borrado se frenaba
-     * <em>después</em> de haber actualizado las posiciones de la secuencia, así que el
-     * error dejaba la secuencia movida sin haber borrado nada. Ahora se verifica antes de
-     * tocar nada (punto 18).
+     * Borra una categoría, salvo que tenga donantes asignados. La guarda se verifica antes de
+     * tocar la secuencia.
      */
     @Transactional
     public void eliminarCategoria(UUID idAdmin, UUID id) {
@@ -188,9 +172,7 @@ public class CategoriaService {
 
         Categoria categoria = repoCategorias.obtenerPorId(id);
         if (categoria == null) {
-            // Antes salía EntityNotFoundException mientras el resto del servicio usa
-            // InexistenteException. Los dos terminaban en 404, pero el mensaje era distinto
-            // según por dónde se entrara.
+            // Se unifica con InexistenteException, como el resto del servicio.
             throw new InexistenteException("No se encontró la categoría con ID: " + id);
         }
 

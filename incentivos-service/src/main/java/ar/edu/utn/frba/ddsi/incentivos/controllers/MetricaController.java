@@ -18,12 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de métricas agregadas: totales por período y evolución histórica de un
- * donante.
- *
- * <p>Todos son de solo lectura y todos agregan sobre los impactos de donación que copió
- * {@code donaciones-service}; nada de esto se calcula al vuelo contra la base de otro
- * servicio.
+ * Endpoints de métricas agregadas de solo lectura: totales por período y evolución histórica.
+ * Se calculan sobre los impactos copiados por {@code donaciones-service}.
  */
 @RestController
 @RequestMapping("/api/metricas")
@@ -67,16 +63,13 @@ public class MetricaController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Actividad recuperada con éxito"),
-        @ApiResponse(responseCode = "404", description = "Perfil o actividad no encontrada")
+        @ApiResponse(responseCode = "404", description = "No existe un perfil para ese usuario")
     })
     @GetMapping("/{idUsuario}/actividad")
     public ResponseEntity<ActividadDTO> obtenerActividadPerfil(
             @Parameter(description = "UUID del usuario")
             @PathVariable UUID idUsuario
     ) {
-        ActividadDTO actividad = service.obtenerEvolucionHistorica(idUsuario);
-        return actividad == null
-            ? ResponseEntity.notFound().build()
-            : ResponseEntity.ok(actividad);
+        return ResponseEntity.ok(service.obtenerEvolucionHistorica(idUsuario));
     }
 }

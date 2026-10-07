@@ -79,7 +79,6 @@ public class GestorAsignaciones {
             case "VENCIDO":
                 return Estado.VENCIDO;
             case "ASIGNADO":
-                // Si tu enum tiene ASIGNADO, devuelve Estado.ASIGNADO; si no, quita esta línea.
                 return Estado.ASIGNADO;
             default:
                 throw new IllegalArgumentException("Estado desconocido: " + nuevoEstado);
@@ -91,14 +90,15 @@ public class GestorAsignaciones {
         if (!esAsignado) return;
 
         IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-        dto.setFechaEntrega(donacion.getFechaEntrega());
+        // Incentivos exige el id (su clave de idempotencia) y la fecha como LocalDateTime.
+        dto.setIdDonacion(donacion.getId());
+        dto.setFechaEntrega(donacion.getFechaEntrega() != null ? donacion.getFechaEntrega().atStartOfDay() : null);
         dto.setCantidadBienes(donacion.sumaCantidadBienes());
         dto.setSubCategoria(donacion.getSubcategoria().getNombre());
         dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
         dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
         dto.setEstado(nuevoEstado);
 
-        // Nota: asumo que `incentivosClient` está correctamente inyectado en la clase
         incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
 
         fabricaEstrategiasNotificacion.ejecutar(TipoEventoNotificacion.DONACION_ASIGNADA, donacion);
