@@ -1,12 +1,14 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiasMensajes;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaFallidaDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.TipoDeMensaje;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMensajes.NotificacionEntregaFallidaDatos;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaMensaje.java.EstrategiaMensaje;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.ServicioNotificaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import org.springframework.stereotype.Component;
 
+@Component
 public class NotificacionEntregaFallida extends EstrategiaMensaje {
     public NotificacionEntregaFallida(
             ServicioNotificaciones servicioNotificaciones) {
@@ -44,8 +46,8 @@ public class NotificacionEntregaFallida extends EstrategiaMensaje {
         dto.getContactosAdmin().forEach(
                 contacto ->
                         servicioNotificaciones.enviarNotificacionAMedioDeContacto(
-                            contacto,
-                            mensaje
-                ));
+                                contacto,
+                                mensaje
+                        ));
     }
 }

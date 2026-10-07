@@ -10,33 +10,33 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 El orden no es el de la severidad declarada en cada punto sino el del daño real: cuánto se
 rompe cuando pasa, y qué tan fácil es que pase.
 
-| # | Punto | Por qué está acá |
-|---|---|---|
-| 4 | 4 | Declara el bean de `notificaciones-service` como dependencia de Maven |
-| 5 | 5 | El endpoint de vencer una donación manda un estado que el parser no conoce |
-| 6 | 6 | Una estrategia de notificación no es bean: toda entrega fallida revienta |
-| 7 | 7 | Un bien sin `tipoBien` se convierte en `null` y revienta la segmentación |
-| 8 | 8 | No hay una sola transacción en el módulo: las escrituras quedan a medias |
-| 9 | 9 | Un fallo en una donación corta el lote de matchmaking entero |
-| 10 | 10 | `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella |
-| 11 | 11 | Guardar el estado antes de notificar deja el cambio persistido y responde 404 |
-| 12 | 12 | `CascadeType.ALL` en las necesidades borra de más al dar de baja una entidad |
-| 13 | 13 | El PUT de donante cambia el `@Id` y duplica la Persona |
-| 14 | 14 | Las propuestas se numeran desde 1 pero se leen desde 0 |
-| 15 | 15 | El score de compatibilidad mide contra el histórico, no contra el período |
-| 16 | 16 | La lista de formularios del donante es `@Transient`: la inactividad nunca se avisa |
-| 17 | 17 | El ranking de sub-atendidos lo monopoliza una sola entidad |
-| 18 | 18 | `cantidadObjetivo` sin validar: NullPointerException que corta el matchmaking |
-| 19 | 19 | Borrar el medio de contacto predeterminado lo deja colgando |
-| 20 | 20 | Los eventos de logística no se aíslan: un id inválido rebuclea el mensaje para siempre |
-| 21 | 21 | Los controllers responden 404 ante cualquier `RuntimeException` |
-| 22 | 22 | No hay Bean Validation: entran cantidades negativas como `Bien.peso` |
-| 23 | 23 | La segmentación no incluye la unidad de medida y suma kilos con litros |
-| 24 | 24 | El PUT de donación deja los bienes anteriores huérfanos |
-| 25 | 25 | La importación CSV se traga los errores y no dice cuántos entraron |
-| 26 | 26 | El PUT de necesidad ignora el id de entidad y castea a ciegas |
-| 27 | 27 | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
-| 28 | 28 | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica |
+| #  | Punto | Por qué está acá                                                                                  |
+|----|-------|---------------------------------------------------------------------------------------------------|
+| 4  | 4     | Declara el bean de `notificaciones-service` como dependencia de Maven                             |
+| 5  | 5     | El endpoint de vencer una donación manda un estado que el parser no conoce                        |
+| 6  | 6     | Una estrategia de notificación no es bean: toda entrega fallida revienta                          |
+| 7  | 7     | Un bien sin `tipoBien` se convierte en `null` y revienta la segmentación                          |
+| 8  | 8     | No hay una sola transacción en el módulo: las escrituras quedan a medias                          |
+| 9  | 9     | Un fallo en una donación corta el lote de matchmaking entero                                      |
+| 10 | 10    | `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella                          |
+| 11 | 11    | Guardar el estado antes de notificar deja el cambio persistido y responde 404                     |
+| 12 | 12    | `CascadeType.ALL` en las necesidades borra de más al dar de baja una entidad                      |
+| 13 | 13    | El PUT de donante cambia el `@Id` y duplica la Persona                                            |
+| 14 | 14    | Las propuestas se numeran desde 1 pero se leen desde 0                                            |
+| 15 | 15    | El score de compatibilidad mide contra el histórico, no contra el período                         |
+| 16 | 16    | La lista de formularios del donante es `@Transient`: la inactividad nunca se avisa                |
+| 17 | 17    | El ranking de sub-atendidos lo monopoliza una sola entidad                                        |
+| 18 | 18    | `cantidadObjetivo` sin validar: NullPointerException que corta el matchmaking                     |
+| 19 | 19    | Borrar el medio de contacto predeterminado lo deja colgando                                       |
+| 20 | 20    | Los eventos de logística no se aíslan: un id inválido rebuclea el mensaje para siempre            |
+| 21 | 21    | Los controllers responden 404 ante cualquier `RuntimeException`                                   |
+| 22 | 22    | No hay Bean Validation: entran cantidades negativas como `Bien.peso`                              |
+| 23 | 23    | La segmentación no incluye la unidad de medida y suma kilos con litros                            |
+| 24 | 24    | El PUT de donación deja los bienes anteriores huérfanos                                           |
+| 25 | 25    | La importación CSV se traga los errores y no dice cuántos entraron                                |
+| 26 | 26    | El PUT de necesidad ignora el id de entidad y castea a ciegas                                     |
+| 27 | 27    | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
+| 28 | 28    | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica                             |
 
 ---
 
@@ -538,7 +538,15 @@ lista vacía.
 `ActividadDonanteScheduler`, empieza así:
 
 ```java
-if (p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast()...)
+if(p.getFormularios() !=null&&!p.
+
+getFormularios().
+
+isEmpty() &&p.
+
+getFormularios().
+
+getLast()...)
 ```
 
 Como la lista siempre está vacía, la condición nunca pasa. **La notificación de inactividad
@@ -987,8 +995,10 @@ entidad" sirve para editar cualquier necesidad del sistema.
 El segundo problema está en `RepositorioNecesidades.modificarNecesidad` (líneas 73-93):
 
 ```java
-if (datosNuevos instanceof NecesidadRecurrente) {
-    ((NecesidadRecurrente) existente).setPlazoEnDias(...);
+if(datosNuevos instanceof NecesidadRecurrente){
+        ((NecesidadRecurrente)existente).
+
+setPlazoEnDias(...);
 }
 ```
 
@@ -1037,11 +1047,11 @@ mensaje llega.
 El contrato de integración son **DTOs copiados a mano en los dos módulos**, sin nada que los
 mantenga sincronizados:
 
-| Concepto | DTO en `donaciones-service` | DTO en logística |
-|---|---|---|
-| Entrega | `dto.logistica.entrega.EntregaDTO` | `dto.entrega.EntregaDTO` |
-| Bien | `BienDTO` (7 campos) | `dto.entrega.BienDTO` |
-| Dirección | `dto.DireccionDTO` | `dto.entrega.DireccionDTO` |
+| Concepto  | DTO en `donaciones-service`        | DTO en logística           |
+|-----------|------------------------------------|----------------------------|
+| Entrega   | `dto.logistica.entrega.EntregaDTO` | `dto.entrega.EntregaDTO`   |
+| Bien      | `BienDTO` (7 campos)               | `dto.entrega.BienDTO`      |
+| Dirección | `dto.DireccionDTO`                 | `dto.entrega.DireccionDTO` |
 
 Los nombres de los campos coinciden hoy. Si uno de los dos lados renombra o agrega un campo,
 no hay nada que avise: el mensaje se publica, llega al broker, y el consumidor falla con
@@ -1138,9 +1148,9 @@ servicios— responde `201` con persistencia real.
 
 Las dos llamadas entre `donaciones-service` e incentivos apuntaban a rutas que no existen:
 
-| Método | Antes | Ahora | Ruta real |
-|---|---|---|---|
-| `peticionCrearPerfil` | `POST http://localhost:8082/` | `POST /api/perfiles` | `POST /api/perfiles` |
+| Método                      | Antes                             | Ahora                               | Ruta real                                  |
+|-----------------------------|-----------------------------------|-------------------------------------|--------------------------------------------|
+| `peticionCrearPerfil`       | `POST http://localhost:8082/`     | `POST /api/perfiles`                | `POST /api/perfiles`                       |
 | `notificarDonacionAsignada` | `POST http://localhost:8082/{id}` | `PATCH /api/perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{idUsuario}` |
 
 El método HTTP del avance es **`PATCH`, no `POST`**: `POST` contra un endpoint que solo declara
@@ -1234,9 +1244,9 @@ Los dos clientes de salida apuntaban mal, por motivos distintos:
 **`IncentivosClient`.** La propiedad por defecto era `http://localhost:8082` sin el context-path,
 y las rutas que concatenaba no existían:
 
-| Llamada | Antes | Ahora |
-|---|---|---|
-| Crear perfil | `POST /` | `POST /api/perfiles` |
+| Llamada           | Antes                          | Ahora                               |
+|-------------------|--------------------------------|-------------------------------------|
+| Crear perfil      | `POST /`                       | `POST /api/perfiles`                |
 | Reportar donación | `POST /perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{id}` |
 
 Lo de `POST` contra un endpoint que solo declara `PATCH` es lo que más fácil de pasar por alto:
