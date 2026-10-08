@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories.items;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;

@@ -6,8 +6,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -34,13 +35,16 @@ public class GestorPublicacionEventos {
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
     private final RepositorioEventoLogistica repoEventos;
+    private final RepositorioItemEntrega repoItemEntrega;
     private final ObjectMapper objectMapper;
     private final ProductorEventosLogistica productorEventos;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
+                                    RepositorioItemEntrega repoItemEntrega,
                                    ObjectMapper objectMapper,
                                    ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
+        this.repoItemEntrega = repoItemEntrega;
         this.objectMapper = objectMapper;
         this.productorEventos = productorEventos;
     }
@@ -67,7 +71,8 @@ public class GestorPublicacionEventos {
         );
         evento.setPayloadJson(serializar(payload));
 
-        ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
+
+        ruta.getParadas().forEach(parada -> parada.getItems().forEach(repoItemEntrega::save));
         repoEventos.save(evento);
         productorEventos.publicar(evento);
 
@@ -83,39 +88,51 @@ public class GestorPublicacionEventos {
                     "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
             );
             evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-
-            item.getEventos().add(evento);
+            evento.asociarA(item);
             repoEventos.save(evento);
+            repoItemEntrega.save(item);
             productorEventos.publicar(evento);
+        }
+        else {
+            throw new IllegalArgumentException("El item no esta en camino, inicie la ruta primero");
         }
         return item;
     }
 
     public ItemEntrega publicarEntregaFallida(ItemEntrega item, Ruta ruta, String justificacion) {
-        item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
+        if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
+            item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
 
-        EventoLogistica evento = new EventoLogistica(
-                "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
-        );
-        evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-
-        item.getEventos().add(evento);
-        repoEventos.save(evento);
-        productorEventos.publicar(evento);
-
+            EventoLogistica evento = new EventoLogistica(
+                    "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
+            );
+            evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+            evento.asociarA(item);
+            repoEventos.save(evento);
+            repoItemEntrega.save(item);
+            productorEventos.publicar(evento);
+        }
+        else {
+            throw new IllegalArgumentException("El item no esta en camino, inicie la ruta primero");
+        }
         return item;
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
-        item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
+        if (!(item.getEstado() == EstadoEntrega.PENDIENTE)) {
+            item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
 
-        EventoLogistica evento = new EventoLogistica(
-                "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
-        );
-
-        item.getEventos().add(evento);
-        repoEventos.save(evento);
-        productorEventos.publicar(evento);
+            EventoLogistica evento = new EventoLogistica(
+                    "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
+            );
+            evento.asociarA(item);
+            repoEventos.save(evento);
+            repoItemEntrega.save(item);
+            productorEventos.publicar(evento);
+        }
+        else {
+            throw new IllegalArgumentException("El item ya esta pendiente");
+        }
 
         return item;
     }

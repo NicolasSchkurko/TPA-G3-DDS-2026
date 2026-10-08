@@ -48,8 +48,8 @@ public class ItemEntrega {
     @JoinColumn(name = "id_entidad_beneficiaria")
     private Entidad entidadDestino;
 
-    @OneToMany(mappedBy = "id", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EventoLogistica> eventos;
+    @OneToMany(mappedBy = "itemEntrega", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EventoLogistica> eventos = new ArrayList<>();
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {
         this.idDonacion = idDonacion;

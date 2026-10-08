@@ -19,10 +19,10 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -103,6 +103,8 @@ public class RutaService {
           Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
           if(itemEncontrado.isPresent()){
             repoItemEntrega.deleteById(item.getIdDonacion());
+          }
+          else{
             throw new IllegalArgumentException("Entrega no encontrada");
           }
         }
@@ -111,14 +113,12 @@ public class RutaService {
     Chofer chofer = rutaActual.getCamionAsignado().getChofer();
     chofer.disponible();
     repoChoferes.save(chofer);
-    Camion camionDeRuta = rutaActual.getCamionAsignado();
-    camionDeRuta.disponible();
-    repoCamiones.save(camionDeRuta);
 
     Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
     if (camion.isPresent()) {
-      camion.get().eliminarChofer();
       gestorCamiones.resetearCamion(camion.get());
+    }
+    else{
       throw new IllegalArgumentException("Camión no encontrado");
     }
   }
@@ -173,7 +173,7 @@ public class RutaService {
   }
 
   private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+    return new EventoLogisticaDTO(evento.getIdEvento(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 
   private List<UUID> obtenerIdDonaciones(List<ItemEntrega> items){

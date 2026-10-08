@@ -1,8 +1,9 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.ActualizacionEntregaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
+import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,6 +12,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -46,7 +51,12 @@ public class EntregaController {
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
         try {
-            return ResponseEntity.ok(entregaService.findById(id));
+            ItemEntrega item = entregaService.findById(id);
+            DireccionDTO direccionDTO = new DireccionDTO(item.getEntidadDestino().getIdEntidadBeneficiaria(), item.getEntidadDestino().getDireccionDestino().getCalle1(), item.getEntidadDestino().getDireccionDestino().getCalle2(), item.getEntidadDestino().getDireccionDestino().getAltura(), item.getEntidadDestino().getDireccionDestino().getPiso(), item.getEntidadDestino().getDireccionDestino().getDepartamento(), item.getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+            List<BienDTO> bienesDTO = new ArrayList<>();
+            bienesDTO.add(new BienDTO(item.getCantidad(), item.getUnidad().toString(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), direccionDTO, item.getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getIdEvento(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
+            EntregaDTO dto = new EntregaDTO(List.of(item.getIdDonacion()), bienesDTO, direccionDTO);
+            return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }

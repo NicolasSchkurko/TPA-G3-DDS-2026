@@ -3,7 +3,7 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -58,6 +58,8 @@ public class ChoferService {
     Optional<Chofer> chofer = repoChoferes.findById(id);
     if(chofer.isPresent()){
       repoChoferes.deleteById(id);
+    }
+    else {
       throw new IllegalArgumentException("Chofer no encontrado");
     }
   }

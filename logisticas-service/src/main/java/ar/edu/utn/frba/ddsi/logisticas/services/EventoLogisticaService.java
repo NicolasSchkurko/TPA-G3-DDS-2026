@@ -4,7 +4,7 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
@@ -17,7 +17,7 @@ public class EventoLogisticaService {
   }
 
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc((desdeId - 1))));
+    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdEventoGreaterThanOrderByIdEventoAsc((desdeId - 1))));
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
@@ -25,6 +25,6 @@ public class EventoLogisticaService {
   }
 
   private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+    return new EventoLogisticaDTO(evento.getIdEvento(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

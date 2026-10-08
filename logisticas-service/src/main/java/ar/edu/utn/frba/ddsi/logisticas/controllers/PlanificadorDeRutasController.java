@@ -97,7 +97,7 @@ public class PlanificadorDeRutasController {
       System.err.println("Mensaje: " + e.getMessage());
       e.printStackTrace();
       System.err.println("=================================");
-      return null;
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
     }
   }
 }

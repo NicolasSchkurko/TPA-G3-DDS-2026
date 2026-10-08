@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Prov
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
@@ -17,10 +18,12 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
   private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final RepositorioCamiones repoCamiones;
 
-  public ProveedorRutasExternoSimulado() {
+  public ProveedorRutasExternoSimulado(RepositorioCamiones repoCamiones) {
     this.httpClient = HttpClient.newHttpClient();
     this.objectMapper = new ObjectMapper();
+    this.repoCamiones = repoCamiones;
   }
 
   @Override
@@ -33,9 +36,6 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
 
         // Usamos Jackson para la serialización
         String jsonBody = objectMapper.writeValueAsString(asignacionFinal);
-
-        System.out.println("JSON SIMULADO");
-        System.out.println(jsonBody);
 
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(URL_CALLBACK_LOCAL))
@@ -77,6 +77,7 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
           if (ciudad.equals(c.getCiudadDestinoActual()) && c.puedeCargar(item)) {
             c.cargar(item, ciudad);
             asignacion.get(c.getPatente()).add(item.getIdDonacion());
+            repoCamiones.save(c);
             asignado = true;
             break;
           }
@@ -88,6 +89,7 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
             if (c.estaVacio() && c.puedeCargar(item)) {
               c.cargar(item, ciudad);
               asignacion.get(c.getPatente()).add(item.getIdDonacion());
+              repoCamiones.save(c);
               asignado = true;
               break;
             }

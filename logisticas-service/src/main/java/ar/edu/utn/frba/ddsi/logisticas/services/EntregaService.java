@@ -2,7 +2,10 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
@@ -13,8 +16,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 // El merge movio estos dos a subpaquetes. El wildcard de arriba no los alcanza, asi que van
 // explicitos: el servicio los escribe contra findByIdDonacion() y findByEstado(), que solo
 // existen en las versiones de subpaquete.
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -70,7 +73,9 @@ public class EntregaService {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
     if(item.isPresent()){
       repoItemEntrega.deleteById(id);
-      throw new IllegalArgumentException("Entrega no encontrada");
+    }
+    else {
+      throw new IllegalArgumentException("Entrega no encontrado");
     }
   }
 
@@ -78,19 +83,53 @@ public class EntregaService {
   public void procesarPeticion(EntregaDTO request) {
     if (request == null) return;
 
+    if (request.getDonacionResumen() == null) return;
+
+    if (request.getEntidadBeneficiaria() == null) return;
+
+    List<UUID> idsDonaciones = request.getDonacionResumen().getIdsDonaciones();
+    if (idsDonaciones == null) return;
+
     List<BienDTO> bienes = request.getDonacionResumen().getBienes();
     if (bienes == null) return;
 
+    if (bienes.size() != idsDonaciones.size()) return;
+
+    Direccion direccionEntidad = this.convertirDireccionDTO(request.getEntidadBeneficiaria());
+
+    Pais pais = direccionEntidad.getCiudad().getProvincia().getPais();
+    Optional<Pais> paisExistente = repoPaises.findByNombre(pais.getNombre());
+    if (paisExistente.isPresent()) {
+      pais = paisExistente.get();
+    } else {
+      pais = repoPaises.save(pais);
+    }
+    direccionEntidad.getCiudad().getProvincia().setPais(pais);
+
+    Provincia provincia = direccionEntidad.getCiudad().getProvincia();
+    Optional<Provincia> provinciaExistente = repoProvincias.findByNombre(provincia.getNombre());
+    if (provinciaExistente.isPresent()) {
+      provincia = provinciaExistente.get();
+    } else {
+      provincia = repoProvincias.save(provincia);
+    }
+    direccionEntidad.getCiudad().setProvincia(provincia);
+
+    Ciudad ciudad = direccionEntidad.getCiudad();
+    Optional<Ciudad> ciudadExistente = repoCiudades.findByNombre(ciudad.getNombre());
+    if (ciudadExistente.isPresent()) {
+      ciudad = ciudadExistente.get();
+    } else {
+      ciudad = repoCiudades.save(ciudad);
+    }
+    direccionEntidad.setCiudad(ciudad);
+    repoDirecciones.save(direccionEntidad);
+
+    Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
+    repoEntidades.save(nuevaEntidad);
+
     for (int j = 0; j < bienes.size(); j++) {
       BienDTO bien = bienes.get(j);
-      Direccion direccionEntidad = this.convertirDireccionDTO(request.getEntidadBeneficiaria());
-      repoPaises.save(direccionEntidad.getCiudad().getProvincia().getPais());
-      repoProvincias.save(direccionEntidad.getCiudad().getProvincia());
-      repoCiudades.save(direccionEntidad.getCiudad());
-      repoDirecciones.save(direccionEntidad);//revisar todos lo que se agrega a otros elementos
-
-      Entidad nuevaEntidad = new Entidad(request.getEntidadBeneficiaria().getIdEntidad(), direccionEntidad);
-      repoEntidades.save(nuevaEntidad);
 
       // Mapeo mediante el switch delegado al servicio
       UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
@@ -205,6 +244,6 @@ public class EntregaService {
   }
 
   private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+    return new EventoLogisticaDTO(evento.getIdEvento(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
   }
 }

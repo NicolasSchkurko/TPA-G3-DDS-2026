@@ -6,8 +6,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;

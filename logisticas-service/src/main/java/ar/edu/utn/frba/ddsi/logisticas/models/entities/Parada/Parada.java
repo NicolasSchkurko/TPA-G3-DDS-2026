@@ -39,7 +39,7 @@ public class Parada {
     @OneToMany(mappedBy = "parada")
     private List<ItemEntrega> items = new ArrayList<>();
 
-    // Se crea siempre a partir de un primer item y su dirección
+    // Se crea siempre a partir de un primer itm y su dirección
     public Parada(ItemEntrega primerItem) {
         Entidad entidad = primerItem.getEntidadDestino();
         this.entidadDestino = entidad;
@@ -49,9 +49,5 @@ public class Parada {
 
     public void agregarItem(ItemEntrega item) {
         items.add(item);
-    }
-
-    public Entidad getEntidadDestino() {
-        return items.getFirst().getEntidadDestino();
     }
 }

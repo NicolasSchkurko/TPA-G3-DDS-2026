@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,7 +22,7 @@ public class EventoLogistica {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id_evento")
-  private Long id;
+  private Long idEvento;
 
   @Column(name = "tipo_evento", nullable = false)
   private String tipoEvento;
@@ -39,6 +40,10 @@ public class EventoLogistica {
   @Column(name = "payload_json", columnDefinition = "TEXT")
   private String payloadJson;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "id_donacion", referencedColumnName = "id_donacion")
+  private ItemEntrega itemEntrega;
+
   public EventoLogistica(String tipoEvento, String referenciaId, LocalDateTime fecha, String justificacion) {
     this.tipoEvento = tipoEvento;
     this.referenciaId = referenciaId;
@@ -50,5 +55,10 @@ public class EventoLogistica {
     this.tipoEvento = tipoEvento;
     this.payloadJson = payloadJson;
     this.fecha = LocalDateTime.now();
+  }
+
+  public void asociarA(ItemEntrega item) {
+    this.itemEntrega = item;
+    item.getEventos().add(this);
   }
 }

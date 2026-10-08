@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;

@@ -5,8 +5,8 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -68,6 +68,8 @@ public class CamionService {
     Optional<Camion> camion = repoCamiones.findById(patente);
     if(camion.isPresent()){
       repoCamiones.deleteById(patente);
+    }
+    else {
       throw new IllegalArgumentException("Camión no encontrado");
     }
   }

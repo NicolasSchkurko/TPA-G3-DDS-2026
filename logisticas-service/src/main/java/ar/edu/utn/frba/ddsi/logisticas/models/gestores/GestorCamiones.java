@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -34,7 +33,8 @@ public class GestorCamiones {
     public void resetearCamion(Camion camion){
         Optional<Camion> camionEncontrado = repoCamiones.findById(camion.getPatente());
         if(camionEncontrado.isPresent()){
-            camionEncontrado.get().setCiudadDestinoActual(null);
+            camionEncontrado.get().eliminarChofer();
+            camionEncontrado.get().disponible();
             camionEncontrado.get().resetearCargaOcupada();
             repoCamiones.save(camionEncontrado.get());
         }
