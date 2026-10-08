@@ -87,13 +87,19 @@ public class EntidadBeneficiariaService {
         return NecesidadDTO.from(necesidad);
     }
 
-    public NecesidadDTO actualizarNecesidad(UUID id, NecesidadDTO dto) {
+    public NecesidadDTO actualizarNecesidad(UUID idEntidad, UUID idNecesidad, NecesidadDTO dto) {
+        // idEntidad antes viajaba sin usarse: PUT /entidades/A/necesidades/idDeB modificaba la
+        // necesidad de B igual. Ahora se valida que la necesidad pertenezca a esa entidad.
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+        if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
+        if (entidad.buscarNecesidadPorId(idNecesidad).isEmpty()) {
+            throw new IllegalArgumentException("La necesidad " + idNecesidad + " no pertenece a la entidad " + idEntidad);
+        }
+
         SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
         Necesidad necesidadActualizada = dto.toDomain(subcategoria);
-        Necesidad existente = repositorioNecesidades.buscarPorId(id).orElse(null);
-        if (existente == null) throw new IllegalArgumentException("No se encontró la necesidad con ID: " + id);
 
-        return NecesidadDTO.from(repositorioNecesidades.modificarNecesidad(id, necesidadActualizada));
+        return NecesidadDTO.from(repositorioNecesidades.modificarNecesidad(idNecesidad, necesidadActualizada));
     }
 
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {

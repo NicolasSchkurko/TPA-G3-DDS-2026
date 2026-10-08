@@ -32,6 +32,18 @@ public class NecesidadDTO {
      * del catálogo de Bienes en cada alta.
      */
     public Necesidad toDomain(SubcategoriaBien subcategoria) {
+        // cantidadObjetivo/plazoEnDias nulos o no positivos no pueden llegar a persistirse:
+        // Necesidad.cantidadObjetivo es un Integer (autoboxing), así que un null explota con
+        // NPE recién en estaSatisfecha() -- en el scheduler de matchmaking, no en el alta. Y un
+        // plazoEnDias <= 0 rompe NecesidadRecurrente.cantidadRecibidaEnPeriodo (0 días nunca
+        // cuenta nada, negativo cuenta todo el histórico).
+        if (this.cantidadObjetivo == null || this.cantidadObjetivo <= 0) {
+            throw new IllegalArgumentException("cantidadObjetivo es obligatorio y debe ser positivo");
+        }
+        if (this.plazoEnDias != null && this.plazoEnDias <= 0) {
+            throw new IllegalArgumentException("plazoEnDias debe ser positivo");
+        }
+
         String tipo = this.tipoNecesidad != null ? this.tipoNecesidad.toUpperCase() : "RECURRENTE";
 
         Necesidad necesidad;

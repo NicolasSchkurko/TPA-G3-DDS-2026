@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ConversorNuloExc
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.EncabezadoCsvDuplicadoException;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ErrorAlLeerCsvException;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.Lector;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.FilaConverter;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
@@ -49,8 +50,12 @@ public class LectorCSV<T> implements Lector<T> {
    * Importa el contenido de un archivo CSV y lo convierte en una lista de objetos del tipo T.
    */
   @Override
-  public List<T> importar(InputStream contenido) {
+  public ResultadoLectura<T> importar(InputStream contenido) {
     List<T> resultados = new ArrayList<>();
+    // Antes cada fila descartada solo se logueaba (logger.warning) y se perdía: el caller no
+    // tenía forma de saber cuántas ni por qué. Ahora se acumulan y se devuelven junto al resultado.
+    List<String> errores = new ArrayList<>();
+    int numeroLinea = 1;
 
     try (CSVReader lectorDeArchivo = inicializarLectorDeArchivo(contenido)) {
 
@@ -58,18 +63,17 @@ public class LectorCSV<T> implements Lector<T> {
       validarQueExistanEncabezados(encabezados);
 
       String[] valoresFila;
-      int numeroLinea = 1;
 
       while ((valoresFila = lectorDeArchivo.readNext()) != null) {
         numeroLinea++;
-        procesarYGuardarFila(valoresFila, encabezados, numeroLinea, resultados);
+        procesarYGuardarFila(valoresFila, encabezados, numeroLinea, resultados, errores);
       }
 
     } catch (IOException | CsvException e) {
       throw new ErrorAlLeerCsvException("Ocurrió un problema inesperado al leer el contenido del CSV", e);
     }
 
-    return resultados;
+    return new ResultadoLectura<>(resultados, errores, numeroLinea - 1);
   }
 
   /**
@@ -95,14 +99,16 @@ public class LectorCSV<T> implements Lector<T> {
    * Procesa una fila del CSV, vinculando cada valor con su encabezado correspondiente.
    * Luego utiliza el conversor para crear un objeto del tipo T.
    */
-  private void procesarYGuardarFila(String[] valoresFila, String[] encabezados, int numeroLinea, List<T> resultados) {
+  private void procesarYGuardarFila(String[] valoresFila, String[] encabezados, int numeroLinea, List<T> resultados, List<String> errores) {
     Map<String, String> filaMapeada = vincularEncabezadosConValores(valoresFila, encabezados);
 
     try {
       T objetoConvertido = conversor.convertir(Collections.unmodifiableMap(filaMapeada));
       resultados.add(objetoConvertido);
     } catch (Exception e) {
-      logger.warning(String.format("[Línea %d] Fila descartada: Error al convertir fila - %s", numeroLinea, e.getMessage()));
+      String mensaje = String.format("Línea %d: %s", numeroLinea, e.getMessage());
+      logger.warning("Fila descartada: " + mensaje);
+      errores.add(mensaje);
     }
   }
 

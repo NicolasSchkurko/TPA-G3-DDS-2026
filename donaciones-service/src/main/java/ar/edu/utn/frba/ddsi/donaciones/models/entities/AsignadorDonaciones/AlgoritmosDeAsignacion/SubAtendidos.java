@@ -18,8 +18,20 @@ public class SubAtendidos implements AlgoritmoAsignacion {
     public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
 
+        /*
+         * EXPLICACIÓN DEL MAX-HEAP:
+         * Priorizamos a las necesidades con MENOS donaciones en el último trimestre.
+         * Usamos .reversed() para convertir el Heap en un Max-Heap.
+         * El elemento con el score MÁS ALTO (el que tiene más donaciones, o sea,
+         * el "peor" de nuestro Top 10) se queda en la puerta (peek).
+         * Si encontramos una propuesta con MENOS donaciones, sacamos al peor y metemos el nuevo.
+         */
+        // thenComparing por ID de necesidad: determinista y no depende del orden en que
+        // vienen las entidades (antes, dos elementos con el mismo score quedaban desempatados
+        // por el orden arbitrario del heap).
         PriorityQueue<PropuestaAsignacion> top10 = new PriorityQueue<>(
             Comparator.comparingDouble(PropuestaAsignacion::getScore).reversed()
+                      .thenComparing(p -> p.getNecesidad().getId())
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
@@ -37,8 +49,11 @@ public class SubAtendidos implements AlgoritmoAsignacion {
 
                 if (top10.size() < 10) {
                     agregarPropuesta(top10, entidad, necesidad, cantidadDonaciones);
-                } else if (cantidadDonaciones < top10.peek().getScore()) {
-                    // Una entidad más sub-atendida que la peor del top-10 la reemplaza.
+                } else if (cantidadDonaciones <= top10.peek().getScore()) {
+                    // <= (no <): con una comparación estricta, una entidad con 0 donaciones
+                    // llenaba el top10 entero y ninguna otra entidad con el mismo score (0)
+                    // podía desplazarla nunca. Con <=, el desempate lo decide el thenComparing
+                    // del heap en vez del orden de llegada de las entidades.
                     reemplazarPeorPropuesta(top10, entidad, necesidad, cantidadDonaciones);
                 }
             }

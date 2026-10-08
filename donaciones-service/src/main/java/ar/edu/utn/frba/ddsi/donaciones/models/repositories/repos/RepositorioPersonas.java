@@ -76,7 +76,10 @@ public class RepositorioPersonas {
         }
 
         existente.setMediosDeContacto(datosNuevos.getMediosDeContacto());
-        existente.setId(datosNuevos.getId()); // Se actualiza por si es necesario, basado en el diseño original
+        // No se reasigna el id: datosNuevos siempre es una Persona/Juridica transiente con un
+        // UUID recién generado por su propio constructor. Pisar el @Id de existente con ese
+        // valor hacía que el merge() de actualizar() insertara una fila duplicada en vez de
+        // actualizar la original.
 
         // Lógica propia de dominio extraída del Controller/Service
         if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
