@@ -41,7 +41,8 @@ public class PublicacionesN8nService {
      */
     @Transactional
     public Optional<PublicacionReclamada> reclamarSiguiente(LocalDateTime ahora) {
-        return repositorio.buscarSiguienteParaEnviar(ahora)
+        return repositorio.buscarSiguienteParaEnviar(ahora).stream()
+                .findFirst()
                 .map(publicacion -> {
                     publicacion.reclamarHasta(ahora.plusSeconds(LEASE_SEGUNDOS));
                     return new PublicacionReclamada(publicacion.getId(), publicacion.comoDto(),

@@ -19,6 +19,11 @@ public class Entidad {
   @Column(name = "id_entidad_beneficiaria", nullable = false, updatable = false)
   private UUID idEntidadBeneficiaria;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
   @OneToOne
   @JoinColumn(name = "id_direccion_destino", referencedColumnName = "id_direccion", nullable = false)
   private Direccion direccionDestino;

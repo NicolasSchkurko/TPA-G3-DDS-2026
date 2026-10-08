@@ -12,6 +12,8 @@ import java.util.PriorityQueue;
 
 public class SubAtendidos implements AlgoritmoAsignacion {
 
+    /** Prioriza a las entidades con menos donaciones en el último trimestre, con un
+     *  Max-Heap de 10 (el score más alto queda en el peek y sale primero). */
     @Override
     public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
@@ -24,29 +26,34 @@ public class SubAtendidos implements AlgoritmoAsignacion {
          * el "peor" de nuestro Top 10) se queda en la puerta (peek).
          * Si encontramos una propuesta con MENOS donaciones, sacamos al peor y metemos el nuevo.
          */
+        // thenComparing por ID de necesidad: determinista y no depende del orden en que
+        // vienen las entidades (antes, dos elementos con el mismo score quedaban desempatados
+        // por el orden arbitrario del heap).
         PriorityQueue<PropuestaAsignacion> top10 = new PriorityQueue<>(
             Comparator.comparingDouble(PropuestaAsignacion::getScore).reversed()
+                      .thenComparing(p -> p.getNecesidad().getId())
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
-
-            // Usamos -1 como flag de evaluación perezosa (lazy evaluation).
+            // El historial se calcula una sola vez por entidad, con inicialización perezosa.
             double cantidadDonaciones = -1;
 
             for (Necesidad necesidad : entidad.getNecesidades()) {
-
                 if (!necesidad.esCompatibleCon(donacion)) {
                     continue;
                 }
 
-                // Calculamos el historial de la entidad solo al confirmar compatibilidad
                 if (cantidadDonaciones == -1) {
                     cantidadDonaciones = (double) cantidadDonacionesUltimoTrimestre(entidad);
                 }
 
                 if (top10.size() < 10) {
                     agregarPropuesta(top10, entidad, necesidad, cantidadDonaciones);
-                } else if (cantidadDonaciones < top10.peek().getScore()) {
+                } else if (cantidadDonaciones <= top10.peek().getScore()) {
+                    // <= (no <): con una comparación estricta, una entidad con 0 donaciones
+                    // llenaba el top10 entero y ninguna otra entidad con el mismo score (0)
+                    // podía desplazarla nunca. Con <=, el desempate lo decide el thenComparing
+                    // del heap en vez del orden de llegada de las entidades.
                     reemplazarPeorPropuesta(top10, entidad, necesidad, cantidadDonaciones);
                 }
             }

@@ -11,30 +11,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Una donación, tal como la reportó {@code donaciones-service}, y el rastro de qué hizo
- * con el avance del donante.
- *
- * <p>No tiene setters de negocio: los tres campos que se escriben después de crearla
- * ({@code idMision}, {@code hizoProgresarMision} y {@code completMision}) se escriben con
- * métodos que dicen qué están registrando. Dejarlos abiertos a {@code setX} desde cualquier
- * lado hacía posible que una fila quedara con datos que nunca pudieron pasar por el
- * agregado.
- */
-/**
- * Una donación, copiada desde {@code donaciones-service}, y la fila de la que se calcula todo
- * el progreso.
- *
- * <p>Los dos índices cubren las formas en que se consulta (punto 22). Es la tabla más grande
- * del servicio y todas las lecturas la filtran por donante:
- *
- * <ul>
- *   <li>{@code (id_usuario, fecha_entrega)} para la evolución mensual del donante y para el
- *       resumen por rango de fechas. Las dos agrupan por mes, así que el índice tiene que
- *       llegar hasta la columna de fecha para que el filtro sea un recorrido acotado en vez
- *       de uno completo.</li>
- *   <li>{@code (id_usuario, id_mision, fecha_entrega)} para el cálculo de constancia, que
- *       pregunta las donaciones de un donante en una misión ordenadas por fecha.</li>
- * </ul>
+ * Una donación copiada desde {@code donaciones-service}, y la fila de la que se calcula el
+ * progreso. Los dos índices cubren las consultas por donante y por misión.
  */
 @Getter
 @Entity
@@ -47,22 +25,11 @@ import lombok.Setter;
 public class ImpactoDonacion {
 
     /**
-     * Id de la DONACION, y es el de ORIGEN: se guarda tal cual viene de
-     * `donaciones-service`, sin traducirlo ni generar otro.
-     *
-     * <p>Que sea la primary key y no un autogenerado es lo que hace idempotente el
-     * endpoint `PATCH /donacion/{idUsuario}` (punto 14): si la fila ya existe, la
-     * peticion es un reintento y se devuelve el resultado guardado sin reprocesar. Con un
-     * id autogenerado cada intento insertaba una fila nueva y volvia a aplicar la regla,
-     * con lo que el progreso quedaba inflado y se otorgaban insignias antes de tiempo.
-     *
-     * <p>No lleva `@GeneratedValue` a proposito: el id lo asigna el servicio que
-     * origina la donacion. Por eso `idDonacion` es obligatorio en el DTO; si faltara, el
-     * alta se rechaza con un 400 en vez de guardar una fila sin clave con la que
-     * deduplicar.
+     * Id de la donación de origen: es la primary key, sin {@code @GeneratedValue}, lo que
+     * hace idempotente el endpoint. Por eso es obligatorio en el DTO.
      */
     @Id
-    @Setter // Lo asigna el servicio de origen. Ver la nota del punto 14 arriba.
+    @Setter // Lo asigna el servicio de origen.
     private UUID idDonacion;
 
     private UUID idUsuario; // id de donaciones
@@ -74,28 +41,15 @@ public class ImpactoDonacion {
     private String estado;
 
     /**
-     * Indica si esta donación hizo progresar la misión que el donante tenía en el momento
-     * en que ingresó. Lo escribe {@code ProgresoMision.evaluarProgreso}.
-     *
-     * <p>Es lo que después permite reconstruir una racha: la constancia cuenta solo las
-     * donaciones que aportaron al avance, así que una donación que no coincidió con la
-     * regla no cuenta como mes.
+     * Si esta donación hizo progresar la misión. La constancia cuenta solo las que aportaron
+     * al avance para reconstruir la racha.
      */
     private Boolean hizoProgresarMision = false;
 
-    /**
-     * La misión que el donante tenía cuando entró esta donación. Se guarda aunque la
-     * aunque la donación no haya aportado nada, porque es lo que permite saber después
-     * qué criterio se estaba evaluando.
-     */
+    /** La misión que el donante tenía cuando entró esta donación, aunque no haya aportado. */
     private UUID idMision;
 
-    /**
-     * Si esta donacion completo la mision del donante. Se guarda para poder repetir la
-     * misma respuesta cuando llega un reintento: un endpoint idempotente no puede devolver
-     * un resultado distinto la segunda vez, porque el cliente ya recibio una respuesta y
-     * si cambiara lo tomaria por un fallo.
-     */
+    /** Si esta donación completó la misión, para repetir la misma respuesta ante un reintento. */
     private Boolean completMision = false;
 
     public ImpactoDonacion(UUID idDonacion,
@@ -116,22 +70,13 @@ public class ImpactoDonacion {
         this.estado = estado;
     }
 
-    /**
-     * Registra contra qué misión se evaluó esta donación y si aportó al avance.
-     *
-     * <p>Los dos datos van juntos porque se deciden en el mismo momento: la regla se
-     * aplica contra una misión concreta, y el resultado dice si esa regla movió el
-     * contador.
-     */
+    /** Registra contra qué misión se evaluó esta donación y si aportó al avance. */
     public void registrarProgresoEn(UUID idMision, boolean hizoProgresar) {
         this.idMision = idMision;
         this.hizoProgresarMision = hizoProgresar;
     }
 
-    /**
-     * Guarda si esta donación completó la misión, para poder repetir la misma respuesta
-     * ante un reintento (punto 14).
-     */
+    /** Guarda si esta donación completó la misión, para repetir la respuesta ante un reintento. */
     public void registrarSiCompletoMision(boolean completo) {
         this.completMision = completo;
     }

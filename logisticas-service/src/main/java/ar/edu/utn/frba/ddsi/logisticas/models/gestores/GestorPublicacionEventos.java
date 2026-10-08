@@ -6,11 +6,14 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -18,33 +21,23 @@ import java.util.List;
 
 /**
  * Publica los eventos de logística: alta de ruta, entrega confirmada, fallida y reingreso.
- *
- * <p><b>Este archivo pasó por un merge sin resolver.</b> Traía los marcadores de conflicto de
- * {@code GestorEventos.java} (rama HEAD) y de {@code GestorPublicacionEventos.java} (rama
- * {@code donaciones-y-logistica}) en el mismo archivo, y así quedó commiteado: el módulo
- * entero no compilaba desde el merge del 2026-10-05.
- *
- * <p>Se resolvió quedarse con esta versión y descartar la de {@code GestorEventos} porque
- * {@code EntregaService} y {@code RutaService} consumen esta clase, y los dos métodos de la
- * otra —{@code buscarEventos} y {@code guardarEvento}— no los usa nadie en el módulo.
  */
 @Component
 public class GestorPublicacionEventos {
+    private static final Logger log = LoggerFactory.getLogger(GestorPublicacionEventos.class);
+
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
     private final RepositorioEventoLogistica repoEventos;
-    private final RepositorioItemEntrega repoItemEntrega;
     private final ObjectMapper objectMapper;
     private final ProductorEventosLogistica productorEventos;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
-                                    RepositorioItemEntrega repoItemEntrega,
-                                   ObjectMapper objectMapper,
-                                   ProductorEventosLogistica productorEventos) {
+                                    ObjectMapper objectMapper,
+                                    ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
-        this.repoItemEntrega = repoItemEntrega;
         this.objectMapper = objectMapper;
         this.productorEventos = productorEventos;
     }
@@ -71,70 +64,90 @@ public class GestorPublicacionEventos {
         );
         evento.setPayloadJson(serializar(payload));
 
-
-        ruta.getParadas().forEach(parada -> parada.getItems().forEach(repoItemEntrega::save));
         repoEventos.save(evento);
-        productorEventos.publicar(evento);
+        publicarAlCommit(evento);
 
         return ruta;
     }
 
     public ItemEntrega publicarEntregaConfirmada(ItemEntrega item, Ruta ruta, String foto) {
-        if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
-            item.setFotoComprobante(foto);
-            item.getEstado().cambiarEstado(item, EstadoEntrega.ENTREGADA);
+        if (item.getEstado() != EstadoEntrega.EN_CAMINO) {
+            throw new IllegalStateException("No se puede confirmar la entrega: la donación "
+                    + item.getIdDonacion() + " no está en camino (estado actual: " + item.getEstado() + ").");
+        }
 
-            EventoLogistica evento = new EventoLogistica(
-                    "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
-            );
-            evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-            evento.asociarA(item);
-            repoEventos.save(evento);
-            repoItemEntrega.save(item);
-            productorEventos.publicar(evento);
-        }
-        else {
-            throw new IllegalArgumentException("El item no esta en camino, inicie la ruta primero");
-        }
+        item.setFotoComprobante(foto);
+        item.getEstado().cambiarEstado(item, EstadoEntrega.ENTREGADA);
+
+        EventoLogistica evento = new EventoLogistica(
+                "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
+        );
+        evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+
+        guardarEventoDeItem(item, evento);
         return item;
     }
 
     public ItemEntrega publicarEntregaFallida(ItemEntrega item, Ruta ruta, String justificacion) {
-        if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
-            item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
+        if (item.getEstado() != EstadoEntrega.EN_CAMINO) {
+            throw new IllegalStateException("No se puede registrar como fallida la entrega: la donación "
+                    + item.getIdDonacion() + " no está en camino (estado actual: " + item.getEstado() + ").");
+        }
 
-            EventoLogistica evento = new EventoLogistica(
-                    "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
-            );
-            evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-            evento.asociarA(item);
-            repoEventos.save(evento);
-            repoItemEntrega.save(item);
-            productorEventos.publicar(evento);
-        }
-        else {
-            throw new IllegalArgumentException("El item no esta en camino, inicie la ruta primero");
-        }
+        item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
+
+        EventoLogistica evento = new EventoLogistica(
+                "ENTREGA_FALLIDA", item.getIdDonacion().toString(), LocalDateTime.now(), justificacion
+        );
+        evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+
+        guardarEventoDeItem(item, evento);
+
         return item;
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
-        if (!(item.getEstado() == EstadoEntrega.PENDIENTE)) {
-            item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
+        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA) {
+            throw new IllegalStateException("Solo se puede reingresar a depósito una entrega en estado NO_RECIBIDA "
+                    + "(estado actual: " + item.getEstado() + ").");
+        }
 
-            EventoLogistica evento = new EventoLogistica(
-                    "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
-            );
-            evento.asociarA(item);
-            repoEventos.save(evento);
-            repoItemEntrega.save(item);
-            productorEventos.publicar(evento);
-        }
-        else {
-            throw new IllegalArgumentException("El item ya esta pendiente");
-        }
+        item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
+
+        EventoLogistica evento = new EventoLogistica(
+                "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
+        );
+
+        guardarEventoDeItem(item, evento);
 
         return item;
+    }
+
+    private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
+        evento.setItem(item);
+        repoEventos.save(evento);
+        publicarAlCommit(evento);
+    }
+
+    private void publicarAlCommit(EventoLogistica evento) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            productorEventos.publicar(evento);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                productorEventos.publicar(evento);
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    log.warn("Transacción sin commit: el evento {} no se publica", evento.getTipoEvento());
+                }
+            }
+        });
     }
 
     private PayloadEntregaDTO payloadDatosEntrega(ItemEntrega item, Ruta ruta) {

@@ -4,12 +4,8 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import lombok.Getter;
 
 /**
- * No se pudo entregar una notificación.
- *
- * <p>Lleva el mensaje que falló para poder reintentarlo. El campo es {@code transient} a
- * propósito: estas excepciones no se serializan (nadie las manda por red ni las guarda),
- * y {@link PerfilNotificacionDTO} no es serializable, así que dejarlo como campo normal
- * solo servía para que el compilador avise de un problema que no existe.
+ * No se pudo entregar una notificación. Lleva el mensaje que falló para poder reintentarlo;
+ * es {@code transient} porque la excepción no se serializa.
  */
 @Getter
 public class EnvioNotificacionException extends RuntimeException {

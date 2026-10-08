@@ -24,18 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Alta, edición, consulta y borrado de misiones.
- *
- * <p>Dos cosas que este servicio cuida y no son CRUD:
- *
- * <ul>
- *   <li>Editar una misión solo borra el avance de los donantes si cambió <em>el criterio
- *       de completado</em>, no si se retocó el texto. Antes se borraba siempre, y con eso
- *       corregir una descripción le costaba el progreso a todos los que estaban por
- *       completarla (punto 15).
- *   <li>Borrar una misión exige que nadie la haya completado ni la esté haciendo, porque
- *       las insignias ya otorgadas la referencian (punto 18).
- * </ul>
+ * Alta, edición, consulta y borrado de misiones. Editar solo reinicia el avance si cambió el
+ * criterio de completado, y borrar exige que nadie la haya completado ni la esté haciendo.
  */
 @Service
 public class MisionService {
@@ -82,10 +72,8 @@ public class MisionService {
     }
 
     /**
-     * Crea una misión a partir del DTO del admin.
-     *
-     * <p>La traducción del JSON a la jerarquía de regla y operación es trabajo de
-     * {@link MisionFactory}, incluida la validación de los textos libres.
+     * Crea una misión a partir del DTO del admin. La traducción a regla y operación la hace
+     * {@link MisionFactory}.
      */
     @Transactional
     public MisionDTO crearMision(UUID idAdmin, MisionDTO dto) {
@@ -96,8 +84,8 @@ public class MisionService {
     }
 
     /**
-     * Edita una misión. Si cambia lo que el donante tiene que cumplir, le
-     * reinicia el avance a todos los que estaban en ella (punto 15).
+     * Edita una misión. Si cambia lo que el donante tiene que cumplir, reinicia el avance a
+     * todos los que estaban en ella.
      */
     @Transactional
     public MisionDTO actualizarMision(UUID idAdmin, UUID idMision, MisionDTO dto) {
@@ -110,9 +98,6 @@ public class MisionService {
         Mision misionModificada = construirMision(idAdmin, dto);
 
         // Solo se borra el avance si cambió lo que el donante tiene que cumplir.
-        // Antes se hacía siempre, y con eso retocar la descripción de una
-        // misión le costaba el progreso a todos los que estaban por completarla, sin aviso
-        // (punto 15).
         boolean cambioElCriterio = misionActual.actualizar(misionModificada);
         Mision actualizada = repoMisiones.save(misionActual);
 
@@ -124,14 +109,8 @@ public class MisionService {
     }
 
     /**
-     * Borra una misión, salvo que alguien la haya completado o la esté haciendo.
-     *
-     * <p>Antes no había ninguna guarda: {@code Mision.insigniaObjetivo} tiene cascada, así
-     * que al borrar la misión se iba también su insignia, pero
-     * {@code InsigniaObtenida.insignia} es un {@code ManyToOne} sin cascada y reventaba por
-     * FK. O sea que no se podía borrar una misión que alguien ya había completado y el
-     * error era un 500 sin explicación. Y si la misión no existía, el controller respondía
-     * 204 igual (punto 18).
+     * Borra una misión, salvo que alguien la haya completado o la esté haciendo: las
+     * insignias ya otorgadas la referencian.
      */
     @Transactional
     public void eliminarMision(UUID idAdmin, UUID idMision) {
@@ -154,10 +133,8 @@ public class MisionService {
                             + yaLaCompletaron + " donante(s) ya obtuvieron su insignia.");
         }
 
-        // CategoriaMision es el lado propietario y no tiene cascada, asi que la referencia
-        // tiene que soltarse antes del delete. Sin esto, borrar cualquier mision que pertenezca
-        // a una categoria revienta por FK y el endpoint documentado como 204 nunca podia
-        // responder 204.
+        // CategoriaMision es el lado propietario y no tiene cascada: hay que soltar la
+        // referencia antes del delete.
         List<Categoria> categoriasConLaMision = repoCategorias.findAllByCategoriaMisionesMision(mision);
         categoriasConLaMision.forEach(categoria -> {
             categoria.eliminarMision(mision);
@@ -168,9 +145,8 @@ public class MisionService {
     }
 
     /**
-     * Traduce el DTO a la entidad. Las anotaciones de Bean Validation ya cubren esto
-     * cuando el pedido viene por HTTP, pero el service se puede llamar desde código y
-     * un null acá terminaba en NullPointerException (500) en vez de un 400.
+     * Traduce el DTO a la entidad. Valida los nulls que Bean Validation no cubre cuando se
+     * llama desde código.
      */
     private Mision construirMision(UUID idAdmin, MisionDTO dto) {
         ReglaDTO regla = dto.getRegla();
@@ -189,9 +165,7 @@ public class MisionService {
                 dto.getNombreMision(),
                 dto.getDescripcion(),
                 dto.getInsigniaObjetivo(),
-                // Los dos siguientes son de la INSIGNIA, no de la misión (punto 24). Antes
-                // no existían y la insignia se quedaba con el nombre de la misión como
-                // descripción, que no era el texto que el admin quería.
+                // Los dos siguientes son de la insignia, no de la misión.
                 dto.getInsigniaDescripcion(),
                 dto.getInsigniaUrlImagen(),
                 constancia != null ? constancia.getCantidad() : null,

@@ -6,8 +6,11 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,47 +21,57 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificadorDeRutasScheduler {
 
+  private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutasScheduler.class);
+
+  static final String ZonaPlanificacion = "America/Argentina/Buenos_Aires";
+  private static final int TAMANO_LOTE_MAXIMO = 100;
+
   private final RepositorioItemEntrega repoItemEntrega;
   private final RepositorioCamiones repoCamiones;
   private final PlanificadorDeRutas planificadorDominio;
 
-    @Autowired
+  @Autowired
   public PlanificadorDeRutasScheduler(
-      ProveedorRutasExterno proveedorExterno,
-      RepositorioItemEntrega repoItemEntrega,
-      RepositorioCamiones repoCamiones) {
-      this.planificadorDominio = new PlanificadorDeRutas();
+          ProveedorRutasExterno proveedorExterno,
+          RepositorioItemEntrega repoItemEntrega,
+          RepositorioCamiones repoCamiones) {
+    this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
     this.repoItemEntrega = repoItemEntrega;
     this.repoCamiones = repoCamiones;
-    }
+  }
 
-  @Scheduled(cron = "0 0 2 * * ?")
+  @Scheduled(cron = "0 0 2 * * ?", zone = ZonaPlanificacion)
   public void iniciarPlanificacionAutomatica() {
-    System.out.println("Iniciando proceso automático de planificación de rutas...");
-
     List<ItemEntrega> itemsPendientes;
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
+              .filter(item -> item.getParada() == null
+                      || item.getParada().getRuta() == null
+                      || item.getParada().getRuta().getEstado() == EstadoRuta.FINALIZADA)
+              .collect(Collectors.toList());
+
       camionesDisponibles = repoCamiones.findAll().stream()
-                                               .filter(Camion::getDisponible)
-                                               .collect(Collectors.toList());
+              .filter(Camion::getDisponible)
+              .collect(Collectors.toList());
 
     } catch (Exception e) {
-      System.err.println("Error de lectura en la base de datos: " + e.getMessage());
+      log.error("No se pudo leer las donaciones pendientes ni los camiones, no se planifica hoy", e);
       return;
     }
 
     if (itemsPendientes.isEmpty()) {
-      System.out.println("No hay donaciones pendientes para planificar hoy.");
+      log.info("No hay donaciones pendientes para planificar hoy");
       return;
     }
 
-    // FIX ENTREGA 3: Restricción del proveedor externo a lotes de 100 como máximo
-    for (int i = 0; i < itemsPendientes.size(); i += 100) {
-      List<ItemEntrega> lote = itemsPendientes.subList(i, Math.min(i + 100, itemsPendientes.size()));
+    for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
+      List<ItemEntrega> lote = itemsPendientes.subList(
+              inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
+
+      // Se pasa la lista de camiones disponibles; la aislación de estado la realiza el proveedor/simulador por lote
       planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
     }
   }

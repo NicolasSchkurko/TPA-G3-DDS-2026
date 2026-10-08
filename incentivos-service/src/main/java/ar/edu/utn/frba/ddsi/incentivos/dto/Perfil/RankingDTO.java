@@ -8,10 +8,9 @@ import lombok.Setter;
 public class RankingDTO {
     private String nombreUsuario;
 
-    // Dejó de llamarse "posicionRanking" porque esa clase ya no existe.
     private Integer puesto;
 
-    // Pasa a ser Long porque el COUNT() de la base de datos devuelve un Long.
+    // Long porque el COUNT() de la base devuelve Long.
     private Long misionesCumplidas;
 
     public RankingDTO() {}

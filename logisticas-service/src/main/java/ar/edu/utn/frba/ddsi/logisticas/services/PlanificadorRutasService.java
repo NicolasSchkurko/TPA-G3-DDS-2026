@@ -6,22 +6,24 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-// El merge movio estos cuatro a subpaquetes. El wildcard de arriba no los alcanza, asi que
-// van explicitos: los servicios los escribieron contra findByChofer(), findByEstado() y
-// actualizarEstado(), que solo existen en las versiones de subpaquete.
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class PlanificadorRutasService {
+    private static final Logger log = LoggerFactory.getLogger(PlanificadorRutasService.class);
+
     private final RepositorioRutas repoRutas;
     private final RepositorioChoferes repoChoferes;
     private final RepositorioItemEntrega repoItemEntrega;
@@ -47,7 +49,6 @@ public class PlanificadorRutasService {
      * Invocado por el Controller cuando llega el HTTP POST de callback desde el proveedor externo.
      */
     public List<Ruta> procesarCallbackRutas(String jsonAsignacion) {
-        // 1. Transformar el JSON crudo a nuestro Map esperado usando Jackson
         ObjectMapper mapper = new ObjectMapper();
         Map<String, List<UUID>> asignacion;
         try {
@@ -56,7 +57,6 @@ public class PlanificadorRutasService {
             throw new IllegalArgumentException("El formato del JSON recibido no es válido", e);
         }
 
-        // 2. Extraer todos los IDs de donaciones del mapa
         List<UUID> todosLosIdsItems = asignacion.values().stream()
                 .flatMap(List::stream)
                 .toList();
@@ -64,20 +64,19 @@ public class PlanificadorRutasService {
         List<Camion> camionesDb;
         List<ItemEntrega> itemsDb;
 
-        // 3. Traer de la Base de Datos los camiones y los items necesarios
         try {
             camionesDb = repoCamiones.findAll();
             itemsDb = todosLosIdsItems.stream()
                     .map(id -> repoItemEntrega.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")))
+                            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada con el ID: " + id)))
                     .toList();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e; // Se relanzan para que el Controller responda HTTP 400/422 en lugar de 500
         } catch (Exception e) {
             throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
         }
 
-        // 5. Pasar la responsabilidad al dominio para que instancie, agrupe en paradas y valide pesos
         List<Ruta> rutasGeneradas = planificadorDominio.procesarCallbackRutas(asignacion, camionesDb, itemsDb);
-        // 6. Guardar el resultado final en la BD
         try {
             for (Ruta ruta : rutasGeneradas) {
 
@@ -94,30 +93,16 @@ public class PlanificadorRutasService {
                     }
                 }
             }
-            System.out.println("INTENTANDO GUARDAR RUTAS...");
-
-            System.out.println("RUTAS Y PARADAS CREADAS");
-            System.out.println("Se guardaron exitosamente " + rutasGeneradas.size() + " rutas nuevas.");
+            log.info("Se guardaron exitosamente {} rutas nuevas", rutasGeneradas.size());
 
         } catch (Exception e) {
-            System.out.println("========================================");
-            System.out.println("ERROR AL GUARDAR RUTAS");
-            System.out.println("========================================");
-
-            e.printStackTrace();
-
-            System.out.println("========================================");
-
+            log.error("Error al persistir las nuevas rutas en la base de datos", e);
             throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);
         }
 
         return rutasGeneradas;
     }
 
-    /**
-     * FIX: La asignación ahora respeta la eliminación de la dependencia bidireccional.
-     * Se asigna el chofer al camión, y se marcan como ocupados usando los métodos del Repositorio actualizados.
-     */
     public List<Ruta> asignarChoferes(List<Ruta> rutas){
         List<Chofer> choferesDisponibles = new ArrayList<>(
                 repoChoferes.findAll()
@@ -134,10 +119,9 @@ public class PlanificadorRutasService {
                 Camion camion = ruta.getCamionAsignado();
                 if (camion != null) {
                     camion.setChofer(choferElegido);
-                    camion.ocupado(); // Bloqueamos el camión
-                    choferElegido.ocupado(); // Bloqueamos al chofer
+                    camion.ocupado();
+                    choferElegido.ocupado();
 
-                    // Actualizamos estados
                     repoCamiones.save(camion);
                     repoChoferes.save(choferElegido);
                 }

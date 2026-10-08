@@ -832,3 +832,99 @@ Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del con
 rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
 n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
 llega pero muere del otro lado.
+
+### `GET /api/metricas/{id}/periodo` respondía 500: el `Optional<Object[]>` traía el array de filas
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../dto/Perfil/ResumenMetricaDTO.java`, `.../services/MetricasService.java`,
+`.../services/MetricaPorPeriodoJpaTest.java`
+
+El método declaraba `Optional<Object[]>` y Spring Data devuelve ahí el *array de filas*, no la
+fila: con donaciones, `resumen[0]` era la fila entera (`ClassCastException ... cannot be cast to
+class java.util.UUID`) y sin donaciones un array vacío (`ArrayIndexOutOfBoundsException: Index 0
+out of bounds for length 0`), o sea que el caso "no hay métrica para ese donante" daba 500 en vez
+del 404. Ahora hay una proyección tipada (`ResumenMetricaDTO`, record) con expresión de
+constructor JPQL, y el service usa los campos sin casts.
+
+**Decisión del equipo (2026-10-07): el borde superior del período es inclusivo (`<= :hasta`)** —
+una donación guardada a las 00:00 del día siguiente a `hasta` cuenta dentro del período. Lo
+cubren los tests de `MetricaPorPeriodoJpaTest` (H2 real, 4 tests); no lo "arreglen" después.
+
+### La pasada de constancia tocaba `valoresObservados` (LAZY) sobre entidades desligadas
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../services/PerfilService.java`,
+`.../services/PerfilServiceConstanciaTransaccionalTest.java`
+
+`evaluarConstanciaPerfiles` no era transaccional: consultaba los perfiles (que llegan desligados
+de la transacción propia del repositorio) y recién después abría la transacción del bloque. Si la
+racha caducaba, o el donante no tenía donaciones que hicieran progresar la misión,
+`reiniciarProgreso()` tocaba el `@ElementCollection` LAZY `valoresObservados` sobre una entidad
+desligada y lanzaba `LazyInitializationException`, con lo que la pasada entera se caía. La
+consulta y el recálculo ahora corren dentro del mismo `transactionTemplate.execute(...)`, con el
+bloque de 500 y el orden por `idUsuario` intactos.
+
+**Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre con
+transacción activa; con el código anterior el test falla. Suite completa 313 en verde.
+
+### `GET /api/metricas/{id}/actividad` respondía 500 por el `Object[]` de los totales
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../services/MetricasService.java`, `.../services/MetricaActividadJpaTest.java`
+
+`obtenerTotalesDonaciones` era una native query de dos columnas declarada `Object[]`: Spring Data
+devuelve ahí el *array de filas*, así que `totales[0]` era la fila entera y
+`MetricasService.numero(...)` lanzaba `ClassCastException: [Ljava.lang.Object; cannot be cast to
+class java.lang.Number`. Ahora el repo devuelve `List<Object[]>` y el service toma la única fila
+del agregado (`get(0)`), que existe siempre, incluso sin donaciones.
+
+**Cómo se verificó:** `MetricaActividadJpaTest` (H2 real, 2 tests: con donaciones y sin
+donaciones) fallaba con el mismo `ClassCastException` que en producción; con el fix pasa.
+
+### Regresión de `/periodo`: un refactor sacó el `GROUP BY` y "sin donaciones" dejó de ser 404
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../test/.../models/repositories/RendimientoConsultasTest.java`
+
+`obtenerResumenMetrica` quedó sin `GROUP BY`, y un agregado sin `GROUP BY` devuelve **siempre una
+fila** (con ceros): un período sin donaciones respondía 200 con nulos en vez del 404 que pide el
+contrato. Se restauró `GROUP BY d.idUsuario` (y `d.idUsuario` en el SELECT). De paso se
+actualizaron dos tests de `RendimientoConsultasTest` que afirmaban el JPQL viejo de
+`obtenerEvolucionMensual`, hoy native query con `EXTRACT(...)` y `NULLIF(TRIM(...), '')`.
+
+**Cómo se verificó:** `MetricaPorPeriodoJpaTest.metricaDeUnPeriodoSinDonacionesEsVacia` vuelve a
+dar `Optional.empty()` → 404; suite completa 315 en verde.
+
+### El id interno del perfil es ahora el id del donante (`idPerfil` eliminado)
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/entities/Perfil/Perfil.java`,
+`.../models/repositories/SpringRepositories/RepositorioPerfiles.java`,
+`.../services/PerfilService.java`, `.../services/MetricasService.java` (+ los tests)
+
+`Perfil` tenía `@Id @GeneratedValue idPerfil` y un `idUsuario` **sin `unique`**: se podían
+insertar dos perfiles del mismo donante y `findByIdUsuario` (resultado único) reventaba con
+`NonUniqueResultException`. Ahora `idUsuario` es la `@Id` —un donante, un perfil— y desaparece
+`idPerfil`; las consultas pasan a `findById`/`existsById`/`deleteById`. Es el mismo criterio que
+`ImpactoDonacion.idDonacion`, que usa el id de origen como PK.
+
+**Ojo, migración:** cambia la PK de `perfil` (`id_perfil` → `id_usuario`). Con `ddl-auto=update`
+Hibernate no migra un cambio de PK, así que hay que recrear el schema (la base de desarrollo está
+vacía): `DROP DATABASE incentivos_db;` y reiniciar el servicio, o un `DDL_AUTO=create-drop` de una
+pasada. La FK `insignia_obtenida.perfil_id` mantiene su nombre.
+
+**Cómo se verificó:** suite completa 322 tests en verde (incluye los `@DataJpaTest` que recrean el
+schema en H2).

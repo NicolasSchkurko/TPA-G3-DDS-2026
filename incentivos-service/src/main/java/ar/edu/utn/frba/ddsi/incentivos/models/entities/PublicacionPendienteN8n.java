@@ -15,9 +15,6 @@ import lombok.NoArgsConstructor;
 
 /**
  * Publicacion para n8n guardada en la misma transaccion que otorga la insignia.
- *
- * <p>El lease permite que una instancia reclame la publicacion antes de hacer la llamada
- * HTTP y que otra instancia la recupere si la primera cae durante el envio.
  */
 @Getter
 @Entity

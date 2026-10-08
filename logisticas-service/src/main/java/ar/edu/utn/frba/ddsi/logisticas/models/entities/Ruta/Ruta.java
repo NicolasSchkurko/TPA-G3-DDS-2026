@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,11 @@ public class Ruta {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id_ruta", nullable = false, updatable = false)
     private UUID idRuta;
+
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToOne
     @JoinColumn(name = "patente_camion", referencedColumnName = "patente", nullable = false)
@@ -48,10 +54,13 @@ public class Ruta {
         this.paradas = new ArrayList<>();
     }
 
-    // Agrupa por entidad: si ya hay una Parada para esa entidad en esta ruta, se agrega al listado
     public void agregarEntrega(ItemEntrega item) {
+        if (item == null || item.getEntidadDestino() == null) {
+            throw new IllegalArgumentException("El ítem de entrega y su entidad destino no pueden ser nulos.");
+        }
+
         paradas.stream()
-                .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
+                .filter(p -> Objects.equals(p.getEntidadDestino(), item.getEntidadDestino()))
                 .findFirst()
                 .ifPresentOrElse(
                         parada -> parada.agregarItem(item),
@@ -63,11 +72,10 @@ public class Ruta {
                 );
     }
 
-    // Todos los items que lleva el camión en esta ruta, sin importar en qué parada van.
     public List<ItemEntrega> obtenerTodosLosItems() {
         return paradas.stream()
-                      .flatMap(p -> p.getItems().stream())
-                      .collect(Collectors.toList());
+                .flatMap(p -> p.getItems().stream())
+                .collect(Collectors.toList());
     }
 
     public Double pesoTotalCargadoKg() {

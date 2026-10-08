@@ -1,29 +1,26 @@
 package ar.edu.utn.frba.ddsi.logisticas.RabbitMQ;
 
-import ar.edu.utn.frba.ddsi.logisticas.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 /**
  * Recibe las donaciones que esperan ser entregadas y las registra como ítems de entrega.
  *
- * <p><b>Es uno de los N consumidores de la cola compartida.</b> La cola
- * {@code COLA_INTEGRACION} la comparten todas las instancias de logística y el broker
- * reparte los mensajes de a uno, así que varias instancias procesan en paralelo repartiendo
- * trabajo. Levantar una segunda instancia, para cumplir el "más de un servicio de logística
- * disponible" del enunciado, es arrancar el mismo jar otra vez apuntando al mismo broker.
+ * <p>Todas las instancias escuchan la misma cola salvo que esté configurado el reparto por shards:
+ * el SpEL de {@code @RabbitListener} resuelve el bean {@code colasDeEstaInstancia}.
  *
- * <p><b>El fallo se relanza a propósito.</b> Con la cola configurada con dead letter exchange,
- * relanzar manda el mensaje a la cola de mensajes muertos en vez de dejarlo perdido: antes el
- * catch se lo tragaba y la donación se perdía sin dejar rastro.
- *
- * <p><b>Los errores de negocio no se relanzan.</b> Un payload inválido va a fallar igual en
- * cada reintento, y relanzarlo bloquearía la cola compartida, frenando las donaciones de las
- * demás instancias.
+ * <p>Reintenta con espera antes de rendirse, así que un fallo de infraestructura se vuelve blando.
+ * Agotados los intentos, rendirse es lanzar {@link AmqpRejectAndDontRequeueException}: Spring AMQP
+ * reencola por defecto, y reencolar lo devuelto a la cola compartida lo haría fallar otra vez y
+ * frenarla para siempre. El rechazo sin requeue es lo que activa el dead letter de
+ * {@code RabbitMQConfig}.
  */
 @Component
 public class DonacionListener {
@@ -31,21 +28,59 @@ public class DonacionListener {
     private static final Logger log = LoggerFactory.getLogger(DonacionListener.class);
 
     private final EntregaService entregaService;
+    private final int intentos;
+    private final long esperaMs;
 
-    public DonacionListener(EntregaService entregaService) {
+    public DonacionListener(
+            EntregaService entregaService,
+            @Value("${logistica.reintentos:3}") int intentos,
+            @Value("${logistica.espera-reintento-ms:2000}") long esperaMs) {
         this.entregaService = entregaService;
+        this.intentos = intentos;
+        this.esperaMs = esperaMs;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.COLA_INTEGRACION)
+    @RabbitListener(queues = "#{colasDeEstaInstancia}")
     public void recibirDonacionParaEntregar(EntregaDTO peticion) {
+        RuntimeException ultimoFallo = null;
+
+        for (int intento = 1; intento <= intentos; intento++) {
+            try {
+                entregaService.procesarPeticion(peticion);
+                return;
+            } catch (IllegalArgumentException errorDeNegocio) {
+                // Un payload inválido falla igual las veces que lo intentes: no se gasta más
+                // intentos ni se frena la cola.
+                log.warn("Donación descartada por datos inválidos: {}", errorDeNegocio.getMessage());
+                return;
+            } catch (RuntimeException error) {
+                ultimoFallo = error;
+                log.warn("Falló el procesamiento de una donación (intento {} de {}): {}",
+                        intento, intentos, error.getMessage());
+                if (intento < intentos) {
+                    dormir();
+                }
+            }
+        }
+
+        // Rechazo sin requeue explícito: es lo que manda el mensaje a la DLQ.
+        log.error("La donación no se pudo procesar en {} intentos, va a la cola de mensajes "
+                + "muertos", intentos, ultimoFallo);
+        throw new AmqpRejectAndDontRequeueException(
+                "Donación no procesable tras " + intentos + " intentos", ultimoFallo);
+    }
+
+    /**
+     * Espera entre intentos. Duerme el hilo del listener a propósito: la alternativa es tirar el
+     * mensaje y que otro lo tome, y el mensaje ya se consumió de la cola, así que nadie más lo
+     * va a leer.
+     */
+    private void dormir() {
         try {
-            entregaService.procesarPeticion(peticion);
-        } catch (IllegalArgumentException errorDeNegocio) {
-            log.warn("Donación descartada por datos inválidos: {}", errorDeNegocio.getMessage());
-        } catch (RuntimeException error) {
-            log.error("Falló el procesamiento de una donación, va a la cola de mensajes muertos",
-                    error);
-            throw error;
+            Thread.sleep(esperaMs);
+        } catch (InterruptedException interrumpido) {
+            Thread.currentThread().interrupt();
+            log.debug("Se interrumpió la espera entre reintentos");
         }
     }
 }

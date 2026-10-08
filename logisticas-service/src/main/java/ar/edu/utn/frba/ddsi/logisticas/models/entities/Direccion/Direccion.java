@@ -18,6 +18,11 @@ public class Direccion {
     @Column(name = "id_direccion", nullable = false, updatable = false)
     private UUID idDireccion;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "calle_1")
     private String calle1;
 

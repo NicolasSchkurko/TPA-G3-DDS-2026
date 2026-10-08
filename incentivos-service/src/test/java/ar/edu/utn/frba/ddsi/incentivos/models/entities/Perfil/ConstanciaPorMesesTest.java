@@ -16,15 +16,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * La racha tiene que contar MESES calendario consecutivos, no donaciones (punto 26).
- *
- * <p>La misión semilla "Racha" dice *"Realiza 1 donación durante 3 meses consecutivos"*
- * con {@code constancia = (1, MONTHS)} y {@code COINCIDENCIAS(3, "ENTREGADA")}. Antes la
- * única condición era que cada donación no tuviera más de un mes de antigüedad respecto de
- * la anterior, así que tres PATCH en tres días consecutivos completaban la misión de tres
- * meses.
- */
 @DisplayName("Constancia: la racha se cuenta en meses, no en donaciones")
 class ConstanciaPorMesesTest {
 

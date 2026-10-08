@@ -13,15 +13,22 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Propu
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -68,14 +75,15 @@ public class DonacionService {
   }
 
   public DonacionDTO obtenerPorId(UUID id) {
-    return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación")));
+    return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new EntityNotFoundException("No se encontró la donación con ID: " + id)));
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public List<DonacionDTO> procesarFormulario(FormularioRequestDTO request) {
     Donante donante = repositorioDonantes.buscarPorId(request.getIdDonante()).orElse(null);
-    if (donante == null) throw new NullPointerException("No se encontró persona con ese ID");
+    if (donante == null) throw new IllegalArgumentException("No se encontró persona con ese ID");
 
-    List<Bien> bienesNormal = request.getBienes() != null ? request.getBienes().stream().map(this::resolverBien).collect(Collectors.toList()) : List.of();
+    List<Bien> bienesNormal = request.getBienes() != null ? resolverBienes(request.getBienes()) : List.of();
     bienesNormal.forEach(this::crearBien);
 
     Formulario formularioGenerado = new Formulario(donante, bienesNormal, request.getFechaRealizacion());
@@ -88,6 +96,7 @@ public class DonacionService {
     return donacionesProcesadas.stream().map(DonacionDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public void ejecutarMatchmakingADemanda() {
     AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorAsignaciones,repositorioDeResultadosMatchmaking);
     List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();
@@ -99,15 +108,25 @@ public class DonacionService {
   // donante/entidad/estado/subcategoria/fechaEntrega en null), acá partimos de la Donacion
   // existente y sólo pisamos los campos que vienen en el DTO. Con persistencia real (merge()),
   // guardar un objeto mayormente-null hubiera nuleado esas columnas en la base.
+  @Transactional(rollbackFor = Exception.class)
   public DonacionDTO actualizarDonacion(UUID id, DonacionDTO dto) {
     Donacion existente = repositorioDonaciones.obtenerPorId(id)
-            .orElseThrow(() -> new RuntimeException("Donación no encontrada con ID: " + id));
+            .orElseThrow(() -> new EntityNotFoundException("Donación no encontrada con ID: " + id));
 
     if (dto.getDescripcion() != null) {
       existente.setDescripcion(dto.getDescripcion());
     }
     if (dto.getBienes() != null) {
-      List<Bien> bienesActualizados = dto.getBienes().stream().map(this::resolverBien).collect(Collectors.toList());
+      // Los bienes que la lista deja afuera no se borran (ver RepositorioBienes: la fila es
+      // compartida con Formulario.donaciones) ni se cuentan como entregados, así que reescribir
+      // el contenido de una donación ya asignada/entregada dejaría los conteos de
+      // Necesidad.cantidadRecibida() sin correspondencia con lo realmente entregado. Por eso el
+      // PUT sólo se permite mientras la donación sigue en depósito.
+      if (existente.getEstado() != Estado.EN_DEPOSITO) {
+        throw new IllegalArgumentException(
+                "No se pueden modificar los bienes de una donación que no está en depósito (estado actual: " + existente.getEstado() + ")");
+      }
+      List<Bien> bienesActualizados = resolverBienes(dto.getBienes());
       bienesActualizados.forEach(this::crearBien);
       existente.setBienes(bienesActualizados);
     }
@@ -115,16 +134,19 @@ public class DonacionService {
     return DonacionDTO.from(repositorioDonaciones.actualizar(existente.getId(), existente).get());
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public void eliminarDonacion(UUID id) {
     repositorioDonaciones.eliminarPorId(id);
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public DonacionDTO cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
     return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, nuevoEstado, justificacion));
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public DonacionDTO marcarComoVencida(UUID id) {
-    return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, "VENCIDA", "Registrado como vencido por la administración."));
+    return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, "VENCIDO", "Registrado como vencido por la administración."));
   }
 
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
@@ -132,6 +154,7 @@ public class DonacionService {
                             .map(ResultadoMatchmakingDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
     PropuestaAsignacion propuestaAsignacion = gestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion(donacionId, posicion);
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId).orElseThrow(() -> new IllegalArgumentException("No se encontró la donación"));
@@ -139,23 +162,14 @@ public class DonacionService {
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
 
-    // A partir de aca la donacion le corresponde a logistica. El enunciado pide que esta
-    // integracion vaya por broker, asi que se publica el item de entrega en vez de llamar a
-    // logistica por HTTP. Va despues del cambio de estado a proposito: si la publicacion
-    // falla, la excepcion sube y la transaccion se revierte, y no queda una donacion
-    // marcada como asignada que nadie va a entregar nunca.
+    // A partir de acá la donación le corresponde a logística, por broker (el enunciado lo pide).
+    // Va después del cambio de estado a propósito: si la publicación falla, la excepción sube.
     publicarEntregaALogistica(donacionId);
   }
 
-  /**
-   * Arma el mensaje de entrega y lo publica en el exchange de integracion.
-   *
-   * <p>El mensaje lleva lo minimo que logistica necesita para crear el item: los ids de las
-   * donaciones, los bienes con su cantidad y unidad, y la direccion de la entidad
-   * beneficiaria. Logistica no consulta este servicio para nada mas, que es lo que exige el
-   * enunciado: no debe invocar los servicios de donaciones ni incentivos, sino dejar
-   * disponible la informacion.
-   */
+  /** Publica el item de entrega: los ids de donación, los bienes agregados por unidad y la
+   *  dirección de la entidad. Es todo lo que logística necesita para crear los ítems de entrega;
+   *  por contrato, no consulta este servicio para nada más. */
   private void publicarEntregaALogistica(UUID donacionId) {
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId)
             .orElseThrow(() -> new IllegalArgumentException("No se encontro la donacion"));
@@ -167,16 +181,35 @@ public class DonacionService {
       return;
     }
 
-    // Bien guarda la cantidad en el campo 'peso' y la unidad en 'unidadUtilizada'; el DTO de
-    // transporte los llama cantidad y unidadDeMedida, asi que se renombran al mapear.
-    List<BienDTO> bienes = donacion.getBienes().stream()
-            .map(b -> new BienDTO(b.getPeso(), b.getUnidadUtilizada().name()))
-            .collect(Collectors.toList());
+    // Bien guarda 'peso' y 'unidadUtilizada'; el DTO de transporte los llama cantidad y
+    // unidadDeMedida. Se suma por unidad: logística guarda UN ItemEntrega por donación con un
+    // solo par cantidad+unidad, y su dedupe descartaría los bienes 2..N (punto 31).
+    Map<UnidadDeMedida, Integer> cantidadesPorUnidad = new LinkedHashMap<>();
+    donacion.getBienes().forEach(b ->
+            cantidadesPorUnidad.merge(b.getUnidadUtilizada(),
+                    b.getPeso() != null ? b.getPeso() : 0, Integer::sum));
+
+    List<BienDTO> bienes = new ArrayList<>();
+    List<UUID> idsParaLogistica = new ArrayList<>();
+    // Un id de donación por entrada: el receptor exige bienes.size() == idsDonaciones.size()
+    // (punto 27) y ProductorLogistica particiona por el menor de los ids, que con id repetido
+    // sigue siendo estable.
+    cantidadesPorUnidad.forEach((unidad, cantidad) -> {
+        // Unidad null es el punto 38 (UNIDADES en el formulario se mapea a null): el receptor
+        // lo rechaza con un warn visible en vez de un 500 sin contexto.
+        bienes.add(new BienDTO(cantidad, unidad != null ? unidad.name() : null));
+        idsParaLogistica.add(donacion.getId());
+    });
+
+    // La dirección viaja con el id de la entidad: logística resuelve el destino con
+    // findById(idEntidad) y sin él descarta el mensaje (contrato, punto 27 de PENDIENTES.md).
+    DireccionDTO direccionEntidad = DireccionDTO.from(entidad.getDireccion());
+    direccionEntidad.setIdEntidad(entidad.getId());
 
     EntregaDTO entrega = new EntregaDTO(
-            List.of(donacion.getId()),
+            idsParaLogistica,
             bienes,
-            DireccionDTO.from(entidad.getDireccion())
+            direccionEntidad
     );
 
     productorLogistica.publicarDonacionAsignada(entrega);
@@ -187,6 +220,21 @@ public class DonacionService {
   private Bien resolverBien(BienResumenDTO dto) {
     SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
     return dto.toDomain(subcategoria);
+  }
+
+  // dto.toDomain() tira IllegalArgumentException en vez de devolver null (ver BienResumenDTO):
+  // acá se agrega el índice del item para que el 400 resultante diga cuál de la lista está mal,
+  // en vez de dejar que un bien sin tipoBien llegue como null a la segmentación (NPE/500).
+  private List<Bien> resolverBienes(List<BienResumenDTO> bienesDto) {
+    List<Bien> resultado = new ArrayList<>();
+    for (int i = 0; i < bienesDto.size(); i++) {
+      try {
+        resultado.add(resolverBien(bienesDto.get(i)));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Bien en la posición " + i + ": " + e.getMessage());
+      }
+    }
+    return resultado;
   }
 
   private void crearBien(Bien nuevoBien) {

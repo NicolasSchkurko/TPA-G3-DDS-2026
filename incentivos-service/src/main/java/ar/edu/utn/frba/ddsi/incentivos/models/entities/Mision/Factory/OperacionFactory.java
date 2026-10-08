@@ -12,12 +12,8 @@ import java.util.Locale;
 import org.springframework.stereotype.Component;
 
 /**
- * Elige qué subclase de {@link Operacion} corresponde al tipo que pidió el admin, y la
- * construye con los parámetros que esa subclase necesita.
- *
- * <p>El {@code switch} sobre el enum es el lugar donde el JSON se traduce a una operación
- * concreta. Cada rama valida sus propios parámetros: lo que no se valida acá, revienta más
- * tarde con un NullPointerException en pleno trabajo, y el donante pierde el progreso.
+ * Elige y construye la subclase de {@link Operacion} según el tipo que pidió el admin,
+ * validando los parámetros de cada una.
  */
 @Component
 public class OperacionFactory {
@@ -28,11 +24,10 @@ public class OperacionFactory {
      * Construye la operación.
      *
      * @param tipoOperacion   el texto del tipo, sin distinguir mayúsculas.
-     * @param progresoObjetivo cuántas donatedciones hacen falta, siempre mayor a cero.
+     * @param progresoObjetivo cuántas donaciones hacen falta, siempre mayor a cero.
      * @param cantidad        parámetro de las operaciones que comparan contra un número.
      * @param valor           parámetro de las operaciones que comparan contra un texto.
-     * @throws DatosInvalidosException si falta un parámetro o no se reconoce el tipo. El
-     *                               mensaje dice qué se esperaba.
+     * @throws DatosInvalidosException si falta un parámetro o no se reconoce el tipo.
      */
     public Operacion conseguirOperacion(
             String tipoOperacion,
@@ -53,8 +48,7 @@ public class OperacionFactory {
             case COINCIDENCIAS -> {
 
                 if (valor == null || valor.toString().isBlank()) {
-                    // Sin valor esperado la operación nunca coincide, así que la misión
-                    // queda imposible de completar sin avisar. Es mejor rechazarla.
+                    // Sin valor esperado la misión queda imposible de completar: se rechaza.
                     throw new DatosInvalidosException(
                         "La operación COINCIDENCIAS necesita un valorEsperado "
                             + "con el que comparar el atributo de impacto"
@@ -100,8 +94,7 @@ public class OperacionFactory {
 
     private Integer cantidadPositiva(Integer cantidad, TipoOperacion tipo) {
         if (cantidad == null || cantidad <= 0) {
-            // Sin cantidad, SuperaCantidad desempaca un null al comparar y revienta con
-            // NullPointerException cuando llega una donación.
+            // Sin cantidad, SuperaCantidad revienta con NullPointerException al donar.
             throw new DatosInvalidosException(
                 "La operación " + tipo + " necesita una cantidad mayor a cero, llegó: "
                     + cantidad

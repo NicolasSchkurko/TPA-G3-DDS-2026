@@ -6,12 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Datos de un perfil donante. Se usa como cuerpo de {@code PUT /api/perfiles/{id}} y
- * también como respuesta.
- *
- * <p>No lleva {@code @NotBlank} en los campos a propósito: la actualización es
- * parcial, un campo en null significa "no lo cambies". Si se validara, un cliente
- * que solo quiere cambiar el nombre no podría omitir el resto.
+ * Datos de un perfil donante, de entrada y de respuesta. La actualización es parcial: un campo
+ * en null significa "no lo cambies".
  */
 @Getter
 @Setter

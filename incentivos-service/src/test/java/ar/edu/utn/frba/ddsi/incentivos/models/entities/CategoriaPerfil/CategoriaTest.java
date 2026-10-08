@@ -89,8 +89,7 @@ class CategoriaTest {
     @Test
     @DisplayName("la ultima mision de la secuencia no tiene siguiente")
     void laUltimaMisionNoTieneSiguiente() {
-        // No hace falta un esUltimaMision: que siguienteMision devuelva null YA es la
-        // forma de preguntar si la donante es la ultima.
+        // No hace falta un esUltimaMision: siguienteMision == null ya responde eso.
         Mision a = mision("A");
         Mision b = mision("B");
         Categoria categoria = categoriaCon(a, b);

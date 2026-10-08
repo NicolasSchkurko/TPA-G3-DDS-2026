@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -26,29 +27,13 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * El control de concurrencia (punto 36).
- *
- * <p>Sin {@code @Version}, dos donaciones del mismo donante que entran al mismo tiempo
- * pierden una: las dos leen el mismo progreso, las dos le suman uno y la segunda escritura
- * pisa a la primera. Y si las dos completaban la misión, cada una insertaba su
- * {@code InsigniaObtenida}, porque el {@code Set} en memoria de cada petición es distinto:
- * el donante quedaba con dos insignias y el ranking lo puntuaba doble.
- *
- * <p>La detección real la hace Hibernate al hacer el {@code UPDATE}, así que sin base de
- * datos no se puede probar. Lo que sí se prueba acá son las dos mitades que sí se pueden:
- * que la anotación esté puesta, y que el reintento del servicio exista y sea seguro.
- */
 @DisplayName("Punto 36: @Version y reintento ante carrera de concurrencia")
 class PerfilServiceConcurrenciaTest {
 
     private final RepositorioPerfiles repoPerfiles = mock(RepositorioPerfiles.class);
     private final RepositorioDonaciones repoDonaciones = mock(RepositorioDonaciones.class);
 
-    /**
-     * Un template que corre el callback las veces que se le pidan, y que puede fallar con
-     * una carrera de concurrencia las primeras.
-     */
+    /** Un template que corre el callback las veces pedidas y puede fallar con una carrera las primeras. */
     private TransactionTemplate templateQueFalla(int veces) {
         TransactionTemplate template = mock(TransactionTemplate.class);
         AtomicInteger intentos = new AtomicInteger();
@@ -79,7 +64,8 @@ class PerfilServiceConcurrenciaTest {
                 repoPerfiles,
                 mock(RepositorioCategorias.class),
                 repoDonaciones,
-                template);
+                template,
+                mock(ValidadorAdmin.class));
     }
 
     @Test
@@ -121,7 +107,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("una carrera se reintenta y la donación se aplica igual")
     void unaCarreraSeReintenta() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
         when(repoPerfiles.save(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -131,9 +117,8 @@ class PerfilServiceConcurrenciaTest {
         assertThat(service.actualizarPerfilImpacto(UUID.randomUUID(), dto(UUID.randomUUID())))
                 .isFalse();
 
-        // save UNA vez, no dos: el intento que pierde la carrera falla al hacer el UPDATE,
-        // o sea antes de llegar al save. Y eso es justamente lo que hace seguro el reintento:
-        // no quedó nada guardado a medias.
+        // save UNA vez: el intento que pierde la carrera falla antes de llegar al save, así
+        // que el reintento no deja nada guardado a medias.
         verify(repoPerfiles, times(1)).save(any(Perfil.class));
         verify(repoDonaciones, times(1)).save(any());
     }
@@ -142,7 +127,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("dos carreras seguidas también se resuelven: hay margen de reintentos")
     void dosCarrerasResuelven() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
         when(repoPerfiles.save(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -159,7 +144,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("agotados los reintentos, la excepción sube para que el handler la mapee a 409")
     void agotadosLosReintentosLaExcepcionSube() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
 
         PerfilService service = servicioCon(templateQueFalla(99));

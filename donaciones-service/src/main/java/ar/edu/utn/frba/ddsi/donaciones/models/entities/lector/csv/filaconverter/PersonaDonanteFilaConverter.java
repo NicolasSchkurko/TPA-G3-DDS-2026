@@ -121,6 +121,14 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
         if (!whatsapp.isBlank()) {
             persona.agregarMedioDeContacto(new Whatsapp(whatsapp));
         }
+
+        // Mismo criterio que el alta por HTTP (PersonaDonanteDTO.resolverMedioPredeterminado):
+        // si hay medios y ninguno marcado, el primero pasa a ser el predeterminado. Sin esto
+        // la notificación de registro no tiene por dónde salir y el alta entera falla.
+        List<MedioDeContacto> medios = persona.getMediosDeContacto().getListaMediosDeContacto();
+        if (!medios.isEmpty() && persona.getMediosDeContacto().getMedioDeContactoPredeterminado() == null) {
+            persona.getMediosDeContacto().setMedioDeContactoPredeterminado(medios.get(0));
+        }
     }
 
     private String[] separarNombreYApellido(String nombreCompleto) {
@@ -165,7 +173,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
         Map<String, String> filaLimpia = limpiarBOM(fila);
 
         return columnas.stream()
-                .map(filaLimpia::get)
+                .map(columna -> filaLimpia.get(claveCanonica(columna)))
                 .filter(v -> v != null && !v.isBlank())
                 .collect(Collectors.joining(" "))
                 .trim();
@@ -180,7 +188,7 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
         Map<String, String> filaLimpia = limpiarBOM(fila);
 
         return columnas.stream()
-                .map(filaLimpia::get)
+                .map(columna -> filaLimpia.get(claveCanonica(columna)))
                 .filter(v -> v != null && !v.isBlank())
                 .findFirst();
     }
@@ -192,8 +200,14 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
             if (key != null && key.startsWith("\uFEFF")) {
                 key = key.substring(1);
             }
-            limpia.put(key, entry.getValue());
+            // Misma clave canónica que LectorCSV usa para los encabezados: las búsquedas
+            // del mapeo se resuelven sin importar mayúsculas ni espacios.
+            limpia.put(claveCanonica(key), entry.getValue());
         }
         return limpia;
+    }
+
+    private String claveCanonica(String clave) {
+        return clave == null ? null : clave.trim().toLowerCase();
     }
 }

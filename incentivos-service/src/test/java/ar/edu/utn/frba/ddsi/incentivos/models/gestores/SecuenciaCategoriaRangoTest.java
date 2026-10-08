@@ -21,62 +21,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * Una posición fuera de rango tiene que ser un error, no un pedido que se pierde en
- * silencio (punto 31).
- *
- * <p>El síntoma era invisible y por eso importa tanto. El gestor se salía sin hacer nada, el
- * caller igual escribía la posición pedida, y la respuesta al admin era un 200. La
- * secuencia quedaba con huecos, que es el invariante que {@code SecuenciaCategoria} declara
- * en su propio javadoc. Y el caso {@code posicionSecuencia: 0} era peor que un hueco: como
- * la categoría base del programa es la de posición más baja, <b>todos los donantes nuevos
- * pasaban a arrancar en esa categoría</b> en lugar de en la base.
- *
- * <p>Los casos concretos, sobre una secuencia {@code 1..5}:
- *
- * <ul>
- *   <li>Pedir la 10 con 5 categorías → queda {@code 1,2,3,4,5,10}, y un
- *       {@code desplazarHaciaArribaDesde(6)} posterior tampoco lo cierra.</li>
- *   <li>Pedir la 0 → la categoría queda en 0 y secuestra la categoría base.</li>
- * </ul>
- */
 @DisplayName("Punto 31: una posición fuera de rango se rechaza en vez de perderse")
 class SecuenciaCategoriaRangoTest {
 
     private final SecuenciaCategoria secuencia = new SecuenciaCategoria();
 
-    /**
-     * La secuencia como queda en la base: posición -> nombre de la categoría que la ocupa.
-     *
-     * <p>Se modela con nombres y no solo con posiciones porque un desplazamiento mueve
-     * <em>filas</em>: si la categoría de la 3 sube a la 1, la 3 desaparece de la secuencia y
-     * reaparece en la 1. Con una lista de enteros suelta, la 3 se duplicaría y el test
-     * daría un falso negativo sobre la única propiedad que importa.
-     *
-     * <p>Es un {@code TreeMap} y no un {@code HashMap} porque el mapa tiene que seguir
-     * ordenado por posición después de cada movimiento: si no, las aserciones comparan el
-     * orden de inserción contra el orden real de la secuencia y fallan por un motivo que no
-     * tiene que ver con lo que se está probando. Un descolador que metiera la categoría de
-     * la 6 antes de la de la 1 no estaría fallando, solo desordenando.
-     *
-     * <p>Se mira el estado y no las llamadas porque lo que importa es que la secuencia
-     * termine en {@code 1..N} sin huecos, que es el invariante roto. Con un {@code verify}
-     * solo se comprobaría que el gestor llamó al {@code desplazar} correcto, no que el
-     * resultado sea una secuencia válida.
-     */
+    /** La secuencia como queda en la base: posición -> nombre de la categoría que la ocupa. */
     private final Map<Integer, String> secuenciaEnBase = new TreeMap<>(Map.of(
             1, "A", 2, "B", 3, "C", 4, "D", 5, "E"));
 
     private final RepositorioCategorias repo = repositorioSimulado();
 
-    /**
-     * Un repositorio que aplica los desplazamientos de verdad sobre {@link #secuenciaEnBase}.
-     *
-     * <p>Es un mock con {@code doAnswer} y no una clase que implemente la interfaz porque
-     * {@code JpaRepository} trae decenas de métodos, y escribirlos todos a mano para usar
-     * cuatro es ruido que el compilador no deja distinguir de una implementación de
-     * producción.
-     */
+    /** Un repositorio que aplica los desplazamientos de verdad sobre {@link #secuenciaEnBase}. */
     private RepositorioCategorias repositorioSimulado() {
         RepositorioCategorias simulado = mock(RepositorioCategorias.class);
 
@@ -106,21 +62,8 @@ class SecuenciaCategoriaRangoTest {
         return simulado;
     }
 
-    /**
-     * Mueve todas las categorías cuya posición cumple el filtro, {@code delta} posiciones.
-     *
-     * <p>Las filas salen del mapa y vuelven a entrar, para que la operación sea simultánea
-     * como el {@code UPDATE} de SQL: {@code SET posicion = posicion + 1 WHERE ...} calcula
-     * el valor nuevo sobre el valor viejo de cada fila, así que mover la 2 a la 3 no pisa a la
-     * que ya estaba en la 3.
-     *
-     * <p>Los pares se copian con {@code Map.entry} antes de remover nada, y no se itera
-     * sobre el {@code entrySet()} del mapa: las entradas de un {@code TreeMap} son
-     * <b>vivas</b>, o sea que al sacar una del árbol su {@code key} cambia al de la fila que
-     * quedó en ese nodo. Con la lista de entradas vivas, el {@code remove} de una corrompía
-     * las siguientes y el resultado del test era un mapa con huecos que no tenía nada que ver
-     * con lo que se estaba probando.
-     */
+    /** Mueve las categorías que cumplen el filtro {@code delta} posiciones, como un UPDATE
+     * simultáneo. Se copian los pares antes de remover: las entradas de un TreeMap son vivas. */
     private void correr(IntPredicate entra, int delta) {
         List<Map.Entry<Integer, String>> aMover = new ArrayList<>();
 
@@ -134,22 +77,8 @@ class SecuenciaCategoriaRangoTest {
         aMover.forEach(entrada -> secuenciaEnBase.put(entrada.getKey() + delta, entrada.getValue()));
     }
 
-    /**
-     * Los dos pasos que mueven una categoría, como los hace la aplicación.
-     *
-     * <p>No alcanza con llamar al gestor: {@code SecuenciaCategoria} solo deja libre la
-     * posición y corre a las demás, y el guardado de la categoría en el destino lo hace
-     * {@code CategoriaService} después, con un {@code moverAPosicion}. Los dos juntos son lo
-     * que mueve la categoría, y probar solo el primero dejaría pasar el bug: el invariante
-     * "sin huecos" es cosa de los dos.
-     *
-     * <p><b>Es todo o nada, y por eso el estado se restaura si el gestor rechaza.</b> En
-     * producción es así porque los dos pasos corren dentro del mismo
-     * {@code @Transactional}: si el gestor lanza, el rollback deja la secuencia como
-     * estaba. Un helper que se comiera la categoría antes de validar y no la devolviera
-     * haría fallar los tests de rechazo por un motivo que no es el del punto 31 —"la
-     * secuencia quedó con un hueco"— sino uno inventado por el propio test.
-     */
+    /** Los dos pasos que mueven una categoría: el gestor abre el hueco y CategoriaService la
+     * guarda en el destino. Si el gestor rechaza se restaura el estado, como el rollback. */
     private void moverCategoriaA(int posicionAnterior, int posicionNueva) {
         Map<Integer, String> antesDeMover = new TreeMap<>(secuenciaEnBase);
         String laQueSeMueve = secuenciaEnBase.remove(posicionAnterior);
@@ -247,8 +176,7 @@ class SecuenciaCategoriaRangoTest {
         @Test
         @DisplayName("en la edición la 6 de 5 tampoco vale: dejaría un hueco")
         void enLaEdicionLaSextaNoVale() {
-            // El número de categorías no cambia al editar, así que la 6 no existe. Admitirla
-            // dejaba 1,_,3,4,5,6: la de la 2 se iba a la 6 y las del medio no corrían.
+            // La 6 no existe al editar: admitirla dejaba 1,_,3,4,5,6.
             assertThatThrownBy(() -> moverCategoriaA(2, 6))
                     .isInstanceOf(IllegalArgumentException.class);
 
@@ -275,8 +203,7 @@ class SecuenciaCategoriaRangoTest {
         @Test
         @DisplayName("crear en la 10 con 5 categorías también es un error")
         void crearEnLaDiezEsUnError() {
-            // El bug era idéntico en el alta: desplazarHaciaAbajoDesde(10) no movía nada y la
-            // categoría se guardaba igual en la 10.
+            // El mismo bug en el alta: desplazarHaciaAbajoDesde(10) no movía nada.
             assertThatThrownBy(() -> crearCategoriaEn(10))
                     .isInstanceOf(IllegalArgumentException.class);
 
@@ -301,8 +228,7 @@ class SecuenciaCategoriaRangoTest {
         @Test
         @DisplayName("crear al final no corre a nadie, y ahí el tope es max + 1")
         void crearAlFinalNoCorreANadie() {
-            // En el alta la 6 sí es válida, porque la categoría nueva hace una más. Es la
-            // diferencia con la edición, donde la 6 de 5 dejaría un hueco.
+            // En el alta la 6 sí vale: la categoría nueva hace una más.
             crearCategoriaEn(6);
 
             assertThat(posiciones()).containsExactly(1, 2, 3, 4, 5, 6);
@@ -360,9 +286,7 @@ class SecuenciaCategoriaRangoTest {
         @Test
         @DisplayName("el límite superior no se valida en el DTO porque depende de cuántas haya")
         void elLimiteSuperiorNoVaEnElDto() throws Exception {
-            // Con 0 categorías la 1 es válida; con 5, la 10 ya no. El DTO no tiene forma de
-            // saber cuántas hay, así que ese chequeo va en el gestor, que sí recibe el
-            // repositorio.
+            // El tope depende de cuántas categorías haya: se valida en el gestor, no en el DTO.
             Field campo = CategoriaDTO.class.getDeclaredField("posicionSecuencia");
 
             assertThat(campo.getAnnotation(Max.class)).isNull();

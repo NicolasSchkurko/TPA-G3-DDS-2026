@@ -18,11 +18,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.AmqpConnectException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
-/**
- * El test antes afirmaba el bug: esperaba un {@code POST} a la raíz del servicio y el campo
- * {@code direccionContacto}, que es el nombre que el receptor nunca leyó. Con las dos cosas
- * rotas a la vez, el test pasaba en verde mientras ninguna notificación llegaba a nadie.
- */
 @DisplayName("NotificacionClient: publicacion en el broker de notificaciones")
 class NotificacionClientTest {
 
@@ -54,11 +49,7 @@ class NotificacionClientTest {
         assertThat(pendientes.listarTodas()).isEmpty();
     }
 
-    /**
-     * El nombre del campo es parte del contrato con el receptor. Si vuelve a
-     * {@code direccionContacto}, el broker lo acepta, el consumidor lo deserializa con null y
-     * el INSERT del otro lado muere por {@code nullable = false}.
-     */
+    /** El nombre del campo es contrato con el receptor. */
     @Test
     @DisplayName("el DTO lleva direccionDeContacto, el nombre que lee el receptor")
     void elCampoDeDireccionSeLlamaComoLoEsperaElReceptor() {

@@ -29,11 +29,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de administración de categorías: listar, crear, editar y borrar.
- *
- * <p>Las escrituras piden el header {@code Admin-Id}, que se valida contra
- * {@code donaciones-service}. El borrado tiene su propio código de error: si la categoría
- * todavía tiene donantes asignados responde 409 en vez de 500 (punto 18).
+ * Endpoints de administración de categorías. Las escrituras exigen {@code Admin-Id}; borrar
+ * una categoría con donantes responde 409.
  */
 @RestController
 @RequestMapping("/api/categorias")

@@ -31,16 +31,8 @@ public class DonacionClient {
     }
 
     /**
-     * El medio de contacto del donante, o {@code null} si no tiene ninguno o si el
-     * servicio no respondió.
-     *
-     * <p>Devolver {@code null} y no propagar la excepción es a propósito: el contacto solo
-     * se usa para notificar, y que un donante sin contacto o con el servicio caído no
-     * pueda recibir su notificación no puede ser motivo para rechazar la donación.
-     *
-     * <p>El error se registra con stack trace. Antes se imprimía solo {@code getMessage()}
-     * a {@code System.err}, así que cuando una integración fallaba no quedaba rastro de
-     * dónde había vindo el problema (punto 23).
+     * El medio de contacto del donante, o {@code null} si no tiene ninguno o si el servicio
+     * no respondió. No propaga: el contacto solo se usa para notificar.
      */
     public MedioContacto obtenerContactoPersona(UUID idUsuario) {
         try {
@@ -68,12 +60,8 @@ public class DonacionClient {
     }
 
     /**
-     * Si el id corresponde a un administrador.
-     *
-     * <p>Un 404 (o cualquier 4xx) se distingue del resto de los fallos a propósito: en el
-     * primer caso el id simplemente no es de un admin y la respuesta al cliente es un 403
-     * limpio; en el segundo el servicio de donaciones está caído, y eso deserves un aviso
-     * con stack trace porque es un problema de infraestructura y no del pedido.
+     * Si el id corresponde a un administrador. Un 4xx es un no-admin; cualquier otro fallo es
+     * infraestructura y se registra con stack trace.
      */
     public boolean verificarAdmin(UUID idAdmin) {
         try {

@@ -9,7 +9,7 @@ import lombok.Setter;
 public class RegistroMensualDTO {
     private YearMonth periodo;
 
-    // Cambiamos a Long anticipando las queries dinámicas de SQL (COUNT)
+    // Long porque el COUNT de SQL devuelve Long.
     private Long cantidadDonaciones;
     private Long cantidadOrganizacionesAyudadas;
 

@@ -22,8 +22,6 @@ public class RutaController {
     this.rutaService = rutaService;
   }
 
-  // --- CRUD ---
-
   @Operation(summary = "Listar todas las rutas generadas")
   @GetMapping
   public ResponseEntity<RutasDTO> obtenerTodas() {
@@ -68,8 +66,6 @@ public class RutaController {
     }
   }
   */
-
-  // --- OPERACIONES DE NEGOCIO ---
 
   @Operation(summary = "El chofer informa el inicio de su ruta",
       description = "Cambia el estado de la ruta a EN_CURSO y transiciona los ítems a EN_TRASLADO. Notifica vía eventos.")

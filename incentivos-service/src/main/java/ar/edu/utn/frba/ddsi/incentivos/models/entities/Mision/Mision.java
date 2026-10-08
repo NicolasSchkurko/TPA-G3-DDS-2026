@@ -14,12 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * Una misión del programa: qué hay que hacer, con qué regla se cuenta y qué insignia
- * otorga al completarla.
- *
- * <p>Es dueño de su insignia objetivo (cascade) pero solo referencia su regla, que viene
- * armada desde la factory. Cada misión crea su propia fila de insignia, así que el mismo
- * nombre puede repetirse entre misiones sin chocar.
+ * Una misión del programa: qué hay que hacer, con qué regla se cuenta y qué insignia otorga.
+ * Es dueño de su insignia objetivo (cascade); cada misión crea su propia fila de insignia.
  */
 @Getter
 @Entity
@@ -37,39 +33,15 @@ public class Mision {
     private Insignia insigniaObjetivo;
 
     /**
-     * Qué tiene que cumplir el donante para completar esta misión.
-     *
-     * <p>El {@code orphanRemoval} cubre las tres filas que se acumulaban al editar una
-     * misión (punto 17): la {@code Regla} anterior, y con ella su {@code ReglaConstancia} y
-     * su {@code Operacion}, porque el {@code cascade = ALL} de la regla incluye {@code REMOVE}.
-     * Antes, cada vez que el admin cambiaba el criterio de completado quedaban las tres
-     * filas viejas en la base sin que nadie las referenciara.
-     *
-     * <p>Es seguro porque una {@code Regla} y su {@code Operacion} no se comparten: cada
-     * misión construye las suyas en {@code MisionFactory}.
-     *
-     * <p><b>Acá NO va {@code orphanRemoval} en cambio, a diferencia de
-     * {@code ProgresoMision}:</b> la {@code Insignia} es referenciada por el
-     * {@code InsigniaObtenida} de todos los donantes que ya la obtuvieron, así que borrarla
-     * por ser huérfana rompería la FK de esas filas o, peor, se llevaría por delante las
-     * insignias ya otorgadas. Hoy el código nunca reemplaza la referencia —
-     * {@code Mision.actualizar} la modifica en el lugar con
-     * {@code Insignia.actualizar} — pero si alguna vez lo hiciera, el borrado tiene que ser
-     * explícito y verificado, no un efecto colateral de un cambio de anotación.
+     * Qué tiene que cumplir el donante para completar esta misión. El {@code orphanRemoval}
+     * borra la regla vieja (con su constancia y operación) al reemplazarla. La insignia, en
+     * cambio, se modifica en el lugar: ya está referenciada por insignias obtenidas.
      */
     @OneToOne(cascade = CascadeType.ALL, optional = false, orphanRemoval = true)
     @JoinColumn(name = "regla_id")
     private Regla reglaDeProgreso;
 
-    /**
- * El atajo para cuando solo se tiene el nombre de la insignia.
- *
- * <p>La diferencia con el constructor de antes del punto 24 es la que importa: acá la
- * descripción de la insignia queda en {@code null} en vez de rellenarse con el nombre de la
- * misión. Un null dice "no hay texto"; el nombre de la misión decía algo falso. Casi todos
- * los tests y varios call sites internos no tienen el texto de la insignia, y obligarlos a
- * pasar dos nulls explícitos no agrega información.
- */
+    /** Atajo para cuando solo se tiene el nombre de la insignia. */
     public Mision(String nombre,
                   UUID idAdmin,
                   String descripcion,
@@ -81,18 +53,9 @@ public class Mision {
     /**
      * Crea la misión con su insignia objetivo.
      *
-     * <p><b>La insignia tiene sus propios tres datos (punto 24).</b> Antes este constructor
-     * armaba {@code new Insignia(nombreInsignia, nombre)}: el texto de la insignia era el
-     * <em>nombre de la misión</em>, no su descripción. O sea que la insignia nunca tuvo texto
-     * propio, y el enunciado pide nombre, descripción e imagen. De los tres solo se podía
-     * cargar el nombre.
-     *
-     * @param descripcionInsignia el texto propio de la insignia. Va separado de
-     *                           {@code descripcion}, que es el de la misión: son dos textos
-     *                           distintos y antes uno pisaba al otro según por dónde pasara
-     *                           la misión (crear o editar).
-     * @param urlImagenInsignia   la imagen de la insignia. Acepta null si el admin todavía
-     *                            no la tiene.
+     * @param descripcionInsignia el texto propio de la insignia, separado de la descripción
+     *                           de la misión.
+     * @param urlImagenInsignia   la imagen de la insignia. Acepta null.
      */
     public Mision(String nombre,
                   UUID idAdmin,
@@ -110,15 +73,11 @@ public class Mision {
     }
 
     /**
-     * Aplica los cambios de una misión.
+     * Aplica los cambios de una misión. La insignia se actualiza en el lugar para no romper
+     * las insignias ya obtenidas.
      *
-     * <p>La insignia se actualiza sobre la insignia que ya existe, y no se reemplaza por
-     * la que trae el DTO, para no dejar filas huérfanas ni romper las insignias que los
-     * perfiles ya obtuvieron.
-     *
-     * @return {@code true} si cambió lo que el donante tiene que cumplir. Es lo que
-     *         permite no borrarles el avance a todos los que estaban en la misión solo
-     *         porque se retocó el texto (punto 15).
+     * @return {@code true} si cambió lo que el donante tiene que cumplir, así se evita
+     *         borrar el avance solo por un retoque de texto.
      */
     public boolean actualizar(Mision misionModificada) {
         if (misionModificada.getNombreMision() != null) {
@@ -132,11 +91,7 @@ public class Mision {
         if (misionModificada.getInsigniaObjetivo() != null) {
 
             Insignia insigniaNueva = misionModificada.getInsigniaObjetivo();
-            // Los tres datos son los de la INSIGNIA, no los de la misión. Antes se pasaba
-            // this.descripcion —que es la de la misión—, y por eso cada edición dejaba la
-            // insignia objetivo con el texto de la misión (punto 24). Y la condición no
-            // exige que venga el nombre: si el admin edita solo la descripción o la imagen
-            // de una insignia que ya tiene nombre, el cambio tiene que aplicarse igual.
+            // Los tres datos son los de la insignia, no los de la misión.
             this.insigniaObjetivo.actualizar(
                     insigniaNueva.getNombre(),
                     insigniaNueva.getDescripcion(),

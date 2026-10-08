@@ -64,6 +64,7 @@ public class CamionService {
     return convertirADTO(camionExistente);
   }
 
+  /** Borra el camión: el 404 es para lo que dice (el recurso no estaba). */
   public void delete(String patente) {
     Optional<Camion> camion = repoCamiones.findById(patente);
     if(camion.isPresent()){
@@ -75,20 +76,21 @@ public class CamionService {
   }
 
   public String cambiarDisponibilidad(String patente, Map<String, Boolean> body){
-    Boolean disponible = body.get("disponible");
-    if (disponible != null && disponible) {
-      Camion camion = repoCamiones.findById(patente)
-              .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-      camion.disponible();
-      repoCamiones.save(camion);
-      return "Camión marcado como disponible.";
-    } else {
-      Camion camion = repoCamiones.findById(patente)
-              .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-      camion.ocupado();
-      repoCamiones.save(camion);
-      return "Camión marcado como ocupado.";
+    if (body == null || !body.containsKey("disponible") || body.get("disponible") == null) {
+      throw new IllegalArgumentException("El campo 'disponible' es obligatorio.");
     }
+
+    boolean disponible = body.get("disponible");
+
+    Camion camion = repoCamiones.findById(patente)
+            .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+    if (disponible) {
+      camion.disponible();
+    } else {
+      camion.ocupado();
+    }
+    repoCamiones.save(camion);
+    return disponible ? "Camión marcado como disponible." : "Camión marcado como ocupado.";
   }
 
   private CamionDTO convertirADTO(Camion camion){

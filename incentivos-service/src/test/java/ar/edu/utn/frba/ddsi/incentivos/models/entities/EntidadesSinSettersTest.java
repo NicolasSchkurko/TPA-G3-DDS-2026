@@ -24,35 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * Las entidades no exponen setters (punto 23).
- *
- * <p>No es puramente estética. Con {@code @Setter} en el agregado, cualquier servicio
- * podía hacer {@code perfil.setCategoriaActual(...)} o
- * {@code progresoMisionActual.setProgreso(0)} y saltarse los métodos de negocio. Eso
- * esquivaba los eventos de dominio: el donante avanzaba de misión y no se publicaba
- * {@code MisionCambiada}, así que no le llegaban ni la notificación ni la publicación.
- *
- * <p>Este test es la red de seguridad: si alguien vuelve a poner un setter, falla acá y
- * no tres meses después cuando alguien lo use sin querer.
- */
 @DisplayName("Higiene del agregado: las entidades no tienen setters")
 class EntidadesSinSettersTest {
 
-    /**
-     * Las entidades contra las que se corre la red de seguridad.
-     *
-     * <p>Antes esta lista estaba duplicada: un {@code @ValueSource} con nueve clases y
-     * este campo con trece, y el {@code @ValueSource} era el que se usaba de verdad.
-     * Cuatro entidades —{@code ImpactoDonacion}, {@code CategoriaMision},
-     * {@code ReglaConstancia} y {@code Operacion}— quedaban sin cubrir por esa
-     * desincronización, no por una decisión.
-     *
-     * <p>Ahora hay una sola lista, y el filtro de abajo deja afuera las dos que tienen un
-     * motivo para no entrar: {@code Operacion} por ser abstracta, e
-     * {@code ImpactoDonacion} por su único setter, {@code idDonacion} (punto 14). Las dos
-     * tienen su propio test.
-     */
+    /** Las entidades contra las que se corre la red de seguridad. */
     private static final List<Class<?>> ENTIDADES = List.of(
             Perfil.class,
             ProgresoMision.class,
@@ -69,14 +44,7 @@ class EntidadesSinSettersTest {
             MedioContacto.class
     );
 
-    /**
-     * Las que el test de setters tiene que mirar.
-     *
-     * <p>Sacan {@code Operacion}, que es abstracta: {@code getMethods()} sobre la clase
-     * base no muestra lo que definen las subclases, y por eso las operaciones se prueban
-     * aparte en {@link #lasOperacionesNoTienenSetters()}. Y sacan
-     * {@code ImpactoDonacion}, que sí tiene un setter pero solo el de su id externo.
-     */
+    /** Las que el test de setters mira: sin Operacion (abstracta) ni ImpactoDonacion (su id). */
     static List<Class<?>> entidadesSinSetters() {
         return ENTIDADES.stream()
                 .filter(clase -> !clase.equals(Operacion.class))
@@ -124,9 +92,7 @@ class EntidadesSinSettersTest {
     @Test
     @DisplayName("el id de la donación sí se puede asignar: lo pone el servicio de origen")
     void elIdDeLaDonacionSePuedeAsignar() {
-        // Única excepción, y es a propósito: `idDonacion` es la primary key que hace
-        // idempotente la ingesta (punto 14) y la asigna el servicio de donaciones, no
-        // el agregado. Sin setter no se podría construir la entidad.
+        // Única excepción: idDonacion lo asigna el servicio de origen y hace idempotente la ingesta.
         assertThat(tieneSetter(ImpactoDonacion.class, "idDonacion")).isTrue();
         assertThat(tieneSetter(ImpactoDonacion.class, "completMision")).isFalse();
         assertThat(tieneSetter(ImpactoDonacion.class, "hizoProgresarMision")).isFalse();

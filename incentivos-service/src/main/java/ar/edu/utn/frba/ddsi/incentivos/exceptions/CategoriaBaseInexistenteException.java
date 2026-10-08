@@ -1,12 +1,8 @@
 package ar.edu.utn.frba.ddsi.incentivos.exceptions;
 
 /**
- * No existe la categoría base "Colaborador", que es la primera del programa y de la que
- * cuelga el resto de la secuencia.
- *
- * <p>Existe aparte de {@link InexistenteException} porque no es un 404 cualquiera: si
- * falta, la secuencia de posiciones está rota y hay que reindexar, no simplemente
- * responder que el recurso no está.
+ * No existe la categoría base, la primera del programa. Es un problema de datos, no un 404
+ * común: la secuencia está rota.
  */
 public class CategoriaBaseInexistenteException extends RuntimeException {
 

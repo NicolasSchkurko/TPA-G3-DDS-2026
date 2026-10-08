@@ -27,11 +27,12 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-    public AdminDTO getAdminPorId(UUID id) {
-        Administrador admin = repositorioAdministradores.buscarPorId(id).get();
-        if (admin == null) {
-            throw new IllegalArgumentException("No se encontró el administrador con ID: " + id);
-        }
+public AdminDTO getAdminPorId(UUID id) {
+    // orElseThrow y no get(): sobre el Optional vacío esto era un 500 en vez del 404 del
+    // controller, y afectaba al chequeo de admins que hace incentivos-service.
+    Administrador admin = repositorioAdministradores.buscarPorId(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontro el administrador con ID: " + id));
         return AdminDTO.from(admin);
     }
 
@@ -50,8 +51,11 @@ public class AdminService {
     }
 
     public AdminDTO actualizarAdmin(UUID id, AdminDTO dto) {
-        Administrador existente = repositorioAdministradores.buscarPorId(id).get();
-        if (existente == null) throw new IllegalArgumentException("No se encontró la persona con ID: " + id);
+        // Mismo motivo que en getAdminPorId: .get() sobre un Optional vacio es una
+        // excepcion, y el null check de abajo no se ejecutaba nunca.
+        Administrador existente = repositorioAdministradores.buscarPorId(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontro la persona con ID: " + id));
 
         Administrador datosNuevos = dto.toDomain();
         if (existente.getHumano() != null && datosNuevos.getHumano() != null) {

@@ -4,10 +4,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import java.util.UUID;
 
 /**
- * Filtros del listado de categorías, con los mismos query params del endpoint.
- *
- * <p>Todos opcionales: en la query van con la forma {@code (:nombre IS NULL OR ...)}, así
- * que un parámetro ausente no cambia el resultado en vez de filtrar por null.
+ * Filtros del listado de categorías. Todos opcionales: un parámetro ausente no filtra.
  */
 public record CategoriaFiltroRequest(
     @Parameter(description = "Filtrar por nombre de categoría (búsqueda parcial)")

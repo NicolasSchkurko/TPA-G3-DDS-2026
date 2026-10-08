@@ -12,117 +12,11 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 1 | Un test contra n8n sin `@Disabled` rompe `mvn verify` en cualquier máquina sin n8n |
-| 2 | 2 | El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas |
+| 20 | 20 | El reintento manual que prometen los comentarios no existe: ni endpoint, ni scheduler, ni forma de buscar por estado |
 | 3 | 3 | Solo hay dos tests, y ninguno cubre el camino de Rabbit |
 | 6 | 6 | El `id_mensaje` no viaja en el JSON: el consumidor vuelve con un UUID nuevo y pisa la FK |
-| 8 | 8 | Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500 |
-| 10 | 10 | `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre |
-| 11 | 11 | Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties` |
-| 12 | 12 | `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null` |
-| 14 | 14 | El DTO de entrada no valida nada y el manejador de excepciones está comentado |
-| 15 | 15 | La cola no tiene dead letter y los errores de conversión se reintentan en loop |
----
-
-## 1. Un test contra n8n sin `@Disabled` rompe `mvn verify`
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivo:** `src/test/java/ar/edu/utn/frba/ddsi/notificaciones/test_integracion/N8nIntegrationTest.java`
-
-### Qué pasa
-
-`N8nIntegrationTest.deberiaEnviarMailRealAN8n` construye un `Mail` y lo manda por el
-`NotificacionGateway`, o sea que sale por HTTP a la URL de `servicio.n8n.url`. Si n8n no está
-corriendo, falla con `ResourceAccess I/O error: Connection refused` y el reactor se detiene en
-`notificaciones-service`: los tres módulos siguientes no se ejecutan.
-
-El nombre del método dice lo que es: envía un mail real. No es un test unitario, es un test de
-integración contra un servicio externo, y está sin `@Disabled`, sin `@Tag` y sin ninguna
-condición que lo saltee.
-
-### Por qué importa más de lo que parece
-
-Es preexistente, pero no es inocuo: hace que `mvn verify` no pueda usarse como criterio de
-"¿está todo bien?" sin tener n8n andando. En este repo pasó: el fallo se vio primero como si
-fuera del módulo de notificaciones, escondido detrás de un error de MySQL.
-
-### Estado después de levantar n8n
-
-Con n8n corriendo el test **pasa**: `Tests run: 1, Failures: 0, Errors: 0`. El `mvn verify`
-completo queda en verde y los 330 tests del reactor pasan.
-
-Eso no cierra el punto, y conviene que quede claro por qué: el test pasó porque se corrigió la
-URL por defecto (punto 17 de la sección `# Corregidos`), no porque el test sea independiente de
-n8n. Sigue siendo un test que depende de un servicio externo para decidir si el build del equipo
-pasa, y mañana vuelve a fallar con `Connection refused` en la máquina de cualquiera que no
-tenga n8n levantado.
-
-### Propuesta
-
-Dos opciones, y la elección es del equipo:
-
-- `@Tag("integracion")` más la exclusión del tag en el perfil por defecto, para que corra solo
-  con `-Pintegration` o un perfil activo.
-- `@Disabled` con el motivo en el mensaje, y que quien quiera lo levante a mano.
-
-Lo que no conviene es dejarlo como está: un test que depende de un servicio de terceros no
-debe decidir si el build del equipo pasa.
-
----
-
-## 2. El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas
-
-**Estado:** abierto, pero es una mejora pendiente y no un bug
-**Severidad:** baja
-**Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/messaging/ConsumidorNotificaciones.java`
-
-### Qué pasa
-
-`ConsumidorNotificaciones.recibir` marca la notificación como fallida, loguea el error y
-**no relanza**. Con eso el mensaje se da por consumido y desaparece de la cola.
-
-Un `IllegalArgumentException` de `MedioDeEnvioFactory` (un medio de contacto mal mapeado) es
-determinista: va a fallar igual las 5 veces que se reintente. Por eso no relanzar es
-defensible. El problema es que no hay ninguna de las dos salidas que quedan:
-
-- Reintento con espera para lo que sí puede fallar por una causa transitoria (el webhook de
-  n8n caído, un timeout).
-- Cola de mensajes muertos (dead letter exchange) para lo que no.
-
-### Lo que sí está bien
-
-Como el productor guarda la notificación en la base **antes** de publicar, toda notification
-fallida queda en la fila con estado `FALLIDA` y se puede reintentar desde ahí. Ese es el
-agente de recuperación. Lo que falta es el automatismo.
-
-### Qué se corrigió de este punto
-
-El "se traga en silencio" ya no es exacto. Hoy **cada** salida del listener loguea:
-
-```
-log.warn("LLEGA un mensaje vacío a la cola de notificaciones, se descarta");
-log.warn("La notificación {} no existe, el mensaje se descarta", mensaje.id());
-log.warn("LLEGA una solicitud sin medio de contacto, se descarta: {}", cuerpoCrudo);
-log.error("No se pudo procesar el mensaje de la cola: {}", ...);
-```
-
-Y el descarte en vez de reencolar está justificado por escrito en el javadoc de la clase: para
-un mail que no se puede entregar, reintentar cinco veces seguido es peor que dejarlo, porque la
-fila queda en `FALLIDA` y se puede reintentar desde la base.
-
-Lo que queda es exactamente lo mismo de antes: el automatismo.
-
-### Propuesta
-
-Configurar la dead letter queue en `RabbitConfig` y relanzar en el caso transitorio. Con la
-base ya guardando el estado, el reintento manual es posible hoy; la propuesta es no
-depender de que alguien se acuerde.
-
-**Esta propuesta es la misma del punto 15**, que la tiene más completa y con la evidencia del
-log de 1.9 GB. Queda acá la referencia al caso transitorio, que es el ángulo que el 15 no
-cubre.
-
+| 21 | 21 | La idempotencia es check-then-act sin lock: dos entregas concurrentes mandan dos mails |
+| 22 | 22 | Binding de `notificaciones.evento.logistica` que ningún servicio publica |
 ---
 
 ## 3. Solo hay dos tests, y ninguno cubre el camino de Rabbit
@@ -201,255 +95,93 @@ en un `Set` sobre estas entidades compara referencias, no contenido. Es la razó
   estado, y para eso alcanza con un update por id en lugar de un `save` de la entidad entera. Así el
   mensaje que llega por Rabbit nunca se persiste.
 
+### Nota (2026-10-07): este punto parece no ser reproducible con el código actual
+
+El mecanismo del punto depende de que el consumidor deserialice la entidad `Notificacion` con su
+`Mensaje` y haga `save` sobre eso. Hoy `recibir` lee JSON crudo y arma un
+`ConsumidorNotificaciones.AvisoNotificacion` (solo id, medio y dirección) o un
+`SolicitudNotificacionDTO`, y en ninguno de los dos casos entra un `Mensaje` con UUID nuevo: el de
+la fila sale de la base con su `id_mensaje` correcto, y el de una solicitud es una entidad nueva
+que se inserta junto con su notificación por el cascade. La descripción de las líneas 167-187 ya
+no corresponde al flujo actual. Conviene re-verificarlo contra una base real y cerrarlo si no se
+reproduce.
+
 ---
 
-## 8. Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500
+## 20. El reintento manual que prometen los comentarios no existe
 
 **Estado:** abierto
 **Severidad:** media
 **Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/SolicitudNotificacionDTO.java:10`,
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/controllers/NotificadorController.java:42`
+`.../controllers/NotificadorController.java`,
+`.../models/repositories/RepositorioNotificaciones.java:19`
 
 ### Qué pasa
 
-`SolicitudNotificacionDTO` es un POJO pelado con cuatro `String`, sin `@NotBlank`, sin `@Valid`, y
-`NotificadorController.recibirSolicitudNotificacion:42` no valida nada: toma el body tal cual.
+El Javadoc del gestor (líneas 69-70) y el del consumidor (líneas 45-46) dicen que una notificación
+fallida *"se puede reintentar desde la base"*, y el punto 2 de este backlog repite que *"el
+reintento manual es posible hoy"*. No lo es: el único endpoint del servicio es
+`GET /notificaciones/{id}`. No hay POST de reintento, no hay scheduler, y no hay ningún método para
+buscar las `PENDIENTE` y `FALLIDA` (el `findByEstado` que existía sin uso se borró con el punto 23).
 
-Un pedido razonable y mal formado:
-
-```json
-{ "medioDeContacto": "email", "direccionDeContacto": "ana@example.com" }
-```
-
-pasa el `@RequestBody`, pasa `NotificadorService`, llega a
-`GestorNotificaciones.crearNotificacion:78` y construye `new Mensaje(null, null)`. Como
-`mensajes.asunto` y `mensajes.cuerpo` están declarados `nullable = false`
-(`Mensaje.java:18` y `Mensaje.java:21`), el INSERT revienta por violación de restricción. Igual con
-`direccionDeContacto` en null (`Notificacion.java:33`).
-
-Como el `catch` del controller solo cubre `IllegalArgumentException`, la respuesta es un **500 con la
-excepción de MySQL adentro**, no un 400. Para el que llama es indistinguible de que se cayó el servicio.
-
-### El manejador global no existe
-
-`exceptions/GlobalExceptionHandler.java` está **comentado entero** (líneas 8-27, dentro de un bloque
-`/* ... */`). Es decir que hoy no hay ningún `@RestControllerAdvice`: ningún `@ExceptionHandler` mapea
-una excepción de base de datos, ni la de persistencia, ni nada. Cualquier error interno sale como 500
-con el mensaje crudo.
+O sea que hoy toda fila que no llega a `ENVIADA` es terminal: queda el registro como única
+evidencia, sin ningún camino de recuperación, ni automatizado ni manual por API.
 
 ### Propuesta
 
-- `@NotBlank` en los cuatro campos del DTO y `@Valid` en el parámetro del controller, para que un body
-  incompleto se rechace con 400 y un mensaje que diga qué falta.
-- Descomentar y arreglar `GlobalExceptionHandler`: un 400 para los errores de validación, un 500 con
-  cuerpo genérico para el resto, y log del error real en el log y no en la respuesta.
-- De paso, validar el medio de contacto en el borde (punto 7), que es la otra validación que hoy no
-  existe y por eso los tipos inválidos se descubren tarde.
+- `POST /notificaciones/{id}/reintento` que republica el aviso, pasando por el mismo camino
+  post-commit del punto 18.
+- Un `@Scheduled` que reintente las `PENDIENTE` con fecha de creación antigua, con tope de
+  intentos: es el automatismo que pide el punto 2.
 
 ---
 
-## 10. `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre
-
-**Estado:** abierto
-**Severidad:** media
-**Archivo:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/config/RestTemplateConfig.java:11`
-
-### Qué pasa
-
-`RestTemplateConfig.restTemplate()` devuelve un `new RestTemplate()` pelado. Eso usa
-`SimpleClientHttpRequestFactory`, cuyos timeouts de conexión y de lectura son infinitos (`-1`): el
-default de `HttpURLConnection`.
-
-`N8nClient.enviarNotificacion:19-25` se llama de forma **síncrona desde el hilo del
-`@RabbitListener`**. Con la concurrencia por defecto del container (1 consumidor), un único n8n que
-acepta la conexión TCP y no contesta deja ese hilo colgado para siempre: la cola deja de vaciarse, las
-notificaciones se acumulan en `PENDIENTE` en la base, y no hay timeout, ni log, ni error. El síntoma es
-"las notificaciones dejaron de salir" sin ninguna pista de por qué.
-
-Aclaración: hoy esto no se siente, porque el punto 4 revienta antes de llegar a publicar. Pasa a ser el
-problema dominante en el momento en que se agregue el converter.
-
-### Propuesta
-
-`SimpleClientHttpRequestFactory` con `setConnectTimeout` y `setReadTimeout` en milisegundos (3-5 s para
-conectar, 10 s para leer un webhook). A futuro, `ClientHttpRequestFactorySettings` o el
-`RestClient` de Spring 6.1, que ya permite definir los timeouts por properties.
-
----
-
-## 11. Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties`
-
-**Estado:** abierto
-**Severidad:** media
-**Archivo:** `src/main/resources/application.properties:8`
-
-### Qué pasa
-
-Las líneas 9-10 son valores literales:
-
-```properties
-spring.datasource.username=marcelo
-spring.datasource.password=losbabasonicos
-```
-
-Sin `${...}` ni fallback, al contrario que en las otras dos que sí están parametrizadas
-(`server.port=${SERVER_PORT:8083}` en la línea 4 y `servicio.n8n.url=${N8N_URL:...}` en la línea 6). Dos
-consecuencias: la contraseña de la base está en el repositorio, y el servicio solo levanta contra un MySQL
-que tenga exactamente ese usuario y esa contraseña. En cualquier otro entorno hay que editar el archivo.
-
-### RabbitMQ sin configurar
-
-**Esta parte ya está resuelta.** `application.properties` hoy tiene el bloque completo, con
-variables de entorno y valor por defecto:
-
-```properties
-spring.rabbitmq.host=${RABBITMQ_HOST:localhost}
-spring.rabbitmq.port=${RABBITMQ_PORT:5672}
-spring.rabbitmq.username=${RABBITMQ_USERNAME:guest}
-spring.rabbitmq.password=${RABBITMQ_PASSWORD:guest}
-```
-
-Era necesario: sin esto, dentro de un contenedor el servicio buscaba `localhost` y no encontraba
-al broker, y la cola quedaba sin consumidor. Verificado en vivo — la cola `notificaciones` tiene
-consumidor y los avisos de los dos servicios de dominio salen por ella.
-
-### Qué sigue pendiente de este punto
-
-Lo de MySQL, que es la mitad del título original y sigue igual:
-
-```properties
-spring.datasource.username=marcelo
-spring.datasource.password=losbabasonicos
-```
-
-Sin `${...}` ni fallback, al contrario que el puerto y la URL de n8n, que sí están
-parametrizadas. Dos consecuencias: la contraseña de la base está en el repositorio, y el
-servicio solo levanta contra una base que tenga exactamente ese usuario y esa contraseña.
-
-También queda `spring.jpa.show-sql=true`, que deja cada statement SQL en el log de una instancia
-desplegada: es ruido y puede filtrar datos.
-
-### Propuesta
-
-- `spring.datasource.username=${DB_USERNAME:marcelo}` y
-  `spring.datasource.password=${DB_PASSWORD:...}`, con las credenciales reales solo en variables de
-  entorno o en un `.env` que no se commite.
-- Mover `spring.jpa.show-sql` a un perfil de desarrollo.
-
-Lo de Rabbit ya no hace falta: está hecho, y la verificación está arriba.
-
----
-
-## 12. `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null`
+## 21. La idempotencia es check-then-act sin lock
 
 **Estado:** abierto
 **Severidad:** baja
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/mappers/NotificacionMapper.java:9`,
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/NotificacionDTO.java:11`
+**Archivo:** `.../messaging/ConsumidorNotificaciones.java:111-118`
 
 ### Qué pasa
 
-`NotificacionDTO` declara el campo `tipoMedioDeContacto` (línea 11) y la entidad lo tiene con getter
-(`Notificacion.java:56`), pero `NotificacionMapper.notificacionDTO` solo setea `asunto`, `cuerpo`,
-`direccionDeContacto`, `estado`, `fechaCreacion` y `fechaEnvio`. La línea para el tipo no está.
+`procesarAvisoDeNotificacionExistente` lee el estado, decide y envía, todo sin transacción ni lock:
+dos entregas concurrentes del mismo aviso (reentrega del broker con más de un consumidor, o un
+doble publicado) pasan ambas el control de `ENVIADA` antes de que ninguna escriba el resultado, y
+la notificación sale dos veces.
 
-Resultado: `GET /notificaciones/{id}` devuelve siempre `"tipoMedioDeContacto": null`, aunque la columna
-es `nullable = false` y el valor está en la base. Como `Jackson` serializa el null sin problema, nadie se
-entera, y el que consume el endpoint no puede distinguir por el campo por qué medio se pidió la
-notificación.
-
-De paso, las líneas 15 y 16 del mapper hacen `getEstado().toString()` y
-`getFechaCreacion().toString()` sin null check, al contrario que la 17-19 que sí cubre `fechaEnvio`.
-Hoy el constructor y las restricciones los garantizan, pero es la única parte del mapper que confía en
-que el dato está.
+Hoy lo evita la configuración, no el diseño: el container levanta un consumidor por cola y la
+ventana entre el `findById` y el `save` final es chica. Con `concurrency > 1` o dos instancias del
+servicio apuntando a la misma cola, deja de ser gratis.
 
 ### Propuesta
 
-Una línea: `notificacionDTO.setTipoMedioDeContacto(notificacion.getTipoMedioDeContacto());`. Conviene
-sumar un `NotificacionMapperTest`, que hoy no existe (punto 3), y un
-`GET /notificaciones/{id}` de integración que verifique el JSON completo.
+- Update condicional de estado (`UPDATE notificaciones SET estado='ENVIADA' WHERE id=? AND
+  estado<>'ENVIADA'`) y solo enviar si afectó una fila, o bloqueo pesimista al leerla.
+- Es la misma alternativa que ya propone el punto 6 para reemplazar el `save` de la entidad
+  entera: un solo cambio cerraría los dos.
 
 ---
 
-## 14. El DTO de entrada no tiene validación de Bean Validation y el manejador de excepciones está comentado
+## 22. La cola escucha `notificaciones.evento.logistica` y ningún servicio publica esa clave
 
 **Estado:** abierto
-**Severidad:** alta
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/SolicitudNotificacionDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/exceptions/GlobalExceptionHandler.java`
+**Severidad:** baja
+**Archivo:** `.../config/rabbit/RabbitConfig.java:70-76`
 
 ### Qué pasa
 
-`SolicitudNotificacionDTO` no tiene ni una anotación de validación: `@NotBlank` sobre
-`medioDeContacto`, `direccionDeContacto`, `asuntoMensaje` y `cuerpoMensaje`. Y el controller
-recibe el body **sin `@Valid`**:
+`bindingNotificacionesEventosLogistica` ata la cola al routing key `notificaciones.evento.logistica`
+y no hay ningún productor que lo use. `logisticas-service` publica en `logistica.eventos.exchange`
+con `logistica.evento` (`ProductorEventosLogistica.java:44-47`), y este servicio recibe esos hechos
+recién cuando `donaciones-service` los reenvía por `notificaciones.donacion`.
 
-```java
-@PostMapping
-public ResponseEntity<String> recibirSolicitudNotificacion(@RequestBody SolicitudNotificacionDTO dto) {
-```
-
-Esos cuatro campos alimentan columnas con `nullable = false` (`Mensaje.asunto`,
-`Mensaje.cuerpo`, `Notificacion.direccionDeContacto`, `Notificacion.tipoMedioDeContacto`). Un
-`null` en cualquiera de ellos no se rechaza en el borde: viaja entero y muere en el INSERT con
-violación de restricción, que es un error de base de datos difícil de leer.
-
-### Y el manejador de excepciones está comentado
-
-`GlobalExceptionHandler` existe pero **todo el archivo está comentado**. Eso es lo que convierte
-el `null` en un `500` genérico sin cuerpo, en vez de un `400` que diga qué campo faltó. El
-controller sí captura `IllegalArgumentException` y devuelve `400`, pero un
-`DataIntegrityViolationException` de JPA no es de esa clase y se escapa.
-
-### Detalle relacionado que va a aparecer después
-
-`incentivos-service` manda un DTO con el campo `direccionContacto` y este módulo espera
-`direccionDeContacto`. Jackson deja el campo en `null` sin error. O sea que **este bug se
-activaría en el momento exacto en que se arregle el 401 del punto 13**: cambiaría el `401` por
-un `500` con un `null` en el log, y parecería un problema nuevo. Está documentado como punto
-38 del backlog de `incentivos-service`.
+No rompe nada: es un binding sin tráfico. El riesgo es de lectura, no de runtime: invita a pensar
+que logística habla directo con este servicio, que es exactamente lo que el enunciado prohíbe.
 
 ### Propuesta
 
-1. `@NotBlank` en los cuatro campos del DTO y `@Valid` en el controller.
-2. Descomentar `GlobalExceptionHandler` y agregar un `@ExceptionHandler` para
-   `DataIntegrityViolationException` que devuelva `400` con el nombre del campo.
-3. Agregar `spring-boot-starter-validation`, que no está en el pom: las anotaciones de
-   jakarta.validation no se procesan sin él, y hoy no hay ni una en el módulo.
-
-## 15. La cola de notificaciones no tiene dead letter y los errores de conversión se reintentan en loop
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../config/rabbit/MessageConverterConfig.java`
-
-### Qué pasa
-
-El punto 2 de este mismo backlog propone una dead letter queue y sigue sin implementarse. Se
-volvió urgente por algo concreto y medido: un error de conversión de mensaje dispara el
-`ConditionalRejectingErrorHandler`, que reintenta, y cada intento escribe el stack trace
-completo. Con cuatro servicios publicando en la misma cola, un encabezado mal puesto multiplica
-el log por cada mensaje y cada intento.
-
-En la corrida donde se midió el problema del tipo de mensaje, el log del servicio llegó a
-**1.9 GB**. Corregir la causa lo bajó a 73 KB, pero la falta de freno sigue: cualquier error de
-conversión futuro tiene el mismo comportamiento.
-
-### Propuesta
-
-- Dead letter queue en `RabbitConfig`, con la cola principal configurada para derivar ahí lo que
-  no se puede procesar.
-- Un `RepetirYRechazarSiFalla` con tope de reintentos y delay, o el `RepetirConDeadLetter` de
-  Spring AMQP, para que un error de conversión no se reintente tres veces.
-- Bajar el nivel de log de esos reintentos: un error de conversión es irrecuperable y necesita
-  una línea, no veinte.
-
-**Lo que no se hizo y por qué:** es una decisión de infraestructura que afecta la operación del
-broker, no un bug de integración. Corregir el tipo de mensaje elimina la causa concreta que se
-midió; la dead letter previene la clase de problema, no este caso.
+- Sacar el binding y la constante `RK_EVENTO_LOGISTICA`, o dejar en ambos un comentario que diga
+  que la ruta real es logística → donaciones → notificaciones.
 
 ---
 
@@ -606,9 +338,7 @@ provocaba el loop de reentrega infinita descrito en el punto 6: ahora se descart
 ### Lo que quedó de este punto
 
 El `save` sigue escribiendo la entidad entera, así que **queda sin resolver la parte de las
-transiciones**: `marcarEnviada`, `marcarFallida` y `marcarPendiente` no validan nada, y en
-particular `marcarPendiente()` no limpia `fechaEnvio`, con lo que queda una fila `PENDIENTE` con
-fecha de envío, que no significa nada y contradice lo que el mapper muestra en el GET.
+transiciones**: `marcarEnviada` y `marcarFallida` no validan que la transición tenga sentido.
 
 Es un problema más chico que el que se corrigió y no se tocó: la fila ya no se pisa por
 redelivería, que era lo que rompía el historial.
@@ -683,6 +413,14 @@ con la diferencia entre los dos caminos, que es fácil de confundir:
 
 Que el consumidor descarte en vez de reencolar en loop es lo correcto y ya está corregido; lo que
 falta es que el id viaje.
+
+#### Nota (2026-10-07): el id ya viaja, y el warn restante lo explica el punto 18
+
+`ProductorNotificaciones.enviar(Notificacion)` publica un `AvisoNotificacion` con
+`notificacion.getId().toString()` (líneas 55-60), así que el aviso propio **sí** lleva id y el
+camino del `POST` directo ya no debería descartarse por esa causa. Si el warn *"no existe, el
+mensaje se descarta"* sigue apareciendo, la causa ya no es el id: es la carrera del punto 18,
+publicar antes del commit.
 
 ---
 
@@ -830,4 +568,543 @@ levantado, el test fallaba con 404. Antes de este commit fallaba por `Connection
 Ver punto 1.
 
 ---
+
+### 18. Se publica antes del commit y, si el broker falla, el rollback borra la fila
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificaciones.java`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificacionesTest.java` (nuevo)
+
+### Qué pasaba
+
+`enviarSolicitudDeNotificacion` es `@Transactional` y llamaba a `productorNotificaciones.enviar()`
+**adentro** de la transacción, o sea antes del commit. El INSERT recién se ejecuta en el commit,
+pero el mensaje salía al broker en el instante. Si el consumidor hacía `findById` antes de que la
+fila fuera visible para su conexión, `encontrada.isEmpty()` y la línea 104 descartaba el mensaje
+con `log.warn("La notificación {} no existe, el mensaje se descarta")`. La fila quedaba
+`PENDIENTE` y nadie la retomaba (ver punto 20).
+
+El Javadoc decía lo contrario de lo que hacía el código: *"el commit ocurre al salir del método y
+recién ahí el mensaje llega a un registro que ya existe"*. RabbitMQ no espera al commit: entrega
+tan pronto se publica.
+
+La segunda mitad era peor: si el broker estaba caído, la `AmqpException` hacía rollback y el
+INSERT se deshacía, con lo que la fila **no** quedaba `PENDIENTE` como prometían las líneas 69-70.
+El caller recibía un 500 y no quedaba registro de que la notificación existió: el escenario de
+recuperación que documentaba el comentario no existía.
+
+### Qué se cambió
+
+La publicación se registró con `TransactionSynchronizationManager.registerSynchronization` y
+ocurre en `afterCommit`, no en el momento. Así el orden lo pone la transacción y no la suerte:
+
+- El mensaje sale recién cuando la fila está commiteada y visible para el consumidor: se elimina
+  la carrera que descartaba avisos.
+- Si la publicación falla, el commit ya se hizo: la fila queda `PENDIENTE` (el estado desde el
+  que se puede reintentar) y el error igual sube al llamador — Spring propaga la excepción de
+  `afterCommit` sin deshacer el commit.
+- En rollback no se publica nada: no puede quedar un aviso en la cola apuntando a una fila que se
+  deshizo.
+
+De paso se reescribió el Javadoc del método, que describía el mecanismo viejo como si
+funcionara.
+
+### Cómo se verificó
+
+`GestorNotificacionesTest` (nuevo) con el productor mockeado y el ciclo de transacción simulado
+con `TransactionSynchronizationManager`, que es el mismo ThreadLocal que usa el transaction
+manager en producción:
+
+- `noPublicaAntesDeQueLaTransaccionCommitee`: verifica que con la transacción abierta no se haya
+  publicado nada, y que recién después de `afterCommit` se publique una vez.
+- `noPublicaSiLaTransaccionSeRevirtio`: verifica que un rollback no publique nada.
+
+**Antes del arreglo: 2/2 fallaban** (el `enviar()` se disparaba desde la línea 71, antes del
+commit). **Después: 4/4 en verde**, incluyendo los dos tests preexistentes del módulo.
+
+La suite completa da 5 tests con 1 error: `N8nIntegrationTest`, que necesita n8n corriendo
+(`Connection refused` en `localhost:5678`) — era el punto 1, preexistente y ajeno a este cambio,
+corregido después.
+
+La revisión independiente (subagente con contexto limpio) dio **PASS**: además de leer el diff,
+clonó el repo al HEAD limpio, corrió el test nuevo contra el código viejo (2 failures, o sea que
+el test no pasa siempre) y verificó contra las fuentes de Spring que el error en `afterCommit` se
+propaga al llamador sin deshacer el commit, que ambos llamadores pasan por el proxy —siempre hay
+sincronización activa— y que no hay accesos a campos lazy después del commit.
+
+---
+
+### 1. Un test contra n8n sin `@Disabled` rompe `mvn verify`
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivo:** `src/test/java/ar/edu/utn/frba/ddsi/notificaciones/test_integracion/N8nIntegrationTest.java`
+
+### Qué pasaba
+
+`N8nIntegrationTest.deberiaEnviarMailRealAN8n` era un `@SpringBootTest` que construía un `Mail`
+y lo mandaba por el `NotificacionGateway`, o sea que salía por HTTP a `servicio.n8n.url`. Sin n8n
+corriendo fallaba con `Connection refused` y el reactor se detenía en `notificaciones-service`.
+Además, aun con n8n andando el test no tenía una sola aserción: no verificaba ni la URL ni el
+payload, solo que no reventara.
+
+### Qué se cambió
+
+Se reescribió como un test hermético con `MockRestServiceServer` (de `spring-test`, sin
+dependencias nuevas), en el mismo archivo, en lugar de `@Disabled`, `@Tag` o borrarlo: el pedido
+fue que no dependa de un servicio externo y que, si un mock tenía sentido, se mockee.
+
+- No hay `@SpringBootTest`: un `RestTemplate` propio atado al mock. No levanta contexto, no
+  necesita MySQL, RabbitMQ ni n8n.
+- La URL del test (`http://n8n.test/webhook/notificaciones`) es de un TLD reservado que no
+  resuelve: si el mock no interceptara, el test fallaría. Es la prueba de que no hay red real.
+- Se agregaron las aserciones que faltaban:
+  - `deberiaPublicarElPayloadEnElWebhookConfigurado`: POST a la URL configurada, content-type
+    JSON y los cuatro campos del payload (`canal`, `direccionContacto`, `mensaje.asunto`,
+    `mensaje.cuerpo`).
+  - `deberiaPropagarElErrorCuandoN8nNoEncuentraElWebhook`: un 404 sube como excepción, que es lo
+    que deja la notificación `FALLIDA` en el consumidor en vez de `ENVIADA`.
+
+La URL del campo `@Value` se setea con `ReflectionTestUtils.setField` para no levantar el
+contexto.
+
+### Cómo se verificó
+
+- **Antes:** la corrida previa del reactor falló con `Connection refused` en
+  `deberiaEnviarMailRealAN8n` (`Tests run: 5, Errors: 1`).
+- **Después:** `mvn -pl notificaciones-service test` → `Tests run: 6, Failures: 0, Errors: 0`
+  (GestorNotificacionesTest 2, NotificacionesServiceApplicationTests 2, N8nIntegrationTest 2).
+- `mvn test` a nivel raíz (reactor de 5 módulos) → `BUILD SUCCESS`, y `mvn verify` → `BUILD
+  SUCCESS`.
+- Sin n8n corriendo el módulo pasa igual, que es exactamente el punto del arreglo.
+
+La revisión independiente (subagente con contexto limpio) dio **PASS**: confirmó el hermetismo
+(TLD no resoluble, sin `@SpringBootTest`), el uso correcto del API de Spring (`bindTo(...).build()`,
+`jsonPath`, `setField` sobre el campo real, `HttpClientErrorException.NotFound` ante 404) y que no
+quedaron referencias colgadas al método viejo en CI, scripts ni docs.
+
+**Nota:** al quitar el `@SpringBootTest` se pierde el único smoke test que levantaba el contexto
+de Spring. El trade-off es el pedido: ese test dependía de MySQL, RabbitMQ y n8n, y encima no
+asertaba nada. Si se quiere reponer ese seguro, corresponde hacerlo con dobles, no contra
+infraestructura real.
+
+---
+
+### 8. Sin validación en el borde: un `asunto` o `cuerpo` faltante revienta en MySQL y devuelve 500
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** los mismos que el punto 14 (misma corrida)
+
+### Qué pasaba
+
+`SolicitudNotificacionDTO` era un POJO pelado con cuatro `String`, sin `@NotBlank`, y el controller
+recibía el body sin `@Valid`. Un pedido como
+`{"medioDeContacto":"email","direccionDeContacto":"ana@example.com"}` pasaba entero hasta
+`new Mensaje(null, null)`; como `mensajes.asunto`, `mensajes.cuerpo`,
+`notificaciones.direccion_contacto` y `tipo_medio_contacto` son `nullable = false`, el INSERT
+reventaba por violación de restricción. El `catch` del controller solo cubría
+`IllegalArgumentException`, así que la respuesta era un **500 con la excepción de MySQL adentro** en
+vez de un 400: para el que llamaba, indistinguible de un servicio caído.
+
+### Qué se cambió
+
+Se arregló junto con el punto 14, que pedía exactamente lo mismo; el detalle del manejador está en la
+entrada del 14. Para este punto, lo concreto:
+
+- `@NotBlank` en los cuatro campos del DTO y `@Valid` en el parámetro del controller: un body
+  incompleto se rechaza antes de tocar el service.
+- `DataIntegrityViolationException` → **400** con mensaje genérico y el SQL crudo al log: si algo se
+  cuela, ya no es un 500.
+- `spring-boot-starter-validation` en el pom: sin él las anotaciones de jakarta.validation ni se
+  procesan.
+
+### Cómo se verificó
+
+- Antes (código viejo en un clon limpio del HEAD): el test nuevo falla con
+  `Status expected:<400> but was:<202>` en los dos casos de validación, o sea que el 400 no existía.
+- Después: `mvn -pl notificaciones-service test` → `Tests run: 13, Failures: 0, Errors: 0`.
+- `unBodySinAsuntoNiCuerpoSeRechazaCon400YNoLlegaAlServicio` verifica 400, la lista de campos
+  faltantes y `verifyNoInteractions(notificadorService)`.
+- `unaViolacionDeIntegridadDevuelve400YNo500` verifica que una violación de integridad da 400 y que
+  el body no filtra el detalle de la base.
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente: **PASS** (sondeó 404/405/415/409 del advice y reprodujo el "antes").
+
+Nota: validar el **valor** del medio de contacto sigue pendiente y es el punto 7, fuera de esta
+corrida.
+
+---
+
+### 14. El DTO de entrada no tiene validación de Bean Validation y el manejador de excepciones está comentado
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`notificaciones-service/pom.xml`,
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/SolicitudNotificacionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/controllers/NotificadorController.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/dto/ErrorResponseDTO.java` (nuevo),
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/exceptions/GlobalExceptionHandler.java`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/controllers/NotificadorControllerTest.java` (nuevo)
+
+### Qué pasaba
+
+`SolicitudNotificacionDTO` no tenía ninguna anotación de validación y el controller recibía el body
+sin `@Valid`, así que un `null` en cualquiera de los cuatro campos alimentaba columnas
+`nullable = false` y moría en el INSERT. Y `exceptions/GlobalExceptionHandler.java` estaba
+**comentado entero** (un bloque `/* ... */`): no había ningún `@RestControllerAdvice`, así que
+ninguna excepción de persistencia se traducía a un status razonable y los errores internos salían sin
+cuerpo uniforme. Faltaba además `spring-boot-starter-validation` en el pom.
+
+### Qué se cambió
+
+`GlobalExceptionHandler` se reescribió como `@RestControllerAdvice` que **extiende
+`ResponseEntityExceptionHandler`**. Esa herencia es la parte no obvia: las excepciones propias de
+Spring MVC (404, 405, 415, binding) tienen handlers heredados con su status correcto, así que el
+`@ExceptionHandler(Exception.class)` de contención —el menos específico— solo actúa cuando ninguna
+coincide. Sin la clase base, una red de contención genérica convertiría un 404 en 500.
+
+Handlers:
+
+- `MethodArgumentNotValidException` → **400** con la lista `campo: mensaje` de lo que falta.
+- `DataIntegrityViolationException` → **400** genérico + `log.warn` con el detalle real.
+- `IllegalArgumentException` → **400** (conserva lo que el controller hacía a mano).
+- `ResponseStatusException` → respeta el status elegido (si no, la red de contención lo volvería 500).
+- `Exception` → **500** con mensaje genérico y `log.error` del stack trace; el detalle nunca va a la
+  respuesta.
+
+Se creó `ErrorResponseDTO` (record `mensaje`/`status`/`detalles`), que el handler comentado
+referenciaba pero que no existía en el repo. Se agregó `spring-boot-starter-validation` al pom y
+`@Valid` en el controller. Se quitó el `try/catch` de `IllegalArgumentException` del controller,
+ahora redundante: ese 400 pasa a tener el mismo cuerpo JSON que los demás. No hay consumidores HTTP
+de `POST /notificaciones` en el repo (donaciones e incentivos publican por Rabbit), así que no se
+rompe ningún contrato.
+
+### Cómo se verificó
+
+Misma corrida que el punto 8: 13/13 en el módulo y `BUILD SUCCESS` del reactor. La revisión
+independiente confirmó contra las fuentes de Spring 6.1.6 que el `handleException` heredado es
+`final` y cubre unos 20 tipos, y lo comprobó con sondas: 404 de ruta inexistente, 405 de método no
+soportado, 415 de media type, 409 de `ResponseStatusException` y 400 de JSON malformado conservan su
+status. Dos de esas sondas quedaron como tests de regresión en `NotificadorControllerTest`
+(`unaRutaInexistenteSigueDevolviendo404YNo500`, `unMetodoNoSoportadoSigueDevolviendo405YNo500`).
+
+---
+
+### 10. `RestTemplate` sin timeouts: si n8n cuelga, el hilo del consumidor se bloquea para siempre
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/config/RestTemplateConfig.java`,
+`src/main/resources/application.properties`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/config/RestTemplateConfigTest.java` (nuevo)
+
+### Qué pasaba
+
+`RestTemplateConfig.restTemplate()` devolvía `new RestTemplate()` pelado, o sea
+`SimpleClientHttpRequestFactory` con los timeouts infinitos (`-1`) de `HttpURLConnection`.
+`N8nClient.enviarNotificacion` se llama de forma síncrona desde el hilo del `@RabbitListener`; con un
+solo consumidor, un n8n que acepta la conexión TCP y no responde dejaba ese hilo colgado para
+siempre: la cola dejaba de vaciarse, las notificaciones se acumulaban en `PENDIENTE` y no había
+timeout, ni log, ni error que lo explicara.
+
+### Qué se cambió
+
+El bean arma un `SimpleClientHttpRequestFactory` con `setConnectTimeout` y `setReadTimeout`. Los
+valores salen de `application.properties` y son ajustables por entorno:
+
+- `servicio.n8n.connect-timeout-ms` → default **5000**.
+- `servicio.n8n.read-timeout-ms` → default **10000**.
+
+Si alguno llega en `0` o negativo, el bean **no arranca**: en `HttpURLConnection` un `0` significa
+"sin límite", así que dejarlo pasar reintroduciría exactamente el cuelgue. Es preferible fallar al
+levantar que quedarse esperando para siempre en producción.
+
+Se eligió `SimpleClientHttpRequestFactory` explícito en vez de `RestTemplateBuilder` porque el
+proyecto no tiene Apache HttpClient ni OkHttp en ningún pom: el factory estándar es el que
+corresponde y no depende de detección de auto-configuración.
+
+### Cómo se verificó
+
+- Antes (clon limpio del HEAD): con `new RestTemplate()` el escenario del servidor que no responde
+  devuelve `200 OK` recién a los ~2035 ms, o sea que sin timeout el hilo no tiene cota.
+- Después: `mvn -pl notificaciones-service test` → `Tests run: 15, Failures: 0, Errors: 0`.
+- `RestTemplateConfigTest.unN8nQueNoRespondeCortaPorTimeoutEnVezDeColarElHilo` levanta un
+  `HttpServer` en localhost que acepta y no responde, y verifica que la llamada corta con
+  `ResourceAccessException` causada por `SocketTimeoutException`. Hermético: no toca n8n, MySQL ni
+  Rabbit, y tarda ~200 ms (contra 2 s de sleep del servidor, margen de 10x: no es flaky).
+- `unTimeoutEnCeroSeRechazaPorqueSeríaInfinito` cubre la guarda de configuración.
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente: **PASS** (verificó el cableado bean → `N8nClient` y reprodujo el "antes").
+
+Nota: el timeout de conexión queda configurado pero no tiene test comportamental propio; el caso
+reportado —aceptar la conexión y no responder— es de lectura, y es el que cubre el test.
+
+---
+
+### 11. Credenciales de MySQL hardcodeadas y RabbitMQ sin configurar en `application.properties`
+
+**Estado:** corregido (con una decisión explícita del equipo)
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/resources/application.properties`,
+`src/main/resources/application-dev.properties` (nuevo),
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/ConfiguracionArranqueTest.java` (nuevo)
+
+### Aclaración: la descripción del punto estaba desactualizada
+
+Al abrir el archivo, las dos mitades del título original ya no eran ciertas:
+
+- **RabbitMQ ya estaba configurado**: `spring.rabbitmq.host/port/username/password` con `${...}` y
+  default. Verificado en vivo: la cola `notificaciones` tiene consumidor.
+- **Las credenciales de MySQL ya estaban parametrizadas**: `${DB_USERNAME:marcelo}` /
+  `${DB_PASSWORD:losbabasonicos}`, no literales pelados como decía el pendiente.
+
+Lo único que seguía vivo era `spring.jpa.show-sql=true` en la configuración por defecto.
+
+### Qué se cambió
+
+`spring.jpa.show-sql=true` se movió a `application-dev.properties`, que Spring Boot carga solo con el
+perfil `dev` activo (`--spring.profiles.active=dev` o `SPRING_PROFILES_ACTIVE=dev`). Por defecto
+Spring Boot aplica `spring.jpa.show-sql=false`: cada statement SQL deja de salir en el log de una
+instancia desplegada, donde es ruido y puede filtrar datos, sin perder la posibilidad de depurar
+contra la base local.
+
+### Decisión del equipo sobre la credencial (explícita, no es un descuido)
+
+La credencial real **se deja como default** en `application.properties`
+(`${DB_USERNAME:marcelo}` / `${DB_PASSWORD:losbabasonicos}`) y `docker-compose.yml` **no se toca**.
+La propuesta de este punto era sacarla del repo (o al menos quitarle el default), y el módulo hermano
+`logisticas-service` fue por ese camino en su punto 33; acá se decidió lo contrario a conciencia. La
+contraseña sigue, por lo tanto, en el repositorio: es un riesgo aceptado, no algo que este cambio
+haya resuelto. Queda asentado para que la decisión no se confunda con un olvido.
+
+### Cómo se verificó
+
+- `ConfiguracionArranqueTest.showSqlNoEstaEnLaConfiguracionPorDefecto` lee el `application.properties`
+  del classpath y falla si `spring.jpa.show-sql` está en `true` (normalizando mayúsculas: Spring
+  parsea el booleano sin distinguirlas).
+- `ConfiguracionArranqueTest.elPerfilDevPrendeShowSql` verifica que `application-dev.properties` esté
+  en el classpath y prenda el log.
+- `mvn -pl notificaciones-service test` → `Tests run: 17, Failures: 0, Errors: 0`.
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente: **PASS** (confirmó el mecanismo de perfiles de Spring Boot 3.2, que el
+  classpath resuelve el `application.properties` de producción, y que el módulo sigue empaquetando).
+
+---
+
+### 12. `NotificacionMapper` nunca setea `tipoMedioDeContacto`: el GET siempre lo devuelve `null`
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/mappers/NotificacionMapper.java`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/mappers/NotificacionMapperTest.java` (nuevo)
+
+### Qué pasaba
+
+`NotificacionDTO` declaraba el campo `tipoMedioDeContacto` y la entidad lo tenía con getter, pero
+`NotificacionMapper.notificacionDTO` no lo seteaba. El `GET /notificaciones/{id}` devolvía siempre
+`"tipoMedioDeContacto": null` aunque la columna es `nullable = false` y el valor está en la base;
+Jackson serializa el null sin quejarse, así que el campo faltaba sin que nada lo delatara.
+
+### Qué se cambió
+
+Una línea en el mapper:
+`notificacionDTO.setTipoMedioDeContacto(notificacion.getTipoMedioDeContacto());`.
+
+El mapper queda cubriendo los 7 campos del DTO (`asunto`, `cuerpo`, `tipoMedioDeContacto`,
+`direccionDeContacto`, `fechaCreacion`, `fechaEnvio`, `estado`); los únicos campos de la entidad que no
+se mapean son `id` y `mensaje`, que no existen en el DTO.
+
+### Cómo se verificó
+
+- Antes (worktree limpio del HEAD, sin la línea): `NotificacionMapperTest` falla con
+  `expected: <email> but was: <null>` en la aserción del campo. El test no es tautológico.
+- Después: `mvn -pl notificaciones-service test` → `Tests run: 19, Failures: 0, Errors: 0`.
+- `NotificacionMapperTest` (nuevo) cubre todos los campos del DTO, el caso `fechaEnvio` null (nace
+  PENDIENTE) y el caso `fechaEnvio` seteada (después de `marcarEnviada()`).
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente: **PASS**.
+
+Nota: las líneas de `getEstado().toString()` y `getFechaCreacion().toString()` siguen sin null check;
+el revisor confirmó que por el GET son inalcanzables con null (columnas `not null` y el constructor
+las asigna), así que se dejó como estaba.
+
+---
+
+### 2. El consumidor no relanza los fallos, así que no hay reintento ni cola de muertas
+
+**Estado:** corregido (parcial: se hizo la infraestructura; el relanzado transitorio, a propósito, no)
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** los mismos que el punto 15 (misma corrida)
+
+### Qué pasaba
+
+`ConsumidorNotificaciones.recibir` marca la notificación como `FALLIDA`, loguea el error y no
+relanza: el mensaje se da por consumido. No había ninguna de las dos salidas que quedan —reintento
+con espera para lo transitorio y dead letter para lo que no—.
+
+### Qué se cambió
+
+Se resolvió junto con el punto 15 (misma infraestructura; ver esa entrada). Para este punto, lo
+concreto es que ahora existen la **DLQ** y un **reintento acotado**: lo que falla se reintenta con
+tope y, si no se recupera, queda en `notificaciones.dlq` en vez de perderse.
+
+**Lo que deliberadamente NO se hizo:** relanzar los fallos transitorios desde el `catch` del
+consumidor. Hoy el listener traga la excepción (marca `FALLIDA` y sigue), así que el reintento de
+Spring no se dispara para esos casos. Relanzarlo daría el reintento automático, pero también
+reprocesaría: si el fallo fue después de guardar, un reintento sobre una solicitud sin `id`
+crearía una notificación duplicada. Es el ángulo transitorio que este punto pedía y queda como
+brecha consciente: la recuperación sigue siendo el estado `FALLIDA` en la base.
+
+### Cómo se verificó
+
+La topología y la configuración están cubiertas por `RabbitConfigTest` y `ConfiguracionArranqueTest`
+(ver punto 15), y la revisión independiente verificó contra las fuentes de Spring Boot 3.2.5 /
+spring-amqp 3.1.4 el reintento acotado y el dead letter (**PASS**). El relanzado transitorio no se
+implementó, así que no hay test que lo cubra: queda la brecha documentada.
+
+---
+
+### 15. La cola de notificaciones no tiene dead letter y los errores de conversión se reintentan en loop
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/config/rabbit/RabbitConfig.java`,
+`src/main/resources/application.properties`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/config/rabbit/RabbitConfigTest.java` (nuevo),
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/ConfiguracionArranqueTest.java`
+
+### Qué pasaba
+
+La cola `notificaciones` no declaraba dead letter. Un error de conversión de mensaje disparaba el
+`ConditionalRejectingErrorHandler`, que reencolaba y reintentaba, escribiendo el stack trace completo
+en cada intento: en una corrida real el log llegó a **1.9 GB** con cuatro servicios publicando en la
+misma cola.
+
+### Qué se cambió
+
+- `RabbitConfig`: la cola principal se declara con `QueueBuilder.durable(...)
+  .deadLetterExchange(EXCHANGE_DLQ).deadLetterRoutingKey(COLA_DLQ)`, y se agregaron el exchange
+  `notificaciones.dlq.exchange` (topic durable), la cola `notificaciones.dlq` (durable) y su binding.
+- `application.properties`: `spring.rabbitmq.listener.simple.default-requeue-rejected=false` (lo
+  rechazado no vuelve a la cola) y `spring.rabbitmq.listener.simple.retry.*` con `max-attempts=3` y
+  backoff 1s → ×2 → tope 10s. Con eso el `RejectAndDontRequeueRecoverer` que arma Spring Boot rechaza
+  sin reencolar al agotar los intentos y el mensaje cae en la DLQ.
+
+**Cuidado al desplegar:** una cola de RabbitMQ es inmutable. Si `notificaciones` ya estaba declarada
+sin estos argumentos, el broker rechaza la redeclaración con `PRECONDITION_FAILED` y el listener no
+arranca: hay que borrar la cola una vez (o recrear el broker). Está anotado en el javadoc de
+`RabbitConfig`.
+
+### Cómo se verificó
+
+- `mvn -pl notificaciones-service test` → `Tests run: 23, Failures: 0, Errors: 0`.
+- `RabbitConfigTest` fija que la cola principal declare el `x-dead-letter-exchange` y el
+  `x-dead-letter-routing-key`, que sea durable, y que el exchange, la cola muerta y el binding
+  (routing key y destino) estén bien armados.
+- `ConfiguracionArranqueTest` fija `default-requeue-rejected=false` y el reintento acotado.
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente (**PASS**) verificó contra las fuentes de Spring Boot 3.2.5 y spring-amqp
+  3.1.4 que `QueueBuilder` escribe exactamente los argumentos que RabbitMQ espera, que
+  `retry.enabled=true` configura el `RetryInterceptor` con `RejectAndDontRequeueRecoverer`, y que
+  `MessageConversionException` se considera fatal y termina en la DLQ.
+
+**Residual:** no se bajó el nivel de log de los rechazos (el loop ya está cortado: como máximo 3+1
+líneas por mensaje). El reintento automático de lo transitorio tampoco: ver el punto 2.
+
+---
+
+### 19. `GestorNotificaciones.enviarNotificacion` ignora el parámetro `direccionContacto`
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:**
+`src/main/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificaciones.java`,
+`src/test/java/ar/edu/utn/frba/ddsi/notificaciones/models/gestores/GestorNotificacionesTest.java`
+
+### Qué pasaba
+
+`enviarNotificacion(tipoMedioContacto, direccionContacto, notificacion)` no leía `direccionContacto`:
+armaba el medio con el tipo y llamaba `medioDeContacto.enviarNotificacion(notificacion)`, que
+internamente usa `notificacion.getDireccionDeContacto()`. El fallback que el consumidor armó —usar la
+dirección del mensaje si trae una, y la de la fila si no— no hacía nada: cualquier aviso con dirección
+propia se ignoraba en silencio y el mail salía al destinatario viejo. Era latente porque el productor
+interno publica la misma dirección que la fila.
+
+### Qué se cambió
+
+En `enviarNotificacion`, si `direccionContacto` no es null ni blanco, se setea en la notificación antes
+de delegar al medio (`notificacion.setDireccionDeContacto(direccionContacto)`). Los medios leen de la
+entidad, así que con eso la dirección del mensaje gana cuando viene; si viene vacía, se usa la de la
+fila. Se eligió esto por sobre cambiar la interfaz de `MedioDeEnvio` para que reciba la dirección, por
+ser el cambio más chico.
+
+La fila queda con la dirección realmente usada: el consumidor guarda la entidad después de enviar, así
+que el registro refleja el destino. En el flujo actual es neutro (misma dirección); solo cambia cuando
+el mensaje trae una dirección propia, que es exactamente el caso latente.
+
+### Cómo se verificó
+
+- `GestorNotificacionesTest.usaLaDireccionDelMensajeCuandoViene` usa un `Mail` real con el gateway
+  mockeado y captura el payload: con el código viejo devolvía la dirección de la fila, así que el test
+  es efectivo.
+- `siElMensajeNoTraeDireccionUsaLaDeLaFila` cubre null y blanco (que el guard no rompa el fallback).
+- `mvn -pl notificaciones-service test` → `Tests run: 25, Failures: 0, Errors: 0`.
+- Reactor de 5 módulos: `BUILD SUCCESS`.
+- Revisión independiente: **PASS**.
+
+---
+
+### 23. Código muerto y comentarios que ya no describen el código
+
+**Estado:** corregido (salvo un ítem de `docker-compose.yml`, fuera del módulo)
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** varios
+
+### Qué se hizo
+
+Se revisó todo el módulo y se borró lo que estaba muerto o desactualizado:
+
+- `RepositorioNotificaciones`: se borró la implementación vieja comentada (45 líneas) y el javadoc
+  que decía *"Repositorio en memoria"* (es un `JpaRepository` contra MySQL).
+- Se borraron las clases que nadie usaba: `NotificacionMensajeDTO`, `RepositorioMensajes` y las cinco
+  excepciones de `exceptions/NotificacionExceptions` (`SolicitudInvalidaException`,
+  `MensajeInvalidoException`, `DireccionInvalidoException`, `TipoMedioDeContactoInvalidoException`,
+  `ErrorAlEnviarNotificacion`).
+- `RepositorioNotificaciones.findByEstado`, el constructor `Notificacion(String, Mensaje)` y
+  `Notificacion.marcarPendiente()` tampoco tenían usos: se borraron.
+- `ConsumidorNotificaciones`: se quitó el `cuerpoCrudo == null` inalcanzable.
+- `NotificadorController`: el campo pasó de `NotificacionMapper` a `notificacionMapper`.
+- `NotificadorService`: se sacaron los imports sin uso (`MedioDeEnvioFactory`,
+  `RepositorioNotificaciones`) y el `@Autowired` redundante.
+- Comentarios: se eliminaron todos los javadocs largos de varios párrafos (`<p>`) del módulo, main y
+  tests. Quedan comentarios de una línea solo para lo que el código no expresa solo.
+
+### Lo que queda
+
+`docker-compose.yml` todavía define `NOTIFICACIONES_URL`, que ningún `@Value` lee desde que los
+clientes publican por Rabbit. Está fuera de este módulo y no se tocó.
+
+### Cómo se verificó
+
+- `mvn -pl notificaciones-service test` → `Tests run: 25, Failures: 0, Errors: 0`.
+- `mvn test` (reactor de 5 módulos) → `BUILD SUCCESS`.
 

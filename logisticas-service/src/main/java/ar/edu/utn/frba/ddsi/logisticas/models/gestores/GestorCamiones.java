@@ -20,10 +20,10 @@ public class GestorCamiones {
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
 
         camionExistente.setChofer(nuevoChofer);
-        camionExistente.setCapacidadVolumen(capacidadVolumen);
-        camionExistente.setAltura(altura);
-        camionExistente.setCapacidadCarga(capacidadCarga);
-        camionExistente.setDisponible(disponible);
+        if (capacidadVolumen != null) camionExistente.setCapacidadVolumen(capacidadVolumen);
+        if (altura != null) camionExistente.setAltura(altura);
+        if (capacidadCarga != null) camionExistente.setCapacidadCarga(capacidadCarga);
+        if (disponible != null) camionExistente.setDisponible(disponible);
 
         repoCamiones.save(camionExistente);
         return camionExistente;
