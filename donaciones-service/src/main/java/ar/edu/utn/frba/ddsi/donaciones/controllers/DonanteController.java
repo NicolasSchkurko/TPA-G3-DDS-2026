@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.UUID;
 
 @RestController
@@ -106,6 +107,9 @@ public class DonanteController {
       // El id se consulta en GET /personas/importar/{importId} para ver cuántos entraron,
       // cuántos fallaron y por qué: antes el 202 no decía nada más.
       return ResponseEntity.status(HttpStatus.ACCEPTED).body(importId);
+    } catch (RejectedExecutionException saturada) {
+      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+          .body("Hay importaciones en curso y la cola está llena; reintentá en unos minutos.");
     } catch (RuntimeException | JsonProcessingException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }

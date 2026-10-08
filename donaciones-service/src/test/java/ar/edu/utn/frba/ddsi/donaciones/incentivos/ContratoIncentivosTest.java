@@ -126,6 +126,35 @@ public class ContratoIncentivosTest {
         public void setRole(String role) { this.role = role; }
     }
 
+    // Copia mínima del AltaPerfilesLoteDTO de incentivos-service (POST /api/perfiles/lote).
+    public static class AltaPerfilesLoteMirror {
+        @jakarta.validation.Valid
+        @jakarta.validation.constraints.NotEmpty
+        private List<PerfilDonanteMirror> perfiles;
+
+        public List<PerfilDonanteMirror> getPerfiles() { return perfiles; }
+        public void setPerfiles(List<PerfilDonanteMirror> perfiles) { this.perfiles = perfiles; }
+    }
+
+    @Test
+    @DisplayName("El payload del alta en lote cumple el contrato del endpoint /api/perfiles/lote")
+    void altaEnLote_cumpleContratoDeIncentivos() throws Exception {
+        ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.AltaPerfilesLoteDTO lote =
+                new ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.AltaPerfilesLoteDTO(List.of(
+                        new IDDTO(UUID.randomUUID(), "Sofia Garcia", "DONANTE"),
+                        new IDDTO(UUID.randomUUID(), "Ana Navarro", "DONANTE")));
+
+        String json = mapper.writeValueAsString(lote);
+        AltaPerfilesLoteMirror recibido = mapper.readValue(json, AltaPerfilesLoteMirror.class);
+
+        assertEquals(2, recibido.getPerfiles().size());
+        assertEquals("Sofia Garcia", recibido.getPerfiles().get(0).getNombreUsuario());
+        assertEquals("DONANTE", recibido.getPerfiles().get(1).getRole());
+
+        Set<ConstraintViolation<AltaPerfilesLoteMirror>> violations = validator.validate(recibido);
+        assertTrue(violations.isEmpty(), () -> "violaciones de contrato: " + violations);
+    }
+
     private Donacion donacionAsignable(LocalDate fechaEntrega) {
         Donacion donacion = new Donacion();
         donacion.setId(UUID.randomUUID());
@@ -161,7 +190,8 @@ public class ContratoIncentivosTest {
                 mock(RepositorioCiudades.class),
                 mock(FabricaEstrategiasNotificacion.class),
                 clienteAlta,
-                mock(RepositorioDonantes.class)
+                mock(RepositorioDonantes.class),
+                mock(java.util.concurrent.ExecutorService.class)
         );
 
         PersonaDonanteDTO alta = new PersonaDonanteDTO();

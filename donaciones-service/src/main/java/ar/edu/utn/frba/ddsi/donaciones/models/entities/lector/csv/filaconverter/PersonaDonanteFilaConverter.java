@@ -121,6 +121,14 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
         if (!whatsapp.isBlank()) {
             persona.agregarMedioDeContacto(new Whatsapp(whatsapp));
         }
+
+        // Mismo criterio que el alta por HTTP (PersonaDonanteDTO.resolverMedioPredeterminado):
+        // si hay medios y ninguno marcado, el primero pasa a ser el predeterminado. Sin esto
+        // la notificación de registro no tiene por dónde salir y el alta entera falla.
+        List<MedioDeContacto> medios = persona.getMediosDeContacto().getListaMediosDeContacto();
+        if (!medios.isEmpty() && persona.getMediosDeContacto().getMedioDeContactoPredeterminado() == null) {
+            persona.getMediosDeContacto().setMedioDeContactoPredeterminado(medios.get(0));
+        }
     }
 
     private String[] separarNombreYApellido(String nombreCompleto) {

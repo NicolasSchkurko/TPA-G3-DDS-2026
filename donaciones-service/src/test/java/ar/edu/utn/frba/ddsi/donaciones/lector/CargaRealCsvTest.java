@@ -56,6 +56,22 @@ public class CargaRealCsvTest {
   }
 
   @Test
+  @DisplayName("Todos los donantes quedan con medio predeterminado para poder notificarlos")
+  void todosQuedanConMedioPredeterminado() {
+    LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
+    List<Donante> importados = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"))
+            .getElementos();
+
+    long sinPredeterminado = importados.stream()
+            .filter(d -> !d.getPersona().getMediosDeContacto().getListaMediosDeContacto().isEmpty())
+            .filter(d -> d.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado() == null)
+            .count();
+
+    assertEquals(0, sinPredeterminado,
+            "sin predeterminado, la notificación de registro falla y el alta no se persiste");
+  }
+
+  @Test
   @DisplayName("Ningún donante importado se va a rechazar por nombre de usuario en blanco")
   void ningunDonanteImportadoQuedaConNombreBlanco() {
     LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));

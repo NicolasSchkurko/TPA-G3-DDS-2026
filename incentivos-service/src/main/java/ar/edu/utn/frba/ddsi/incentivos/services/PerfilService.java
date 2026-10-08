@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ResultadoLotePerfilesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.CategoriaBaseInexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.DatosInvalidosException;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
@@ -23,6 +24,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -130,7 +132,37 @@ public class PerfilService {
         if (repositorioPerfiles.existsById(dto.getIdUsuario())) {
             throw new PerfilExistenteException(dto.getIdUsuario());
         }
+        return crearPerfilNuevo(dto);
+    }
 
+    /**
+     * Alta en lote: la importación CSV de donaciones manda hasta 500 perfiles por llamada.
+     * Un perfil que ya existe se saltea (reintentar una importación parcial es idempotente) y
+     * una fila rota no tumba el resto: el motivo queda en {@code errores}.
+     */
+    @Transactional
+    public ResultadoLotePerfilesDTO crearPerfilesEnLote(List<PerfilDonanteDTO> perfiles) {
+        int creados = 0;
+        int yaExistian = 0;
+        List<String> errores = new ArrayList<>();
+
+        for (PerfilDonanteDTO perfil : perfiles) {
+            try {
+                if (repositorioPerfiles.existsById(perfil.getIdUsuario())) {
+                    yaExistian++;
+                    continue;
+                }
+                crearPerfilNuevo(perfil);
+                creados++;
+            } catch (Exception e) {
+                errores.add(perfil.getIdUsuario() + ": " + e.getMessage());
+            }
+        }
+
+        return new ResultadoLotePerfilesDTO(creados, yaExistian, errores);
+    }
+
+    private PerfilDTO crearPerfilNuevo(PerfilDonanteDTO dto) {
         Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
 
         Categoria categoriaBase = repositorioCategorias.obtenerCategoriaBase()
