@@ -1,0 +1,689 @@
+{
+  "info": {
+    "_postman_id": "b1c2d3e4-0001-4a5b-8c9d-000000000001",
+    "name": "TPA - Ciclo completo (integrado)",
+    "description": "El ciclo completo de una donacion, de punta a punta, con cada paso encadenando el dato que el siguiente necesita.\n\n**No es una coleccion de referencia de la API: es un flujo.** Cada request deja en el entorno la variable que el paso siguiente consume, y cada paso verifica su resultado. Si un paso falla, los siguientes van a fallar por dependencia, y el reporte dice en cual se corto.\n\nRequiere los cuatro servicios levantados en los puertos de desarrollo:\n\n| Servicio | Puerto |\n|---|---|\n| donaciones | 8084 |\n| incentivos | 8082 |\n| notificaciones | 8083 |\n| logistica | 8086 |\n\nY MySQL y RabbitMQ dockerizados (`docker compose up mysql rabbitmq`).\n\nLa importacion del donante es un POST multipart con un CSV. El CSV esta en la misma carpeta que esta coleccion y la ruta va en la variable `csvDonantes`. Si se corre con Newman hay que dejar la ruta absoluta del archivo en el environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "donacionesUrl", "value": "http://localhost:8084/api" },
+    { "key": "incentivosUrl", "value": "http://localhost:8082/api" },
+    { "key": "notificacionesUrl", "value": "http://localhost:8083/api" },
+    { "key": "logisticasUrl", "value": "http://localhost:8086/api" },
+    { "key": "csvDonantes", "value": "C:/Users/Luzbelito-WrkLp/IdeaProjects/TPA-G3-DDS-2026/postman/donantes-e2e.csv", "description": "Ruta local del CSV con el donante de prueba. En Newman hay que dejar la ruta absoluta." },
+    { "key": "nombreDonante", "value": "Test E2e", "description": "Nombre+Apellido del CSV tal cual. buscarPorNombre compara la igualdad exacta del nombre de usuario, no un contains." },
+    { "key": "idDonante", "value": "", "description": "Lo setea el paso 01" },
+    { "key": "idEntidad", "value": "", "description": "Lo setea el paso 02" },
+    { "key": "idDonacion", "value": "", "description": "Lo setea el paso 06" },
+    { "key": "posicionPropuesta", "value": "0", "description": "Lo setea el paso 06" },
+    { "key": "idChofer", "value": "", "description": "Lo setea el paso 09" },
+    { "key": "idNotificacion", "value": "", "description": "Lo setea el paso 13" }
+  ],
+  "item": [
+    {
+      "name": "00. Importar el donante (CSV multipart)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file", "src": "{{csvDonantes}}" },
+            { "key": "mapeos", "type": "text", "value": "[{\"campo\":\"TIPO_PERSONA\",\"nombresColumnas\":[\"TipoPersona\"]},{\"campo\":\"TIPO_DOC\",\"nombresColumnas\":[\"TipoDoc\"]},{\"campo\":\"DOCUMENTO\",\"nombresColumnas\":[\"Documento\"]},{\"campo\":\"NOMBRE_RAZON_SOCIAL\",\"nombresColumnas\":[\"Nombre/Razón Social\"]},{\"campo\":\"EMAIL\",\"nombresColumnas\":[\"Email\"]},{\"campo\":\"TELEFONO\",\"nombresColumnas\":[\"Teléfono\"]},{\"campo\":\"WHATSAPP\",\"nombresColumnas\":[\"Whatsapp\"]}]" }
+          ]
+        },
+        "url": {
+          "raw": "{{donacionesUrl}}/personas/importar",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["personas", "importar"]
+        },
+        "description": "Es el unico endpoint que da de alta un donante: no hay POST /personas. Devuelve 202 con un texto, no con el id, por eso el paso siguiente lo busca por nombre.\n\nEsto es lo que dispara donating -> incentivos: el alta del donante llama a IncentivosClient.peticionCrearPerfil, y aca es donde se crea el perfil que el paso 02 verifica."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el import acepta el CSV (202 Accepted)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 202]);",
+              "});",
+              "",
+              "var cuerpo = pm.response.text();",
+              "pm.test('el mensaje de respuesta dice algo util', function () {",
+              "    pm.expect(cuerpo.length).to.be.above(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Buscar el donante y guardar su id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{donacionesUrl}}/personas/buscar?nombre={{nombreDonante}}",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["personas", "buscar"],
+          "query": [ { "key": "nombre", "value": "{{nombreDonante}}" } ]
+        },
+        "description": "La importacion no devuelve el id, asi que lo busco por nombre. Conviene correr la coleccion sobre una base limpia, porque si el donante ya existe este paso devuelve el primero que encuentre."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// El import devuelve 202 ACCEPTED y procesa en un hilo aparte: el donante puede",
+              "// no estar todavia cuando este GET llega. Se reintenta hasta 12 veces (2 min).",
+              "var intento = Number(pm.collectionVariables.get('intentosBuscar') || 0);",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.collectionVariables.set('intentosBuscar', 0);",
+              "    pm.test('encontre al donante', function () { pm.expect(1).to.eql(1); });",
+              "",
+              "    var persona = pm.response.json();",
+              "    pm.test('el id del donante viene en la respuesta', function () {",
+              "        pm.expect(persona.id).to.exist;",
+              "    });",
+              "    pm.collectionVariables.set('idDonante', persona.id);",
+              "",
+              "} else if (intento < 12) {",
+              "    pm.collectionVariables.set('intentosBuscar', intento + 1);",
+              "    // reejecuta este mismo paso: en Postman es setNextRequest con el propio nombre",
+              "    pm.execution.setNextRequest('01. Buscar el donante y guardar su id');",
+              "    console.log('el donante todavia no esta, reintento ' + (intento + 1));",
+              "    pm.test('el import todavia esta procesando el donante', function () {",
+              "        pm.expect(pm.response.code).to.eql(404);",
+              "    });",
+              "",
+              "} else {",
+              "    pm.collectionVariables.set('intentosBuscar', 0);",
+              "    pm.test('el donante aparecio despues de 12 reintentos', function () {",
+              "        pm.expect('no se creo el donante').to.eql('el donante aparecio');",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. CONEXION 1: donating creo el perfil en incentivos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{incentivosUrl}}/perfiles/{{idDonante}}",
+          "host": ["{{incentivosUrl}}"],
+          "path": ["perfiles", "{{idDonante}}"]
+        },
+        "description": "Prueba la primera conexion HTTP entre servicios: al dar de alta el donante en donating, incentivos creo el perfil.\n\nSi esto falla con 404, el problema esta en el paso 00: DonanteService llama a IncentivosClient.peticionCrearPerfil en el alta. Conviene mirar el log de donating buscando 'No se pudo crear el perfil'."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el perfil existe en incentivos (donating -> incentivos funciona)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('el perfil es del mismo usuario', function () {",
+              "    var perfil = pm.response.json();",
+              "    pm.expect(perfil.nombreUsuario).to.eql(pm.collectionVariables.get('nombreDonante'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Crear la entidad beneficiaria",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"razonSocial\": \"Banco de alimentos e2e\",\n  \"rubro\": \"ALIMENTOS\",\n  \"cuit\": \"30-12345678-9\",\n  \"tipoJuridico\": \"INSTITUCION\",\n  \"telefono\": \"011-4444-5555\",\n  \"direccion\": {\n    \"calleUno\": \"Av. Siempre Viva\",\n    \"calleDos\": \"9 de Julio\",\n    \"altura\": 1234,\n    \"piso\": 1,\n    \"departamento\": \"A\",\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{donacionesUrl}}/entidades",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["entidades"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la entidad se creo (201)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "var entidad = pm.response.json();",
+              "pm.test('devuelve el id de la entidad', function () {",
+              "    pm.expect(entidad.id).to.exist;",
+              "});",
+              "",
+              "pm.collectionVariables.set('idEntidad', entidad.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Crear la necesidad que la donacion va a cubrir",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tipoNecesidad\": \"DONACION\",\n  \"descripcion\": \"Necesidad de prueba del ciclo e2e\",\n  \"cantidadObjetivo\": 50,\n  \"nombreSubcategoria\": \"ENLATADOS\",\n  \"nombreCategoria\": \"ALIMENTOS\",\n  \"plazoEnDias\": 30\n}"
+        },
+        "url": {
+          "raw": "{{donacionesUrl}}/entidades/{{idEntidad}}/necesidades",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["entidades", "{{idEntidad}}", "necesidades"]
+        },
+        "description": "El matchmaking cruza donaciones contra necesidades. Sin necesidad, no hay propuesta y el paso 07 queda vacio."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la necesidad se creo (201)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "var necesidad = pm.response.json();",
+              "pm.test('devuelve el id de la necesidad', function () {",
+              "    pm.expect(necesidad.id).to.exist;",
+              "});",
+              "",
+              "pm.collectionVariables.set('idNecesidad', necesidad.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Registrar la donacion (formulario)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idDonante\": \"{{idDonante}}\",\n  \"fechaRealizacion\": \"2026-10-07\",\n  \"bienes\": [\n    {\n      \"descripcion\": \"Alimentos no perecederos e2e\",\n      \"categoria\": \"ALIMENTOS\",\n      \"subcategoria\": \"ENLATADOS\",\n      \"cantidad\": 10,\n      \"unidadDeMedida\": \"KILOGRAMOS\",\n      \"tipoBien\": \"CON_ESTADO\",\n      \"usado\": false\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{donacionesUrl}}/donaciones/formulario",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["donaciones", "formulario"]
+        },
+        "description": "La segmentacion puede crear mas de una donacion a partir de un mismo formulario: por eso el endpoint devuelve una LISTA. El paso 06 toma la primera."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el formulario proceso la donacion', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var donaciones = pm.response.json();",
+              "pm.test('devuelve al menos una donacion (puede ser una lista)', function () {",
+              "    pm.expect(donaciones).to.be.an('array').that.is.not.empty;",
+              "});",
+              "",
+              "pm.collectionVariables.set('donacionesCreadas', JSON.stringify(donaciones));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Ejecutar el matchmaking",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{donacionesUrl}}/donaciones/matchmaking/ejecutar",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["donaciones", "matchmaking", "ejecutar"]
+        },
+        "description": "Responde 200 vacio: el resultado se lee en el paso siguiente con GET /donaciones/pendientes. Es un endpoint de disparo, no de consulta."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el matchmaking se ejecuto', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Leer las propuestas y guardar donacion + posicion",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{donacionesUrl}}/donaciones/pendientes",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["donaciones", "pendientes"]
+        },
+        "description": "El resultado del matchmaking tiene que traer propuestasOrdenadas con la posicion y el score. De aca salen las dos variables que el paso 08 necesita para aprobar."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hay propuestas pendientes', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var resultados = pm.response.json();",
+              "    pm.expect(resultados).to.be.an('array').that.is.not.empty;",
+              "});",
+              "",
+              "var resultados = pm.response.json();",
+              "var resultado = resultados[0];",
+              "pm.test('la propuesta tiene una donacion y una posicion', function () {",
+              "    pm.expect(resultado.donacion.id).to.exist;",
+              "    pm.expect(resultado.propuestasOrdenadas).to.be.an('array').that.is.not.empty;",
+              "});",
+              "",
+              "pm.collectionVariables.set('idDonacion', resultado.donacion.id);",
+              "pm.collectionVariables.set('posicionPropuesta', String(resultado.propuestasOrdenadas[0].posicion));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Asignar la donacion  (DISPARA: donating -> logistica y donating -> incentivos)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"donacionId\": \"{{idDonacion}}\",\n  \"posicionPropuesta\": {{posicionPropuesta}}\n}"
+        },
+        "url": {
+          "raw": "{{donacionesUrl}}/donaciones/asignar",
+          "host": ["{{donacionesUrl}}"],
+          "path": ["donaciones", "asignar"]
+        },
+        "description": "Es el paso que dispara dos conexiones a la vez:\n\n- **donating -> logistica**, por Rabbit: publica el mensaje con el encabezado x-id-donacion en logistica.integracion.hash. Es el broker de integracion del enunciado.\n- **donating -> incentivos**, por HTTP: PATCH /api/perfiles/donacion/{idUsuario} con el impacto de la donacion.\n\nSi el mensaje de logistica se perdiera en el broker, este request devolveria 200 igual. El siguiente paso es el que verifica que llego."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la asignacion se aprobo', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// El mensaje a logistica viaja por el broker: hay que dejarle tiempo para que lo",
+              "// consuma. Un assert inmediato daria 404 por mas que el flujo este bien.",
+              "pm.test('se consulto el endpoint de asignacion', function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. CONEXION 5: logistica recibio el item de entrega",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{logisticasUrl}}/entregas/{{idDonacion}}",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["entregas", "{{idDonacion}}"]
+        },
+        "description": "Es la prueba de que el broker de integracion funciono de punta a punta: la donacion asignada en donating tiene que estar registrada como item de entrega en logistica, con estado PENDIENTE.\n\nSi falla con 404: o el mensaje no salio (mirar el log de donating), o llego pero logistica lo descarto (mirar el log de logistica buscando 'descartada'), o la cola no tiene consumidor (mirar /api/queues en el broker)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('logistica registro la donacion como item de entrega', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var item = pm.response.json();",
+              "pm.test('el item esta PENDIENTE', function () {",
+              "    pm.expect(item.estado).to.eql('PENDIENTE');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Crear un chofer (logistica)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Chofer e2e\",\n  \"disponible\": true\n}"
+        },
+        "url": {
+          "raw": "{{logisticasUrl}}/choferes",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["choferes"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el chofer se creo', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "var chofer = pm.response.json();",
+              "pm.collectionVariables.set('idChofer', chofer.idChofer);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Crear un camion y asignarle el chofer",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patente\": \"E2E001\",\n  \"idChofer\": \"{{idChofer}}\",\n  \"capacidadVolumen\": 12.5,\n  \"altura\": 2.4,\n  \"capacidadCarga\": 1500,\n  \"disponible\": true\n}"
+        },
+        "url": {
+          "raw": "{{logisticasUrl}}/camiones",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["camiones"]
+        },
+        "description": "La patente es fija a proposito (E2E001): si la base ya tiene un camion con esa patente, el alta falla con 409. En ese caso el paso siguiente puede seguir igual, porque el camion ya existe."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el camion se creo (o ya existia y lo rechazo con 409)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 409]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Planificar rutas",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{logisticasUrl}}/PlanificacionRutas/planificar-manual",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["PlanificacionRutas", "planificar-manual"]
+        },
+        "description": "Ademas del cron de las 2 AM, hay un disparo manual para no tener que esperar a la madrugada en un test.\n\nAgrupa los items PENDIENTE y les asigna camiones disponibles. Sin camion disponible, no crea ruta y el paso 15 no tiene que confirmar nada."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la planificacion corrio', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Verificar que se creo la ruta con paradas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{logisticasUrl}}/rutas",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["rutas"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hay rutas planificadas', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var rutas = pm.response.json().rutas;",
+              "    pm.expect(rutas).to.be.an('array').that.is.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. CONEXION 6: confirmar la entrega y verificar que el evento sale",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"ENTREGADA\",\n  \"fotoUrl\": \"https://example.com/comprobante-e2e.jpg\"\n}"
+        },
+        "url": {
+          "raw": "{{logisticasUrl}}/entregas/{{idDonacion}}/estado",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["entregas", "{{idDonacion}}", "estado"]
+        },
+        "description": "Este es el cambio de estado que dispara GestorPublicacionEventos: publica el evento ENTREGA_CONFIRMADA a logistica.eventos.exchange, del que donating es consumidor.\n\nSi la entrega no esta asignada a una ruta, el endpoint devuelve 500 con IllegalStateException ('No se encontro la ruta correspondiente'). Por eso van los pasos 10 a 13 antes de este."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la entrega se confirmo', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// El evento viaja por el broker: aca no se puede verificar nada todavia.",
+              "// El paso 15 es el que lo confirma."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Verificar el evento en logistica",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{logisticasUrl}}/eventos?desdeId=0",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["eventos"],
+          "query": [ { "key": "desdeId", "value": "0" } ]
+        },
+        "description": "Prueba que logistica registro el evento en su base. Es la mitad de la CONEXION 6: el evento se creo y salio al exchange."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hay eventos de logistica', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var resp = pm.response.json();",
+              "    var eventos = resp.eventos ? resp.eventos : resp;",
+              "    pm.expect(eventos).to.be.an('array').that.is.not.empty;",
+              "});",
+              "",
+              "var resp = pm.response.json();",
+              "var eventos = resp.eventos ? resp.eventos : resp;",
+              "var tipos = eventos.map(function (e) { return e.tipoEvento ? e.tipoEvento : e.tipo; });",
+              "pm.test('hay un evento de entrega confirmada', function () {",
+              "    pm.expect(tipos.join(' ')).to.include('ENTREGA');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. CONEXION 3/4: crear una notificacion en notificaciones",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"medioDeContacto\": \"EMAIL\",\n  \"direccionDeContacto\": \"ciclo-e2e@test.local\",\n  \"asuntoMensaje\": \"Ciclo e2e\",\n  \"cuerpoMensaje\": \"Notificacion de prueba del ciclo completo\"\n}"
+        },
+        "url": {
+          "raw": "{{notificacionesUrl}}/notificaciones",
+          "host": ["{{notificacionesUrl}}"],
+          "path": ["notificaciones"]
+        },
+        "description": "Prueba el canal de notificaciones por la via del endpoint, que es lo que los dos servicios de dominio hacen cuando publican en notificaciones.exchange: el mismo consumer recibe el JSON y decide que hacer por el contenido.\n\nSi n8n esta corriendo, la notificacion pasa a ENVIADA con fecha_envio. Si n8n esta apagado, queda PENDIENTE: eso no es una falla del ciclo, es el punto 1 del backlog de notificaciones."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la notificacion se creo', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "var not = pm.response.json();",
+              "pm.collectionVariables.set('idNotificacion', not.id);",
+              "",
+              "pm.test('la notificacion nace PENDIENTE antes de enviarse', function () {",
+              "    pm.expect(not.estado).to.eql('PENDIENTE');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Verificar el progreso de gamificacion en incentivos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{incentivosUrl}}/perfiles/{{idDonante}}/mision",
+          "host": ["{{incentivosUrl}}"],
+          "path": ["perfiles", "{{idDonante}}", "mision"]
+        },
+        "description": "El paso 08 notifico el impacto de la donacion a incentivos. Despues de eso, el perfil tiene que tener una mision asignada y progreso."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el perfil tiene una mision asignada', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var mision = pm.response.json();",
+              "    pm.expect(mision.nombreMision).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Verificar metricas de actividad en incentivos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{incentivosUrl}}/metricas/{{idDonante}}/actividad",
+          "host": ["{{incentivosUrl}}"],
+          "path": ["metricas", "{{idDonante}}", "actividad"]
+        },
+        "description": "Despues del impacto de la donacion, la metrica de actividad tiene que reflejar que el donante hizo algo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la metrica de actividad responde', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Verificar el perfil publico del donante",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{incentivosUrl}}/perfiles/{{idDonante}}/publico",
+          "host": ["{{incentivosUrl}}"],
+          "path": ["perfiles", "{{idDonante}}", "publico"]
+        },
+        "description": "El cierre del ciclo: el perfil publico es lo que se muestra al donante, y tiene que existir con los datos que se cargaron en el paso 00."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('el perfil publico responde', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

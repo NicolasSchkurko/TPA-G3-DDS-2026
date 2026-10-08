@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +38,7 @@ class ReglaEquivalenciaTest {
     void cambiarLaConstanciaNoEsEquivalente() {
         Regla sinConstancia = new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
         Regla conConstancia = new Regla(
-                new ReglaConstancia(1, ChronoUnit.MONTHS),
+                new ReglaConstancia(1, UnidadTiempo.MONTHS),
                 AtributoImpacto.ESTADO,
                 new SuperaCantidad(5, 1)
         );
@@ -53,9 +53,9 @@ class ReglaEquivalenciaTest {
         // La constancia se compara campo por campo: si se comparara por equals (que no
         // esta definido en la entidad), dos objetos distintos darian siempre "cambio" y
         // cada edicion borraria el progreso de todos.
-        Regla una = new Regla(new ReglaConstancia(2, ChronoUnit.WEEKS),
+        Regla una = new Regla(new ReglaConstancia(2, UnidadTiempo.WEEKS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
-        Regla otra = new Regla(new ReglaConstancia(2, ChronoUnit.WEEKS),
+        Regla otra = new Regla(new ReglaConstancia(2, UnidadTiempo.WEEKS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
 
         assertThat(una.esEquivalenteA(otra)).isTrue();
@@ -64,11 +64,11 @@ class ReglaEquivalenciaTest {
     @Test
     @DisplayName("cambiar la cantidad o la unidad de la constancia no es equivalente")
     void cambiarLaConstanciaEnSiNoEsEquivalente() {
-        Regla dosMeses = new Regla(new ReglaConstancia(2, ChronoUnit.MONTHS),
+        Regla dosMeses = new Regla(new ReglaConstancia(2, UnidadTiempo.MONTHS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
-        Regla dosSemanas = new Regla(new ReglaConstancia(2, ChronoUnit.WEEKS),
+        Regla dosSemanas = new Regla(new ReglaConstancia(2, UnidadTiempo.WEEKS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
-        Regla tresMeses = new Regla(new ReglaConstancia(3, ChronoUnit.MONTHS),
+        Regla tresMeses = new Regla(new ReglaConstancia(3, UnidadTiempo.MONTHS),
                 AtributoImpacto.ESTADO, new SuperaCantidad(5, 1));
 
         assertThat(dosMeses.esEquivalenteA(dosSemanas)).isFalse();

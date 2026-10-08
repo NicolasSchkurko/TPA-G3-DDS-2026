@@ -12,50 +12,31 @@ import java.util.PriorityQueue;
 
 public class CompatibilidadSemantica implements AlgoritmoAsignacion {
 
+    /** Top-10 con un Min-Heap limitado en vez de ordenar todo: se recorre una vez (O(N))
+     *  y en memoria quedan como máximo los 10 mejores. */
     @Override
     public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
 
-        /*
-         * EXPLICACIÓN DEL MIN-HEAP (PriorityQueue):
-         * * Un Heap es una estructura de datos que se auto-ordena parcialmente.
-         * En este caso usamos un Min-Heap: se configura para que la propuesta con el
-         * MENOR score siempre se quede en la "cima" o "puerta" (accesible vía peek()).
-         * * ¿Por qué usar esto y no instanciar todo y hacer un Collections.sort()?
-         * Rendimiento. Si hay 100.000 necesidades compatibles, hacer un .sort()
-         * obligaría a instanciar 100.000 objetos en memoria y ejecutar un algoritmo
-         * de ordenamiento pesado (O(N log N)), para luego tirar 99.990 a la basura.
-         * * Con el Min-Heap limitado a 10, recorremos las 100.000 necesidades
-         * ejecutando solo matemática (costo casi nulo). Si encontramos un score
-         * que es MEJOR que el PEOR de nuestro top 10 (el que está en el peek()),
-         * lo instanciamos, echamos al peor, y metemos el nuevo.
-         * Resultado: Memoria casi intacta (máximo 10 objetos) y velocidad O(N).
-         */
         PriorityQueue<PropuestaAsignacion> top10 = new PriorityQueue<>(
             Comparator.comparingDouble(PropuestaAsignacion::getScore)
         );
 
-        // 1. Iteración clásica de alto rendimiento sin instanciar objetos basura
         for (EntidadBeneficiaria entidad : entidades) {
             for (Necesidad necesidad : entidad.getNecesidades()) {
-
-                // Filtro 1: Descartamos inmediatamente si no es compatible
                 if (!necesidad.esCompatibleCon(donacion)) {
-                    System.out.println("donacion no compatible con necesidad");
                     continue;
                 }
 
                 double score = calcularScore(necesidad, donacion);
-
-                // Filtro 2: Descartamos si el score no es útil
                 if (score <= 0) {
                     continue;
                 }
 
-                // A partir de este punto, iteramos solo sobre "los útiles"
                 if (top10.size() < 10) {
                     agregarPropuesta(top10, entidad, necesidad, score);
                 } else if (score > top10.peek().getScore()) {
+                    // Reemplaza al peor del top-10: el peek del Min-Heap es siempre el menor.
                     reemplazarPeorPropuesta(top10, entidad, necesidad, score);
                 }
             }
@@ -65,8 +46,21 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
     }
 
     private double calcularScore(Necesidad necesidad, Donacion donacion) {
-        int cantidadFaltante = necesidad.getCantidadObjetivo() - necesidad.cantidadRecibida();
+        // cantidadFaltante() usa la misma ventana que esCompatibleCon()/estaSatisfecha(): para
+        // una NecesidadRecurrente eso es cantidadRecibidaEnPeriodo(), no el histórico completo.
+        // Antes medían contra columnas distintas: una recurrente ya llenada en el pasado quedaba
+        // "compatible" (período en 0) pero con score <= 0 (histórico ya cubierto), así que el
+        // filtro de la línea de arriba la descartaba para siempre.
+        int cantidadFaltante = necesidad.cantidadFaltante();
         int cantidadDonada = donacion.sumaCantidadBienes();
+
+        // Blindaje de división por cero: una donación con suma de bienes 0 (o una necesidad sin
+        // nada pendiente, score <= 0 ya la filtra el caller) no debe producir NaN, que al no
+        // cumplir "score <= 0" se cuela en el PriorityQueue y rompe el orden del heap.
+        if (cantidadFaltante <= 0 || cantidadDonada <= 0) {
+            return 0;
+        }
+
         return cantidadDonada <= cantidadFaltante
                ? (double) cantidadDonada / cantidadFaltante
                : (double) cantidadFaltante / cantidadDonada;

@@ -15,27 +15,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Recibe los eventos de trazabilidad de logistica y dispara las notificaciones.
+ * Recibe los eventos de trazabilidad de logística y dispara las notificaciones: es el
+ * service worker del public/subscribe del enunciado (logística publica el hecho y no llama
+ * a nadie; nadie conoce los donantes como este servicio).
  *
- * <p><b>Es el service worker del public/subscribe del enunciado.</b> Logistica publica el
- * hecho y no llama a nadie: el enunciado prohibe explicitamente que invoque a este servicio o
- * a incentivos, y tambien que hable con el de notificaciones. La notificacion de "inicio de
- * ruta", "entrega realizada" y "entrega no satisfactoria" sale de aca, que es el servicio que
- * conoce a los donantes, las entidades y los administradores.
- *
- * <p><b>Consume un evento por mensaje, no una lista.</b> El productor publica un
- * {@code EventoLogisticaDTO} suelto por mensaje. Declarar la lista hacia que el mensaje llega al
- * listener y falla con "Failed to convert message", que es la version menos descriptiva de
- * este error porque no dice que hay un desajuste de contrato.
- *
- * <p><b>El cursor es de este listener.</b> Antes tomaba el ultimo id del
- * {@code LogisticaPollingScheduler} y se lo devolvia modificado, con lo que el estado de la
- * sincronizacion quedaba repartido entre dos beans y dependia del orden de ejecucion. Ahora es
- * de quien consume, que es quien sabe hasta donde llego.
- *
- * <p><b>Un evento repetido no se vuelve a notificar.</b> El broker puede redeliverar si el
- * consumidor cae a mitad del procesamiento, y sin este filtro el donante recibiria dos avisos
- * del mismo evento.
+ * <p>Consume un evento por mensaje (una lista desalinearía el contrato con el productor),
+ * el cursor es de este listener (quien consume sabe hasta dónde llegó) y un evento repetido
+ * no se vuelve a notificar (el broker puede redeliverar).
  */
 @Component
 public class EventosListener {

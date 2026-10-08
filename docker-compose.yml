@@ -6,7 +6,7 @@
 # construye desde su módulo con `build:`.
 #
 # La cadena de integración que exige el enunciado va por RabbitMQ, no por HTTP entre
-# contenedores: `donaciones-service` publica en `logistica.exchange`, `logisticas-service`
+# contenedores: `donaciones-service` publica en `logistica.integracion.hash`, `logisticas-service`
 # publica en `logistica.eventos.exchange`, y los dos servicios de dominio publican en
 # `notificaciones.exchange`. Todos son consumidores de esas colas.
 
@@ -14,11 +14,13 @@ services:
 
   # --- Infraestructura ---
 
+  # Credenciales simples solo para el entorno local de demostración. No reutilizar
+  # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
   mysql:
     image: mysql:8.0
     container_name: tpa-mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
@@ -31,7 +33,7 @@ services:
       retries: 12
 
   rabbitmq:
-    image: rabbitmq:3-management
+    build: ./docker/rabbitmq
     container_name: tpa-rabbitmq
     ports:
       - "5672:5672"
@@ -39,6 +41,13 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    # El exchange consistent-hash que usa logistica para repartir entre instancias es un
+    # plugin, no parte del core, y viene apagado: sin el, logistica no arranca con
+    # PRECONDITION_FAILED - unknown exchange type 'x-consistent-hash'.
+    #
+    # Se habilita en el Dockerfile de este servicio y NO con
+    # RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: la imagen trae /etc/rabbitmq/enabled_plugins y ese
+    # archivo pisa la variable, asi que setearla no habilita nada. Ahi esta el detalle.
     volumes:
       - rabbit-data:/var/lib/rabbitmq
     healthcheck:
@@ -47,19 +56,46 @@ services:
       timeout: 5s
       retries: 12
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tpa-n8n
+    ports:
+      - "5679:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5679/
+      WEBHOOK_URL: http://localhost:5679/
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
   # --- Servicios de dominio ---
+  #
+  # Ninguno declara `container_name` a proposito: un nombre fijo impide correr `--scale`, porque
+  # no se pueden crear N contenedores con el mismo nombre. Es la razon por la que el
+  # "docker compose up --scale logisticas-service=2" que decia el comentario de abajo no
+  # funcionaba. Ver el punto 24 del backlog de logisticas-service.
+  #
+  # mysql y rabbitmq si lo tienen: no se escalan y un nombre estable evita depender de la red de
+  # Docker para llegar a ellos.
 
   notificaciones-service:
-    build: ./notificaciones-service
-    container_name: notificaciones-service
+    build:
+      context: .
+      dockerfile: notificaciones-service/Dockerfile
+    env_file:
+      - ./notificaciones-service/.env
     ports:
-      - "8083:8083"
+      - "8083"
     environment:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: marcelo
-      DB_PASSWORD: losbabasonicos
       # Rabbit es el canal de entrada: sin esto, dentro del contenedor el servicio busca
       # localhost y no encuentra al broker.
       RABBITMQ_HOST: rabbitmq
@@ -72,12 +108,17 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      n8n:
+        condition: service_started
 
   incentivos-service:
-    build: ./incentivos-service
-    container_name: incentivos-service
+    build:
+      context: .
+      dockerfile: incentivos-service/Dockerfile
+    env_file:
+      - ./incentivos-service/.env
     ports:
-      - "8082:8082"
+      - "8082"
     environment:
       SERVER_PORT: 8082
       #no lleva context-path: las rutas ya empiezan con /api.
@@ -85,8 +126,6 @@ services:
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       N8N_URL: http://host.docker.internal:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: incentivos_user
-      DB_PASSWORD: ""
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
@@ -96,22 +135,25 @@ services:
         condition: service_healthy
       notificaciones-service:
         condition: service_started
+      n8n:
+        condition: service_started
 
   # Es el broker de integración del enunciado: publica las donaciones asignadas para
   # logística y consume los eventos de trazabilidad para notificar.
   donaciones-service:
-    build: ./donaciones-service
-    container_name: donaciones-service
+    build:
+      context: .
+      dockerfile: donaciones-service/Dockerfile
+    env_file:
+      - ./donaciones-service/.env
     ports:
-      - "8084:8084"
+      - "8084"
     environment:
       SERVER_PORT: 8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: valentin
-      DB_PASSWORD: "10032001"
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
@@ -123,18 +165,46 @@ services:
         condition: service_healthy
 
   # Compite por la cola compartida `logistica.integracion.queue`: para cumplir el
-  # "más de un servicio de logística disponible" del enunciado basta con escalar este
-  # servicio con `docker compose up --scale logisticas-service=2`.
+  # "más de un servicio de logística disponible" del enunciado basta con escalar este servicio.
+  #
+  #   docker compose up --scale logisticas-service=2
+  #
+  # El puerto se publica SIN número de host, o sea efímero, porque un `"8086:8086"` fijo no se
+  # puede reservar dos veces y la segunda instancia fallaría con `port is already allocated`.
+  # Para descubrir el puerto asignado de cada una:
+  #
+  #   docker compose port logisticas-service 8086
+  #
+  # El `SERVER_PORT` de adentro es el mismo para todas: dentro de la red de Docker cada
+  # contenedor tiene su propio espacio de puertos, así que 8086 no se repite. El que se repite
+  # es el del host, y por eso no se publica fijo.
+  #
+  # Si se levanta de a una sola instancia, se puede volver a `"8086:8086"` para tener el puerto
+  # fijo en localhost, que es lo cómodo para desarrollo.
+  #
+  # No hay LOGISTICA_SHARDS_ASIGNADAS: todas las instancias escuchan la misma cola. El
+  # reparto en varias colas por hash existe y esta documentado en
+  # logisticas-service/src/main/resources/application.properties, pero apagado a proposito:
+  # compra orden por donacion a cambio de disponibilidad, y hoy ningun mensaje que llegue a
+  # logistica lleva una transicion de estado, asi que el orden no hace falta.
+  #   Las credenciales de la base viven en `logisticas-service/.env` (un `.env` por modulo, no
+  #   uno general en la raiz). El compose lo carga con `env_file`, asi que no hay que exportar
+  #   nada a mano ni quedan credenciales en claro aca. `application.properties` no tiene default:
+  #   sin ese archivo, el servicio no arranca.
+  #
+  #   Los otros tres modulos tambien cargan su `.env` con `env_file` y sacan de ahi sus
+  #   credenciales. La que estaba commiteada en el historial de git hay que rotarla en MySQL.
   logisticas-service:
-    build: ./logisticas-service
-    container_name: logisticas-service
+    build:
+      context: .
+      dockerfile: logisticas-service/Dockerfile
+    env_file:
+      - ./logisticas-service/.env
     ports:
-      - "8086:8086"
+      - "8086"
     environment:
       SERVER_PORT: 8086
       DB_URL: jdbc:mysql://mysql:3306/logisticas?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: valentin
-      DB_PASSWORD: "10032001"
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
@@ -148,3 +218,4 @@ services:
 volumes:
   mysql-data:
   rabbit-data:
+  n8n-data:

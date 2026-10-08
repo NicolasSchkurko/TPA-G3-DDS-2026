@@ -12,14 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * Una posición del ranking de un mes.
- *
- * <p>No tiene setters: una posición publicada no se edita. Si el ranking se regenera, se
- * borra el snapshot y se crea otro.
- *
- * <p>El nombre del donante está desnormalizado a propósito: el frontend pinta el podio y
- * no debería tener que cargar un {@code Perfil} entero, ni el perfil tiene que seguir
- * existiendo para que su puesto historical siga legible.
+ * Una posición del ranking de un mes. No se edita. El nombre del donante está desnormalizado
+ * para que el podio se lea sin cargar el perfil.
  */
 @Getter
 @Entity

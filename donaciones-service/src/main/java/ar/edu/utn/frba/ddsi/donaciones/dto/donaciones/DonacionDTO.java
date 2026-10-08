@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,8 @@ public class DonacionDTO {
   private String categoriaBienName;
   private LocalDate fechaEntrega;
   private Integer cantidadTotalBienes;
+  // Cascada de validación (punto 22): cada BienResumenDTO de la lista se valida también.
+  @Valid
   private List<BienResumenDTO> bienes;
 
   public Donacion toDomain() {

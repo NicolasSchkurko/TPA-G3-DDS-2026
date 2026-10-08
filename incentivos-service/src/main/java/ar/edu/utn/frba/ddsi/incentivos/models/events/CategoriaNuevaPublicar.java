@@ -3,15 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.models.events;
 import java.util.UUID;
 
 /**
- * El donante pasó a una categoría nueva.
- *
- * <p><b>No lleva el contacto resuelto</b> por la misma razón que {@link MisionCambiada}: se
- * resuelve en el listener, que corre en {@code AFTER_COMMIT} y por lo tanto fuera de la
- * transacción (punto 12). Antes se pedía dentro y la transacción retenía una conexión del
- * pool durante la llamada HTTP.
- *
- * <p>Por eso este record lleva {@code idUsuario}: el listener necesita poder consultar el
- * contacto de alguien.
+ * El donante pasó a una categoría nueva. No lleva el contacto: el listener lo resuelve en
+ * {@code AFTER_COMMIT} a partir del {@code idUsuario}.
  */
 public record CategoriaNuevaPublicar(String categoriaAnterior,
                                      String categoriaNueva,

@@ -15,27 +15,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Publica las notificaciones del donante en el broker.
- *
- * <p><b>Va por Rabbit y no por HTTP, y es lo que pide el enunciado.</b> Dice textualmente
- * que la integración con el servicio de notificaciones "deberá realizarse de forma asíncrona, a
- * través de una cola de mensajes, a fin de no afectar la disponibilidad del sistema ante picos
- * de carga o fallas transitorias".
- *
- * <p>Antes era un {@code restTemplate.postForEntity} dentro de un
- * {@code @TransactionalEventListener}, o sea **sincrónico y bloqueante**: si el servicio de
- * notificaciones tardaba o estaba caído, el hilo quedaba esperando y, como la llamada ocurre
- * en {@code AFTER_COMMIT}, la transacción ya estaba commiteada pero la excepción subía igual.
- * Con un pico de notificaciones, el servicio entero se caía por culpa del receptor.
- *
- * <p><b>Si el broker falla, la notificación queda en pendientes y el error sube.</b> Publicar
- * es barato y no debe romper la operación de dominio que la originó, pero perder el aviso
- * silenciosamente es peor: por eso se guarda en el buffer de pendientes antes de propagar
- * {@link EnvioNotificacionException}, que el llamador ya usa para saber que el aviso no salió.
- *
- * <p><b>El exchange lo declara este servicio</b> y notificaciones ata su cola a él. La frontera
- * va del lado del que publica, que es lo que evita que cada consumidor tenga que conocer el
- * nombre de las colas de los demás.
+ * Publica las notificaciones del donante en el broker, de forma asíncrona. Si el broker falla,
+ * la notificación queda en pendientes y se propaga {@link EnvioNotificacionException}.
  */
 @Slf4j
 @Service
@@ -54,10 +35,9 @@ public class NotificacionClient {
     }
 
     /**
-     * Publica la notificación en el exchange de notificaciones.
+     * Publica la notificación en el exchange.
      *
-     * @throws EnvioNotificacionException si el broker no acepta el mensaje; en ese caso la
-     *                                   notificación queda guardada como pendiente
+     * @throws EnvioNotificacionException si el broker no acepta el mensaje; queda pendiente
      */
     public void enviarNotificacion(PerfilNotificacionDTO dto) throws EnvioNotificacionException {
         try {

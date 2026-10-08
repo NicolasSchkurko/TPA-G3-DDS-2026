@@ -21,6 +21,11 @@ public class Camion {
     @Column(name = "patente", length = 20, nullable = false)
     private String patente;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "capacidad_volumen_m3", nullable = false)
     private Double capacidadVolumen;
 
@@ -66,13 +71,10 @@ public class Camion {
         this.ciudadDestinoActual = null;
     }
 
-    // Atributos de estado para la planificación (transitorios)
-
     public boolean puedeCargar(Double pesoKg, Double volumenM3) {
         return pesoKg <= capacidadCarga && volumenM3 <= capacidadVolumen;
     }
 
-    // Lógica expresiva para el planificador
     public boolean puedeCargar(ItemEntrega item) {
         return puedeCargar(this.pesoOcupado + item.getPesoEstimadoKg(),
                            this.volumenOcupado + item.getVolumenEstimadoM3());

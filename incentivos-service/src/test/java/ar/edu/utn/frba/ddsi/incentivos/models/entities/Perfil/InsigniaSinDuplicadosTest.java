@@ -11,22 +11,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * La misma misión en dos categorías no puede dar dos insignias (punto 28).
- *
- * <p>El seed pone la MISMA instancia de "Racha" como primera misión de Sostenedor y de
- * Transformador. Un donante la completa en una, cambia de categoría, arranca de cero para
- * la misma {@code idMision} y en la donación siguiente el historial completo hace que la
- * racha vuelva a estar completa: se otorgaba la misma insignia dos veces, con segunda
- * notificación y segunda publicación en n8n.
- */
 @DisplayName("Insignias: la misma no se otorga dos veces")
 class InsigniaSinDuplicadosTest {
 
@@ -35,7 +26,7 @@ class InsigniaSinDuplicadosTest {
 
     /** Misión con constancia de 1 mes, como la "Racha" del seed. */
     private static Mision racha() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,

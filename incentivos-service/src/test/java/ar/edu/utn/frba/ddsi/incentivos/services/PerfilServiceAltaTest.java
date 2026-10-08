@@ -16,6 +16,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -29,21 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * El alta de un donante (punto 25).
- *
- * <p>El bug que cubre este archivo no se puede reproducir con mocks: necesita que
- * {@code Categoria.categoriaMisiones} sea de verdad LAZY, y para eso hace falta una sesión
- * de Hibernate y una base. Los tests unitarios no llegan ahí. Por eso la mitad de este
- * archivo son tests de contrato: comprueban que el {@code @Transactional} y el
- * {@code fetch join} estén puestos, que es exactamente lo que faltaba cuando el bug
- * existía.
- *
- * <p>Lo que sí se puede probar de verdad es el efecto observable: un donante nuevo tiene
- * que salir con misión, y no con {@code null}.
- */
 @DisplayName("Punto 25: crearPerfil arma al donante con su primera misión")
 class PerfilServiceAltaTest {
 
@@ -53,7 +40,8 @@ class PerfilServiceAltaTest {
             repoPerfiles,
             repoCategorias,
             mock(RepositorioDonaciones.class),
-            mock(TransactionTemplate.class)
+            mock(TransactionTemplate.class),
+            mock(ValidadorAdmin.class)
     );
 
     private static Categoria categoriaCon(String... nombresMision) {
@@ -136,7 +124,7 @@ class PerfilServiceAltaTest {
         @Test
         @DisplayName("un donante que ya tiene perfil no se duplica")
         void unDonanteConPerfilNoSeDuplica() {
-            when(repoPerfiles.existsByIdUsuario(any())).thenReturn(true);
+            when(repoPerfiles.existsById(any())).thenReturn(true);
 
             assertThatThrownBy(() -> service.crearPerfil(dto()))
                     .isInstanceOf(PerfilExistenteException.class);
@@ -184,9 +172,7 @@ class PerfilServiceAltaTest {
         @Test
         @DisplayName("iniciarEn es quien deja la categoría y la misión, no el service")
         void iniciarEnArmaElEstadoInicial() throws Exception {
-            // El punto 23 sacó los setters, así que el service no puede armar el estado a
-            // mano: si alguien mete un setter de vuelta, este test sigue pasandose pero el
-            // de arriba no. Por eso se chequea que el metodo exista y sea el que se usa.
+            // El punto 23 sacó los setters: iniciarEn es el que arma el estado inicial.
             Method metodo = Perfil.class.getMethod("iniciarEn", Categoria.class);
 
             assertThat(metodo).isNotNull();

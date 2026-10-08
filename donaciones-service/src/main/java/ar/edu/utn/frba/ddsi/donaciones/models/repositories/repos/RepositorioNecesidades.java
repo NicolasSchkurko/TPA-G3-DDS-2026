@@ -74,12 +74,21 @@ public class RepositorioNecesidades {
     Necesidad existente = buscarPorId(idOriginal)
             .orElseThrow(() -> new IllegalArgumentException("No se encontró la entidad con ID: " + idOriginal));
 
+    // Antes se chequeaba el tipo de datosNuevos pero se casteaba existente: si el PUT cambiaba
+    // de EXTRAORDINARIA a RECURRENTE (o al revés), el cast explícito tiraba ClassCastException
+    // (500). Ahora se rechaza el cambio de tipo con un 400 explícito.
+    if (!existente.getClass().equals(datosNuevos.getClass())) {
+      throw new IllegalArgumentException(
+              "No se puede cambiar el tipo de una necesidad existente (" +
+              existente.getClass().getSimpleName() + " -> " + datosNuevos.getClass().getSimpleName() + ")");
+    }
+
     existente.setCantidadObjetivo(datosNuevos.getCantidadObjetivo());
     existente.setDescripcion(datosNuevos.getDescripcion());
     existente.setSubcategoria(datosNuevos.getSubcategoria());
 
-    if (datosNuevos instanceof NecesidadRecurrente) {
-      ((NecesidadRecurrente) existente).setPlazoEnDias(((NecesidadRecurrente) datosNuevos).getPlazoEnDias());
+    if (existente instanceof NecesidadRecurrente existenteRecurrente) {
+      existenteRecurrente.setPlazoEnDias(((NecesidadRecurrente) datosNuevos).getPlazoEnDias());
     }
 
     try {

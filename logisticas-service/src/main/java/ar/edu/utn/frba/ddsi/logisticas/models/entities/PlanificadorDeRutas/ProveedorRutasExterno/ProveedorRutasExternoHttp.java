@@ -4,6 +4,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,6 +17,8 @@ import java.util.Map;
 
 public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
 
+  private static final Logger log = LoggerFactory.getLogger(ProveedorRutasExternoHttp.class);
+
   private final HttpClient httpClient;
   private final String urlApiExterna;
   private final ObjectMapper objectMapper;
@@ -22,20 +26,17 @@ public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
   public ProveedorRutasExternoHttp(String urlApiExterna) {
     this.httpClient = HttpClient.newHttpClient();
     this.urlApiExterna = urlApiExterna;
-    this.objectMapper = new ObjectMapper(); // Instanciamos el serializador JSON
+    this.objectMapper = new ObjectMapper();
   }
 
   @Override
   public void solicitarPlanificacion(List<ItemEntrega> lote, List<Camion> camionesDisponibles) {
     try {
-      Map<String, Object> payloadData = new HashMap<>();
-      payloadData.put("donaciones", lote);
-      payloadData.put("camiones", camionesDisponibles);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("donaciones", lote);
+      payload.put("camiones", camionesDisponibles);
 
-      String jsonPayload = objectMapper.writeValueAsString(payloadData);
-
-      System.out.println("JSON ENVIADO AL PROVEEDOR:");
-      System.out.println(jsonPayload);
+      String jsonPayload = objectMapper.writeValueAsString(payload);
 
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(urlApiExterna))
@@ -46,14 +47,15 @@ public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
       httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
                   if (response.statusCode() >= 400) {
-                    System.err.println("Error al contactar al proveedor externo: " + response.body());
+                    log.error("El proveedor externo rechazó el lote ({}): {}",
+                            response.statusCode(), response.body());
                   } else {
-                    System.out.println("Lote enviado al proveedor externo exitosamente.");
+                    log.info("Lote enviado al proveedor externo");
                   }
                 });
 
     } catch (Exception e) {
-      System.err.println("Excepción al intentar llamar a la API externa de ruteo: " + e.getMessage());
+      log.error("No se pudo contactar la API externa de ruteo", e);
     }
   }
 }

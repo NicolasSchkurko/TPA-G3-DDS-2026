@@ -9,20 +9,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * Editar una misión (punto 15) y el texto propio de la insignia objetivo (punto 24).
- */
 @DisplayName("Mision.actualizar")
 class MisionActualizarTest {
 
-    /**
-     * La misión con su nombre, su texto y los datos de la insignia.
-     *
-     * <p>{@code insigniaDescripcion} es el texto **de la insignia** y va aparte de
-     * {@code descripcion}, que es el de la misión. El que se separan es todo el punto 24:
-     * antes el constructor no recibía ninguno de los dos y rellenaba el de la insignia con
-     * el nombre de la misión, así que no había forma de tener un texto propio.
-     */
+    /** La misión con su nombre, su texto y los datos propios de la insignia. */
     private Mision mision(String nombre, String descripcion,
                          String insigniaNombre, String insigniaDescripcion,
                          Integer objetivo) {

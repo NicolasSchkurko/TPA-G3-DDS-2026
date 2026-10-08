@@ -22,6 +22,11 @@ public class UnidadDeMedida {
     @Column(name = "id_unidad", nullable = false, updatable = false)
     private UUID idUnidad;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "nombre", nullable = false)
     private String nombre;
 

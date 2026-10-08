@@ -27,13 +27,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * El avance de <b>un</b> donante en <b>una</b> misión.
- *
- * <p>Es el agregado del avance: todo lo que la regla necesita recordar del donante vive
- * acá y en ningún otro lado. Antes, las operaciones que tenían que recordar qué valores
- * había visto el donante (como {@code ValoresDistintos}) guardaban esa lista en la
- * entidad de la misión, que es compartida por todos los que la hacen, y por eso la
- * misión se completaba antes de tiempo para todos.
+ * El avance de un donante en una misión: todo lo que la regla necesita recordar del donante
+ * vive acá y no en la misión compartida.
  */
 @Entity
 @Getter
@@ -50,16 +45,8 @@ public class ProgresoMision implements ProgresoDelDonante {
     private Integer progreso;
 
     /**
-     * Valores del atributo de la regla que este donante ya vio. Los necesitan las reglas
-     * del tipo "N valores distintos".
-     *
-     * <p>Es un {@code Set} a propósito: que el mismo valor no cuente dos veces lo
-     * garantiza el tipo. La restricción única sobre {@code (progreso_mision_id, valor)}
-     * también lo garantiza a nivel base de datos.
-     *
-     * <p>Es {@code LAZY} por defecto. Todos sus usos corren dentro de transacciones
-     * ({@code calcularProgreso}, {@code estaCompleta} y {@code evaluarConstancia}), así
-     * que no hay riesgo de LazyInitializationException.
+     * Valores del atributo que este donante ya vio, para las reglas del tipo "N valores
+     * distintos". Es un {@code Set} para que el mismo valor no cuente dos veces.
      */
     @ElementCollection
     @CollectionTable(
@@ -76,10 +63,7 @@ public class ProgresoMision implements ProgresoDelDonante {
         this.progreso = 0;
     }
 
-    /**
-     * {@code Set.add} devuelve {@code true} solo si el valor era nuevo, que es justo
-     * lo que promete este método.
-     */
+    /** {@code Set.add} devuelve {@code true} solo si el valor era nuevo. */
     @Override
     public boolean registrarValorObservado(String valor) {
         return valoresObservados.add(valor);
@@ -96,23 +80,9 @@ public class ProgresoMision implements ProgresoDelDonante {
     }
 
     /**
-     * Calcula la racha de una misión con constancia.
-     *
-     * <p><b>La racha se cuenta en meses calendario, no en donaciones</b> (punto 26). Antes
-     * la única condición era "esta donación no tiene más de {@code cantidad} unidades de
-     * antigüedad que la anterior", o sea que {@code cantidad} se usaba como margen en
-     * días. Con la misión "Realiza 1 donación durante 3 meses consecutivos"
-     * ({@code constancia = (1, MONTHS)}), tres donaciones en tres días consecutivos
-     * completaban la misión de tres meses.
-     *
-     * <p>Ahora se cuentan los meses calendario consecutivos hacia atrás desde el mes de la
-     * última donación: dos donaciones en el mismo mes cuentan una sola vez, y un mes sin
-     * donate cierra la racha ahí.
-     *
-     * <p>La {@code cantidad} y la {@code unidadTiempo} siguen teniendo un papel: definen
-     * cuánto puede pasar desde la última donación antes de que la racha caduque. Con
-     * {@code (1, MONTHS)} el donante tiene que donar al menos una vez por mes, que es
-     * justamente lo que dice el enunciado de la misión.
+     * Calcula la racha de una misión con constancia contando meses calendario consecutivos
+     * hacia atrás desde la última donación. {@code cantidad} y {@code unidadTiempo} definen
+     * cuánto puede pasar antes de que la racha caduque.
      */
     public void evaluarConstancia(List<ImpactoDonacion> donaciones,
                                    LocalDateTime fechaEvaluacion) {
@@ -125,8 +95,7 @@ public class ProgresoMision implements ProgresoDelDonante {
             return;
         }
 
-        // Para la racha solo cuentan las donaciones que hicieron progresar esta mision, y en
-        // orden de fecha porque la cuenta de meses va hacia atras.
+        // Solo cuentan las donaciones que hicieron progresar la misión, en orden de fecha.
         List<ImpactoDonacion> donacionesQueProgresaron = donaciones.stream()
                 .filter(d -> Boolean.TRUE.equals(d.getHizoProgresarMision()))
                 .sorted(Comparator.comparing(ImpactoDonacion::getFechaEntrega))
@@ -139,7 +108,7 @@ public class ProgresoMision implements ProgresoDelDonante {
 
         ImpactoDonacion ultima = donacionesQueProgresaron.get(donacionesQueProgresaron.size() - 1);
         LocalDateTime limite = ultima.getFechaEntrega()
-                .plus(constancia.getCantidad(), constancia.getUnidadTiempo());
+                .plus(constancia.getCantidad(), constancia.getUnidadTiempo().comoChronoUnit());
 
         if (fechaEvaluacion.isAfter(limite)) {
             // La racha caduco: el donante arranca de cero.
@@ -147,9 +116,7 @@ public class ProgresoMision implements ProgresoDelDonante {
             return;
         }
 
-        // Cuenta meses calendario consecutivos hacia atras desde el mes de la ultima
-        // donacion. El recorrido es del mes mas nuevo al mas viejo, asi que mesPrevio
-        // es SIEMPRE posterior a mes.
+        // Recorrido del mes más nuevo al más viejo: mesPrevio es siempre posterior.
         YearMonth mesPrevio = null;
         int mesesConsecutivos = 0;
 
@@ -174,23 +141,14 @@ public class ProgresoMision implements ProgresoDelDonante {
         progreso = mesesConsecutivos;
     }
 
-    /**
-     * Si el avance acumulado cumple el objetivo de la misión.
-     *
-     * <p>Además de consultar, esto recalcula la constancia: la racha de meses depende de
-     * las donaciones, así que no se puede responder solo mirando el contador guardado.
-     */
+    /** Si el avance acumulado cumple el objetivo de la misión. */
     public boolean estaCompleta() {
         return mision.getReglaDeProgreso().estaCompleta(progreso, this);
     }
 
     /**
-     * Aplica la regla de la misión a una donación y deja el resultado registrado en la
-     * propia donación.
-     *
-     * <p>Se registra en la fila y no solo en el contador del donante porque hace falta
-     * después: al reconstruir una racha, la constancia cuenta solo las donaciones que
-     * efectivamente movieron el avance (punto 26).
+     * Aplica la regla a una donación y registra el resultado en la propia donación, que la
+     * constancia necesita después para reconstruir la racha.
      *
      * @return si esta donación hizo progresar la misión.
      */
@@ -205,11 +163,8 @@ public class ProgresoMision implements ProgresoDelDonante {
 
     /**
      * Aplica una donación al avance y devuelve la insignia si con esto se completó la
-     * misión.
-     *
-     * <p>El avance va por dos caminos distintos según la regla. Con constancia lo decide
-     * {@link #evaluarConstancia}, que cuenta meses calendario y no donations; sin ella, un
-     * avance por donation.
+     * misión. Con constancia el avance lo decide {@link #evaluarConstancia}; sin ella, uno
+     * por donación.
      *
      * @return la insignia a otorgar, o {@code null} si la misión sigue sin completarse.
      */
@@ -233,9 +188,8 @@ public class ProgresoMision implements ProgresoDelDonante {
     }
 
     /**
-     * Deja el avance en cero: contador y valores observados. Se usa cuando la racha se
-     * rompe y también cuando el admin cambia el criterio de la misión (punto 15), así que
-     * las dos cosas tienen que caer juntas o el avance queda a medias.
+     * Deja el avance en cero: contador y valores observados, juntos para no dejar el avance
+     * a medias.
      */
     public void reiniciarProgreso() {
         progreso = 0;

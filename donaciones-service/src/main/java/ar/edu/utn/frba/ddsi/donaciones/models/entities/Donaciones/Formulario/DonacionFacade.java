@@ -20,7 +20,10 @@ public class DonacionFacade {
     }
 
     public List<Donacion> crearDonaciones(Formulario formulario){
-        List<Donacion> donaciones = segmentador.segmentar(formulario.getDonante(), formulario.getDonaciones());
+        // La fecha de realización del formulario es la fechaEntrega de cada donación
+        // (punto 10 de PENDIENTES.md): sin ella el reporte a incentivos sale nulo.
+        List<Donacion> donaciones = segmentador.segmentar(
+                formulario.getDonante(), formulario.getDonaciones(), formulario.getFechaRealizacion());
         for (Donacion donacion : donaciones) {
             if (donacion.getEstado() == null) {
                 donacion.actualizarEstado(Estado.EN_DEPOSITO, "Ingreso por segmentación de formulario");

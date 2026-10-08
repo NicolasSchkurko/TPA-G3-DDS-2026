@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @RestController
 @Tag(name = "Servicio de entidades beneficiarias", description = "Endpoints para operaciones CRUD de Entidades beneficiarias y la administracion de sus necesidades")
-@RequestMapping("/entidades")
+@RequestMapping("/api/entidades")
 public class EntidadBeneficiariaController {
 
     private final EntidadBeneficiariaService service;
@@ -105,7 +105,7 @@ public class EntidadBeneficiariaController {
     @PutMapping("/{id}/necesidades/{idNecesidad}")
     public ResponseEntity<?> actualizarNecesidad(@PathVariable UUID id, @PathVariable UUID idNecesidad, @RequestBody NecesidadDTO dto) {
         try {
-            NecesidadDTO actualizada = service.actualizarNecesidad(idNecesidad, dto);
+            NecesidadDTO actualizada = service.actualizarNecesidad(id, idNecesidad, dto);
             return ResponseEntity.ok(actualizada);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

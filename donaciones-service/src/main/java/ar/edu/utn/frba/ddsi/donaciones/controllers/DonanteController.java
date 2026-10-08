@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.ReporteImportacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -17,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/personas") //legacy, deberiamos cambiarlo a donantes
+@RequestMapping("/api/personas") //legacy, deberiamos cambiarlo a donantes
 public class DonanteController {
 
   private final DonanteService donanteService;
@@ -89,7 +90,7 @@ public class DonanteController {
 
   @Operation(summary = "Importar donantes desde CSV")
   @PostMapping("/importar")
-  public ResponseEntity<String> importarDonanteCSV(
+  public ResponseEntity<?> importarDonanteCSV(
       @RequestPart("file") MultipartFile file,
       @RequestParam("mapeos") String mapeosDtoJson) {
     try {
@@ -101,11 +102,19 @@ public class DonanteController {
           mapeosDtoJson,
           new TypeReference<List<MapeoCSV>>() {}
       );
-      String mensaje = donanteService.importarDonantes(file, mapeosDominio);
-      return ResponseEntity.status(HttpStatus.ACCEPTED).body(mensaje);
+      UUID importId = donanteService.importarDonantes(file, mapeosDominio);
+      // El id se consulta en GET /personas/importar/{importId} para ver cuántos entraron,
+      // cuántos fallaron y por qué: antes el 202 no decía nada más.
+      return ResponseEntity.status(HttpStatus.ACCEPTED).body(importId);
     } catch (RuntimeException | JsonProcessingException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
+  }
+
+  @Operation(summary = "Ver el estado/reporte de una importación de donantes por CSV")
+  @GetMapping("/importar/{importId}")
+  public ResponseEntity<ReporteImportacionDTO> obtenerReporteImportacion(@PathVariable UUID importId) {
+    return ResponseEntity.ok(donanteService.obtenerReporteImportacion(importId));
   }
 
   // --- ENDPOINTS DE MEDIOS DE CONTACTO ---

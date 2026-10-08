@@ -54,21 +54,30 @@ public class GestorEventosLogistica {
   }
 
   private void manejarInicioRuta(EventoLogisticaDTO evento) {
+    if (evento.getPayloadJson() == null || evento.getPayloadJson().isEmpty()) {
+      System.err.println("Evento INICIO_RUTA " + evento.getId() + " sin payload, se ignora.");
+      return;
+    }
+
+    PayloadInicioRutaDTO payload;
     try {
-      if (evento.getPayloadJson() == null || evento.getPayloadJson().isEmpty()) {
-        System.err.println("Evento INICIO_RUTA " + evento.getId() + " sin payload, se ignora.");
-        return;
-      }
+      payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+    } catch (Exception e) {
+      System.err.println("Error parseando payload de la ruta " + evento.getId() + ": " + e.getMessage());
+      return;
+    }
 
-      PayloadInicioRutaDTO payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+    if (payload.getItems() == null) {
+      return;
+    }
 
-      if (payload.getItems() == null) {
-        return;
-      }
+    EstrategiaNotificacion estrategiaViaje = fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.DONACION_EN_VIAJE);
 
-      EstrategiaNotificacion estrategiaViaje = fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.DONACION_EN_VIAJE);
-
-      for (String idTexto : payload.getItems()) {
+    // Try/catch DENTRO del loop: antes envolvía todo el for, así que un solo item con un UUID
+    // malformado o una donación sin entidad/donante asignado (NPE al armar la notificación)
+    // abortaba el procesamiento del resto de los items de ESTE evento INICIO_RUTA.
+    for (String idTexto : payload.getItems()) {
+      try {
         UUID idDonacion = UUID.fromString(idTexto);
         repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
           donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
@@ -79,9 +88,9 @@ public class GestorEventosLogistica {
               donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
           ));
         });
+      } catch (Exception e) {
+        System.err.println("Error procesando item '" + idTexto + "' de la ruta " + evento.getId() + ": " + e.getMessage());
       }
-    } catch (Exception e) {
-      System.err.println("Error parseando items de la ruta: " + e.getMessage());
     }
   }
 

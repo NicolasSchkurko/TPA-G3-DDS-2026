@@ -27,6 +27,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!--
+            Bean Validation. Sin esto las anotaciones @NotBlank del DTO no se procesan: el
+            modulo recibia el body tal cual y un campo faltante reventaba recien en el INSERT,
+            con un 500 de MySQL en vez de un 400 (puntos 8 y 14 de PENDIENTES.md).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
         
         <dependency>
             <groupId>org.projectlombok</groupId>

@@ -17,15 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * El ranking de un mes, ya publicado.
- *
- * <p>Es un snapshot y no una consulta: una vez generado no se recalcula. Si mañana cambia
- * el criterio de las misiones, el ranking de marzo sigue mostrando lo que pasó en marzo.
- *
- * <p>No tiene setters. El período se fija al construir y las posiciones se agregan con
- * {@link #agregarPosicion}; con setters abiertos se podía cambiar el {@code periodo} de un
- * ranking ya publicado, y como {@code periodo} es {@code unique} eso además reventaba por
- * FK o por restricción.
+ * El ranking de un mes ya publicado. Es un snapshot: una vez generado no se recalcula. No
+ * tiene setters; el período se fija al construir.
  */
 @Getter
 @Entity
@@ -47,24 +40,13 @@ public class RankingMensual {
         this.periodo = periodo;
     }
 
-    /**
-     * Agrega una fila al podio y la enlaza con este ranking.
-     *
-     * <p>Es el único camino para sumar posiciones: {@link #calcularYAgregarPosiciones} lo
-     * usa para todas, así que el {@code mappedBy} de la lista nunca queda apuntando al
-     * revés.
-     */
+    /** Agrega una fila al podio y la enlaza con este ranking. */
     public void agregarPosicion(Ranking ranking) {
         this.posiciones.add(ranking);
     }
 
     /**
-     * Traduce el resultado de la consulta de ranking en posiciones.
-     *
-     * <p>La consulta viene ordenada por puntaje descendente, así que el puesto se deduce
-     * del lugar en que aparece cada fila. Los empates comparten puesto: si dos filas
-     * seguidas tienen el mismo total, la segunda no avanza el número, como en
-     * cualquier tabla de posiciones.
+     * Traduce el resultado de la consulta en posiciones. Los empates comparten puesto.
      *
      * @param topPerfiles filas de {@code [Perfil, total]}, ya ordenadas por total
      *                    descendente.

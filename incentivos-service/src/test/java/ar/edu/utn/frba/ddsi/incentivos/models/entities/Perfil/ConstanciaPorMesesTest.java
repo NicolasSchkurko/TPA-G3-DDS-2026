@@ -10,21 +10,12 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * La racha tiene que contar MESES calendario consecutivos, no donaciones (punto 26).
- *
- * <p>La misión semilla "Racha" dice *"Realiza 1 donación durante 3 meses consecutivos"*
- * con {@code constancia = (1, MONTHS)} y {@code COINCIDENCIAS(3, "ENTREGADA")}. Antes la
- * única condición era que cada donación no tuviera más de un mes de antigüedad respecto de
- * la anterior, así que tres PATCH en tres días consecutivos completaban la misión de tres
- * meses.
- */
 @DisplayName("Constancia: la racha se cuenta en meses, no en donaciones")
 class ConstanciaPorMesesTest {
 
@@ -32,7 +23,7 @@ class ConstanciaPorMesesTest {
 
     /** La misión "Racha" del enunciado: 1 donación durante 3 meses consecutivos. */
     private static ProgresoMision rachaDeTresMeses() {
-        ReglaConstancia constancia = new ReglaConstancia(1, ChronoUnit.MONTHS);
+        ReglaConstancia constancia = new ReglaConstancia(1, UnidadTiempo.MONTHS);
         Regla regla = new Regla(
                 constancia,
                 AtributoImpacto.ESTADO,

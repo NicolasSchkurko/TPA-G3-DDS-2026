@@ -29,10 +29,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de administración de misiones: listar, crear, editar y borrar.
- *
- * <p>Los cambios de una misión tienen efectos distintos según qué se toque: editar el
- * nombre no le borra el avance a nadie, pero cambiar el criterio de completado sí (punto 15).
+ * Endpoints de administración de misiones. Editar el nombre no borra el avance de nadie;
+ * cambiar el criterio de completado sí.
  */
 @RestController
 @RequestMapping("/api/misiones")

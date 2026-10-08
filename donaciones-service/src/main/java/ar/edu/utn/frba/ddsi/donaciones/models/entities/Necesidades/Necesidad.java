@@ -60,6 +60,14 @@ public abstract class Necesidad {
                          .sum();
     }
 
+    // Misma noción de "cuánto falta" que usa estaSatisfecha(): por defecto, contra el
+    // histórico. NecesidadRecurrente la redefine contra cantidadRecibidaEnPeriodo(), para que
+    // CompatibilidadSemantica no la mida contra una columna distinta de la que decide
+    // esCompatibleCon().
+    public Integer cantidadFaltante() {
+        return cantidadObjetivo - cantidadRecibida();
+    }
+
     public abstract boolean estaSatisfecha();
 
     public boolean esCompatibleCon(Donacion donacion) {

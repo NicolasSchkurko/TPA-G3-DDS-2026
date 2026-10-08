@@ -46,7 +46,15 @@ public class AsignadorDonaciones {
         if (todasLasDonaciones == null || todasLasEntidades == null) {
             return;
         }
-        todasLasDonaciones.forEach(donacion -> procesarMatchmaking(donacion, todasLasEntidades));
+        // Aislado por donación: si una falla (p.ej. un resultado de matchmaking duplicado), el
+        // resto del lote tiene que seguir procesándose en vez de abortar el batch entero.
+        for (Donacion donacion : todasLasDonaciones) {
+            try {
+                procesarMatchmaking(donacion, todasLasEntidades);
+            } catch (Exception e) {
+                System.err.println("Error al procesar matchmaking para la donación " + donacion.getId() + ": " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -166,9 +174,12 @@ public class AsignadorDonaciones {
             List<PropuestaAsignacion> resultadoFinal,
             boolean huboCoincidenciaTotal) {
         System.out.println("propuestas:" + resultadoFinal);
-        //donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
-        gestorAsignaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
 
+        // Guardar el resultado PRIMERO: si ya existe uno para esta donación (guardar() tira
+        // IllegalArgumentException), el estado no debe cambiar a PENDIENTE_ASIGNACION. Con el
+        // orden inverso, una donación podía quedar en PENDIENTE_ASIGNACION sin
+        // ResultadoMatchmaking y, como buscarDonacionesSinAsignar() sólo trae EN_DEPOSITO, el
+        // scheduler nunca la volvía a recoger.
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
                 donacion,
                 resultadoFinal,
@@ -176,5 +187,7 @@ public class AsignadorDonaciones {
         );
 
         repositorioDeResultadosMatchmaking.guardar(resultado);
+
+        gestorAsignaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
     }
 }

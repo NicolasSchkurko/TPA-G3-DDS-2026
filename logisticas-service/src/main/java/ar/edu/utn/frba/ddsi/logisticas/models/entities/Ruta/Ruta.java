@@ -25,6 +25,11 @@ public class Ruta {
     @Column(name = "id_ruta", nullable = false, updatable = false)
     private UUID idRuta;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne
     @JoinColumn(name = "patente_camion", referencedColumnName = "patente", nullable = false)
     private Camion camionAsignado;
@@ -48,7 +53,6 @@ public class Ruta {
         this.paradas = new ArrayList<>();
     }
 
-    // Agrupa por entidad: si ya hay una Parada para esa entidad en esta ruta, se agrega al listado
     public void agregarEntrega(ItemEntrega item) {
         paradas.stream()
                 .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
@@ -63,7 +67,6 @@ public class Ruta {
                 );
     }
 
-    // Todos los items que lleva el camión en esta ruta, sin importar en qué parada van.
     public List<ItemEntrega> obtenerTodosLosItems() {
         return paradas.stream()
                       .flatMap(p -> p.getItems().stream())

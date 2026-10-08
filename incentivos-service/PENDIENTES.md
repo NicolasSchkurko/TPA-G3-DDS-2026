@@ -12,20 +12,17 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 5 | La integración está rota: el servicio no recibe las donaciones |
-| 2 | 1 | Cualquiera que conozca un UUID de admin puede crear, editar y borrar misiones |
-| 4 | 10 | El ranking no cuenta lo que el modelo dice que cuenta |
-| 5 | 6 | Regla de prevención para no introducir `LazyInitializationException` |
-| 6 | 23 | Higiene: código muerto, logs, encapsulación |
-| 7 | 4 | `common-lib` es código muerto |
-| 8 | 9 | No es un faltante: es una decisión de arquitectura |
-| 9 | 37 | La config de Checkstyle vive solo en `.idea/` y no se comparte |
-| 10 | 38 | Incentivos no publica por Rabbit y hoy no llega ninguna notificación a nadie |
+| 1 | 1 | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
+| 2 | 10 | Decidir si el ranking cuenta insignias o misiones, como pide el enunciado |
+| 3 | 23 | Quedan decisiones de identidad y ampliar la cobertura de persistencia JPA |
+| 4 | 37 | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 5 | 6 | Vigilancia: mantener las lecturas de relaciones lazy dentro de transacciones |
 
-Quedan nueve abiertos y uno a medias, que ya no son los mismos del principio. **Tres de los
-que quedan son decisiones, no faltantes**: el 1 (autorización por header), el 9 (logística no
-integrada) y el 10 (el ranking cuenta insignias). Los tres están anotados como aceptados a
-propósito, y cerrarlos o no es una decisión del equipo, no una deuda técnica.
+Los puntos 1 y 10 requieren decisiones del equipo: el primero necesita acordar una identidad
+compartida entre servicios; el segundo conserva, por ahora, la decisión documentada de contar
+insignias. El punto 9 también es una decisión de arquitectura ya documentada, no un faltante.
+El punto 4 ya está corregido porque `common-lib` fue eliminado del repositorio. La vigilancia
+del punto 6 sigue aplicando al agregar endpoints.
 
 Los cerrados se agruparon en tandas porque se corrigieron juntos:
 
@@ -40,21 +37,15 @@ Los cerrados se agruparon en tandas porque se corrigieron juntos:
 
 El detalle de cada fix está en [Corregidos](#corregidos), un ítem por corrección.
 
-El punto 23 no aparece en la tabla porque está en la sección de su propio detalle más abajo, y
-tampoco cuenta como "abierto a medias": su parte grande se hizo y lo que queda son tres cosas
-anotadas.
+El punto 23 aparece en la tabla porque quedan decisiones de identidad y ampliar la cobertura
+de persistencia JPA. La llamada HTTP a n8n dentro de la transacción, el enum JDK persistido
+como dominio y la falta total de pruebas JPA ya fueron atendidos; se detallan en su sección.
 
 El punto 35 (los "pendientes" en memoria dicen deduplicar y no deduplican) **ya no es un punto
 aparte**: quedó absorbido por el
-[anexo del punto 3](#punto-anexo-los-buffers-pendientes-en-memoria-absorbe-el-ex-punto-35), que
-es el código que hay que tocar para arreglarlo.
-
-**Por qué se absorbió y no se cerró.** No es que el 35 quede resuelto por el 3: el buffer de
-**notificaciones** sí desaparece con la cola, pero el de **publicaciones de n8n** sigue igual,
-porque el requisito de asincronía del enunciado no cubre esa integración. Dejarlo como punto
-propio daba la falsa impresión de que cerrando el 3 se cerraba también el 35, y el bug quedaba
-sin dueño. El anexo deja escrito cuál de las dos mitades se va con la cola y cuál no, y que la
-de n8n necesita la tabla de outbox.
+[anexo del punto 3](#punto-anexo-los-buffers-pendientes-en-memoria-absorbe-el-ex-punto-35).
+La parte de notificaciones se resolvió con RabbitMQ y las publicaciones a n8n ahora usan una
+outbox persistente con reclamos exclusivos y reintentos.
 
 ---
 
@@ -189,18 +180,15 @@ el de `paginaInsigniasPorIdUsuario`, pero un endpoint nuevo que mapee un perfil 
 camino va a necesitar el suyo.
 ---
 
-## 4. `common-lib` está en el repositorio pero no en el build
+## 4. `common-lib` estaba en el repositorio pero no en el build
 
-**Estado:** abierto
-**Archivos:** `common-lib/`, `pom.xml`
+**Estado:** corregido
+**Archivos:** `pom.xml`
 
-La carpeta `common-lib/` existe (con un `target/` old y clases de `Persona` y
-`Saludador`) pero **no está declarada en `<modules>`** del POM padre ni la referencia
-ningún servicio, así que no se compila ni se distribuye. Es código muerto.
+`common-lib/` ya no existe en el repositorio y tampoco está declarado como módulo ni es
+referenciado por los servicios. El código muerto quedó eliminado; no hace falta incorporarlo
+al build.
 
-**Propuesta:** o se declara el módulo y se adopta realmente como librería compartida de
-los contratos entre servicios, o se borra. Decidirlo antes de seguir acumulando clases
-sueltas ahí.
 ---
 
 ## 9. Logística no se integra de forma directa: es decisión de arquitectura
@@ -237,68 +225,25 @@ no hace falta un cliente propio: la información llega, sólo que por un salto.
 
 **Estado:** abierto
 **Severidad:** baja
-**Archivos:** `incentivos-service/config/checkstyle/checkstyle.xml`, `pom.xml`,
-`gen-checkstyle.ps1`, `run-checkstyle.ps1`
+**Archivos:** `incentivos-service/config/checkstyle/checkstyle.xml`, `pom.xml`
 
-> El título de este punto decía antes que la config "vive solo en `.idea/`", y ya no es cierto:
-> está en `incentivos-service/config/checkstyle/checkstyle.xml`, versionada. Lo que no existe es
-> que el build la ejecute, que es lo que queda abajo.
-
-La config que se armó para el punto 23 está en el repo, pero **nada la ejecuta en el build**. El
-`pom.xml` no tiene el plugin de Checkstyle de Maven, así que `mvn test` no corre ninguna de las
-reglas. Lo único que las aplica es `run-checkstyle.ps1` en la raíz del repo, que corre **la misma
-configuración** con el jar de Checkstyle que ya trae el plugin de IntelliJ.
+La configuración que se armó para el punto 23 está versionada. El `pom.xml` tiene un perfil
+optativo `checkstyle`, que aplica esa configuración en la fase `verify`; el build habitual no lo
+activa y no necesita descargar Checkstyle.
 
 Eso tiene dos consecuencias:
 
-1. Quien clone el repo y ejecute `mvn test` no recibe ninguna señal de estilo. Solo lo ve
-   quien abre el proyecto en IntelliJ con el plugin instalado.
-2. Todo lo que el plugin de IntelliJ marca como `Warning` aparece en el panel de Problems
+1. Quien clone el repo y ejecute `mvn test` no ejecuta las reglas de estilo; para aplicarlas
+   debe correr `mvn -Pcheckstyle -pl incentivos-service -am verify` con acceso a Maven Central.
+2. Todo lo que la inspección de IntelliJ marca como `Warning` aparece en el panel de Problems
    junto a las inspecciones propias del IDE, y el panel no distingue de dónde salió cada
    cosa. Por eso el número que se ve no es comparable con el que da la config por separado.
 
-**Se probó agregar el plugin de Maven al `pom.xml` y no va.** Rompe `mvn verify` en una
-máquina sin internet: además de `maven-reporting`, `doxia` y `plexus`, el plugin necesita
-`com.puppycrawl:checkstyle`, y ninguno de esos artifacts está en el `.m2` local. Un build
-que falla por una dependencia que no se puede bajar es peor que un build que no valida
-estilo, así que el `pom.xml` quedó sin el plugin y con un comentario que explica por qué.
+El perfil es optativo para que una compilación offline normal no falle al intentar descargar el
+plugin y sus dependencias. Para ejecutarlo, la máquina necesita acceso a Maven Central:
 
-Lo que sí quedó es `run-checkstyle.ps1` en la raíz del repo, que corre **la misma
-configuración** con el jar de Checkstyle que ya trae el plugin de IntelliJ. No necesita Maven
-ni internet:
-
-```powershell
-.\run-checkstyle.ps1
-```
-
-Por dentro el script arma el classpath con los jars de
-`%APPDATA%\JetBrains\<versión>\plugins\checkstyle-idea\checkstyle\lib`. O sea que depende
-de que el plugin de IntelliJ esté instalado; para correrlo en un CI hay que bajar Checkstyle
-por otra vía.
-
-**Lo que falta para que la validación llegue al build**, en una máquina con acceso a Maven
-Central:
-
-```xml
-<plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-checkstyle-plugin</artifactId>
-    <version>3.5.0</version>
-    <configuration>
-        <configLocation>config/checkstyle/checkstyle.xml</configLocation>
-        <includeTestSourceDirectory>false</includeTestSourceDirectory>
-        <violationSeverity>warning</violationSeverity>
-        <consoleOutput>true</consoleOutput>
-        <failOnViolation>true</failOnViolation>
-    </configuration>
-    <executions>
-        <execution>
-            <id>validar-estilo</id>
-            <phase>verify</phase>
-            <goals><goal>check</goal></goals>
-        </execution>
-    </executions>
-</plugin>
+```bash
+mvn -Pcheckstyle -pl incentivos-service -am verify
 ```
 
 `violationSeverity=warning` porque la config deja casi todo en `info` a propósito (ver abajo):
@@ -527,23 +472,14 @@ setter, que es justo lo que se sacó.
 
 ### Lo que queda abierto
 
-1. **`ValidadorAdmin.verificarPermisos` sigue llamando a `donaciones-service` dentro de la
-   transacción.** Es la última llamada HTTP que quedó dentro de una transacción (el resto se
-   sacaron en el punto 12). Se dejó así porque son operaciones de administración de baja
-   frecuencia y acotadas por los timeouts, pero sacarla exige partir la validación en otra
-   clase: llamar a un método `@Transactional` desde la misma clase no pasa por el proxy.
-2. **`ReglaConstancia.unidadTiempo` es un `java.time.temporal.ChronoUnit` persistido como
-   string.** Es un enum de la JDK y no del dominio, y no hay garantía de que sus constantes
-   se mantengan estables entre versiones de Java. Un `UnidadTiempo` propio con `MESES` y
-   `DIAS` sería más seguro.
-3. **No hay ni un test de persistencia.** No hay H2 ni `@DataJpaTest`, así que todos los
-   tests son unitarios con Mockito y ninguno valida un mapping JPA: una `@Column` mal escrita
-   o un `orphanRemoval` que falta no se detectan hasta que la aplicación arranca contra
-   MySQL. Es el hueco más grande que queda de la suite. La tanda de los puntos 25, 36, 17 y
-   30 lo tapó a medias con tests de contrato por reflexión (que el `@Transactional`, el
-   `@Version` y los `orphanRemoval` estén donde deben), pero eso **no** prueba que
-   Hibernate los ejecute: solo que las anotaciones estén puestas. Cerrar esto de verdad
-   necesita H2, y es lo primero que agregaría.
+1. **La identidad de admin sigue dependiendo del header `Admin-Id`.** Se mantiene abierto
+   hasta acordar autenticación e identidad compartidas con los otros servicios; suspender la
+   transacción durante la llamada remota no convierte ese header en una identidad confiable.
+2. **La cobertura JPA es inicial, no exhaustiva.** `PersistenciaJpaTest` crea el esquema con
+   Hibernate/H2 y prueba persistencia de enums, borrado en cascada al reemplazar una regla,
+   suspensión de la transacción ante la llamada remota y persistencia/reclamo de la outbox.
+   Los nuevos mappings y consultas igual necesitan casos de integración específicos a medida
+   que se agreguen.
 ---
 
 ## Corregidos
@@ -820,9 +756,9 @@ tenía**.
 
 - **23. Higiene de código** (código muerto, setters, logs, nombres). La parte grande se hizo;
   quedan tres cosas anotadas en su propio punto.
-- **35. Los buffers "pendientes" en memoria.** No se corrige: quedó absorbido por el anexo
-  del punto 3, porque es el mismo código. La mitad de notificaciones se va con la cola; la
-  de publicaciones de n8n no, y necesita la tabla de outbox.
+- **35. Los buffers "pendientes" en memoria.** Quedó absorbido por el anexo del punto 3,
+  porque era el mismo código. Las notificaciones se movieron a RabbitMQ y n8n a una outbox
+  persistente con leases y reintentos.
 
 ---
 
@@ -876,6 +812,20 @@ ENVIADA  luis@test.com  Nueva misión disponible   Completaste 'Primera donació
 Lo que se prueba acá es el camino del Rabbit, no que el HTTP dejó de dar 404: **no queda
 cliente HTTP**. La propiedad `servicio.notificaciones.url` quedó sin uso y se puede borrar.
 
+### Las publicaciones a n8n sobreviven reinicios y fallas temporales
+
+El listener de `MisionCompletada` ahora guarda la publicación en
+`publicacion_pendiente_n8n` dentro de la misma transacción que persiste el perfil. Un scheduler
+reclama las filas con un lease corto, llama a n8n fuera de la transacción y elimina la fila
+solo cuando recibe una respuesta exitosa. Si la llamada falla, guarda el error y programa un
+reintento con espera exponencial acotada; si la instancia cae después de reclamar una fila, el
+lease vence y otra ejecución puede recuperarla.
+
+La entrega es **al menos una vez**, no exactamente una vez: si n8n procesa el webhook y la
+instancia cae antes de borrar la fila, el webhook puede repetirse cuando venza el lease. El
+destino debería tratar los eventos de forma idempotente si repetir una publicación tiene
+efectos visibles.
+
 ### Dos cosas que hubo que arreglar en el otro extremo
 
 Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del converter, que
@@ -883,3 +833,98 @@ rompía la deserialización de estos avisos (punto 16 de su backlog), y el defau
 n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
 llega pero muere del otro lado.
 
+### `GET /api/metricas/{id}/periodo` respondía 500: el `Optional<Object[]>` traía el array de filas
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../dto/Perfil/ResumenMetricaDTO.java`, `.../services/MetricasService.java`,
+`.../services/MetricaPorPeriodoJpaTest.java`
+
+El método declaraba `Optional<Object[]>` y Spring Data devuelve ahí el *array de filas*, no la
+fila: con donaciones, `resumen[0]` era la fila entera (`ClassCastException ... cannot be cast to
+class java.util.UUID`) y sin donaciones un array vacío (`ArrayIndexOutOfBoundsException: Index 0
+out of bounds for length 0`), o sea que el caso "no hay métrica para ese donante" daba 500 en vez
+del 404. Ahora hay una proyección tipada (`ResumenMetricaDTO`, record) con expresión de
+constructor JPQL, y el service usa los campos sin casts.
+
+**Decisión del equipo (2026-10-07): el borde superior del período es inclusivo (`<= :hasta`)** —
+una donación guardada a las 00:00 del día siguiente a `hasta` cuenta dentro del período. Lo
+cubren los tests de `MetricaPorPeriodoJpaTest` (H2 real, 4 tests); no lo "arreglen" después.
+
+### La pasada de constancia tocaba `valoresObservados` (LAZY) sobre entidades desligadas
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../services/PerfilService.java`,
+`.../services/PerfilServiceConstanciaTransaccionalTest.java`
+
+`evaluarConstanciaPerfiles` no era transaccional: consultaba los perfiles (que llegan desligados
+de la transacción propia del repositorio) y recién después abría la transacción del bloque. Si la
+racha caducaba, o el donante no tenía donaciones que hicieran progresar la misión,
+`reiniciarProgreso()` tocaba el `@ElementCollection` LAZY `valoresObservados` sobre una entidad
+desligada y lanzaba `LazyInitializationException`, con lo que la pasada entera se caía. La
+consulta y el recálculo ahora corren dentro del mismo `transactionTemplate.execute(...)`, con el
+bloque de 500 y el orden por `idUsuario` intactos.
+
+**Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre con
+transacción activa; con el código anterior el test falla. Suite completa 313 en verde.
+
+### `GET /api/metricas/{id}/actividad` respondía 500 por el `Object[]` de los totales
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../services/MetricasService.java`, `.../services/MetricaActividadJpaTest.java`
+
+`obtenerTotalesDonaciones` era una native query de dos columnas declarada `Object[]`: Spring Data
+devuelve ahí el *array de filas*, así que `totales[0]` era la fila entera y
+`MetricasService.numero(...)` lanzaba `ClassCastException: [Ljava.lang.Object; cannot be cast to
+class java.lang.Number`. Ahora el repo devuelve `List<Object[]>` y el service toma la única fila
+del agregado (`get(0)`), que existe siempre, incluso sin donaciones.
+
+**Cómo se verificó:** `MetricaActividadJpaTest` (H2 real, 2 tests: con donaciones y sin
+donaciones) fallaba con el mismo `ClassCastException` que en producción; con el fix pasa.
+
+### Regresión de `/periodo`: un refactor sacó el `GROUP BY` y "sin donaciones" dejó de ser 404
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../test/.../models/repositories/RendimientoConsultasTest.java`
+
+`obtenerResumenMetrica` quedó sin `GROUP BY`, y un agregado sin `GROUP BY` devuelve **siempre una
+fila** (con ceros): un período sin donaciones respondía 200 con nulos en vez del 404 que pide el
+contrato. Se restauró `GROUP BY d.idUsuario` (y `d.idUsuario` en el SELECT). De paso se
+actualizaron dos tests de `RendimientoConsultasTest` que afirmaban el JPQL viejo de
+`obtenerEvolucionMensual`, hoy native query con `EXTRACT(...)` y `NULLIF(TRIM(...), '')`.
+
+**Cómo se verificó:** `MetricaPorPeriodoJpaTest.metricaDeUnPeriodoSinDonacionesEsVacia` vuelve a
+dar `Optional.empty()` → 404; suite completa 315 en verde.
+
+### El id interno del perfil es ahora el id del donante (`idPerfil` eliminado)
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/entities/Perfil/Perfil.java`,
+`.../models/repositories/SpringRepositories/RepositorioPerfiles.java`,
+`.../services/PerfilService.java`, `.../services/MetricasService.java` (+ los tests)
+
+`Perfil` tenía `@Id @GeneratedValue idPerfil` y un `idUsuario` **sin `unique`**: se podían
+insertar dos perfiles del mismo donante y `findByIdUsuario` (resultado único) reventaba con
+`NonUniqueResultException`. Ahora `idUsuario` es la `@Id` —un donante, un perfil— y desaparece
+`idPerfil`; las consultas pasan a `findById`/`existsById`/`deleteById`. Es el mismo criterio que
+`ImpactoDonacion.idDonacion`, que usa el id de origen como PK.
+
+**Ojo, migración:** cambia la PK de `perfil` (`id_perfil` → `id_usuario`). Con `ddl-auto=update`
+Hibernate no migra un cambio de PK, así que hay que recrear el schema (la base de desarrollo está
+vacía): `DROP DATABASE incentivos_db;` y reiniciar el servicio, o un `DDL_AUTO=create-drop` de una
+pasada. La FK `insignia_obtenida.perfil_id` mantiene su nombre.
+
+**Cómo se verificó:** suite completa 322 tests en verde (incluye los `@DataJpaTest` que recrean el
+schema en H2).

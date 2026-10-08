@@ -13,13 +13,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * La insignia tiene sus propios tres datos, y el umbral de "supera" es exclusivo.
- *
- * <p>Son dos cosas que parecen de texto pero no lo son. La del punto 24 es de modelo: el
- * enunciado pide que la insignia tenga nombre, descripción e imagen, y solo se podía cargar
- * uno de los tres porque los otros dos no tenían por dónde entrar.
- */
 @DisplayName("Puntos 33 y 24: la insignia tiene sus datos y el umbral es exclusivo")
 class InsigniaYOperacionSemanticaTest {
 
@@ -46,10 +39,7 @@ class InsigniaYOperacionSemanticaTest {
 
             Mision mision = misionCon(insignia);
 
-            // Antes el constructor hacía new Insignia(nombreInsignia, nombre), o sea que el
-            // texto de la insignia era el nombre de la misión. "Constante" de texto para una
-            // insignia que se llama "Constante" no es lo mismo que "Texto PROPIO de la
-            // insignia", y el enunciado pide lo segundo.
+            // Antes el texto de la insignia era el nombre de la misión.
             assertThat(mision.getInsigniaObjetivo().getDescripcion())
                     .isEqualTo("Texto PROPIO de la insignia");
 
@@ -61,9 +51,7 @@ class InsigniaYOperacionSemanticaTest {
         @Test
         @DisplayName("sin texto propio la descripción queda en null, no inventada")
         void sinTextoPropioQuedaNull() {
-            // El atajo de 5 parámetros deja la insignia sin descripción. Antes eso era
-            // imposible: el constructor rellenaba el campo con el nombre de la misión. Un
-            // null dice "no hay texto"; el nombre de la misión decía algo falso.
+            // Antes el constructor rellenaba la descripción con el nombre de la misión.
             Mision mision = new Mision(
                     "Diez dones", null, "Texto", "Constante",
                     new Regla(null, AtributoImpacto.ESTADO, new SuperaCantidad(10, 1))
@@ -81,8 +69,7 @@ class InsigniaYOperacionSemanticaTest {
             assertThat(mision.getInsigniaObjetivo().getUrlImagen())
                     .isEqualTo("https://incentivos.example.edu.ar/img/constancia.png");
 
-            // Y la columna existía: no era que faltara el dato, era que no había por dónde
-            // cargarlo.
+            // La columna existía: faltaba por dónde cargarla.
             Field imagen = Insignia.class.getDeclaredField("urlImagen");
             assertThat(imagen.getType()).isEqualTo(String.class);
         }
@@ -90,8 +77,7 @@ class InsigniaYOperacionSemanticaTest {
         @Test
         @DisplayName("el DTO expone los tres datos de la insignia")
         void elDtoExponeLosTresDatos() {
-            // El enunciado pide nombre, descripción e imagen. Antes solo el nombre existía en
-            // el DTO, así que los otros dos no se podían mandar ni leer.
+            // Antes solo el nombre existía en el DTO.
             MisionDTO proyectado = MisionDTO.desdeEntidad(misionCon(new Insignia(
                     "Constancia solidaria",
                     "Una donación por mes durante tres meses.",
@@ -107,9 +93,7 @@ class InsigniaYOperacionSemanticaTest {
         @Test
         @DisplayName("los campos de la insignia son opcionales: no rompen los clientes de hoy")
         void losCamposSonOpcionales() throws Exception {
-            // Obligar a los tres sería romper cualquier cliente que mande solo el nombre,
-            // que es lo que todos los de hoy hacen. La insignia se puede cargar entera, pero
-            // no tiene que estarlo.
+            // Obligar a los tres rompería a los clientes que hoy mandan solo el nombre.
             assertThat(MisionDTO.class.getDeclaredField("insigniaDescripcion")
                     .getAnnotation(jakarta.validation.constraints.NotBlank.class))
                     .isNull();
@@ -147,9 +131,7 @@ class InsigniaYOperacionSemanticaTest {
         @Test
         @DisplayName("el nombre de la operación y su semántica dicen lo mismo")
         void elNombreYLaSemanticaDicenLoMismo() {
-            // La operación se llama SuperaCantidad. Con un >=, el nombre mentía: "supera 6"
-            // contando desde 6. Los tres —nombre del enunciado, nombre de la clase,
-            // comparación— tienen que coincidir, o el que miente es el código.
+            // Con un >= el nombre mentía: "supera 6" contando desde 6.
             assertThat(SuperaCantidad.class.getSimpleName()).isEqualTo("SuperaCantidad");
 
             // Y el umbral es exclusivo: con 6, el primer valor que cuenta es 7.
@@ -160,9 +142,7 @@ class InsigniaYOperacionSemanticaTest {
         @Test
         @DisplayName("subir el umbral no invalida lo ya acreditado")
         void subirElUmbralNoInvalidaLoAcreditado() {
-            // Esta parte no cambió con el punto 33 y conviene tenerla presente: si el umbral
-            // se comparara en esEquivalenteA, retocarlo le borraría el progreso a todos los
-            // que estaban en la misión.
+            // Si el umbral se comparara en esEquivalenteA, retocarlo borraría el progreso de todos.
             assertThat(new SuperaCantidad(5, 4).esEquivalenteA(new SuperaCantidad(5, 6)))
                     .isTrue();
         }

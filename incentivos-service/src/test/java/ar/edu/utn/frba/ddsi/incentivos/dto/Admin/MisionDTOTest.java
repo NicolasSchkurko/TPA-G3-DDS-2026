@@ -8,7 +8,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
-import java.time.temporal.ChronoUnit;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class MisionDTOTest {
     @DisplayName("proyecta nombre, insignia, constancia y operacion")
     void proyectaLaMisionCompleta() {
         MisionDTO dto = MisionDTO.desdeEntidad(mision(new Regla(
-                new ReglaConstancia(1, ChronoUnit.MONTHS),
+                new ReglaConstancia(1, UnidadTiempo.MONTHS),
                 AtributoImpacto.ESTADO,
                 new SuperaCantidad(10, 3)
         )));

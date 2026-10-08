@@ -34,7 +34,12 @@ public class EntidadBeneficiaria {
     private Direccion direccion;
 
     // Unidireccional: Necesidad no tiene referencia de vuelta hacia EntidadBeneficiaria.
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    // Sin REMOVE ni orphanRemoval: Necesidad vive en su propio repositorio (RepositorioNecesidades)
+    // y está referenciada por Donacion.necesidad (@ManyToOne sin cascade). Con CascadeType.ALL,
+    // borrar una EntidadBeneficiaria borraba en cascada sus necesidades y dejaba a las donaciones
+    // ya asignadas apuntando a una fila inexistente. El borrado de necesidades queda a cargo de
+    // RepositorioNecesidades, explícitamente.
+    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "entidad_beneficiaria_id")
     private List<Necesidad> necesidades = new ArrayList<>();
 

@@ -25,20 +25,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/**
- * Quitarle una misión a una categoría no puede dejar a un donante bloqueado (punto 30).
- *
- * <p>El escenario que motiva esto: la categoría tenía {@code [A(1), B(2), C(3)]} y había
- * 40 donantes en {@code C}. El admin hizo {@code PUT /api/categorias/admin/{id}} con
- * {@code "misiones": ["A", "B"]}. Para cada donante, la posición 3 ya no existía, el
- * código pedía esa posición y recibía {@code null}, y entraba al retorno temprano que
- * solo hacía {@code progresoMisionActual = null}.
- *
- * <p>El donante quedaba bloqueado <b>para siempre</b>: sin misión, {@code progresarMision}
- * corta en el primer {@code if}, así que no completaba nada, no recibía insignias y no
- * aparecía en el ranking. Y tampoco se emitía {@code MisionCambiada}, así que no había
- * forma de enterarse desde afuera de que había pasado algo.
- */
 @DisplayName("Punto 30: quitar una misión de una categoría no bloquea al donante")
 class SincronizacionPerfilesMisionRemovidaTest {
 
@@ -52,20 +38,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
         when(repoPerfiles.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    /**
-     * Una misión con id asignado.
-     *
-     * <p>El id se mete por reflexión a propósito, y no es un rodeo sin motivo: Hibernate se
-     * lo asigna al insertar, así que una {@code Mision} suelta tiene {@code getIdMision()} en
-     * {@code null}. El código de {@code SincronizacionPerfiles} compara misiones por id para
-     * decidir si el donante sigue en la misma, y con todos los ids en {@code null} los daría
-     * por iguales a todos: el {@code continue} se comería el reacomodo entero y el test
-     * probaría nada. Asignar el id simula lo que hace la base y deja la comparación con
-     * sentido.
-     *
-     * <p>No hay setter porque el punto 23 cerró la entidad, y tiene sentido que siga así
-     * también para los tests.
-     */
+    /** Una misión con id asignado: Hibernate lo asigna al insertar y el gestor compara por id. */
     private static Mision mision(String nombre) {
         Mision mision = new Mision(nombre, null, "desc", "insignia",
                 new Regla(null, AtributoImpacto.CANTIDAD_BIENES, new SuperaCantidad(1, 3)));
@@ -81,36 +54,20 @@ class SincronizacionPerfilesMisionRemovidaTest {
         return perfil;
     }
 
-    /**
-     * {@code domainEvents()} es protected en {@code AbstractAggregateRoot}, así que se
-     * accede por reflexión. Es el mismo truco que ya usa {@code PerfilTest}: meter un
-     * método público solo para que el test pueda ver los eventos sería ensuciar la entidad
-     * con API de test.
-     */
+    /** {@code domainEvents()} es protected: se accede por reflexión para no exponer API de test. */
     @SuppressWarnings("unchecked")
     private static Collection<Object> eventos(Perfil perfil) {
         return (Collection<Object>) ReflectionTestUtils.invokeMethod(perfil, "domainEvents");
     }
 
-    /**
-     * El mapa "dónde estaba cada misión antes del cambio", que es lo que recibe
-     * {@code actualizarMisionesPorCambioDeCategoria} para saber a quién hay que mover.
-     *
-     * <p>Un {@code HashMap} y no un {@code Map.of} porque {@code Map.of} rechaza claves
-     * nulas con un {@code NullPointerException} en el propio {@code Map.of}, antes incluso de
-     * llegar al método que estamos probando. Con el id asignado por {@link #mision} no hace
-     * falta, pero el {@code HashMap} lo tolera igual y deja claro que el mapa es de prueba.
-     */
+    /** El mapa "dónde estaba cada misión antes del cambio" que recibe el gestor. */
     private static Map<UUID, Integer> dondeEstaba(Mision mision, int posicion) {
         Map<UUID, Integer> posiciones = new HashMap<>();
         posiciones.put(mision.getIdMision(), posicion);
         return posiciones;
     }
 
-    /**
-     * Arma el caso del backlog: la categoría tenía tres misiones, ahora tiene dos, y el
-     * donante estaba en la tercera.
-     */
+    /** El caso del backlog: la categoría tenía tres misiones, ahora tiene dos. */
     private Categoria categoriaConDos(Perfil donante) {
         Categoria categoria = new Categoria("Colaborador", null, 2,
                 List.of(mision("A"), mision("B")));
