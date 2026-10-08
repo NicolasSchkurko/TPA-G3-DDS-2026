@@ -52,7 +52,7 @@ class MetricasServiceTest {
         when(repositorioDonaciones.obtenerEvolucionMensual(idUsuario))
                 .thenReturn(List.<Object[]>of(new Object[]{2026, 3, 5L, 2L}));
         when(repositorioDonaciones.obtenerTotalesDonaciones(idUsuario))
-                .thenReturn(new Object[]{5L, 2L});
+                .thenReturn(List.<Object[]>of(new Object[]{5L, 2L}));
 
         ActividadDTO dto = service.obtenerEvolucionHistorica(idUsuario);
 

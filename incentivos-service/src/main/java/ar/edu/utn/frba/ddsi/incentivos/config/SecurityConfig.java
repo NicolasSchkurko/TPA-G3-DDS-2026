@@ -8,9 +8,6 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Reglas de acceso del servicio: todo abierto, igual que los otros módulos. La autorización de
  * admin se valida contra {@code donaciones-service} con el header {@code Admin-Id}.
- *
- * <p>Se conserva la clase con el filtro explícitamente abierto como lugar para reintroducir
- * una política si algún día se define.
  */
 @Configuration
 public class SecurityConfig {

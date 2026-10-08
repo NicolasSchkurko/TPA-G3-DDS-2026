@@ -47,8 +47,10 @@ public class IncentivosClient {
             restTemplate.postForEntity(url(RUTA_PERFILES), dto, Void.class);
             log.debug("Perfil creado en incentivos para {}", dto.getIdUsuario());
         } catch (Exception e) {
-            log.error("No se pudo crear el perfil {} en {}: {}",
-                    dto.getIdUsuario(), url(RUTA_PERFILES), e.getMessage());
+            // Con nombre y role en el log se distingue un payload sin el campo de un nombre vacío.
+            log.error("No se pudo crear el perfil {} (nombreUsuario='{}', role='{}') en {}: {}",
+                    dto.getIdUsuario(), dto.getNombreUsuario(), dto.getRole(),
+                    url(RUTA_PERFILES), e.getMessage());
             throw e;
         }
     }

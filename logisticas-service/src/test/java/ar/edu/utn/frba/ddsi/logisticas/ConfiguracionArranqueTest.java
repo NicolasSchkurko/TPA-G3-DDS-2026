@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,8 +47,8 @@ class ConfiguracionArranqueTest {
         Properties propiedades = new Properties();
         propiedades.load(new java.io.StringReader(applicationProperties()));
 
-        // `${DB_USERNAME}` a secas. Con un default (`:algo`) el servicio conectaba igual sin
-        // que nadie definiera la variable.
+        // `${DB_USERNAME}` a secas: el placeholder sin nada despues de los dos puntos. Con un
+        // default (`:algo`) el servicio conectaba igual sin que nadie definiera la variable.
         assertThat(propiedades.getProperty("spring.datasource.username"))
                 .as("con default, un deploy sin variables conecta con la credencial del codigo")
                 .isEqualTo("${DB_USERNAME}");
@@ -55,12 +56,26 @@ class ConfiguracionArranqueTest {
                 .isEqualTo("${DB_PASSWORD}");
     }
 
+    /**
+     * Ninguna property de credenciales puede traer un valor por defecto.
+     *
+     * <p>Estructural a proposito, y no buscando la clave que estaba escrita: un test que
+     * comprueba que "no aparece tal contraseña" tiene que escribirla para nombrarla, y entonces
+     * la deja en el repo, que es justo lo que se esta evitando. Ademas asi detecta el default que
+     * sea, y no solo el de un despliegue.
+     */
     @Test
-    @DisplayName("La clave de la base no esta escrita en application.properties")
-    void laClaveNoEstaEnElArchivo() throws IOException {
-        // Ojo con el alcance: esto mira SOLO este archivo. La credencial tambien estaba en
-        // docker-compose.yml, y ese archivo no se puede leer desde el classpath.
-        assertThat(applicationProperties()).doesNotContain("10032001");
+    @DisplayName("Ninguna property de credenciales trae un valor por defecto")
+    void ningunaCredencialTieneDefault() throws IOException {
+        Properties propiedades = new Properties();
+        propiedades.load(new java.io.StringReader(applicationProperties()));
+
+        for (String clave : List.of("spring.datasource.username", "spring.datasource.password")) {
+            String valor = propiedades.getProperty(clave);
+            assertThat(valor)
+                    .as("%s no debe traer nada despues de los dos puntos", clave)
+                    .doesNotContain(":");
+        }
     }
 
     // --- Punto 39: la zona del cron ---

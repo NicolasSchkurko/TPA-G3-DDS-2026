@@ -17,9 +17,6 @@ import lombok.NoArgsConstructor;
 
 /**
  * Una etapa del programa de fidelización, con las misiones que el donante cumple en orden.
- *
- * <p>No tiene setters: la secuencia se modifica con {@link #agregarMision} y
- * {@link #eliminarMision}, que mantienen las posiciones correlativas.
  */
 @Getter
 @Entity

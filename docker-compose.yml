@@ -33,7 +33,7 @@ services:
       retries: 12
 
   rabbitmq:
-    image: rabbitmq:3-management
+    build: ./docker/rabbitmq
     container_name: tpa-rabbitmq
     ports:
       - "5672:5672"
@@ -41,12 +41,13 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-
-      # El reparto del trabajo entre instancias de logistica usa un exchange
-      # consistent-hash, que NO es parte del nucleo de RabbitMQ: es un plugin y viene
-      # deshabilitado. Sin esta linea, logisticas no arranca con
-      # PRECONDITION_FAILED - unknown exchange type 'x-consistent-hash'.
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_plugins [rabbitmq_consistent_hash_exchange].
+    # El exchange consistent-hash que usa logistica para repartir entre instancias es un
+    # plugin, no parte del core, y viene apagado: sin el, logistica no arranca con
+    # PRECONDITION_FAILED - unknown exchange type 'x-consistent-hash'.
+    #
+    # Se habilita en el Dockerfile de este servicio y NO con
+    # RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: la imagen trae /etc/rabbitmq/enabled_plugins y ese
+    # archivo pisa la variable, asi que setearla no habilita nada. Ahi esta el detalle.
     volumes:
       - rabbit-data:/var/lib/rabbitmq
     healthcheck:

@@ -10,8 +10,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-// DTO de ids, se lo envía a servicio de incentivos
+// Payload del alta de perfil en incentivos (POST /api/perfiles).
 public class IDDTO {
   private UUID idUsuario;
   private String nombreUsuario;
+  /** El perfil nace siempre como DONANTE; incentivos lo usa para su público/roles. */
+  private String role;
 }

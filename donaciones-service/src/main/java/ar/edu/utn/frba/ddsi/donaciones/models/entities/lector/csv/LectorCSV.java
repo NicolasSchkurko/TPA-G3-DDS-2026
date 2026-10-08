@@ -114,7 +114,9 @@ public class LectorCSV<T> implements Lector<T> {
     Set<String> encabezadosYaVistos = new HashSet<>();
 
     for (int indiceColumna = 0; indiceColumna < encabezados.length; indiceColumna++) {
-      String nombreEncabezado = encabezados[indiceColumna].trim();
+      // Clave canónica: Excel mezcla mayúsculas/espacios a gusto del usuario que armó el
+      // archivo, y el mapeo del request nombra las columnas por su cuenta.
+      String nombreEncabezado = encabezados[indiceColumna].trim().toLowerCase();
 
       validarEncabezadoNoDuplicado(encabezadosYaVistos, nombreEncabezado);
 

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/eventos")
+@RequestMapping("/eventos")
 @Tag(name = "Eventos de Logística (Polling)", description = "API para la consulta de eventos de trazabilidad generados por el módulo logístico mediante HTTP Polling")
 public class EventoLogisticaController {
 

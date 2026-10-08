@@ -34,6 +34,7 @@ public interface RepositorioDonaciones
             WHERE d.idUsuario = :idUsuario
               AND d.fechaEntrega >= :desde
               AND d.fechaEntrega <= :hasta
+            GROUP BY d.idUsuario
             """)
     Optional<ResumenMetricaDTO> obtenerResumenMetrica(
         @Param("idUsuario") UUID idUsuario,
@@ -73,7 +74,7 @@ public interface RepositorioDonaciones
     List<Object[]> obtenerEvolucionMensual(@Param("idUsuario") UUID idUsuario);
 
     /**
-     * @return [total de donaciones, entidades receptoras distintas]
+     * @return una fila con [total de donaciones, entidades receptoras distintas]
      */
     @Query(value = """
             SELECT COUNT(*) AS total_donaciones,
@@ -81,6 +82,6 @@ public interface RepositorioDonaciones
             FROM impacto_donacion
             WHERE id_usuario = :idUsuario
             """, nativeQuery = true)
-    Object[] obtenerTotalesDonaciones(@Param("idUsuario") UUID idUsuario);
+    List<Object[]> obtenerTotalesDonaciones(@Param("idUsuario") UUID idUsuario);
 
 }

@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @DisplayName("Punto 25: crearPerfil arma al donante con su primera misión")
 class PerfilServiceAltaTest {

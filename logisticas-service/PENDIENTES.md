@@ -1626,10 +1626,10 @@ comportamiento del punto 2.
 
 #### Que pasaba
 
-`spring.datasource.password=${DB_PASSWORD:10032001}`: la credencial real estaba como **default**.
-Cualquier arranque sin las variables —un `java -jar` a secas, un deploy que se olvido de
-definirlas— conectaba en claro y sin avisar. Y el `docker-compose.yml` la repetia en el archivo,
-quedando commiteada en el historial de git.
+`spring.datasource.password=${DB_PASSWORD:<la clave de la base>}`: la credencial real estaba como
+**default** del placeholder. Cualquier arranque sin las variables —un `java -jar` a secas, un
+deploy que se olvido de definirlas— conectaba en claro y sin avisar. Y el `docker-compose.yml` la
+repetia en el archivo, quedando commiteada en el historial de git.
 
 #### Que se cambio
 

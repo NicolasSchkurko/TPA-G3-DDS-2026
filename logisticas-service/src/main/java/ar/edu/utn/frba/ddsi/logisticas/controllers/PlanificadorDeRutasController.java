@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/PlanificacionRutas")
+@RequestMapping("/PlanificacionRutas")
 @Tag(name = "Planificador de Rutas", description = "API para la interacción con el proveedor externo de planificación de rutas logísticas")
 public class PlanificadorDeRutasController {
 

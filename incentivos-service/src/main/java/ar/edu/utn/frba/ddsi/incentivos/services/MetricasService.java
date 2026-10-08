@@ -5,7 +5,6 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MetricaDonacionesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RegistroMensualDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ResumenMetricaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
-import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import java.time.LocalDate;
@@ -49,12 +48,13 @@ public class MetricasService {
                         ))
                         .toList();
 
-        Object[] totales = repositorioDonaciones.obtenerTotalesDonaciones(idUsuario);
+        Object[] filaTotales = repositorioDonaciones.obtenerTotalesDonaciones(idUsuario)
+                .get(0); // el agregado devuelve siempre una fila, incluso sin donaciones
 
         return new ActividadDTO(
                 registros,
-                numero(totales[0]),
-                numero(totales[1])
+                numero(filaTotales[0]),
+                numero(filaTotales[1])
         );
     }
 

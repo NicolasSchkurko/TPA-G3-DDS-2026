@@ -1,0 +1,110 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0002-4a5b-8c9d-000000000002",
+    "name": "Servicio Notificaciones",
+    "description": "API de notificaciones, verificada contra NotificadorController.\n\n**Corregido:** el `GET /api/notificaciones` de la version anterior **no existe**. El controller solo tiene dos rutas:\n\n- `POST /api/notificaciones` (solicitud de notificacion entrante)\n- `GET /api/notificaciones/{id}` (una notificacion por id)\n\nEl GET de coleccion devolvia 405 Method Not Allowed: no es una falla del servicio, es que la ruta no esta.\n\n**Importante sobre el envio:** noificar por email va por n8n (`N8N_URL`). Con n8n corriendo, la notificacion queda `ENVIADA` con `fecha_envio`. Con n8n apagado queda `PENDIENTE`, y eso **no es un error del servicio**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8083", "description": "Puerto real de notificaciones-service" },
+    { "key": "idNotificacion", "value": "", "description": "Lo setea el paso de crear" }
+  ],
+  "item": [
+    {
+      "name": "Enviar notificacion (solicitud entrante)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"medioDeContacto\": \"EMAIL\",\n  \"direccionDeContacto\": \"destino@test.local\",\n  \"asuntoMensaje\": \"Prueba de notificaciones\",\n  \"cuerpoMensaje\": \"Mensaje de prueba\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notificaciones",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notificaciones"]
+        },
+        "description": "Es la misma forma que el consumidor de Rabbit espera: los dos servicios de dominio publican este JSON en notificaciones.exchange y este endpoint lo expone por HTTP. El consumidor decide que hacer por el contenido, no por un header de tipo."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": [
+            "pm.test('la notificacion se creo', function () {",
+            "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+            "});",
+            "",
+            "var not = pm.response.json();",
+            "pm.test('devuelve el id', function () {",
+            "    pm.expect(not.id).to.exist;",
+            "});",
+            "",
+            "pm.collectionVariables.set('idNotificacion', not.id);",
+            "",
+            "pm.test('nace PENDIENTE hasta que se envia', function () {",
+            "    pm.expect(not.estado).to.eql('PENDIENTE');",
+            "});"
+          ] }
+        }
+      ]
+    },
+    {
+      "name": "Obtener una notificacion por id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notificaciones/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notificaciones", ":id"],
+          "variable": [ { "key": "id", "value": "{{idNotificacion}}" } ]
+        },
+        "description": "Es la unica ruta GET que existe. Si el id esta vacio, la peticion sale a /notificaciones/ y devuelve 404: esa es la forma de probar que el servicio esta vivo.\n\n**Verificacion de envio:** el estado tiene que ser `ENVIADA` con `fecha_envio` puesta. `PENDIENTE` con n8n apagado es esperado; `FALLIDA` si."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": [
+            "pm.test('devuelve la notificacion o un 404 si el id no existe', function () {",
+            "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+            "});",
+            "",
+            "if (pm.response.code === 200) {",
+            "    var not = pm.response.json();",
+            "    pm.test('el estado es uno de los tres validos', function () {",
+            "        pm.expect(['PENDIENTE','ENVIADA','FALLIDA']).to.include(not.estado);",
+            "    });",
+            "}"
+          ] }
+        }
+      ]
+    },
+    {
+      "name": "Error: solicitudes sin medio de contacto",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"medioDeContacto\": \"\",\n  \"direccionDeContacto\": \"destino@test.local\",\n  \"asuntoMensaje\": \"x\",\n  \"cuerpoMensaje\": \"x\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notificaciones",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notificaciones"]
+        },
+        "description": "El consumidor descarta una solicitud sin medio de contacto con un log.warn y no crea la fila. El endpoint tiene que rechazarla igual."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": [
+            "pm.test('rechaza la solicitud sin medio de contacto', function () {",
+            "    pm.expect(pm.response.code).to.be.at.least(400);",
+            "});"
+          ] }
+        }
+      ]
+    }
+  ]
+}

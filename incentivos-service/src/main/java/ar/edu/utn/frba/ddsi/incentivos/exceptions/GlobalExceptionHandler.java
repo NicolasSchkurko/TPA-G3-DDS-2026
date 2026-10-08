@@ -3,6 +3,8 @@ package ar.edu.utn.frba.ddsi.incentivos.exceptions;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** El header {@code Admin-Id} no corresponde a un administrador: 403. */
     @ExceptionHandler(SecurityException.class)
@@ -110,6 +114,14 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", "Datos de entrada inválidos");
         body.put("campos", errores);
+
+        // El DTO que rechazó y el detalle por campo: sin esto, un 400 de Bean Validation
+        // sale del servicio sin dejar rastro y solo se ve del lado del que manda.
+        String dtoReceptor = exception.getBindingResult().getTarget() != null
+                ? exception.getBindingResult().getTarget().getClass().getSimpleName()
+                : "desconocido";
+        log.warn("Request rechazado por validación para {}: {}", dtoReceptor, errores);
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
@@ -117,6 +129,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, String>> manejarBodyIlegible(
             HttpMessageNotReadableException exception) {
+        log.warn("Cuerpo de la petición no interpretable: {}", String.valueOf(exception.getMessage()).lines().findFirst().orElse(""));
         return respuesta(HttpStatus.BAD_REQUEST,
                 "El cuerpo de la petición no se pudo interpretar. "
                         + "Revisá el formato del JSON y los tipos de los campos.");

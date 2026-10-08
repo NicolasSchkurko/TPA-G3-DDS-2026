@@ -28,9 +28,6 @@ import org.springframework.data.domain.AbstractAggregateRoot;
 
 /**
  * El donante y su estado de fidelización: categoría actual, misión en curso e insignias.
- *
- * <p>Es el agregado raíz: sin setters, las transiciones pasan por métodos con nombre para
- * no saltarse los eventos de dominio.
  */
 @Getter
 @Entity

@@ -54,7 +54,7 @@ public class DonanteService {
     if (nuevoDonante.getPersona() != null) {
 
       String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
-      incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario));
+      incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario, "DONANTE"));
       fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
       repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
 

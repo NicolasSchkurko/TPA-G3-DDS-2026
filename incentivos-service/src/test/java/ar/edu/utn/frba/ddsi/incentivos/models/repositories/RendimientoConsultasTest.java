@@ -167,8 +167,11 @@ class RendimientoConsultasTest {
             assertThat(anotacion)
                     .as("si no hay GROUP BY, el service tiene que traer todas las filas")
                     .isNotNull();
+            assertThat(anotacion.nativeQuery())
+                    .as("la evolución se agrupa en la base")
+                    .isTrue();
             assertThat(anotacion.value())
-                    .contains("GROUP BY YEAR(d.fechaEntrega), MONTH(d.fechaEntrega)")
+                    .contains("GROUP BY EXTRACT(YEAR FROM fecha_entrega), EXTRACT(MONTH FROM fecha_entrega)")
                     .contains("COUNT(DISTINCT");
         }
 
@@ -186,7 +189,7 @@ class RendimientoConsultasTest {
             // COUNT(DISTINCT columna) a secas cuenta la cadena vacía como una entidad más.
             assertThat(query)
                     .as("las dos mitades de la respuesta tienen que usar la misma regla")
-                    .contains("CASE WHEN TRIM(d.entidadBeneficiaria) <> ''");
+                    .contains("NULLIF(TRIM(entidad_beneficiaria), '')");
         }
     }
 }

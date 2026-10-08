@@ -33,7 +33,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -73,11 +72,8 @@ public class PerfilService {
     }
 
     /**
-     * Recalcula la racha de todos los que están en una misión con constancia. Lo llama el
-     * scheduler, porque la racha caduca por tiempo y no por una donación.
-     *
-     * <p>Procesa por bloques con una transacción por bloque para no acumular todo en memoria,
-     * y pagina por offset ordenando por {@code idUsuario} para que el corte sea estable.
+     * Recalcula la racha de los perfiles que están en una misión con constancia. Lo llama el
+     * scheduler.
      */
     public void evaluarConstanciaPerfiles() {
         Pageable corte = PageRequest.of(0, TAMANO_BLOQUE_CONSTANCIA, Sort.by("idUsuario"));
@@ -86,24 +82,9 @@ public class PerfilService {
         while (true) {
             // La consulta y el recálculo van en la MISMA transacción del bloque: fuera de ella
             // los perfiles llegan desligados y tocar valoresObservados (LAZY) lanza
-            // LazyInitializationException (punto 6).
+            // LazyInitializationException.
             Pageable pagina = corte; // efectivamente final para el lambda
             int procesados = transactionTemplate.execute(estado -> {
-                List<Perfil> perfilesDelBloque = repositorioPerfiles
-                        .buscarPerfilesConMisionQueRequiereConstancia(pagina)
-                        .getContent();
-                if (perfilesDelBloque.isEmpty()) {
-                    return 0;
-                }
-                recalcularConstanciaDe(perfilesDelBloque);
-                return perfilesDelBloque.size();
-            });
-
-            if (procesados == 0) {
-            Pageable pagina = corte; // efectivamente final para el lambda
-            int procesados = transactionTemplate.execute(estado -> {
-                // Consulta y recálculo en la misma transacción: las entidades quedan managed
-                // y la colección LAZY se inicializa dentro de la sesión.
                 List<Perfil> perfilesDelBloque = repositorioPerfiles
                         .buscarPerfilesConMisionQueRequiereConstancia(pagina)
                         .getContent();
@@ -118,11 +99,6 @@ public class PerfilService {
                 return;
             }
             log.debug("Bloque {} de constancia: {} perfiles recalculados", bloque, procesados);
-            if (procesados < TAMANO_BLOQUE_CONSTANCIA) {
-                // Última página: no hay más.
-
-            log.debug("Bloque {} de constancia: {} perfiles recalculados", bloque, procesados);
-
             if (procesados < TAMANO_BLOQUE_CONSTANCIA) {
                 // Última página: no hay más. Sin esto el bucle daría una vuelta de más
                 // buscando una página vacía, que es una consulta inútil pero no un bug.
@@ -145,11 +121,8 @@ public class PerfilService {
     }
 
     /**
-     * Crea el perfil de un donante y lo deja listo para empezar: categoría base y primera
-     * misión. Verifica que no exista antes de armar nada.
-     *
-     * <p>La transacción es necesaria: {@code primeraMision()} toca una colección LAZY de una
-     * categoría que, sin sesión, quedaría desligada.
+     * Crea el perfil de un donante con su categoría base y primera misión.
+     * {@code @Transactional} es necesario porque {@code primeraMision()} toca una colección LAZY.
      */
     @Transactional
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
@@ -228,10 +201,8 @@ public class PerfilService {
     // ========== ACTUALIZAR ==========
 
     /**
-     * Registra el impacto de una donación sobre el perfil del donante.
-     *
-     * <p>Es idempotente: la clave es {@code ImpactoDonacion.idDonacion}, así que un reintento
-     * devuelve el resultado guardado sin volver a aplicar la regla.
+     * Registra el impacto de una donación sobre el perfil del donante. Es idempotente por
+     * {@code ImpactoDonacion.idDonacion}.
      */
     public boolean actualizarPerfilImpacto(UUID idUsuario, ImpactoDonacionDTO dto) {
         OptimisticLockingFailureException ultimaFalla = null;

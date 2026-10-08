@@ -871,3 +871,37 @@ bloque de 500 y el orden por `idUsuario` intactos.
 
 **Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre con
 transacción activa; con el código anterior el test falla. Suite completa 313 en verde.
+
+### `GET /api/metricas/{id}/actividad` respondía 500 por el `Object[]` de los totales
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../services/MetricasService.java`, `.../services/MetricaActividadJpaTest.java`
+
+`obtenerTotalesDonaciones` era una native query de dos columnas declarada `Object[]`: Spring Data
+devuelve ahí el *array de filas*, así que `totales[0]` era la fila entera y
+`MetricasService.numero(...)` lanzaba `ClassCastException: [Ljava.lang.Object; cannot be cast to
+class java.lang.Number`. Ahora el repo devuelve `List<Object[]>` y el service toma la única fila
+del agregado (`get(0)`), que existe siempre, incluso sin donaciones.
+
+**Cómo se verificó:** `MetricaActividadJpaTest` (H2 real, 2 tests: con donaciones y sin
+donaciones) fallaba con el mismo `ClassCastException` que en producción; con el fix pasa.
+
+### Regresión de `/periodo`: un refactor sacó el `GROUP BY` y "sin donaciones" dejó de ser 404
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
+`.../test/.../models/repositories/RendimientoConsultasTest.java`
+
+`obtenerResumenMetrica` quedó sin `GROUP BY`, y un agregado sin `GROUP BY` devuelve **siempre una
+fila** (con ceros): un período sin donaciones respondía 200 con nulos en vez del 404 que pide el
+contrato. Se restauró `GROUP BY d.idUsuario` (y `d.idUsuario` en el SELECT). De paso se
+actualizaron dos tests de `RendimientoConsultasTest` que afirmaban el JPQL viejo de
+`obtenerEvolucionMensual`, hoy native query con `EXTRACT(...)` y `NULLIF(TRIM(...), '')`.
+
+**Cómo se verificó:** `MetricaPorPeriodoJpaTest.metricaDeUnPeriodoSinDonacionesEsVacia` vuelve a
+dar `Optional.empty()` → 404; suite completa 315 en verde.

@@ -2,7 +2,9 @@ package ar.edu.utn.frba.ddsi.donaciones.incentivos;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
@@ -15,8 +17,12 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.Seg
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
+import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -104,6 +110,22 @@ public class ContratoIncentivosTest {
         public void setEstado(String estado) { this.estado = estado; }
     }
 
+    // Copia mínima del PerfilDonanteDTO de incentivos-service (POST /api/perfiles).
+    public static class PerfilDonanteMirror {
+        @NotNull(message = "El donante requiere un id de usuario")
+        private UUID idUsuario;
+        @NotBlank(message = "El donante requiere un nombre de usuario")
+        private String nombreUsuario;
+        private String role;
+
+        public UUID getIdUsuario() { return idUsuario; }
+        public void setIdUsuario(UUID idUsuario) { this.idUsuario = idUsuario; }
+        public String getNombreUsuario() { return nombreUsuario; }
+        public void setNombreUsuario(String nombreUsuario) { this.nombreUsuario = nombreUsuario; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+    }
+
     private Donacion donacionAsignable(LocalDate fechaEntrega) {
         Donacion donacion = new Donacion();
         donacion.setId(UUID.randomUUID());
@@ -128,6 +150,43 @@ public class ContratoIncentivosTest {
         donacion.setDonante(donante);
 
         return donacion;
+    }
+
+    @Test
+    @DisplayName("El alta de perfil incluye idUsuario, nombreUsuario y role DONANTE")
+    void altaDePerfil_cumpleContratoDeIncentivos() throws Exception {
+        IncentivosClient clienteAlta = mock(IncentivosClient.class);
+        DonanteService donanteService = new DonanteService(
+                mock(RepositorioPersonas.class),
+                mock(RepositorioCiudades.class),
+                mock(FabricaEstrategiasNotificacion.class),
+                clienteAlta,
+                mock(RepositorioDonantes.class)
+        );
+
+        PersonaDonanteDTO alta = new PersonaDonanteDTO();
+        alta.setTipoPersona("HUMANA");
+        alta.setNombre("Sofia");
+        alta.setApellido("Garcia");
+        alta.setEdad(30);
+        alta.setNumeroDeDocumento(30456789);
+        PersonaDonanteDTO creada = donanteService.crearPersona(alta);
+
+        ArgumentCaptor<IDDTO> captor = ArgumentCaptor.forClass(IDDTO.class);
+        verify(clienteAlta).peticionCrearPerfil(captor.capture());
+
+        // El JSON que saldría por HTTP tiene que satisfacer el contrato del receptor.
+        String json = mapper.writeValueAsString(captor.getValue());
+        PerfilDonanteMirror recibido = mapper.readValue(json, PerfilDonanteMirror.class);
+
+        assertEquals(creada.getId(), recibido.getIdUsuario(),
+                "el perfil se inicia con el id del donante: es la clave del lado de incentivos");
+        assertEquals("Sofia Garcia", recibido.getNombreUsuario(),
+                "nombre y apellido para una Humana");
+        assertEquals("DONANTE", recibido.getRole());
+
+        Set<ConstraintViolation<PerfilDonanteMirror>> violations = validator.validate(recibido);
+        assertTrue(violations.isEmpty(), () -> "violaciones de contrato: " + violations);
     }
 
     @Test

@@ -919,6 +919,54 @@ servicios— responde `201` con persistencia real.
 
 ## Corregidos
 
+### 32. La importación CSV ignoraba las columnas si el mapeo no coincidía mayúscula por mayúscula
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-08 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/LectorCSV.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/filaconverter/PersonaDonanteFilaConverter.java`
+
+### Qué pasaba
+
+`LectorCSV` vinculaba los encabezados con `encabezado.trim()` y el
+`PersonaDonanteFilaConverter` buscaba las columnas del mapeo **tal cual** llegaban del
+request: sin normalizar mayúsculas de ninguno de los dos lados. Con un mapeo de
+`"nombre completo"` contra un encabezado `"Nombre Completo"`, el `get()` fallaba, la fila
+llegaba al converter con nombre y apellido `""`, y la Humana devolvía
+`getNombreDeUsuario()` = `" "` → incentivos la rechazaba con
+`400 "El donante requiere un nombre de usuario"`, una por fila: exactamente el error que
+lluvioso del perfil durante una carga CSV real. Si además el `TipoPersona` no coincidía, la
+fila entera se descartaba con un warning y el donante ni existía.
+
+### Qué se cambió
+
+Ambos lados usan ahora una clave canónica (`trim().toLowerCase()`): `LectorCSV` al armar el
+mapa `encabezado → valor`, y el converter al buscar cada nombre de columna del mapeo. El
+resto del comportamiento queda igual (el `EncabezadoCsvDuplicadoException` ahora también es
+insensible al casing, que es el criterio nuevo).
+
+**La causa real de la carga que disparó este punto** no era del código sino del
+`mapeos` del request: la collection de Postman (`ciclo-completo`) mapeaba
+`NOMBRE_RAZON_SOCIAL → ["Nombre","Apellido"]` y `TELEFONO → ["Telefono"]`, columnas que no
+existen en el CSV real (`"Nombre/Razón Social"`, `"Teléfono"`, ambas con tilde o barra).
+Con mapeos que nombran columnas inexistentes, las humanas nacen con nombre en blanco
+(`nombreUsuario = " "`) y las jurídicas con `""` — que es exactamente lo que mostró el log
+corregido de `IncentivosClient` (`(nombreUsuario=' ', role='DONANTE')`). La collection quedó
+corregida a los encabezados reales del CSV; si el front comparte ese mapeo, hay que
+corregirlo del mismo modo. La normalización del casing de este punto no puede compensar
+columnas que no existen.
+
+### Cómo se verificó
+
+Test nuevo `ImportarCsvConMapeosTest` (3 tests): importa un CSV con encabezados
+`"TipoPersona,Nombre Completo,Dni"` y mapeo `"tipopersona" / "nombre completo" / "dni"` (y
+otra corrida con encabezados ya canónicos), y exige 1 donante con `nombreUsuario` completo.
+**RED verificado** antes del arreglo: `expected: <1> but was: <0>` — la fila se descartaba
+entera. Suite: donaciones 37/37, BUILD SUCCESS.
+
+---
+
 ### 31. Logística registra un solo bien por donación: los bienes 2..N caen como "repetidos"
 
 **Estado:** corregido

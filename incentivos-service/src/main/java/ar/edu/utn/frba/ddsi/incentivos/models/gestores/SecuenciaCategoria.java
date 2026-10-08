@@ -7,9 +7,6 @@ import org.springframework.stereotype.Component;
 /**
  * Mantiene la secuencia de posiciones de las categorías sin huecos ni repeticiones,
  * desplazando en bloque las que quedan de la posición movida en adelante.
- *
- * <p>La unicidad se garantiza en la aplicación y no con un {@code unique} en la base: los
- * {@code UPDATE} en bloque moverían varias filas a la vez y la base los rechazaría.
  */
 @Component
 public class SecuenciaCategoria {

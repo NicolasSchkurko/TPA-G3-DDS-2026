@@ -13,9 +13,6 @@ import lombok.Setter;
 /**
  * Una donación copiada desde {@code donaciones-service}, y la fila de la que se calcula el
  * progreso. Los dos índices cubren las consultas por donante y por misión.
- *
- * <p>No tiene setters de negocio: los campos que se escriben después de crearla lo hacen con
- * métodos que dicen qué registran.
  */
 @Getter
 @Entity

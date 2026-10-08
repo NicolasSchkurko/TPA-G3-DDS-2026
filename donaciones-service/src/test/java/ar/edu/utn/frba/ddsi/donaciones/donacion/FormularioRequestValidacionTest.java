@@ -37,6 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 public class FormularioRequestValidacionTest {
 
+  /** El controller mapea /api/donaciones (el context-path vive en su @RequestMapping). */
+  private static final String RUTA_FORMULARIO = "/api/donaciones/formulario";
+
   private MockMvc mockMvc;
   private DonacionService donacionService;
 
@@ -59,7 +62,7 @@ public class FormularioRequestValidacionTest {
   @Test
   @DisplayName("Un bien con cantidad negativa es rechazado con 400 y no llega al service")
   void bienConCantidadNegativa_responde400() throws Exception {
-    mockMvc.perform(post("/donaciones/formulario")
+    mockMvc.perform(post(RUTA_FORMULARIO)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formularioCon(
                 "{\"tipoBien\":\"CON_ESTADO\",\"descripcion\":\"arroz\",\"cantidad\":-50,\"usado\":false}")))
@@ -74,7 +77,7 @@ public class FormularioRequestValidacionTest {
   @Test
   @DisplayName("Un bien sin tipoBien es rechazado con 400 en la entrada")
   void bienSinTipoBien_responde400() throws Exception {
-    mockMvc.perform(post("/donaciones/formulario")
+    mockMvc.perform(post(RUTA_FORMULARIO)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formularioCon(
                 "{\"descripcion\":\"arroz\",\"cantidad\":10,\"usado\":false}")))
@@ -86,7 +89,7 @@ public class FormularioRequestValidacionTest {
   @Test
   @DisplayName("Un formulario sin fechaRealizacion es rechazado con 400")
   void formularioSinFechaRealizacion_responde400() throws Exception {
-    mockMvc.perform(post("/donaciones/formulario")
+    mockMvc.perform(post(RUTA_FORMULARIO)
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"idDonante\":\"" + UUID.randomUUID() + "\","
                 + "\"bienes\":[{\"tipoBien\":\"CON_ESTADO\",\"descripcion\":\"arroz\","
@@ -101,7 +104,7 @@ public class FormularioRequestValidacionTest {
   void formularioValido_llegaAlService() throws Exception {
     when(donacionService.procesarFormulario(any())).thenReturn(List.of(new DonacionDTO()));
 
-    mockMvc.perform(post("/donaciones/formulario")
+    mockMvc.perform(post(RUTA_FORMULARIO)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formularioCon(
                 "{\"tipoBien\":\"CON_ESTADO\",\"descripcion\":\"arroz\",\"cantidad\":10,\"usado\":false}")))
