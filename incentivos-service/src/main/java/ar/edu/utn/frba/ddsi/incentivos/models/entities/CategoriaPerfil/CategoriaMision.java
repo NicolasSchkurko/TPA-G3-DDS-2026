@@ -13,13 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * La posición de una misión dentro de la secuencia de una categoría.
- *
- * <p>Es una entidad propia y no un id compuesto porque hace falta poder preguntar "en qué
- * posición estaba esta misiónó cuando el admin reordena la secuencia.
- *
- * <p>No tiene setters: la posición solo la cambia {@link Categoria} al renumerar, y la
- * referencia a la categoría se fija en el constructor.
+ * La posición de una misión dentro de la secuencia de una categoría. No tiene setters: la
+ * posición solo la cambia {@link Categoria} al renumerar.
  */
 @Getter
 @NoArgsConstructor // Requerido por JPA
@@ -48,11 +43,7 @@ public class CategoriaMision {
         this.posicion = posicion;
     }
 
-    /**
-     * Cambia la posición en la secuencia. Solo {@link Categoria} lo llama, y únicamente
-     * al renumerar después de sacar una misión, para que las posiciones sigan siendo
-     * 1..N sin huecos.
-     */
+    /** Cambia la posición en la secuencia. Solo {@link Categoria} lo llama al renumerar. */
     public void moverAPosicion(Integer nuevaPosicion) {
         this.posicion = nuevaPosicion;
     }

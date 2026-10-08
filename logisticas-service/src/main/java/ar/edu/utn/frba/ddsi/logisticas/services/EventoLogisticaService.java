@@ -16,8 +16,12 @@ public class EventoLogisticaService {
     this.repoEventos = repoEventos;
   }
 
+  /** @param desdeId ultimo id que el cliente ya procesa; {@code null} o 0 significan "desde el
+    *  principio". Se pasa tal cual porque el repositorio ya devuelve {@code id > :id}: restarle
+    *  uno convertiria el "estrictamente mayor" en un "mayor o igual" que reenvia el ultimo evento. */
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc((desdeId - 1))));
+    long desde = desdeId == null ? 0L : desdeId;
+    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc(desde)));
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

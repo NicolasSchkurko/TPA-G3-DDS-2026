@@ -1,15 +1,22 @@
 package ar.edu.utn.frba.ddsi.notificaciones.dto;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Getter
 @Setter
 public class SolicitudNotificacionDTO {
+
+    @NotBlank(message = "es obligatorio")
     private String medioDeContacto;
+
+    @NotBlank(message = "es obligatorio")
     private String direccionDeContacto;
-    private String cuerpoMensaje;
+
+    @NotBlank(message = "es obligatorio")
     private String asuntoMensaje;
+
+    @NotBlank(message = "es obligatorio")
+    private String cuerpoMensaje;
 }

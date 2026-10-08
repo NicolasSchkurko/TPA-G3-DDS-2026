@@ -28,18 +28,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * Las relaciones que reemplazan su referencia tienen que borrar la fila vieja (punto 17).
- *
- * <p>Sin {@code orphanRemoval}, Hibernate inserta la fila nueva y actualiza la FK, pero
- * deja la anterior en la base sin que nadie la referencie. Como el reemplazo pasa en cada
- * misión completada y en cada edición de criterio, la tabla crecía de forma indefinida.
- *
- * <p>El borrado de verdad lo hace Hibernate al hacer el flush, así que sin una base de datos
- * no se puede observar. Lo que se comprueba acá es que la anotación esté en las relaciones
- * que la necesitan, y sobre todo que **no** esté en las que no la necesitan: ese error es
- * el peligroso, porque borra datos que sí están en uso.
- */
 @DisplayName("Punto 17: las relaciones que se reemplazan borran su fila vieja")
 class OrphanRemovalTest {
 
@@ -119,9 +107,7 @@ class OrphanRemovalTest {
     @Test
     @DisplayName("la regla y su operación no se comparten entre misiones")
     void lasReglasNoSeComparten() {
-        // Si dos misiones compartieran la misma Regla, el orphanRemoval de
-        // Mision.reglaDeProgreso borraría la regla de la otra. El factory construye una por
-        // misión, así que no hay riesgo.
+        // El factory construye una Regla por misión, así que no se comparten.
         Mision primera = new Mision("A", null, "d", "i",
                 new Regla(new ReglaConstancia(1, UnidadTiempo.MONTHS),
                         ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas
@@ -141,8 +127,7 @@ class OrphanRemovalTest {
     @Test
     @DisplayName("el progreso huérfano no se puede leer desde ningún lado, solo desde su perfil")
     void elProgresoHuerfanoNoTieneOtrosDuenos() {
-        // Si el ProgresoMision tuviera un dueno mas, el orphanRemoval de Perfil podria
-        // borrar una fila que otro perfil todavia necesita.
+        // Si el ProgresoMision tuviera otro dueño, el orphanRemoval de Perfil podría borrar una fila en uso.
         Perfil perfil = new Perfil(UUID.randomUUID(), "Ana");
         Mision mision = new Mision("Diez dones", null, "d", "i",
                 new Regla(null,

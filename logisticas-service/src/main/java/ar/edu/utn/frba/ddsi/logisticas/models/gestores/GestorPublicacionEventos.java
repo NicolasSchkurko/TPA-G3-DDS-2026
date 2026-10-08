@@ -9,7 +9,11 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,18 +21,11 @@ import java.util.List;
 
 /**
  * Publica los eventos de logística: alta de ruta, entrega confirmada, fallida y reingreso.
- *
- * <p><b>Este archivo pasó por un merge sin resolver.</b> Traía los marcadores de conflicto de
- * {@code GestorEventos.java} (rama HEAD) y de {@code GestorPublicacionEventos.java} (rama
- * {@code donaciones-y-logistica}) en el mismo archivo, y así quedó commiteado: el módulo
- * entero no compilaba desde el merge del 2026-10-05.
- *
- * <p>Se resolvió quedarse con esta versión y descartar la de {@code GestorEventos} porque
- * {@code EntregaService} y {@code RutaService} consumen esta clase, y los dos métodos de la
- * otra —{@code buscarEventos} y {@code guardarEvento}— no los usa nadie en el módulo.
  */
 @Component
 public class GestorPublicacionEventos {
+    private static final Logger log = LoggerFactory.getLogger(GestorPublicacionEventos.class);
+
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
@@ -62,14 +59,15 @@ public class GestorPublicacionEventos {
 
         PayloadInicioRutaDTO payload = new PayloadInicioRutaDTO(idsDonacion, ruta.getUrlSeguimiento());
 
+        // El inicio es de la ruta, no de un ítem: un solo evento con referenciaId = idRuta, y los ids
+        // de las donaciones viajan en el payload, que es lo que consume el notificador.
         EventoLogistica evento = new EventoLogistica(
                 "INICIO_RUTA", ruta.getIdRuta().toString(), LocalDateTime.now(), null
         );
         evento.setPayloadJson(serializar(payload));
 
-        ruta.getParadas().forEach(parada -> parada.getItems().forEach(item -> item.getEventos().add(evento)));
         repoEventos.save(evento);
-        productorEventos.publicar(evento);
+        publicarAlCommit(evento);
 
         return ruta;
     }
@@ -84,9 +82,7 @@ public class GestorPublicacionEventos {
             );
             evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
 
-            item.getEventos().add(evento);
-            repoEventos.save(evento);
-            productorEventos.publicar(evento);
+            guardarEventoDeItem(item, evento);
         }
         return item;
     }
@@ -99,9 +95,7 @@ public class GestorPublicacionEventos {
         );
         evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
 
-        item.getEventos().add(evento);
-        repoEventos.save(evento);
-        productorEventos.publicar(evento);
+        guardarEventoDeItem(item, evento);
 
         return item;
     }
@@ -113,11 +107,43 @@ public class GestorPublicacionEventos {
                 "REINGRESO_DEPOSITO", item.getIdDonacion().toString(), LocalDateTime.now(), null
         );
 
-        item.getEventos().add(evento);
-        repoEventos.save(evento);
-        productorEventos.publicar(evento);
+        guardarEventoDeItem(item, evento);
 
         return item;
+    }
+
+    /** Persiste el evento del ítem y agenda su publicación para el commit:
+     *  el FK la escribe setear {@code evento.setItem(item)} (no un {@code add} a la lista),
+     *  y el evento se guarda antes de publicar para que el consumidor no vea un registro inexistente. */
+    private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
+        evento.setItem(item);
+        repoEventos.save(evento);
+        publicarAlCommit(evento);
+    }
+
+    /** Publica después del commit: publicar dentro de la transacción dejaría el mensaje afuera
+     *  ante un rollback, y donaciones-service notificaría una entrega que nunca ocurrió.
+     *  Sin transacción activa se publica al momento. */
+    private void publicarAlCommit(EventoLogistica evento) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            productorEventos.publicar(evento);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                productorEventos.publicar(evento);
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                // Un rollback no publica nada: el afterCommit de arriba no corre.
+                if (status != STATUS_COMMITTED) {
+                    log.warn("Transacción sin commit: el evento {} no se publica", evento.getTipoEvento());
+                }
+            }
+        });
     }
 
     private PayloadEntregaDTO payloadDatosEntrega(ItemEntrega item, Ruta ruta) {

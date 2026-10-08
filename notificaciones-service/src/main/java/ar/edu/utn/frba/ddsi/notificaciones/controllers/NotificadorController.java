@@ -9,9 +9,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -20,15 +26,15 @@ import java.util.UUID;
 @RequestMapping("/api/notificaciones")
 @Tag(name = "Servicio de Notificaciones", description = "Endpoints para la recepción, encolamiento y despacho de alertas del sistema (Mails, Mensajería, etc.).")
 public class NotificadorController {
+
     private final NotificadorService notificadorService;
-    private final NotificacionMapper NotificacionMapper;
+    private final NotificacionMapper notificacionMapper;
 
     public NotificadorController(NotificadorService notificadorService, NotificacionMapper notificacionMapper) {
         this.notificadorService = notificadorService;
-        NotificacionMapper = notificacionMapper;
+        this.notificacionMapper = notificacionMapper;
     }
 
-    // Ruta para crear: POST /notificaciones
     @Operation(
             summary = "Recibir y procesar solicitud de notificación",
             description = "Punto de entrada asincrónico para que otros microservicios soliciten el envío de un mensaje. " +
@@ -39,13 +45,10 @@ public class NotificadorController {
             @ApiResponse(responseCode = "400", description = "Error de validación en los datos de la solicitud (cuerpo malformado o faltan campos obligatorios)")
     })
     @PostMapping
-    public ResponseEntity<String> recibirSolicitudNotificacion(@RequestBody SolicitudNotificacionDTO dto) {
-        try {
-            notificadorService.procesarSolicitudDeNotificacion(dto);
-            return new ResponseEntity<>("solicitud procesada con éxito", HttpStatus.ACCEPTED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<String> recibirSolicitudNotificacion(
+            @Valid @RequestBody SolicitudNotificacionDTO dto) {
+        notificadorService.procesarSolicitudDeNotificacion(dto);
+        return new ResponseEntity<>("solicitud procesada con éxito", HttpStatus.ACCEPTED);
     }
 
     @Operation(summary = "Ver notificacion por id")
@@ -53,7 +56,7 @@ public class NotificadorController {
     public ResponseEntity<NotificacionDTO> obtenerNotificacion(@PathVariable UUID id) {
         Optional<Notificacion> notificacion = notificadorService.obtenerPorId(id);
         return notificacion
-            .map(d -> ResponseEntity.ok(NotificacionMapper.notificacionDTO(d)))
-            .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(d -> ResponseEntity.ok(notificacionMapper.notificacionDTO(d)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

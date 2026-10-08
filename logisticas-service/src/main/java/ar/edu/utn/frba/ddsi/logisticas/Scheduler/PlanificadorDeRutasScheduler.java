@@ -8,6 +8,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Prove
 
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,14 @@ import java.util.stream.Collectors;
 
 @Service
 public class PlanificadorDeRutasScheduler {
+
+  private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutasScheduler.class);
+
+  /** Sin declararla, el cron usaría la zona de la JVM: en Docker, UTC. */
+  static final String ZonaPlanificacion = "America/Argentina/Buenos_Aires";
+
+  /** Límite que impone el proveedor externo por lote. */
+  private static final int TAMANO_LOTE_MAXIMO = 100;
 
   private final RepositorioItemEntrega repoItemEntrega;
   private final RepositorioCamiones repoCamiones;
@@ -33,10 +43,9 @@ public class PlanificadorDeRutasScheduler {
     this.repoCamiones = repoCamiones;
     }
 
-  @Scheduled(cron = "0 0 2 * * ?")
+  /** Planifica las rutas una vez por día, a las 2 de la mañana, hora Argentina. */
+  @Scheduled(cron = "0 0 2 * * ?", zone = ZonaPlanificacion)
   public void iniciarPlanificacionAutomatica() {
-    System.out.println("Iniciando proceso automático de planificación de rutas...");
-
     List<ItemEntrega> itemsPendientes;
     List<Camion> camionesDisponibles;
 
@@ -47,18 +56,18 @@ public class PlanificadorDeRutasScheduler {
                                                .collect(Collectors.toList());
 
     } catch (Exception e) {
-      System.err.println("Error de lectura en la base de datos: " + e.getMessage());
+      log.error("No se pudo leer las donaciones pendientes ni los camiones, no se planifica hoy", e);
       return;
     }
 
     if (itemsPendientes.isEmpty()) {
-      System.out.println("No hay donaciones pendientes para planificar hoy.");
+      log.info("No hay donaciones pendientes para planificar hoy");
       return;
     }
 
-    // FIX ENTREGA 3: Restricción del proveedor externo a lotes de 100 como máximo
-    for (int i = 0; i < itemsPendientes.size(); i += 100) {
-      List<ItemEntrega> lote = itemsPendientes.subList(i, Math.min(i + 100, itemsPendientes.size()));
+    for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
+      List<ItemEntrega> lote = itemsPendientes.subList(
+              inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
       planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
     }
   }

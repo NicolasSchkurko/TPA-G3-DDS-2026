@@ -20,25 +20,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
 
-/**
- * No se puede publicar el ranking de un mes que todavía no cerró (punto 32).
- *
- * <p>El daño no era el ranking futuro en sí, sino lo que hacía con el resto del servicio.
- * "El ranking actual" se resolvía con el período más alto existente
- * ({@code findFirstByOrderByPeriodoDesc()}), así que un solo {@code POST
- * /api/rankings {"periodo":"2030-01"}} dejaba el servicio en este estado:
- *
- * <ul>
- *   <li>{@code GET /api/rankings/actual} devolvía la lista vacía, porque en 2030 no hay
- *       nadie.</li>
- *   <li>{@code GET /api/rankings/{id}/puestoRanking} respondía <b>404 para todos los
- *       usuarios</b>, aunque el ranking verdadero estuviera ahí.</li>
- * </ul>
- *
- * <p>Y quedaba así hasta que alguien se diera cuenta y borrara el ranking futuro a mano.
- * El mes en curso pasaba lo mismo, con la diferencia de que se rompía solo: siempre sale
- * vacío, porque el mes no terminó.
- */
 @DisplayName("Punto 32: no se publica el ranking de un período sin cerrar")
 class RankingServicePeriodoTest {
 
@@ -114,9 +95,7 @@ class RankingServicePeriodoTest {
 
             assertThat(service.crearRankingMensualActual()).isNotNull();
 
-            // El scheduler pasa por generarYGuardar, que es el mismo camino que el endpoint.
-            // Si el control hubiera quedado solo en el endpoint, esta llamada seguiría
-            // funcionando por casualidad; el test la ata al camino compartido.
+            // El scheduler pasa por el mismo camino compartido que el endpoint.
             verify(repoRankings).save(any());
         }
     }
@@ -142,9 +121,7 @@ class RankingServicePeriodoTest {
         @Test
         @DisplayName("el método viejo de 'el más alto' ya no existe: no es el que se usa")
         void elMetodoViejoNoExiste() {
-            // findFirstByOrderByPeriodoDesc() era el que rompía el ranking actual con un
-            // ranking futuro. Si alguien lo vuelve a agregar, este test no lo va a agarrar,
-            // pero al menos deja de estar disponible para que alguien lo use por costumbre.
+            // findFirstByOrderByPeriodoDesc() era el que rompía el ranking actual con un futuro.
             boolean existe = false;
             for (Method metodo : RepositorioRankings.class.getDeclaredMethods()) {
                 if (metodo.getName().equals("findFirstByOrderByPeriodoDesc")) {

@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +25,11 @@ public class EventoLogistica {
   @Column(name = "id_evento")
   private Long id;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
   @Column(name = "tipo_evento", nullable = false)
   private String tipoEvento;
 
@@ -38,6 +45,14 @@ public class EventoLogistica {
 
   @Column(name = "payload_json", columnDefinition = "TEXT")
   private String payloadJson;
+
+  /** El ítem al que pertenece el evento (lado dueño; el lado muchos es
+   *  {@code ItemEntrega.eventos}, mapeado por {@code mappedBy} sin {@code @JoinColumn}).
+   *  Nullable a propósito: el {@code INICIO_RUTA} es de la ruta y lo dice su {@code referenciaId}. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_donacion", referencedColumnName = "id_donacion")
+    @JsonIgnore
+    private ItemEntrega item;
 
   public EventoLogistica(String tipoEvento, String referenciaId, LocalDateTime fecha, String justificacion) {
     this.tipoEvento = tipoEvento;

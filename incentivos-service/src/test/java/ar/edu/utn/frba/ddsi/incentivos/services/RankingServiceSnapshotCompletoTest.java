@@ -23,17 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
 
-/**
- * El snapshot del ranking tiene que ser completo, y el recorte va al responder (punto 2).
- *
- * <p>El bug era de los que no se ven: el service guardaba las 10 primeras posiciones del mes
- * y el endpoint del podio aceptaba un {@code limite} mayor. Pedir 50 devolvía 10, con un 200 y
- * sin ningún aviso. Peor que un error, porque el cliente no tenía forma de saber que le
- * faltaban 40.
- *
- * <p>Las dos mitades se comprueban por separado: que la generación no corte, y que el corte
- * al responder respete lo que hay guardado.
- */
 @DisplayName("Punto 2: el ranking se persiste completo y el limite recorta la respuesta")
 class RankingServiceSnapshotCompletoTest {
 

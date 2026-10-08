@@ -43,10 +43,7 @@ class PerfilTest {
         return new Categoria(nombre, null, 1, new ArrayList<>(List.of(misiones)));
     }
 
-    /**
-     * {@code domainEvents()} es protected en AbstractAggregateRoot, asi que se accede
-     * por reflexion para no ensuciar la entidad con metodos solo para test.
-     */
+    /** {@code domainEvents()} es protected: se accede por reflexión para no exponer API de test. */
     @SuppressWarnings("unchecked")
     private static <T> List<T> eventos(Perfil perfil) {
         Collection<Object> eventos = ReflectionTestUtils.invokeMethod(perfil, "domainEvents");

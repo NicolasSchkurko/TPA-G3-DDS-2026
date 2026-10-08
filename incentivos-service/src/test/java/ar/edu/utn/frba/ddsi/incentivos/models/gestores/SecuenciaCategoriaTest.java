@@ -12,9 +12,6 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * La secuencia de posiciones de las categorías (punto 19).
- */
 @DisplayName("SecuenciaCategoria")
 class SecuenciaCategoriaTest {
 
@@ -93,8 +90,7 @@ class SecuenciaCategoriaTest {
     @Test
     @DisplayName("ir más allá de la última posición es un error, no un 'no hacer nada'")
     void masAllaDeLaUltimaPosicionEsUnError() {
-        // Con 5 categorías la 10 no existe. Antes el gestor se salía en silencio y el caller
-        // igual escribía la 10, dejando la secuencia 1,2,3,4,5,10 con un hueco (punto 31).
+        // Con 5 categorías la 10 no existe: antes se guardaba igual, dejando un hueco.
         assertThatThrownBy(() -> secuencia.desplazarParaActualizar(repo, 2, 10, 5))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("10")
@@ -121,8 +117,7 @@ class SecuenciaCategoriaTest {
     @Test
     @DisplayName("ir al final de la secuencia en la edición es un error: dejaría un hueco")
     void irAlFinalEnLaEdicionEsUnError() {
-        // Con 5 categorías la 6 no existe. Admitirla dejaba la secuencia 1,_,3,4,5,6.
-        // En el alta sí es válida, porque la categoría nueva hace una más.
+        // Con 5 categorías la 6 no existe al editar; en el alta sí vale.
         assertThatThrownBy(() -> secuencia.desplazarParaActualizar(repo, 2, 6, 5))
                 .isInstanceOf(IllegalArgumentException.class);
 

@@ -22,10 +22,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
-/**
- * El contacto del donante ya no viaja resuelto en el evento: lo resuelve el listener
- * (punto 12).
- */
 @DisplayName("NotificacionClient: el contacto se resuelve en el listener")
 class NotificacionClientResuelveContactoTest {
 
@@ -79,9 +75,7 @@ class NotificacionClientResuelveContactoTest {
 
         client.notificarCambioMision(evento());
 
-        // verifyNoInteractions y no un verify(rabbitTemplate, never()).convertAndSend(...):
-        // convertAndSend tiene varias sobrecargas compatibles entre si y Mockito no puede
-        // desambiguar, con lo que la verificacion pasaria sin comprobar nada.
+        // verifyNoInteractions: convertAndSend tiene sobrecargas y Mockito no puede desambiguar.
         verifyNoInteractions(rabbitTemplate);
     }
 

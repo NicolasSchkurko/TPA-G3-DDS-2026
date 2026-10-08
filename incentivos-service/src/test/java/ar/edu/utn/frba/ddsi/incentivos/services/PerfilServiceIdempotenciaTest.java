@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -22,19 +23,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * La ingesta de donaciones tiene que ser idempotente (punto 14).
- *
- * <p>El escenario que motiva esto: {@code N8nClient} relanzaba su excepción después del
- * commit (punto 13), así que el donante veía un 500 con la transacción ya confirmada.
- * Cualquier cliente HTTP reintenta por defecto, y la segunda pasada insertaba otra fila y
- * volvía a aplicar la regla: progreso inflado y, en el peor caso, una insignia antes de
- * tiempo.
- *
- * <p>La clave es que {@code ImpactoDonacion.idDonacion} es el id de la donación en el
- * servicio de origen y además la primary key local, así que la deduplicación es un
- * {@code findById} y no hace falta comparar el contenido.
- */
 @DisplayName("PerfilService: idempotencia de la ingesta de donaciones")
 class PerfilServiceIdempotenciaTest {
 
@@ -50,10 +38,7 @@ class PerfilServiceIdempotenciaTest {
     void setUp() {
         repoPerfiles = mock(RepositorioPerfiles.class);
         repoDonaciones = mock(RepositorioDonaciones.class);
-        // El TransactionTemplate corre el callback sin transaccion de verdad: el
-        // objetivo del test es la idempotencia, que es logica pura del service, y no
-        // la transaccion en si. Con un mock que devuelve null, los asserts no
-        // tendrian nada que mirar.
+        // El template corre el callback sin transacción real: acá se prueba la lógica del service.
         TransactionTemplate template = mock(TransactionTemplate.class);
         when(template.execute(any())).thenAnswer(invocacion -> {
             org.springframework.transaction.support.TransactionCallback<?> accion = invocacion.getArgument(0);
@@ -64,7 +49,8 @@ class PerfilServiceIdempotenciaTest {
                 repoPerfiles,
                 mock(RepositorioCategorias.class),
                 repoDonaciones,
-                template
+                template,
+                mock(ValidadorAdmin.class)
         );
     }
 

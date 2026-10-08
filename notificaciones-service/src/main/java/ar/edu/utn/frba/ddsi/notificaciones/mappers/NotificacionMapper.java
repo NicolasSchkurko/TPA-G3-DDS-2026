@@ -12,6 +12,7 @@ public class NotificacionMapper {
         notificacionDTO.setAsunto(notificacion.getMensaje().getAsunto());
         notificacionDTO.setCuerpo(notificacion.getMensaje().getCuerpo());
         notificacionDTO.setDireccionDeContacto(notificacion.getDireccionDeContacto());
+        notificacionDTO.setTipoMedioDeContacto(notificacion.getTipoMedioDeContacto());
         notificacionDTO.setEstado(notificacion.getEstado().toString());
         notificacionDTO.setFechaCreacion(notificacion.getFechaCreacion().toString());
         if (notificacion.getFechaEnvio() != null) {

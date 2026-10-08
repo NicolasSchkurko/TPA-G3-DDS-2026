@@ -12,30 +12,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/**
- * Las consultas que leen tablas grandes no pueden depender de funciones sobre la columna ni
- * de un N+1 (punto 22).
- *
- * <p>Los gastos de este punto eran invisibles porque nada se rompía: los resultados
- * daban correctos y lo único que pasaba es que la base hacía muchísimo trabajo de más. Con
- * el tamaño de una base de desarrollo nadie lo nota, y con datos reales es la diferencia
- * entre milisegundos y minutos.
- *
- * <p>Lo que se comprueba acá son las tres cosas que se pueden comprobar sin base: que los
- * índices estén declarados, que las relaciones que se usan en las lecturas no sean EAGER,
- * y que el filtro del ranking sea un rango. El plan de ejecución de verdad lo respondería un
- * {@code EXPLAIN} que acá no se puede hacer.
- */
 @DisplayName("Punto 22: las consultas de las tablas grandes no hacen trabajo de más")
 class RendimientoConsultasTest {
 
-    /**
-     * Los índices que el punto 22 deja declarados, con la razón por la que cada uno existe.
-     *
-     * <p>Se listan acá y no sehardcodean uno por uno en cada test porque un índice que se
-     * borra tiene que romper un test que diga <em>para qué estaba</em>, no uno que diga
-     * "falta el índice 3".
-     */
+    /** Los índices que el punto 22 deja declarados, con la razón de cada uno. */
     private static final String[][] INDICES_ESPERADOS = {
             {
                     "idx_impacto_usuario_fecha",

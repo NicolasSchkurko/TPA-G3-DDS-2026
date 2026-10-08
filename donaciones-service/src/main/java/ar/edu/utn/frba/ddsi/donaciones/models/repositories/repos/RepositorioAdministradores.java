@@ -35,14 +35,12 @@ public class RepositorioAdministradores {
         return jpaRepository.findAll();
     }
 
+    /** Busca por id. Devuelve {@code Optional.empty()} si no existe, no lanza: un repositorio
+     *  devuelve el dato, no decide si es un error. Si lanzara IAE, el proxy de
+     *  {@code @Repository} lo traduciría a {@code InvalidDataAccessApiUsageException}, que
+     *  escapa al {@code catch (IllegalArgumentException)} del controller y termina en 500. */
     public Optional<Administrador> buscarPorId(UUID id) {
-        Optional<Administrador> admin = jpaRepository.findById(id);
-
-        if (admin.isEmpty()) {
-            throw new IllegalArgumentException("No se encontró el administrador con ID: " + id);
-        }
-
-        return admin;
+        return jpaRepository.findById(id);
     }
 
     public void actualizar(UUID idOriginal, Administrador adminActualizado) {

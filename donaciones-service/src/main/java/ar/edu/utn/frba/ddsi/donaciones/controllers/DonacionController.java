@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +31,7 @@ public class DonacionController {
 
   @Operation(summary = "Crear una Donación")
   @PostMapping("/formulario")
-  public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
+  public ResponseEntity<List<DonacionDTO>> crearDonacion(@Valid @RequestBody FormularioRequestDTO request) {
     List<DonacionDTO> donaciones = donacionService.procesarFormulario(request);
     if (donaciones == null) {
       return ResponseEntity.notFound().build();
@@ -56,7 +57,7 @@ public class DonacionController {
 
   @Operation(summary = "Actualizar donación")
   @PutMapping("/{id}")
-  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody DonacionDTO dto) {
+  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @Valid @RequestBody DonacionDTO dto) {
     try {
       return ResponseEntity.ok(donacionService.actualizarDonacion(id, dto));
     } catch (RuntimeException e) {

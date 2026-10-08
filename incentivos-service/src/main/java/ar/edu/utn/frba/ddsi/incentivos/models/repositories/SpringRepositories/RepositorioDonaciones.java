@@ -12,11 +12,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * Consultas sobre las donaciones, que es la fuente de la que se calcula todo el progreso.
- *
- * <p>Los impactos de donación los copia {@code donaciones-service} cuando una donación se
- * entrega. Los métodos que filtran por rango de fechas son los que usan las métricas y el
- * cálculo de constancia, que necesita los meses calendario.
+ * Consultas sobre las donaciones, fuente de la que se calcula todo el progreso. Las copia
+ * {@code donaciones-service} cuando una donación se entrega.
  */
 @Repository
 public interface RepositorioDonaciones

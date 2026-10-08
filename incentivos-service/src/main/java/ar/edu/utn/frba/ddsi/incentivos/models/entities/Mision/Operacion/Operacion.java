@@ -13,18 +13,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * Qué cuenta como progreso en una misión, según el tipo que el admin eligió al crearla.
- *
- * <p>Es una jerarquía deStrategy: las subclases son {@code CantidadCoincidencias},
- * {@code ValoresDistintos} y {@code SuperaCantidad}. Todas comparten el
- * {@code progresoObjetivo}; cada una agrega lo que necesita para contar.
- *
- * <p>Usa {@code SINGLE_TABLE}: las tres filas viven en la misma tabla, distinguidas por la
- * columna de discriminante. Con pocas subclases y muchos registros eso evita el JOIN de
- * una tabla por clase.
+ * Qué cuenta como progreso en una misión, según el tipo elegido al crearla. Jerarquía de
+ * Strategy ({@code CantidadCoincidencias}, {@code ValoresDistintos}, {@code SuperaCantidad})
+ * mapeada con {@code SINGLE_TABLE}.
  */
 @Getter
-// patron strategy
 @Entity
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @NoArgsConstructor
@@ -40,14 +33,10 @@ public abstract class Operacion {
     }
 
     /**
-     * Si el donante ya cumplio lo que la operacion pide.
+     * Si el donante ya cumplió lo que la operación pide.
      *
-     * @param donante el avance del donante que está haciendo la misión. Las operaciones
-     *                que dependen solo del contador no lo usan, pero las que tienen que
-     *                recordar qué vio el donante (como {@code ValoresDistintos}) sí, y
-     *                por eso va en la firma en vez de guardarse en la operación: si se
-     *                guardara ahí, sería estado compartido entre todos los donantes de
-     *                la misión.
+     * @param donante el avance del donante. Va en la firma, no guardado en la operación,
+     *                para no compartir estado entre donantes.
      */
     public boolean estaCompleta(Integer progresoActual, ProgresoDelDonante donante) {
         return progresoActual != null
@@ -56,17 +45,12 @@ public abstract class Operacion {
     }
 
     /**
-     * Calcula cuántos puntos aporta esta donación al progreso.
+     * Si esta donación cuenta para el progreso. La cantidad de puntos la suma
+     * {@code ProgresoMision}.
      *
-     * @param valorAtributo el valor del {@code AtributoImpacto} que la misión está
-     *                      mirando, ya extraído de la donación. Qué tipo tiene depende del
-     *                      atributo: un texto para {@code ESTADO}, un número para
-     *                      {@code CANTIDAD_BIENES}.
-     * @param donante       el avance de este donante, para las operaciones que tienen que
-     *                      acordarse de lo que vieron la vez pasada.
-     * @return {@code true} si esta donación cuenta para la misión. La cantidad de puntos
-     *         la decide {@code ProgresoMision}, que suma de a uno; lo que se delega acá es
-     *         únicamente si la donación cuenta o no.
+     * @param valorAtributo el valor del atributo que mira la misión, ya extraído.
+     * @param donante       el avance de este donante.
+     * @return {@code true} si la donación cuenta para la misión.
      */
     public abstract boolean calcularProgreso(
             Object valorAtributo,
@@ -74,16 +58,9 @@ public abstract class Operacion {
     );
 
     /**
-     * Si dos operaciones piden exactamente lo mismo. Es lo que permite decidir si al
-     * editar una misión el progreso acumulado sigue siendo válido (punto 15).
-     *
-     * <p>Se comparan el tipo de operación y el objetivo, que son las dos cosas que
-     * comparten todas. Cada subclase agrega sus propios parámetros con un
-     * {@code instanceof} y un {@code super}, así que agregar una operación nueva no
-     * compila hasta que defina qué es "cambió de verdad" para ella.
-     *
-     * <p>No se comparan los ids: son de base de datos y dos objetos recién construidos
-     * siempre serían distintos.
+     * Si dos operaciones piden exactamente lo mismo: decide si al editar una misión el
+     * progreso acumulado sigue siendo válido. Compara tipo y objetivo; cada subclase agrega
+     * sus parámetros.
      */
     public boolean esEquivalenteA(Operacion otra) {
         return otra != null

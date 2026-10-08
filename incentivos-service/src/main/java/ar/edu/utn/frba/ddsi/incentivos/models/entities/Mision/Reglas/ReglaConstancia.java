@@ -12,12 +12,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * La condición de tiempo de una regla: "una donación cada {@code cantidad}
- * {@code unidadTiempo}".
- *
- * <p>{@link UnidadTiempo} limita las unidades guardadas a las que acepta el dominio, sin
- * depender de las constantes que exponga {@code java.time.temporal.ChronoUnit}.
- *
- * <p>No tiene setters: la constancia se define al crear la misión.
+ * {@code unidadTiempo}". No tiene setters.
  */
 @Getter
 @Entity

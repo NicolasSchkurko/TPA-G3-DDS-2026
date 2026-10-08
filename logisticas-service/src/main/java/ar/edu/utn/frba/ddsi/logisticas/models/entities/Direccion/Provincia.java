@@ -16,6 +16,11 @@ public class Provincia {
     @Column(name = "id_provincia")
     private Long idProvincia;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "nombre", nullable = false)
     private String nombre;
 

@@ -20,10 +20,7 @@ class OperacionDTOValorEsperadoTest {
 
         OperacionDTO dto = OperacionDTO.desdeEntidad(operacion);
 
-        // String.valueOf de un TextNode devuelve la representacion JSON, o sea
-        // "ENTREGADA" CON comillas. Con eso el panel de admin hace GET -> PUT, la
-        // mission se guarda con el valor entrecomillado, y despues ninguna donacion
-        // con estado ENTREGADA coincide nunca.
+        // String.valueOf de un TextNode devuelve el JSON entrecomillado, que nunca coincide.
         assertThat(dto.getValorEsperado()).isEqualTo("ENTREGADA");
     }
 
@@ -36,8 +33,7 @@ class OperacionDTOValorEsperadoTest {
         String vuelta = OperacionDTO.desdeEntidad(original).getValorEsperado();
         CantidadCoincidencias idaYVuelta = new CantidadCoincidencias(5, MAPPER.valueToTree(vuelta));
 
-        // Lo que vuelve del DTO tiene que seguir siendo la MISMA regla, si no cada
-        // edicion de la mision parece un cambio y reinicia el progreso de todos.
+        // Si el DTO alterara el valor, cada edición parecería un cambio y reiniciaría el progreso.
         assertThat(idaYVuelta.esEquivalenteA(original)).isTrue();
     }
 }

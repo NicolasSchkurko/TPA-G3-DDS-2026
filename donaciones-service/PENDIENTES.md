@@ -14,11 +14,9 @@ rompe cuando pasa, y qué tan fácil es que pase.
 |----|-------|---------------------------------------------------------------------------------------------------|
 | 4  | 4     | Declara el bean de `notificaciones-service` como dependencia de Maven                             |
 | 5  | 5     | El endpoint de vencer una donación manda un estado que el parser no conoce                        |
-| 6  | 6     | Una estrategia de notificación no es bean: toda entrega fallida revienta                          |
 | 7  | 7     | Un bien sin `tipoBien` se convierte en `null` y revienta la segmentación                          |
 | 8  | 8     | No hay una sola transacción en el módulo: las escrituras quedan a medias                          |
 | 9  | 9     | Un fallo en una donación corta el lote de matchmaking entero                                      |
-| 10 | 10    | `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella                          |
 | 11 | 11    | Guardar el estado antes de notificar deja el cambio persistido y responde 404                     |
 | 12 | 12    | `CascadeType.ALL` en las necesidades borra de más al dar de baja una entidad                      |
 | 13 | 13    | El PUT de donante cambia el `@Id` y duplica la Persona                                            |
@@ -30,13 +28,11 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 19 | 19    | Borrar el medio de contacto predeterminado lo deja colgando                                       |
 | 20 | 20    | Los eventos de logística no se aíslan: un id inválido rebuclea el mensaje para siempre            |
 | 21 | 21    | Los controllers responden 404 ante cualquier `RuntimeException`                                   |
-| 22 | 22    | No hay Bean Validation: entran cantidades negativas como `Bien.peso`                              |
-| 23 | 23    | La segmentación no incluye la unidad de medida y suma kilos con litros                            |
 | 24 | 24    | El PUT de donación deja los bienes anteriores huérfanos                                           |
 | 25 | 25    | La importación CSV se traga los errores y no dice cuántos entraron                                |
 | 26 | 26    | El PUT de necesidad ignora el id de entidad y castea a ciegas                                     |
-| 27 | 27    | La integración con logóstica ya va por broker, pero el contrato depende de DTOs duplicados a mano |
 | 28 | 28    | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica                             |
+| 29 | 29    | `POST /donaciones/formulario` devuelve 400 sin decir por qué                                    |
 
 ---
 
@@ -93,45 +89,6 @@ Que el servicio speak el mismo idioma que el enum (`"VENCIDO"`), y mejor: cambia
 `cambiarEstado` para que reciba `Estado` y no un `String`, así el compilador es el que impide
 el desacople. De paso, sacar el `catch (RuntimeException) → 404` de los controllers (ver punto
 21).
-
----
-
-## 6. Una estrategia de notificación no es bean: toda entrega fallida revienta
-
-**Estado:** abierto
-**Severidad:** crítica
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionEntregaFallida.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/FabricaEstrategiasNotificacion.java`
-
-### Qué pasa
-
-`NotificacionEntregaFallida` es la única de las seis estrategias que **no** tiene `@Component`
-(las otras cinco lo tienen: `NotificacionViaje:11`, `NotificacionRegistroPersona:11`,
-`NotificacionInactividad:11`, `NotificacionEntregaCompletada:12`, `NotificacionDonacionAsignada:11`).
-
-`FabricaEstrategiasNotificacion` arma su mapa inyectando `List<EstrategiaNotificacion>`
-(líneas 21-29), o sea, sólo con los beans. Sin `@Component`, `NotificacionEntregaFallida`
-nunca entra al mapa, así que la clave `ENTREGA_NO_RECIBIDA` no existe.
-
-Cuando logística reporta `ENTREGA_FALLIDA`, `GestorEventosLogistica.manejarEntregaFallida`
-(línea 113) llama `fabricaEstrategias.ejecutar(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA, ...)`
-y `FabricaEstrategiasNotificacion.ejecutar` (líneas 41-44) tira
-`IllegalArgumentException("No existe una estrategia para ENTREGA_NO_RECIBIDA")`.
-
-### Por qué no se ve
-
-La notificación al donante y a la entidad happens en `NotificacionEntregaCompletada`, que sí
-está registrada, y el estado de la donación se guarda justo antes (línea 110). O sea, el
-mensaje de prueba aparece como si anduviera: lo único que falta es el aviso de entrega
-fallida, y nobody ve el error porque `manejarEntregaFallida` no tiene try/catch y la excepción
-se va por el listener de Rabbit.
-
-### Propuesta
-
-Ponerle `@Component`. Y como defensa: que la fábrica falle al arrancar si un
-`TipoEventoNotificacion` del enum no tiene estrategia registrada, en lugar de fallar en
-runtime la primera vez que se dispara el evento.
 
 ---
 
@@ -254,51 +211,6 @@ endpoint, donante que vuelve a EN_DEPOSITO por `ENTREGA_FALLIDA`, rollback manua
 Envolver `procesarMatchmaking` en un try/catch por donación, loguear y seguir. Y hacer la
 escritura en el orden inverso: primero guardar el resultado, después cambiar el estado (o
 juntarlo todo en una transacción, ver punto 8).
-
----
-
-## 10. `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Necesidades/NecesidadRecurrente.java`
-
-### Qué pasa
-
-Nadie escribe nunca `Donacion.fechaEntrega`. El único constructor que lo recibe es el de
-`Donacion` (líneas 87-98) y el único que lo arma es
-`SegmentadorDonaciones.crearDonacion`, que le pasa `null` explícitamente en la línea 66.
-`DonacionDTO.toDomain()` tampoco lo setea. Un `grep` de `setFechaEntrega` en `src/main` sólo
-devuelve las dos copias del valor hacia otros DTOs (`DonacionDTO:51` y
-`GestorAsignaciones:94`), nunca la escritura en la entidad.
-
-La columna queda siempre en `NULL`, y dos lógicas la usan como si fuera dato real:
-
-- **`SubAtendidos.cantidadDonacionesUltimoTrimestre`** (líneas 57-63) filtra por
-  `d.getFechaEntrega() != null`. Como siempre es `null`, el count es **siempre 0**: el
-  algoritmo "priorizar a los sub-atendidos" no prioriza a nadie.
-- **`NecesidadRecurrente.cantidadRecibidaEnPeriodo`** (líneas 31-40) filtra por
-  `donacion.getFechaEntrega() != null && ...isAfter(fechaLimite)`. Siempre `null`, así que
-  **siempre devuelve 0**: una necesidad recurrente jamás se da por satisfecha por más que se
-  le entregue todo.
-
-El resto del sistema tampoco avisa: `NotificacionDonacionAsignada` (líneas 40-42) imprime
-literalmente "sin fecha definida" en el mensaje al donante.
-
-### Por qué no se ve
-
-El síntoma no es una excepción sino un algoritmo que devuelve siempre lo mismo. El
-matchmaking "funciona", las propuestas salen, y nadie nota que el score de `SubAtendidos` es
-constante ni que las necesidades recurrentes nunca se cierran.
-
-### Propuesta
-
-Definir quién setea `fechaEntrega` y cuándo (¿al confirmar la entrega, o al generar el
-formulario?) y setearla en ese momento. Mientras tanto, `NecesidadRecurrente` y `SubAtendidos`
-no deberían depender de un campo que nunca se llena.
 
 ---
 
@@ -798,92 +710,6 @@ señal de negocio del punto 5/7: para eso están las `IllegalArgumentException`.
 
 ---
 
-## 22. No hay Bean Validation: entran cantidades negativas como `Bien.peso`
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:**
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/personaDonante/FormularioRequestDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/donaciones/BienResumenDTO.java`
-
-### Qué pasa
-
-Un `grep` de `jakarta.validation`, `@Valid`, `@NotNull`, `@NotBlank`, `@Positive` en
-`src/main` devuelve exactamente **un** resultado: el `@NotNull` de
-`GestorAsignaciones.java:143`, que además es el import equivocado (`org.jetbrains.annotations`,
-no el de Bean Validation) y está sobre un método `private static`.
-
-Los DTOs de entrada son cajas de Lombok sin una sola restricción. `FormularioRequestDTO`
-(líneas 13-16) no exige `idDonante` ni `fechaRealizacion`; `BienResumenDTO` (líneas 11-20) no
-exige `tipoBien` (ver punto 7) ni que `cantidad` sea positiva.
-
-El caso concreto: `POST /donaciones/formulario` con
-`{"bienes":[{"tipoBien":"CON_ESTADO","descripcion":"arroz","cantidad":-50,"usado":false}]}`.
-`BienResumenDTO.toDomain` (línea 50) sólo protege el `null` (`cantidad != null ? cantidad : 0`),
-así que guarda `peso = -50` en `Bien.peso` (línea 46 de `Bien.java`). Ese `-50` entra directo
-en `Donacion.sumaCantidadBienes()` (líneas 100-102), que es el numerador de
-`CompatibilidadSemantica.calcularScore` y el sumador de `Necesidad.cantidadRecibida()` y de
-`NecesidadRecurrente.cantidadRecibidaEnPeriodo()`. El resultado es una necesidad que "recibió"
-menos de lo que tenía y un score negativo que el filtro de la línea 51 descarta en silencio.
-
-Lo mismo con `Humana.edad` (línea 19 de `Humana.java`): `int edad` acepta -3 y 0 sin que nadie
-lo mire, y `PersonaDonanteFilaConverter` lo carga con un 0 hardcodeado (línea 82).
-
-### Por qué no se ve
-
-La API responde 201 y devuelve el `id` del bien recién creado, así que el cliente no tiene
-por qué sospechar. El `-50` recién aparece semanas después, cuando una necesidad que debía
-estar cubierta no se cierra y nadie sabe por qué: la única pista es un score negativo que
-`CompatibilidadSemantica` filtra con un `continue` sin log (línea 51).
-
-### Propuesta
-
-Poner `@Valid` en los `@RequestBody` y anotaciones en los DTOs. Es el arreglo más chico de
-toda la lista y el que más bugs futuros evita: hoy cada endpoint tiene que defenderse a mano y
-ninguno lo hace.
-
----
-
-## 23. La segmentación no incluye la unidad de medida y suma kilos con litros
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:**
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`
-
-### Qué pasa
-
-`generarClaveSegmentacion` (líneas 43-54) arma la clave del segmento con subcategoría, fecha de
-vencimiento (si es perecedero) y usado/nuevo (si tiene estado). **La unidad de medida no
-entra**: `Bien.unidadUtilizada` es un `UnidadDeMedida` (`KILOGRAMOS`, `LITROS`, `UNIDADES`) y
-se ignora por completo.
-
-Consecuencia: un formulario con "10 kilos de arroz" (KILOGRAMOS) y "5 litros de aceite"
-(LITROS) de la misma subcategoría cae en el mismo grupo. `crearDonacion` (líneas 56-68) crea
-**una sola** Donación con los dos bienes, y `Donacion.sumaCantidadBienes()` (líneas 100-102)
-los suma: 15. Ese 15 se compara contra `cantidadObjetivo` de la necesidad, que está en una
-sola unidad, en `CompatibilidadSemantica.calcularScore` y en `Necesidad.cantidadRecibida()`. Un
-kilo vale un kilo y un litro no es medio kilo.
-
-El mismo `--` aparece en el `toString` de `UnidadDeMedida`: el propio comentario de la línea 3
-dice "q siempre lo pese, no unidades", o sea, que la decisión de reducir todo a un número está
-pendiente de definirse.
-
-### Por qué no se ve
-
-La segmentación devuelve una donación por grupo y el grupo se ve bien: la descripción dice
-"Segmento de donación: Almacenes" y los bienes están todos ahí. Nadie revisó que la lista
-mezcle kilos con litros, porque el modelo trata `peso` como un número sin unidad y la UI nunca
-muestra la unidad.
-
-### Propuesta
-
-O agregar `unidadUtilizada` a la clave de segmentación (y entonces cada donación es de una sola
-unidad), o convertir todo a peso en el ingreso y sacar la `UnidadDeMedida` del modelo. Lo que no
-puede es sumar una unidad con otra y usar el resultado para decidir asignaciones.
-
----
-
 ## 24. El PUT de donación deja los bienes anteriores huérfanos
 
 **Estado:** abierto
@@ -1025,53 +851,6 @@ rechazar el cambio con un 400, o reemplazar la entidad en vez de castear.
 
 ---
 
-## 27. La integración con logística ya va por broker, pero el contrato depende de DTOs duplicados a mano
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/EntregaDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/BienDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/DireccionDTO.java`,
-`logisticas-service/src/main/java/.../dto/entrega/EntregaDTO.java`
-
-### Qué se resolvió
-
-El enunciado exige que la integración con logística vaya por broker. Ya va:
-`ProductorLogistica` publica en `logistica.exchange` con la routing key `donaciones.creada`, y
-`DonacionService.asignarPropuesta` lo invoca después de cambiar el estado a `ASIGNADO`. Se
-verificó que la cola compartida `logistica.integracion.queue` tiene consumidores y que el
-mensaje llega.
-
-### Lo que queda frágil
-
-El contrato de integración son **DTOs copiados a mano en los dos módulos**, sin nada que los
-mantenga sincronizados:
-
-| Concepto  | DTO en `donaciones-service`        | DTO en logística           |
-|-----------|------------------------------------|----------------------------|
-| Entrega   | `dto.logistica.entrega.EntregaDTO` | `dto.entrega.EntregaDTO`   |
-| Bien      | `BienDTO` (7 campos)               | `dto.entrega.BienDTO`      |
-| Dirección | `dto.DireccionDTO`                 | `dto.entrega.DireccionDTO` |
-
-Los nombres de los campos coinciden hoy. Si uno de los dos lados renombra o agrega un campo,
-no hay nada que avise: el mensaje se publica, llega al broker, y el consumidor falla con
-`Failed to convert message`, que no dice cuál de los dos lados se desalineó.
-
-Ese error se sufrió durante esta tanda: el listener declaraba `List<EventoLogisticaDTO>` y el
-productor mandaba un evento suelto. El mensaje llegó al listener y murió ahí, sin rastro útil.
-
-### Propuesta
-
-Un módulo `common-lib` con los DTO de integración, que ambos servicios usen. Ya existe un
-`common-lib` en el repositorio, aunque está desconectado del build (es el punto 4 del backlog
-de `incentivos-service`).
-
-La alternativa más barata, si no se quiere tocar el build: un test de contrato en cada lado
-que deserialice un ejemplo serializado del otro y verifique que no quedan campos en `null`.
-No evita el problema, lo hace visible al primer test en vez de al primer incidente.
-
----
-
 ## 28. `BienDTO` mezcla el mensaje de integración con el modelo de logística
 
 **Estado:** abierto
@@ -1139,6 +918,310 @@ servicios— responde `201` con persistencia real.
 ---
 
 ## Corregidos
+
+### 31. Logística registra un solo bien por donación: los bienes 2..N caen como "repetidos"
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java` (junto con el punto 23)
+
+### Qué pasaba
+
+`ItemEntrega` (logística) tiene el `@Id` en `id_donacion`: un item por donación, con un solo
+par `cantidad`+`unidad`, y `EntregaService.itemsEnUnaTransaccion` hace `existsById(idDonacion)`
+antes de guardar cada par id-bien. Los bienes 2..N de la misma donación caían como "repetidos"
+y se perdían. Enviar N ids tampoco sirve: el segundo item colisiona con el primero. La
+decisión de granularidad que propone este punto: **el item es la cantidad agregada de la
+donación en una unidad**, no un bien físico.
+
+### Qué se cambió
+
+1. `publicarEntregaALogistica` suma las cantidades **por unidad de medida**
+   (`LinkedHashMap` + `merge` con `Integer::sum`, peso null → 0, igual que `BienResumenDTO`)
+   y manda una entrada por unidad con el id de donación repetido — el receptor exige
+   `bienes.size() == idsDonaciones.size()` (punto 27) y así los tamaños siempre alinean. Con
+   un segmento homogéneo, logística registra **un** item con el total real: nada se pierde,
+   y la idempotencia por re-delivery queda intacta.
+2. **Punto 23 (opción A de su propia propuesta):** `generarClaveSegmentacion` incluye la
+   `unidadUtilizada` (null-safe), así que los segmentos nuevos son de una sola unidad y la
+   agregación siempre es sumable.
+3. El modelo receptor no se tocó (hay trabajo en curso en esos archivos de logística).
+4. Residual: los segmentos **legacy** con unidades mezcladas (creados antes de este arreglo)
+   mandan dos entradas y logística registra solo la primera. Es data anterior al arreglo.
+
+### Cómo se verificó
+
+`ContratoLogisticaTest` ahora corre `asignarPropuesta` con 2 bienes (10 kg + 6 kg) y exige
+ids `[idDonacion]` + un único bien con `cantidad: 16`, `KILOGRAMOS`. **RED verificado**
+revirtiendo temporalmente el agregado: el mensaje salía `[id,id]` con 2 bienes — el
+mecanismo exacto del descarte por dedupe. Suite: donaciones 33/33, BUILD SUCCESS.
+
+---
+
+### 23. La segmentación no incluye la unidad de medida y suma kilos con litros
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit (opción A de la propia propuesta, como parte del punto 31)
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`
+
+### Qué pasaba
+
+`generarClaveSegmentacion` armaba la clave del segmento con subcategoría, fecha de vencimiento
+(si era perecedero) y usado/nuevo, pero **no entraba la unidad**: "10 kilos de arroz" y "5
+litros de aceite" de la misma subcategoría caían en la misma donación y
+`Donacion.sumaCantidadBienes()` los sumaba como 15, que es lo que consumen
+`CompatibilidadSemantica.calcularScore` y `Necesidad.cantidadRecibida()`.
+
+### Qué se cambió
+
+`generarClaveSegmentacion` incluye `bien.getUnidadUtilizada()` en la clave (con guarda de
+null, para los bienes que hoy llegan sin unidad): cada donación segmentada es de una sola
+unidad. Es la opción A que el propio punto proponía, y es la que hace posible el agregado por
+unidad del punto 31. No se migró a "convertir todo a peso" (la decisión del
+`UnidadDeMedida.toString` de "que siempre lo pese" sigue en pie como decisión más grande).
+
+### Cómo se verificó
+
+Test nuevo `SegmentadorDonacionesTest.segmentar_BienesDeDistintaUnidad_NoSeSuman`
+(kilo vs litro → 2 donaciones). **RED verificado** sin la unidad en la clave: devolvía 1
+donación (`expected: <2> but was: <1>`). Suite: donaciones 33/33, BUILD SUCCESS.
+
+---
+
+### 27. La integración con logística ya va por broker, pero el contrato depende de DTOs duplicados a mano
+
+**Estado:** corregido (el residual que registró quedó resuelto junto con los puntos 31 y 23)
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/DireccionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java`
+
+### Qué pasaba
+
+El contrato de entrega son DTOs copiados a mano en cada módulo, y la afirmación de este punto
+("los nombres de los campos coinciden hoy") quedó desactualizada. La revisión del receptor
+(`EntregaService.procesarPeticion` y `resolverEntidad` de logisticas-service) mostró dos
+desincronizaciones reales:
+
+1. **Faltaba `idEntidad`.** El emisor armaba `DireccionDTO.from(entidad.getDireccion())` sin
+   id, y el receptor lo exige: `resolverEntidad` hace `findById(dto.getIdEntidad())`
+   (`EntregaService:153-155`); con null tira IAE y el `DonacionListener` descarta el mensaje.
+   El 100% de las entregas se descartaba.
+2. **Tamaños incompatibles.** El emisor mandaba `List.of(donacion.getId())` con N bienes y el
+   receptor exige `bienes.size() == idsDonaciones.size()` (`EntregaService:119-122`): con
+   N > 1 bienes el mensaje se descartaba entero. El diseño documentado en el propio
+   `ProductorLogistica` ("el mensaje lleva un id de donación por bien") es el que usa el
+   receptor; el que no lo cumplía era `publicarEntregaALogistica`.
+
+### Qué se cambió
+
+1. `DireccionDTO` ahora declara `idEntidad` (UUID), y `publicarEntregaALogistica` lo setea con
+   `entidad.getId()`, que es la clave que logística guarda como `Entidad.idEntidadBeneficiaria`.
+2. El mensaje lleva **un id de donación por bien** (los tamaños siempre coinciden; la clave de
+   partición sigue siendo el menor de los ids, como documenta `ProductorLogistica`).
+3. El lado receptor no se tocó: ya esperaba exactamente esta forma del mensaje.
+4. El residual del modelo receptor (registra un solo bien por donación) que esta revisión
+   descubrió quedó resuelto después por los puntos 31 y 23 (agregado por unidad).
+
+### Cómo se verificó
+
+Test de contrato nuevo `ContratoLogisticaTest`: corre `asignarPropuesta` completo con el
+service real (deps mockeadas en los bordes), captura el `EntregaDTO` que entrega al
+`ProductorLogistica`, lo serializa como lo hace el `Jackson2JsonMessageConverter`
+(`ObjectMapper` default, estricto con campos desconocidos — si un lado renombra un campo, el
+test lo ve) y lo deserializa y valida contra mirrors campo a campo de los cuatro DTOs
+receptores, incluidos los campos que viajan en null. Fallaba antes del arreglo
+(`idEntidad: must not be null` — el descarte garantizado) y pasa después, incluido el caso
+multi-bien (2 bienes, ids alineados). Suite completa: donaciones 32/32, BUILD SUCCESS.
+
+---
+
+### 22. No hay Bean Validation: entran cantidades negativas como `Bien.peso`
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `pom.xml`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/personaDonante/FormularioRequestDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/donaciones/BienResumenDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/donaciones/DonacionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonacionController.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/GlobalExceptionHandler.java`
+
+### Qué pasaba
+
+Los DTOs de entrada eran cajas de Lombok sin una sola restricción y el pom ni siquiera
+declaraba `spring-boot-starter-validation` (desde Boot 2.3 no viene con starter-web), así que
+cualquier anotación se habría ignorado. `POST /donaciones/formulario` con
+`cantidad: -50` guardaba `Bien.peso = -50`, que arrastra `sumaCantidadBienes()`, los scores de
+`CompatibilidadSemantica` y los conteos de las necesidades; un bien sin `tipoBien` producía un
+`null` que llegaba a la segmentación.
+
+### Qué se cambió
+
+1. `pom.xml`: se agrega `spring-boot-starter-validation`.
+2. `FormularioRequestDTO`: `@NotNull` en `idDonante` y `fechaRealizacion` (esta última además
+   cierra el hueco que quedó del punto 30: la fecha que va a incentivos), y `@Valid` en
+   `bienes` para que cada `BienResumenDTO` de la lista también se valide.
+3. `BienResumenDTO`: `@NotNull @Positive` en `cantidad`, `@NotBlank` en `tipoBien`.
+4. `DonacionDTO`: `@Valid` en `bienes` (cascada para el `PUT /donaciones/{id}`).
+5. `DonacionController`: `@Valid` en los `@RequestBody` de `crearDonacion` y
+   `actualizarDonacion`.
+6. `GlobalExceptionHandler`: handler nuevo para `MethodArgumentNotValidException` → 400 con el
+   detalle de campos (`ErrorResponseDTO`, mismo patrón que el resto) y `log.warn`. Sin él, el
+   catch-all `Exception → 500` existente habría convertido la falla de validación en un 500.
+
+**Queda pendiente:** la validación de `Humana.edad` (`PersonaDonanteDTO`), que este punto
+mencionaba pero no tenía en su lista de archivos. Sigue en abierto.
+
+### Cómo se verificó
+
+Test nuevo `FormularioRequestValidacionTest` (MockMvc standalone contra el controller real,
+con el advice `GlobalExceptionHandler` registrado y el service mockeado):
+
+- Cantidad `-50` → 400 con `{"mensaje": "...cantidad...", "codigoEstado": 400}` y el service
+  **nunca invocado**.
+- Bien sin `tipoBien` → 400, service nunca invocado.
+- Formulario sin `fechaRealizacion` → 400, service nunca invocado.
+- Formulario válido → llega al service (protege contra sobre-bloqueo).
+
+Los tres casos inválidos respondían 200 antes del arreglo. Suite completa: donaciones 31/31,
+notificaciones 15/15, BUILD SUCCESS.
+
+---
+
+### 6. Una estrategia de notificación no es bean: toda entrega fallida revienta
+
+**Estado:** corregido
+**Severidad:** crítica
+**Corregido:** 2026-10-07 · sin commit (el `@Component` ya estaba en el código; el pendiente estaba desactualizado)
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionEntregaFallida.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/FabricaEstrategiasNotificacion.java`
+
+### Qué pasaba
+
+`NotificacionEntregaFallida` era la única de las seis estrategias sin `@Component`, así que
+nunca entraba al mapa de `FabricaEstrategiasNotificacion` (armado con
+`List<EstrategiaNotificacion>`) y toda entrega fallida revientaba con
+`IllegalArgumentException("No existe una estrategia para ENTREGA_NO_RECIBIDA")`.
+
+### Qué se cambió
+
+Nada en el código: al verificar el pendiente (Fase 1 del `bug-fixer`), la clase ya tiene
+`@Component` (`NotificacionEntregaFallida.java:11`) y por lo tanto la fábrica la registra vía
+la lista inyectada. El pendiente quedó desactualizado (probablemente corregido en una tanda
+anterior sin actualizar este archivo). Lo que **no** está implementado de la propuesta
+original es la defensa: que la fábrica falle al arrancar si algún `TipoEventoNotificacion` del
+enum no tiene estrategia registrada; hoy sigue fallando en runtime si se agrega un valor al
+enum sin su estrategia.
+
+### Cómo se verificó
+
+Lectura del código actual: `@Component` presente en la línea 11 y `FabricaEstrategiasNotificacion`
+inyectando `List<EstrategiaNotificacion>` (líneas 21-28), con lo que la estrategia entra al
+mapa y `ENTREGA_NO_RECIBIDA` existe.
+
+---
+
+### 10. `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/DonacionFacade.java`
+
+### Qué pasaba
+
+Nadie escribía nunca `Donacion.fechaEntrega`: `SegmentadorDonaciones.crearDonacion` le pasaba
+`null` explícitamente (línea 66) y `DonacionDTO.toDomain()` tampoco lo seteaba. La columna
+quedaba siempre en `NULL`, y dos lógicas la usaban como si fuera dato real:
+
+- **`SubAtendidos.cantidadDonacionesUltimoTrimestre`** (líneas 57-63) filtra por
+  `d.getFechaEntrega() != null`: el count era **siempre 0**.
+- **`NecesidadRecurrente.cantidadRecibidaEnPeriodo`** (líneas 31-40) filtra por
+  `getFechaEntrega() != null && ...isAfter(fechaLimite)`: **siempre devolvía 0**.
+
+### Qué se cambió
+
+La fecha de realización del formulario —que `DonacionService.procesarFormulario` ya recibía
+del request y guardaba en `Formulario.fechaRealizacion`— es ahora la `fechaEntrega` de cada
+donación segmentada: `DonacionFacade.crearDonaciones` la pasa a
+`SegmentadorDonaciones.segmentar(donante, bienes, fecha)` y `crearDonacion` ya no manda
+`null`. Se corrigió junto con el punto 30, que necesitaba el valor para cumplir el `@NotNull`
+de incentivos. Si el request no trae `fechaRealizacion`, el valor sigue siendo `null`: cerrar
+esa entrada es territorio del punto 22 (Bean Validation).
+
+### Cómo se verificó
+
+`ContratoIncentivosTest.fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada` fallaba
+antes del arreglo (`expected: <2026-10-01> but was: <null>`) y pasa después. Los tres
+consumidores del campo (`SubAtendidos`, `NecesidadRecurrente` y el reporte a incentivos) ahora
+reciben un valor real. Suite completa: donaciones 27/27, BUILD SUCCESS.
+
+---
+
+### 30. El payload de la donación no cumple el contrato de incentivos: toda asignación responde 400
+
+**Estado:** corregido
+**Severidad:** crítica
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/incentivos/IncentivosDonacionDTO.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorAsignaciones.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`,
+`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/DonacionFacade.java`
+
+### Qué pasaba
+
+El payload del reporte de asignación no cumplía el contrato que incentivos exige
+(`ImpactoDonacionDTO`, recibido con `@Valid @RequestBody` en `PerfilController:163-167`):
+
+| | Este servicio manda | Incentivos exige |
+|---|---|---|
+| `idDonacion` | **no existía el campo** en `IncentivosDonacionDTO` | `@NotNull UUID` — es la clave de idempotencia del otro lado |
+| `fechaEntrega` | `LocalDate` (`"2026-10-07"`) | `@NotNull LocalDateTime` |
+
+Y `fechaEntrega` además siempre salía `null`, porque nadie la persistía (ver punto 10 de esta
+lista). El `IncentivosClient` relanza la excepción y `procesarAccionesPostCambioEstado` no la
+captura, así que la asignación entera respondía 500 y `publicarEntregaALogistica` nunca se
+ejecutaba: logística no se enteraba de la entrega por un problema con incentivos.
+
+### Qué se cambió
+
+1. `IncentivosDonacionDTO` ahora declara `idDonacion` (UUID) y `fechaEntrega` como
+   `LocalDateTime`.
+2. `GestorAsignaciones.procesarAccionesPostCambioEstado` setea
+   `dto.setIdDonacion(donacion.getId())` y convierte la fecha con
+   `LocalDate.atStartOfDay()`, con guarda de `null` (si no hay fecha, incentivos responde 400
+   explícito, que es lo que el receptor pide).
+3. La causa raíz de la fecha nula (punto 10, corregido en la misma tanda):
+   `DonacionFacade.crearDonaciones` pasa `formulario.getFechaRealizacion()` a
+   `SegmentadorDonaciones.segmentar(donante, bienes, fecha)`, y `crearDonacion` ya no manda
+   `null`. `Donacion.fechaEntrega` sigue siendo `LocalDate`; la conversión a `LocalDateTime`
+   ocurre sólo en la frontera del DTO.
+4. El lado de incentivos no se tocó: el payload ahora cumple exactamente su contrato.
+
+### Cómo se verificó
+
+Test de contrato nuevo `ContratoIncentivosTest` (2 tests), en `src/test/.../incentivos/`:
+
+- `payloadDeAsignacion_cumpleContratoDeIncentivos`: captura el DTO que
+  `cambiarEstado(..., "ASIGNADO", ...)` le pasa al `IncentivosClient`, lo serializa con
+  Jackson (misma config default de Spring Boot: `JavaTimeModule`, fechas ISO) y lo
+  deserializa y valida contra un mirror del `ImpactoDonacionDTO` receptor con las mismas
+  anotaciones (`@NotNull`/`@NotBlank`/`@PositiveOrZero`).
+- `fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada`: la fecha del formulario
+  queda como `fechaEntrega` de cada donación segmentada.
+
+Los dos fallaban antes del arreglo —uno con `expected: <2026-10-01> but was: <null>` y el
+otro con `Cannot deserialize value of type java.time.LocalDateTime from String "2026-10-07"`—
+y pasan después. Suite completa: donaciones 27/27, notificaciones (upstream) 13/13,
+BUILD SUCCESS.
+
+---
 
 ### `IncentivosClient` publicaba contra la raíz del servicio: 404 y 405 garantizados
 
@@ -1296,7 +1379,7 @@ levantando logística sola, las colas que este módulo declara no existen y la c
 
 La frontera quedó así: **cada servicio declara lo suyo y nada más.**
 
-- Este módulo declara `logistica.exchange`, `logistica.eventos.exchange` y
+- Este módulo declara `logistica.integracion.hash`, `logistica.eventos.exchange` y
   `notificaciones.exchange` (los tres de los que publica), más **su** cola de eventos y **su**
   binding.
 - Logística declara las colas que consume.

@@ -24,6 +24,11 @@ public class Parada {
     @Column(name = "id_parada", nullable = false, updatable = false)
     private UUID idParada;
 
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne
     @JoinColumn(name = "id_ruta", referencedColumnName = "id_ruta", nullable = false)
     private Ruta ruta;
@@ -34,7 +39,7 @@ public class Parada {
 
     @ManyToOne
     @JoinColumn(name = "id_entidad_beneficiaria", referencedColumnName = "id_entidad_beneficiaria", nullable = false)
-    private Entidad entidadDestino; //quedo raro porque hay un metodo que te da la entidad pero creo que es necesario pala la DB
+    private Entidad entidadDestino;
 
     @OneToMany(mappedBy = "parada")
     private List<ItemEntrega> items = new ArrayList<>();
@@ -51,7 +56,11 @@ public class Parada {
         items.add(item);
     }
 
+    /**
+     * La entidad a la que lleva el primer item de la parada, o {@code null} si no tiene ninguno:
+     * una parada sin items es un estado válido, y {@code getFirst()} sobre lista vacía revienta.
+     */
     public Entidad getEntidadDestino() {
-        return items.getFirst().getEntidadDestino();
+        return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
     }
 }

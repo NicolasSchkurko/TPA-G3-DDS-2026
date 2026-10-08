@@ -18,16 +18,8 @@ public class CategoriaDTO {
     private String nombre;
 
     /**
-     * En qué lugar del programa queda la categoría. Opcional: si no viene, la nueva queda
-     * al final.
-     *
-     * <p>{@code @Min(1)} y no un chequeo en el service porque el 400 tiene que salir antes
-     * de tocar nada (punto 31). Lo que no se puede validar desde acá es el límite superior,
-     * que depende de cuántas categorías haya: eso lo revisa {@code SecuenciaCategoria} en
-     * el mismo {@code @Transactional}, justo antes del desplazamiento.
-     *
-     * <p>El 0 era el peor valor posible: como la categoría base es la de posición más baja,
-     * una categoría en 0 hacía que <b>todos los donantes nuevos</b> arrancaran en ella.
+     * En qué lugar del programa queda la categoría. Opcional: sin posición queda al final. El
+     * límite superior lo revisa {@code SecuenciaCategoria}.
      */
     @Min(value = 1, message = "La posición en la secuencia tiene que ser 1 o más")
     private Integer posicionSecuencia;

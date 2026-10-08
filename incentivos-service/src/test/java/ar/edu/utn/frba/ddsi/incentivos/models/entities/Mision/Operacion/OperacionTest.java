@@ -17,11 +17,7 @@ class OperacionTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /**
-     * Donante de mentira: guarda lo que la operación le registra, que es justamente lo que
-     * hace un {@code ProgresoMision}. Sirve para probar que cada donante lleva su propia
-     * cuenta.
-     */
+    /** Donante de mentira que guarda lo que la operación le registra. */
     private static ProgresoDelDonante donante() {
         return new ProgresoDelDonante() {
             private final List<String> valores = new ArrayList<>();
@@ -112,9 +108,7 @@ class OperacionTest {
             SuperaCantidad operacion = new SuperaCantidad(1, 6);
 
             assertThat(operacion.calcularProgreso(7, donante())).isTrue();
-            // El 6 exacto NO cuenta: la misión del seed dice "supera 6 bienes", y "supera"
-            // es "excede", no "alcanza" (punto 33). Con un >= un donante con 6 obtenía la
-            // insignia que el enunciado reserva para los de 7 o más.
+            // El 6 exacto NO cuenta: "supera 6" es 7 o más (punto 33).
             assertThat(operacion.calcularProgreso(6, donante())).isFalse();
             assertThat(operacion.calcularProgreso(5, donante())).isFalse();
         }
@@ -190,8 +184,7 @@ class OperacionTest {
             ValoresDistintos operacion = new ValoresDistintos(1, 2);
             ProgresoDelDonante donante = donante();
 
-            // Antes MAPPER.valueToTree(null) devolvia null y ese null se agregaba a la
-            // lista, con lo que una sola donacion sin categoria ya contaba como valor.
+            // Antes el null se agregaba a la lista y una donación sin categoría ya contaba.
             assertThat(operacion.calcularProgreso(null, donante)).isFalse();
 
             assertThat(donante.cantidadValoresObservados()).isZero();
@@ -206,8 +199,7 @@ class OperacionTest {
             ProgresoDelDonante ana = donante();
             ProgresoDelDonante beto = donante();
 
-            // Ana dona Ropa, Beto dona Alimentos y Muebles: el avance de Beto no puede
-            // completar la regla de Ana.
+            // El avance de Beto no puede completar la regla de Ana.
             operacion.calcularProgreso("Ropa", ana);
             operacion.calcularProgreso("Alimentos", beto);
             operacion.calcularProgreso("Muebles", beto);
@@ -228,7 +220,7 @@ class OperacionTest {
             operacion.calcularProgreso("Ropa", donante);
 
             // Si la operación volviera a tener su propia lista, esto seria 1 y el bug
-            // del estado compartido volvdría a aparecer.
+            // del estado compartido volvería.
             assertThat(operacion.estaCompleta(1, donante())).isFalse();
         }
     }

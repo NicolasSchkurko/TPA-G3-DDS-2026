@@ -7,9 +7,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 public class DireccionDTO {
+    /**
+     * Id de la EntidadBeneficiaria dueña de esta dirección. Es lo que logística usa para
+     * resolver la entidad destino del item de entrega (su EntregaService.resolverEntidad hace
+     * findById(idEntidad)); si sale en null, su DonacionListener descarta el mensaje (punto 27).
+     */
+    private UUID idEntidad;
     private String calleUno;
     private String calleDos;
     private Integer altura;

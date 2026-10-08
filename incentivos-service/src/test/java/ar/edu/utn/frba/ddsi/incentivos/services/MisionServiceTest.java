@@ -31,10 +31,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/**
- * MisionService: borrado protegido (punto 18) y progreso que solo se reinicia cuando
- * corresponde (punto 15).
- */
 @DisplayName("MisionService")
 class MisionServiceTest {
 

@@ -15,21 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/**
- * El orden en que el admin manda las misiones es el orden en que las ve el donante
- * (punto 27).
- *
- * <p>{@code Categoria.agregarMision} va asignando {@code posicion = size + 1}, así que el
- * orden de la lista es la secuencia de progresión. Como {@code findAllById} no tiene
- * ningún ORDER BY, las misiones llegan en el orden que quiera la base: si el repositorio
- * no las reordena, el donante podía arrancar en otra misión.
- */
 @DisplayName("conseguirMisiones: respeta el orden del admin")
 class RepositorioMisionesOrdenTest {
 
-    // Un mock normal de una interfaz no ejecuta los metodos default, que es justamente lo
-    // que se quiere probar. Con CALLS_REAL_METHODS corre conseguirMisiones de verdad y solo
-    // findAllById queda simulado.
+    // CALLS_REAL_METHODS corre conseguirMisiones de verdad; solo findAllById queda simulado.
     private final RepositorioMisiones repo =
             mock(RepositorioMisiones.class, Answers.CALLS_REAL_METHODS);
 
