@@ -47,7 +47,6 @@ public class PlanificadorDeRutasController {
   @PostMapping("/callback")
   public ResponseEntity<String> recibirRutasPlanificadas(@RequestBody String jsonAsignacion) {
     try {
-      // El JSON crudo se pasa asi: el servicio lo parsea.
       List<Ruta> rutasGeneradas = planificadorService.procesarCallbackRutas(jsonAsignacion);
       if (rutasGeneradas.equals(planificadorService.asignarChoferes(rutasGeneradas))){
         return ResponseEntity.ok("Rutas procesadas y guardadas exitosamente en el sistema de logística.");
@@ -62,7 +61,9 @@ public class PlanificadorDeRutasController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Datos de entrada inválidos: " + e.getMessage());
 
     } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor: " + e.getMessage());
+      log.error("Error al procesar callback de rutas", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body("Error interno del servidor. Por favor consulte los logs del sistema.");
     }
   }
 
@@ -79,7 +80,8 @@ public class PlanificadorDeRutasController {
       return ResponseEntity.ok("Proceso de planificación disparado. Aguardando respuesta del proveedor externo...");
     } catch (Exception e) {
       log.error("La planificación manual falló al dispararse", e);
-      return null;
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body("Error al intentar comunicar con el proveedor externo: " + e.getMessage());
     }
   }
 }

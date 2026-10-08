@@ -70,7 +70,7 @@ public class RutaService {
   /** Inicia la ruta del chofer: la pone EN_CURSO y avisa por el broker. */
   @Transactional
   public void iniciarRuta(UUID idChofer) {
-    Ruta rutaActual = rutaDelChofer(idChofer);
+    Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.PROGRAMADA);
 
     // 1. Cambiamos el estado de la entidad y persistimos con save()
     rutaActual.setEstado(EstadoRuta.EN_CURSO);
@@ -83,17 +83,9 @@ public class RutaService {
     }
   }
 
-  /** La ruta planificada o en curso del chofer. */
-  private Ruta rutaDelChofer(UUID idChofer) {
-    Chofer chofer = repoChoferes.findById(idChofer)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    return repoRutas.findByChofer(chofer)
-            .orElseThrow(() -> new IllegalStateException("No se encontró la ruta correspondiente al chofer " + idChofer));
-  }
-
   @Transactional
   public void terminarRuta(UUID idChofer) {
-    Ruta rutaActual = rutaDelChofer(idChofer);
+    Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.EN_CURSO);
 
     // 1. Persistencia correcta del cambio de estado a la ruta
     rutaActual.setEstado(EstadoRuta.FINALIZADA);
@@ -105,7 +97,7 @@ public class RutaService {
         if (item.getEstado() != EstadoEntrega.ENTREGADA) {
           gestorPublicacionEventos.publicarReingresoDeposito(item);
         } else {
-          // Si fue entregado y existe en la BD, se elimina correctamente (sin lanzar exception)
+          // Si fue entregado y existe en la BD, se elimina correctamente
           if (repoItemEntrega.existsById(item.getIdDonacion())) {
             repoItemEntrega.deleteById(item.getIdDonacion());
           }
@@ -124,6 +116,15 @@ public class RutaService {
     camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
     gestorCamiones.resetearCamion(camionDeRuta);
     repoCamiones.save(camionDeRuta);
+  }
+
+  /** La ruta del chofer filtrada por su estado actual. */
+  private Ruta rutaDelChoferPorEstado(UUID idChofer, EstadoRuta estado) {
+    Chofer chofer = repoChoferes.findById(idChofer)
+            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+    return repoRutas.findByChoferYEstado(chofer, estado)
+            .orElseThrow(() -> new IllegalStateException(
+                    "No se encontró una ruta en estado " + estado + " para el chofer " + idChofer));
   }
 
   private RutasDTO convertirARutasDTO(List<Ruta> rutas){
