@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.lector;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * El mapeo del request nombra columnas que aterrizar contra los encabezados del CSV:
@@ -37,12 +39,14 @@ public class ImportarCsvConMapeosTest {
     String csv = "TipoPersona,Nombre Completo,Dni\r\nHUMANA,Sofia Garcia,30456789\r\n";
 
     LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
-    List<Donante> importados = lector.importar(
+    ResultadoLectura<Donante> lectura = lector.importar(
             new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)));
+    List<Donante> importados = lectura.getElementos();
 
     assertEquals(1, importados.size(), "la fila tiene todos los datos: no puede descartarse");
     assertEquals("Sofia Garcia", importados.get(0).getPersona().getNombreDeUsuario(),
             "el nombre de usuario nunca puede salir en blanco para una fila con nombre real");
+    assertTrue(lectura.getErrores().isEmpty(), () -> "errores: " + lectura.getErrores());
   }
 
   @Test
@@ -52,7 +56,7 @@ public class ImportarCsvConMapeosTest {
 
     LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
     List<Donante> importados = lector.importar(
-            new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)));
+            new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8))).getElementos();
 
     assertEquals(1, importados.size(), "incluso con encabezados exactos tiene que importar");
     assertEquals("Sofia Garcia", importados.get(0).getPersona().getNombreDeUsuario());
