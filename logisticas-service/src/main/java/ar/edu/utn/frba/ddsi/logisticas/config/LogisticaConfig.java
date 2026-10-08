@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class LogisticaConfig {
 
   @Bean
-  public ProveedorRutasExterno proveedorRutasExterno(RepositorioCamiones repoCamiones) {
-    return new ProveedorRutasExternoSimulado(repoCamiones);
+  public ProveedorRutasExterno proveedorRutasExterno() {
+    return new ProveedorRutasExternoSimulado();
   }
 }

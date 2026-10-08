@@ -40,7 +40,7 @@ public class EventoLogisticaMensajeDTO implements Serializable {
 
     public static EventoLogisticaMensajeDTO desde(EventoLogistica e) {
         EventoLogisticaMensajeDTO dto = new EventoLogisticaMensajeDTO();
-        dto.id = e.getIdEvento();
+        dto.id = e.getId();
         dto.tipoEvento = e.getTipoEvento();
         dto.referenciaId = e.getReferenciaId();
         dto.fecha = e.getFecha();

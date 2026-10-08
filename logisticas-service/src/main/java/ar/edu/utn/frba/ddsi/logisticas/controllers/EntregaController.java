@@ -51,11 +51,7 @@ public class EntregaController {
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
         try {
-            ItemEntrega item = entregaService.findById(id);
-            DireccionDTO direccionDTO = new DireccionDTO(item.getEntidadDestino().getIdEntidadBeneficiaria(), item.getEntidadDestino().getDireccionDestino().getCalle1(), item.getEntidadDestino().getDireccionDestino().getCalle2(), item.getEntidadDestino().getDireccionDestino().getAltura(), item.getEntidadDestino().getDireccionDestino().getPiso(), item.getEntidadDestino().getDireccionDestino().getDepartamento(), item.getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
-            List<BienDTO> bienesDTO = new ArrayList<>();
-            bienesDTO.add(new BienDTO(item.getCantidad(), item.getUnidad().toString(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), direccionDTO, item.getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getIdEvento(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
-            EntregaDTO dto = new EntregaDTO(List.of(item.getIdDonacion()), bienesDTO, direccionDTO);
+            EntregaDTO dto = entregaService.findById(id);
             return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());

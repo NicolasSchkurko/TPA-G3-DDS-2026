@@ -10,8 +10,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -74,9 +74,16 @@ public class EntregaService {
    * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
    * los getters de la entidad y entraría en ciclo al serializar.
    */
-  public BienDTO findById(UUID id) {
-    return convertirABienDTO(repoItemEntrega.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")));
+  public EntregaDTO findById(UUID id) {
+    Optional<ItemEntrega> item = repoItemEntrega.findById(id);
+    if (item.isEmpty()){
+      throw new IllegalArgumentException("Entrega no encontrada");
+    }
+    DireccionDTO direccionDTO = new DireccionDTO(item.get().getEntidadDestino().getIdEntidadBeneficiaria(), item.get().getEntidadDestino().getDireccionDestino().getCalle1(), item.get().getEntidadDestino().getDireccionDestino().getCalle2(), item.get().getEntidadDestino().getDireccionDestino().getAltura(), item.get().getEntidadDestino().getDireccionDestino().getPiso(), item.get().getEntidadDestino().getDireccionDestino().getDepartamento(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+    List<BienDTO> bienesDTO = new ArrayList<>();
+    bienesDTO.add(new BienDTO(item.get().getCantidad(), item.get().getUnidad().toString(), item.get().getEstado().toString(), item.get().getFechaCambioEstado(), item.get().getFotoComprobante(), direccionDTO, item.get().getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
+    EntregaDTO dto = new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
+    return dto;
   }
 
   /**
