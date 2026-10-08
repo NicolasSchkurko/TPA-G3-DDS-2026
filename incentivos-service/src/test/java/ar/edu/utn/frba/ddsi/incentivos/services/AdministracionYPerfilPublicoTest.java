@@ -139,7 +139,7 @@ class AdministracionYPerfilPublicoTest {
 
             Perfil perfil = new Perfil(idUsuario, "Ana");
             perfil.iniciarEn(categoria);
-            when(repoPerfiles.findByIdUsuario(idUsuario)).thenReturn(Optional.of(perfil));
+            when(repoPerfiles.findById(idUsuario)).thenReturn(Optional.of(perfil));
 
             PerfilPublicoDTO dto = perfilService.obtenerPerfilPublico(idUsuario);
 
@@ -152,7 +152,7 @@ class AdministracionYPerfilPublicoTest {
         void sinCategoriaRespondeConNull() {
             UUID idUsuario = UUID.randomUUID();
             Perfil perfil = new Perfil(idUsuario, "Beto");
-            when(repoPerfiles.findByIdUsuario(idUsuario)).thenReturn(Optional.of(perfil));
+            when(repoPerfiles.findById(idUsuario)).thenReturn(Optional.of(perfil));
 
             PerfilPublicoDTO dto = perfilService.obtenerPerfilPublico(idUsuario);
 
@@ -165,7 +165,7 @@ class AdministracionYPerfilPublicoTest {
         @DisplayName("si el donante no existe responde 404")
         void siNoExisteResponde404() {
             UUID idUsuario = UUID.randomUUID();
-            when(repoPerfiles.findByIdUsuario(idUsuario)).thenReturn(Optional.empty());
+            when(repoPerfiles.findById(idUsuario)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> perfilService.obtenerPerfilPublico(idUsuario))
                     .isInstanceOf(InexistenteException.class);
@@ -196,7 +196,7 @@ class AdministracionYPerfilPublicoTest {
         @DisplayName("actualizar un perfil verifica los permisos del administrador")
         void actualizarVerificaPermisos() {
             UUID idUsuario = UUID.randomUUID();
-            when(repoPerfiles.findByIdUsuario(idUsuario))
+            when(repoPerfiles.findById(idUsuario))
                     .thenReturn(Optional.of(new Perfil(idUsuario, "Ana")));
             when(repoPerfiles.save(any(Perfil.class)))
                     .thenAnswer(invoc -> invoc.getArgument(0));
@@ -225,7 +225,7 @@ class AdministracionYPerfilPublicoTest {
         @DisplayName("borrar un perfil verifica los permisos del administrador")
         void borrarVerificaPermisos() {
             UUID idUsuario = UUID.randomUUID();
-            when(repoPerfiles.existsByIdUsuario(idUsuario)).thenReturn(true);
+            when(repoPerfiles.existsById(idUsuario)).thenReturn(true);
 
             perfilService.eliminarPerfil(idUsuario, ADMIN);
 
@@ -242,7 +242,7 @@ class AdministracionYPerfilPublicoTest {
             assertThatThrownBy(() -> perfilService.eliminarPerfil(idUsuario, ADMIN))
                     .isInstanceOf(SecurityException.class);
 
-            verify(repoPerfiles, never()).deleteByIdUsuario(any());
+            verify(repoPerfiles, never()).deleteById(any());
         }
     }
 }

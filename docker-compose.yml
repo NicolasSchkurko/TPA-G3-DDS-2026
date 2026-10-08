@@ -102,7 +102,7 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
       RABBITMQ_PASSWORD: guest
-      N8N_URL: http://n8n:5678/webhook/notificaciones
+      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
     depends_on:
       mysql:
         condition: service_healthy
@@ -124,7 +124,7 @@ services:
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
-      N8N_URL: http://n8n:5678/webhook/incentivos
+      N8N_URL: http://host.docker.internal:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672

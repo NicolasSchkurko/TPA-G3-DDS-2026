@@ -9,8 +9,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -34,11 +32,9 @@ import org.springframework.data.domain.AbstractAggregateRoot;
 @NoArgsConstructor
 public class Perfil extends AbstractAggregateRoot<Perfil> {
 
-    private UUID idUsuario; // id en donaciones
-
+    /** Id del donante en donaciones-service, y primary key local: un donante tiene un perfil. */
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID idPerfil; // id interno
+    private UUID idUsuario;
 
     /** Control de concurrencia optimista: Hibernate lo incrementa en cada {@code UPDATE}. */
     @Version

@@ -42,9 +42,14 @@ public class ConsumidorNotificaciones {
     @RabbitListener(queues = RabbitConfig.COLA_NOTIFICACIONES)
     public void recibir(Message mensaje) {
         String cuerpoCrudo = new String(mensaje.getBody(), StandardCharsets.UTF_8);
+        String routingKey = mensaje.getMessageProperties().getReceivedRoutingKey();
+
+        log.info("[COLA] LLEGA mensaje a '{}' | routingKey={} | {} bytes | payload={}",
+                RabbitConfig.COLA_NOTIFICACIONES, routingKey, mensaje.getBody().length,
+                abreviatura(cuerpoCrudo));
 
         if (cuerpoCrudo.isBlank()) {
-            log.warn("LLEGA un mensaje vacío a la cola de notificaciones, se descarta");
+            log.warn("[COLA] Mensaje vacío, se descarta");
             return;
         }
 
@@ -52,35 +57,47 @@ public class ConsumidorNotificaciones {
             JsonNode nodo = objectMapper.readTree(cuerpoCrudo);
 
             if (nodo.hasNonNull("id")) {
+                log.info("[COLA] Es un AVISO de notificación ya guardada (id={})", nodo.get("id").asText());
                 procesarAvisoDeNotificacionExistente(cuerpoCrudo);
             } else {
+                log.info("[COLA] Es una SOLICITUD de notificación de otro servicio");
                 procesarSolicitud(cuerpoCrudo);
             }
         } catch (RuntimeException excepcion) {
-            log.error("No se pudo procesar el mensaje de la cola: {}", excepcion.getMessage(), excepcion);
+            log.error("[COLA] No se pudo procesar el mensaje: {}", excepcion.getMessage(), excepcion);
         } catch (Exception errorDeLectura) {
-            log.error("LLEGA un mensaje que no es JSON válido: {}", cuerpoCrudo, errorDeLectura);
+            log.error("[COLA] Mensaje que no es JSON válido: {}", cuerpoCrudo, errorDeLectura);
         }
+    }
+
+    /** Recorta el payload para no llenar el log; el mensaje completo ya está en JSON. */
+    private static String abreviatura(String texto) {
+        return texto.length() <= 300 ? texto : texto.substring(0, 300) + "...";
     }
 
     /** Aviso de una notificación ya guardada: la busca y la despacha; no la reenvía si ya salió. */
     private void procesarAvisoDeNotificacionExistente(String cuerpoCrudo) throws Exception {
         var mensaje = objectMapper.readValue(cuerpoCrudo, AvisoNotificacion.class);
 
+        log.info("[COLA] Aviso id={}: buscando la notificación en la base", mensaje.id());
+
         Optional<Notificacion> encontrada =
                 repositorioNotificaciones.findById(UUID.fromString(mensaje.id()));
 
         if (encontrada.isEmpty()) {
-            log.warn("La notificación {} no existe, el mensaje se descarta", mensaje.id());
+            log.warn("[COLA] La notificación {} no existe, el aviso se descarta", mensaje.id());
             return;
         }
 
         Notificacion notificacion = encontrada.get();
 
         if (notificacion.getEstado() == EstadoNotificacion.ENVIADA) {
-            log.debug("La notificación {} ya estaba enviada, no se reenvía", notificacion.getId());
+            log.info("[COLA] La notificación {} ya estaba enviada, no se reenvía", notificacion.getId());
             return;
         }
+
+        log.info("[COLA] Despachando notificación {} (medio='{}', destino='{}')",
+                notificacion.getId(), mensaje.medioDeContacto(), mensaje.direccionDeContacto());
 
         enviar(notificacion, mensaje.medioDeContacto(), mensaje.direccionDeContacto());
     }
@@ -90,13 +107,17 @@ public class ConsumidorNotificaciones {
         SolicitudNotificacionDTO solicitud =
                 objectMapper.readValue(cuerpoCrudo, SolicitudNotificacionDTO.class);
 
+        log.info("[COLA] Solicitud parseada: medio='{}', destino='{}', asunto='{}'",
+                solicitud.getMedioDeContacto(), solicitud.getDireccionDeContacto(),
+                solicitud.getAsuntoMensaje());
+
         if (solicitud.getMedioDeContacto() == null || solicitud.getMedioDeContacto().isBlank()) {
-            log.warn("LLEGA una solicitud sin medio de contacto, se descarta: {}", cuerpoCrudo);
+            log.warn("[COLA] Solicitud sin medio de contacto, se descarta: {}", abreviatura(cuerpoCrudo));
             return;
         }
 
         if (solicitud.getDireccionDeContacto() == null || solicitud.getDireccionDeContacto().isBlank()) {
-            log.warn("LLEGA una solicitud sin dirección de contacto, se descarta: {}", cuerpoCrudo);
+            log.warn("[COLA] Solicitud sin dirección de contacto, se descarta: {}", abreviatura(cuerpoCrudo));
             return;
         }
 
@@ -107,7 +128,7 @@ public class ConsumidorNotificaciones {
                 solicitud.getCuerpoMensaje()
         );
 
-        log.info("Solicitud de notificación encolada para {}", solicitud.getDireccionDeContacto());
+        log.info("[COLA] Solicitud guardada y encolada para '{}'", solicitud.getDireccionDeContacto());
     }
 
     private void enviar(Notificacion notificacion,
@@ -123,11 +144,14 @@ public class ConsumidorNotificaciones {
             );
 
             notificacion.marcarEnviada();
+            log.info("[COLA] Notificación {} ENVIADA (estado={})",
+                    notificacion.getId(), notificacion.getEstado());
         } catch (RuntimeException excepcion) {
             notificacion.marcarFallida();
 
-            log.error("No se pudo enviar la notificación {}: {}",
-                    notificacion.getId(), excepcion.getMessage(), excepcion);
+            log.error("[COLA] Notificación {} FALLÓ (estado={}): {}",
+                    notificacion.getId(), notificacion.getEstado(),
+                    excepcion.getMessage(), excepcion);
         }
 
         repositorioNotificaciones.save(notificacion);

@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,8 @@ import java.util.UUID;
 @RequestMapping("/api/notificaciones")
 @Tag(name = "Servicio de Notificaciones", description = "Endpoints para la recepción, encolamiento y despacho de alertas del sistema (Mails, Mensajería, etc.).")
 public class NotificadorController {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificadorController.class);
 
     private final NotificadorService notificadorService;
     private final NotificacionMapper notificacionMapper;
@@ -47,7 +51,12 @@ public class NotificadorController {
     @PostMapping
     public ResponseEntity<String> recibirSolicitudNotificacion(
             @Valid @RequestBody SolicitudNotificacionDTO dto) {
+        log.info("[HTTP] POST /api/notificaciones | medio='{}', destino='{}', asunto='{}'",
+                dto.getMedioDeContacto(), dto.getDireccionDeContacto(), dto.getAsuntoMensaje());
+
         notificadorService.procesarSolicitudDeNotificacion(dto);
+
+        log.info("[HTTP] Solicitud aceptada (202) para '{}'", dto.getDireccionDeContacto());
         return new ResponseEntity<>("solicitud procesada con éxito", HttpStatus.ACCEPTED);
     }
 

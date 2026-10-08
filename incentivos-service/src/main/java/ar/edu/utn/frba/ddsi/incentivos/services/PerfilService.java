@@ -127,7 +127,7 @@ public class PerfilService {
     @Transactional
     public PerfilDTO crearPerfil(PerfilDonanteDTO dto) {
         // Se chequea antes de armar nada.
-        if (repositorioPerfiles.existsByIdUsuario(dto.getIdUsuario())) {
+        if (repositorioPerfiles.existsById(dto.getIdUsuario())) {
             throw new PerfilExistenteException(dto.getIdUsuario());
         }
 
@@ -148,7 +148,7 @@ public class PerfilService {
     /** El perfil completo de un donante, con su categoría y su misión en curso. */
     @Transactional(readOnly = true)
     public PerfilDTO buscarPorIdUsuario(UUID idUsuario) {
-        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
+        Perfil p = repositorioPerfiles.findById(idUsuario)
                                       .orElseThrow(() -> new InexistenteException(
                                           "No existe un perfil para el usuario " + idUsuario
                                       ));
@@ -162,7 +162,7 @@ public class PerfilService {
      */
     @Transactional(readOnly = true)
     public Page<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario, Pageable pageable) {
-        if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
+        if (!repositorioPerfiles.existsById(idUsuario)) {
             throw new InexistenteException();
         }
 
@@ -187,7 +187,7 @@ public class PerfilService {
      */
     @Transactional(readOnly = true)
     public PerfilPublicoDTO obtenerPerfilPublico(UUID idUsuario) {
-        Perfil perfil = repositorioPerfiles.findByIdUsuario(idUsuario)
+        Perfil perfil = repositorioPerfiles.findById(idUsuario)
                                            .orElseThrow(InexistenteException::new);
 
         Categoria categoria = perfil.getCategoriaActual();
@@ -248,7 +248,7 @@ public class PerfilService {
             return Boolean.TRUE.equals(yaProcesada.get().getCompletMision());
         }
 
-        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
+        Perfil p = repositorioPerfiles.findById(idUsuario)
                                       .orElseThrow(InexistenteException::new);
 
         boolean perfilActualizado = this.progresarPerfil(p, donacion);
@@ -334,7 +334,7 @@ public class PerfilService {
             throw new IllegalArgumentException("El ID del usuario no puede ser nulo");
         }
 
-        Perfil p = repositorioPerfiles.findByIdUsuario(idUsuario)
+        Perfil p = repositorioPerfiles.findById(idUsuario)
                                       .orElseThrow(InexistenteException::new);
 
         if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
@@ -425,9 +425,9 @@ public class PerfilService {
     public void eliminarPerfil(UUID idUsuario, UUID idAdmin) {
         validadorAdmin.verificarPermisos(idAdmin);
 
-        if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
+        if (!repositorioPerfiles.existsById(idUsuario)) {
             throw new InexistenteException();
         }
-        repositorioPerfiles.deleteByIdUsuario(idUsuario);
+        repositorioPerfiles.deleteById(idUsuario);
     }
 }

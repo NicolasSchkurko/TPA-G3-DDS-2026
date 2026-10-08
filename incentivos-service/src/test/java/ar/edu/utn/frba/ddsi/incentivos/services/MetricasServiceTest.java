@@ -36,7 +36,7 @@ class MetricasServiceTest {
     @DisplayName("si el perfil no existe lanza InexistenteException y no consulta donaciones")
     void perfilInexistenteLanzaInexistente() {
         UUID idUsuario = UUID.randomUUID();
-        when(repositorioPerfiles.existsByIdUsuario(idUsuario)).thenReturn(false);
+        when(repositorioPerfiles.existsById(idUsuario)).thenReturn(false);
 
         assertThatThrownBy(() -> service.obtenerEvolucionHistorica(idUsuario))
                 .isInstanceOf(InexistenteException.class);
@@ -48,7 +48,7 @@ class MetricasServiceTest {
     @DisplayName("si el perfil existe devuelve la actividad armada con las agregaciones")
     void perfilExistenteDevuelveActividad() {
         UUID idUsuario = UUID.randomUUID();
-        when(repositorioPerfiles.existsByIdUsuario(idUsuario)).thenReturn(true);
+        when(repositorioPerfiles.existsById(idUsuario)).thenReturn(true);
         when(repositorioDonaciones.obtenerEvolucionMensual(idUsuario))
                 .thenReturn(List.<Object[]>of(new Object[]{2026, 3, 5L, 2L}));
         when(repositorioDonaciones.obtenerTotalesDonaciones(idUsuario))

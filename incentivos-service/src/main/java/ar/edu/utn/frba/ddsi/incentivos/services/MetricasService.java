@@ -35,7 +35,7 @@ public class MetricasService {
      * hace la base. Si el perfil no existe es 404.
      */
     public ActividadDTO obtenerEvolucionHistorica(UUID idUsuario) {
-        if (!repositorioPerfiles.existsByIdUsuario(idUsuario)) {
+        if (!repositorioPerfiles.existsById(idUsuario)) {
             throw new InexistenteException();
         }
 

@@ -905,3 +905,26 @@ actualizaron dos tests de `RendimientoConsultasTest` que afirmaban el JPQL viejo
 
 **Cómo se verificó:** `MetricaPorPeriodoJpaTest.metricaDeUnPeriodoSinDonacionesEsVacia` vuelve a
 dar `Optional.empty()` → 404; suite completa 315 en verde.
+
+### El id interno del perfil es ahora el id del donante (`idPerfil` eliminado)
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-10-07 · sin commit
+**Archivos:** `.../models/entities/Perfil/Perfil.java`,
+`.../models/repositories/SpringRepositories/RepositorioPerfiles.java`,
+`.../services/PerfilService.java`, `.../services/MetricasService.java` (+ los tests)
+
+`Perfil` tenía `@Id @GeneratedValue idPerfil` y un `idUsuario` **sin `unique`**: se podían
+insertar dos perfiles del mismo donante y `findByIdUsuario` (resultado único) reventaba con
+`NonUniqueResultException`. Ahora `idUsuario` es la `@Id` —un donante, un perfil— y desaparece
+`idPerfil`; las consultas pasan a `findById`/`existsById`/`deleteById`. Es el mismo criterio que
+`ImpactoDonacion.idDonacion`, que usa el id de origen como PK.
+
+**Ojo, migración:** cambia la PK de `perfil` (`id_perfil` → `id_usuario`). Con `ddl-auto=update`
+Hibernate no migra un cambio de PK, así que hay que recrear el schema (la base de desarrollo está
+vacía): `DROP DATABASE incentivos_db;` y reiniciar el servicio, o un `DDL_AUTO=create-drop` de una
+pasada. La FK `insignia_obtenida.perfil_id` mantiene su nombre.
+
+**Cómo se verificó:** suite completa 322 tests en verde (incluye los `@DataJpaTest` que recrean el
+schema en H2).

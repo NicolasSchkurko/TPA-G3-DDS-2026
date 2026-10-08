@@ -25,17 +25,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
-    /**
- * El perfil de un donante con lo que necesita el DTO. El {@code @EntityGraph} trae las
- * insignias y su insignia en una sola consulta, evitando el N+1 y el lazy fuera de sesión.
- */
-@EntityGraph(attributePaths = {
-        "categoriaActual",
-        "insigniasObtenidas",
-        "insigniasObtenidas.insignia",
-        "progresoMisionActual.mision"
-})
-    Optional<Perfil> findByIdUsuario(UUID idUsuario);
+    /** El perfil de un donante, con las relaciones que necesita el DTO en una sola consulta. */
+    @Override
+    @EntityGraph(attributePaths = {
+            "categoriaActual",
+            "insigniasObtenidas",
+            "insigniasObtenidas.insignia",
+            "progresoMisionActual.mision"
+    })
+    Optional<Perfil> findById(UUID idUsuario);
 
     /**
      * Progreso de la misión vigente. Devuelve el {@link ProgresoMision} entero porque el
@@ -43,8 +41,6 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
      */
     @Query("SELECT pm FROM Perfil p JOIN p.progresoMisionActual pm WHERE p.idUsuario = :idUsuario")
     Optional<ProgresoMision> obtenerProgresoMisionPorIdUsuario(@Param("idUsuario") UUID idUsuario);
-
-    boolean existsByIdUsuario(UUID idUsuario);
 
     // Conteos para decidir si un borrado es seguro y poder responder 409 en vez de un 500.
 
@@ -56,8 +52,6 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
 
     /** Donantes que ya obtuvieron la insignia de la misión. */
     long countByInsigniasObtenidasInsignia(Insignia insignia);
-
-    void deleteByIdUsuario(UUID idUsuario);
 
     List<Perfil> findAllByCategoriaActual(Categoria categoria);
 

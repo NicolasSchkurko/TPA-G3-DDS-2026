@@ -124,7 +124,7 @@ class PerfilServiceAltaTest {
         @Test
         @DisplayName("un donante que ya tiene perfil no se duplica")
         void unDonanteConPerfilNoSeDuplica() {
-            when(repoPerfiles.existsByIdUsuario(any())).thenReturn(true);
+            when(repoPerfiles.existsById(any())).thenReturn(true);
 
             assertThatThrownBy(() -> service.crearPerfil(dto()))
                     .isInstanceOf(PerfilExistenteException.class);

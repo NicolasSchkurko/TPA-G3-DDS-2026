@@ -77,7 +77,7 @@ class PerfilServiceIdempotenciaTest {
 
     /** Un perfil sin misión activa: alcanza para verificar que la donación se guarda. */
     private void hayPerfilRegistrado() {
-        when(repoPerfiles.findByIdUsuario(USUARIO)).thenReturn(Optional.of(new Perfil(USUARIO, "Ana")));
+        when(repoPerfiles.findById(USUARIO)).thenReturn(Optional.of(new Perfil(USUARIO, "Ana")));
     }
 
     @Test

@@ -26,6 +26,8 @@ public class ProductorNotificaciones {
 
     /** Publica el aviso de una notificación ya guardada, para que se despache. */
     public void enviar(Notificacion notificacion) {
+        log.info("[PRODUCTOR] Publicando aviso de la notificación {} al exchange {} (rk={})",
+                notificacion.getId(), RabbitConfig.EXCHANGE_NOTIFICACIONES, RabbitConfig.RK_INCENTIVO);
         enviar(RabbitConfig.RK_INCENTIVO, new ConsumidorNotificaciones.AvisoNotificacion(
                 notificacion.getId().toString(),
                 notificacion.getTipoMedioDeContacto(),

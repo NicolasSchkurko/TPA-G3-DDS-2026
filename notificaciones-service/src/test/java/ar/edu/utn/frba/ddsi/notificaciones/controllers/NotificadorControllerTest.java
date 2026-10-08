@@ -49,7 +49,7 @@ class NotificadorControllerTest {
 
     @Test
     void unBodyCompletoSeAceptaCon202YSeProcesa() throws Exception {
-        mockMvc.perform(post("/notificaciones")
+        mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY_COMPLETO))
                 .andExpect(status().isAccepted());
@@ -66,7 +66,7 @@ class NotificadorControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/notificaciones")
+        mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyIncompleto))
                 .andExpect(status().isBadRequest())
@@ -88,7 +88,7 @@ class NotificadorControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/notificaciones")
+        mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyConBlanco))
                 .andExpect(status().isBadRequest())
@@ -102,7 +102,7 @@ class NotificadorControllerTest {
         doThrow(new DataIntegrityViolationException("Column 'asunto' cannot be null"))
                 .when(notificadorService).procesarSolicitudDeNotificacion(any());
 
-        mockMvc.perform(post("/notificaciones")
+        mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY_COMPLETO))
                 .andExpect(status().isBadRequest())
@@ -115,7 +115,7 @@ class NotificadorControllerTest {
         doThrow(new RuntimeException("detalle interno que no debe salir en la respuesta"))
                 .when(notificadorService).procesarSolicitudDeNotificacion(any());
 
-        mockMvc.perform(post("/notificaciones")
+        mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY_COMPLETO))
                 .andExpect(status().isInternalServerError())
@@ -132,7 +132,7 @@ class NotificadorControllerTest {
 
     @Test
     void unMetodoNoSoportadoSigueDevolviendo405YNo500() throws Exception {
-        mockMvc.perform(delete("/notificaciones"))
+        mockMvc.perform(delete("/api/notificaciones"))
                 .andExpect(status().isMethodNotAllowed());
     }
 }

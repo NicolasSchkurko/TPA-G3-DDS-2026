@@ -107,7 +107,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("una carrera se reintenta y la donación se aplica igual")
     void unaCarreraSeReintenta() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
         when(repoPerfiles.save(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -127,7 +127,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("dos carreras seguidas también se resuelven: hay margen de reintentos")
     void dosCarrerasResuelven() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
         when(repoPerfiles.save(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -144,7 +144,7 @@ class PerfilServiceConcurrenciaTest {
     @DisplayName("agotados los reintentos, la excepción sube para que el handler la mapee a 409")
     void agotadosLosReintentosLaExcepcionSube() {
         when(repoDonaciones.findById(any())).thenReturn(Optional.empty());
-        when(repoPerfiles.findByIdUsuario(any()))
+        when(repoPerfiles.findById(any()))
                 .thenReturn(Optional.of(new Perfil(UUID.randomUUID(), "Ana")));
 
         PerfilService service = servicioCon(templateQueFalla(99));
