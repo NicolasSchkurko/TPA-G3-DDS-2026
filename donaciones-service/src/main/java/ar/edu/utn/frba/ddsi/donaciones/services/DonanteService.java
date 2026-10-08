@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.ResultadoLotePerfilesDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
@@ -31,11 +32,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 
 @Service
 public class DonanteService {
+
+  /** Máximo de perfiles por llamada al alta en lote de incentivos (contrato: 500). */
+  private static final int TAMANO_LOTE_PERFILES = 500;
 
   private final RepositorioPersonas repositorioPersonas;
   private final RepositorioCiudades repositorioCiudades;
@@ -43,22 +47,24 @@ public class DonanteService {
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
 
-  // Reportes en memoria de importaciones CSV en curso/terminadas, consultables por id. Y un
-  // executor propio (no el ForkJoinPool.commonPool() de CompletableFuture.runAsync) para que una
-  // importación grande no compita por los mismos hilos que usa el resto de la app para tareas
-  // paralelas (ver fabricaEstrategias.ejecutar, que también puede usar el common pool).
+  /** Reportes en memoria de importaciones CSV en curso/terminadas, consultables por id. */
   private final Map<UUID, ReporteImportacionDTO> reportesImportacion = new ConcurrentHashMap<>();
-  private final ExecutorService executorImportacion = Executors.newFixedThreadPool(2);
+
+  /** Pool propio (no el commonPool): una importación grande no compite por los hilos del resto.
+   *  Es un bean con cola acotada y shutdown administrado por Spring (ver DonacionesServiceApplication). */
+  private final ExecutorService executorImportacion;
 
   public DonanteService(RepositorioPersonas repositorioPersonas,
                         RepositorioCiudades repositorioCiudades,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
-                        IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes) {
+                        IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes,
+                        ExecutorService executorImportacion) {
     this.repositorioPersonas = repositorioPersonas;
     this.repositorioCiudades = repositorioCiudades;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repositorioDonantes = repositorioDonantes;
+    this.executorImportacion = executorImportacion;
   }
 
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
@@ -66,14 +72,23 @@ public class DonanteService {
     Donante nuevoDonante = dto.toDomain(ciudad);
 
     if (nuevoDonante.getPersona() != null) {
-
-      String nombreUsuario = nuevoDonante.getPersona().getNombreDeUsuario();
-      incentivosClient.peticionCrearPerfil(new IDDTO(nuevoDonante.getId(), nombreUsuario, "DONANTE"));
-      fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
-      repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
-
+      incentivosClient.peticionCrearPerfil(perfilDe(nuevoDonante));
     }
 
+    return persistirConNotificacion(nuevoDonante);
+  }
+
+  private IDDTO perfilDe(Donante donante) {
+    return new IDDTO(donante.getId(), donante.getPersona().getNombreDeUsuario(), "DONANTE");
+  }
+
+  /** Notificación + persistencia local del donante, sin el alta de perfil en incentivos
+   *  (esa se hace sola al dar de alta o en lote durante la importación CSV). */
+  private PersonaDonanteDTO persistirConNotificacion(Donante nuevoDonante) {
+    if (nuevoDonante.getPersona() != null) {
+      fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
+      repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
+    }
     registrarDonante(nuevoDonante);
     return PersonaDonanteDTO.from(nuevoDonante);
   }
@@ -123,7 +138,13 @@ public class DonanteService {
 
     UUID importId = UUID.randomUUID();
     reportesImportacion.put(importId, ReporteImportacionDTO.enProgreso(importId));
-    executorImportacion.submit(() -> procesarImportacion(importId, bytes, mapeosCsv));
+    try {
+      executorImportacion.submit(() -> procesarImportacion(importId, bytes, mapeosCsv));
+    } catch (RejectedExecutionException colaLLena) {
+      // Si no hay lugar para procesarla, no puede quedar un reporte fantasma "en progreso".
+      reportesImportacion.remove(importId);
+      throw colaLLena;
+    }
     return importId;
   }
 
@@ -132,25 +153,51 @@ public class DonanteService {
     int totalFilas = 0;
     int exitosos = 0;
 
-    try (InputStream is = new ByteArrayInputStream(bytes)) {
-      LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosCsv));
-      ResultadoLectura<Donante> resultado = lector.importar(is);
-      totalFilas = resultado.getTotalFilas();
-      errores.addAll(resultado.getErrores());
+    try {
+      try (InputStream is = new ByteArrayInputStream(bytes)) {
+        LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosCsv));
+        ResultadoLectura<Donante> resultado = lector.importar(is);
+        totalFilas = resultado.getTotalFilas();
+        errores.addAll(resultado.getErrores());
 
-      for (Donante d : resultado.getElementos()) {
-        try {
-          crearPersona(PersonaDonanteDTO.from(d));
-          exitosos++;
-        } catch (Exception e) {
-          errores.add("Donante '" + d.getPersona().getNombreDeUsuario() + "': " + e.getMessage());
+        List<IDDTO> perfilesPendientes = new ArrayList<>();
+        for (Donante d : resultado.getElementos()) {
+          try {
+            persistirConNotificacion(d);
+            perfilesPendientes.add(perfilDe(d));
+            exitosos++;
+          } catch (Exception e) {
+            errores.add("Donante '" + d.getPersona().getNombreDeUsuario() + "': " + e.getMessage());
+          }
         }
-      }
-    } catch (Exception e) {
-      errores.add("Error inesperado al procesar el archivo: " + e.getMessage());
-    }
 
-    reportesImportacion.put(importId, ReporteImportacionDTO.completado(importId, totalFilas, exitosos, errores));
+        crearPerfilesEnLote(perfilesPendientes, errores);
+      } catch (Exception e) {
+        errores.add("Error inesperado al procesar el archivo: " + e.getMessage());
+      }
+    } finally {
+      // El reporte se cierra siempre: ni un Error que mate al worker puede dejarlo
+      // "EN_PROGRESO" para siempre.
+      reportesImportacion.put(importId,
+          ReporteImportacionDTO.completado(importId, totalFilas, exitosos, errores));
+    }
+  }
+
+  /** Alta de perfiles en bloques de 500: misma cantidad de datos, con dos órdenes de
+   *  magnitud menos de ida y vuelta contra incentivos que un POST por donante. */
+  private void crearPerfilesEnLote(List<IDDTO> perfiles, List<String> errores) {
+    for (int inicio = 0; inicio < perfiles.size(); inicio += TAMANO_LOTE_PERFILES) {
+      List<IDDTO> lote = perfiles.subList(inicio,
+          Math.min(inicio + TAMANO_LOTE_PERFILES, perfiles.size()));
+      try {
+        ResultadoLotePerfilesDTO respuesta = incentivosClient.peticionCrearPerfilesEnLote(lote);
+        if (respuesta != null && respuesta.getErrores() != null) {
+          errores.addAll(respuesta.getErrores());
+        }
+      } catch (RuntimeException e) {
+        errores.add("No se pudieron crear " + lote.size() + " perfiles en incentivos: " + e.getMessage());
+      }
+    }
   }
 
   public ReporteImportacionDTO obtenerReporteImportacion(UUID importId) {

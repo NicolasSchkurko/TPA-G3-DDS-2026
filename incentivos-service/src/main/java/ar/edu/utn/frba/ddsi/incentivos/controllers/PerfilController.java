@@ -3,9 +3,11 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.InsigniaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.MisionPerfilDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.PerfilDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.AltaPerfilesLoteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilDonanteDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.PerfilPublicoDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ResultadoLotePerfilesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -62,6 +64,23 @@ public class PerfilController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(nuevo);
+    }
+
+    // ========== CREAR EN LOTE ==========
+    @Operation(
+        summary = "Crear perfiles de donante en lote",
+        description = "Pensado para la importación CSV de donaciones: hasta 500 perfiles por llamada. "
+                + "Un perfil que ya existe se saltea (idempotente para reintentos) y los que fallan "
+                + "vienen detallados en 'errores' sin tumbar el resto."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lote procesado: ver creados/yaExistian/errores"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes")
+    })
+    @PostMapping("/lote")
+    public ResponseEntity<ResultadoLotePerfilesDTO> crearPerfilesEnLote(
+            @Valid @RequestBody AltaPerfilesLoteDTO lote) {
+        return ResponseEntity.ok(perfilService.crearPerfilesEnLote(lote.getPerfiles()));
     }
 
     // ========== BUSCAR ==========

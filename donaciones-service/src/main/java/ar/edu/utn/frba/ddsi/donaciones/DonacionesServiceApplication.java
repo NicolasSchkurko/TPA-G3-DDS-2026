@@ -9,6 +9,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.http.HttpClient;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @SpringBootApplication
 @EnableScheduling
@@ -34,5 +39,25 @@ public class DonacionesServiceApplication {
         // incentivos es PATCH y con ella responde con "Invalid HTTP method: PATCH". El
         // HttpClient del JDK soporta PATCH sin dependencias extra.
         return new RestTemplate(new JdkClientHttpRequestFactory(HttpClient.newHttpClient()));
+    }
+
+    /**
+     * Pool de las importaciones CSV: 2 concurrentes y cola acotada. Cola acotada a propósito:
+     * la importación es pesada (parseo + alta con llamada HTTP por fila) y encolarla sin límite
+     * solo cambia el colapso de lugar — con la cola llena se rechaza con 429 y se reintenta.
+     * {@code destroyMethod} cierra el pool en el shutdown del contexto y los hilos son daemon
+     * para que la JVM nunca quede esperándolos.
+     */
+    @Bean(destroyMethod = "shutdown")
+    public ExecutorService executorImportacion() {
+        AtomicInteger numeroDeHilo = new AtomicInteger();
+        return new ThreadPoolExecutor(
+                2, 2, 0L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(8),
+                tarea -> {
+                    Thread hilo = new Thread(tarea, "importacion-csv-" + numeroDeHilo.incrementAndGet());
+                    hilo.setDaemon(true);
+                    return hilo;
+                });
     }
 }

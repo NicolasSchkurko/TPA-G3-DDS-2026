@@ -919,6 +919,40 @@ servicios— responde `201` con persistencia real.
 
 ## Corregidos
 
+### 33. La importación CSV dejaba a los donantes sin medio de contacto predeterminado
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-10-08 · sin commit
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/filaconverter/PersonaDonanteFilaConverter.java`
+
+### Qué pasaba
+
+El converter agregaba los medios de contacto que trae el CSV (mail, teléfono, whatsapp) pero
+**nunca marcaba el predeterminado**. `ServicioNotificaciones` (línea 41) exige uno para
+enviar, así que la notificación de registro (`REGISTRO_PERSONA`) tiraba
+`IllegalArgumentException("No hay un medio de contacto predeterminado para enviar la
+notificacion")` para **todas** las filas y el alta entera no se persistía. Se descubrió en
+vivo: una carga real de 499 filas terminó 0 exitosos / 499 fallidos con ese mensaje (ya con
+el punto 32 corregido, que era el que rompía antes).
+
+El alta por HTTP no tenía el problema porque `PersonaDonanteDTO.resolverMedioPredeterminado`
+(líneas 150-165) aplica el criterio: si hay medios y ninguno especificado, el primero es el
+predeterminado.
+
+### Qué se cambió
+
+`PersonaDonanteFilaConverter.vincularMediosDeContacto` aplica el mismo criterio que el alta
+HTTP: si quedaron medios y no hay predeterminado marcado, se setea el primero.
+
+### Cómo se verificó
+
+Test nuevo `CargaRealCsvTest.todosQuedanConMedioPredeterminado`: con la carga real de 499
+filas, ningún donante con medios queda sin predeterminado (el RED fue la corrida real contra
+docker: 499/499 fallidos con el mensaje exacto). Suite: donaciones 50/50, BUILD SUCCESS.
+
+---
+
 ### 32. La importación CSV ignoraba las columnas si el mapeo no coincidía mayúscula por mayúscula
 
 **Estado:** corregido

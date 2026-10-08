@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.lector;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
@@ -35,9 +36,12 @@ public class CargaRealCsvTest {
   @DisplayName("La carga real de 500 filas importa donantes con nombre y razón social completos")
   void laCargaRealImportaConNombresCompletos() {
     LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
-    List<Donante> importados = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"));
+    ResultadoLectura<Donante> lectura = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"));
+    List<Donante> importados = lectura.getElementos();
 
     assertEquals(499, importados.size(), "1 encabezado + 499 filas: ninguna se descarta");
+    assertTrue(lectura.getErrores().isEmpty(), () -> "errores: " + lectura.getErrores());
+    assertEquals(499, lectura.getTotalFilas());
 
     long conNombreBlanco = importados.stream()
             .filter(d -> d.getPersona().getNombreDeUsuario().isBlank())
@@ -52,10 +56,27 @@ public class CargaRealCsvTest {
   }
 
   @Test
+  @DisplayName("Todos los donantes quedan con medio predeterminado para poder notificarlos")
+  void todosQuedanConMedioPredeterminado() {
+    LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
+    List<Donante> importados = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"))
+            .getElementos();
+
+    long sinPredeterminado = importados.stream()
+            .filter(d -> !d.getPersona().getMediosDeContacto().getListaMediosDeContacto().isEmpty())
+            .filter(d -> d.getPersona().getMediosDeContacto().getMedioDeContactoPredeterminado() == null)
+            .count();
+
+    assertEquals(0, sinPredeterminado,
+            "sin predeterminado, la notificación de registro falla y el alta no se persiste");
+  }
+
+  @Test
   @DisplayName("Ningún donante importado se va a rechazar por nombre de usuario en blanco")
   void ningunDonanteImportadoQuedaConNombreBlanco() {
     LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosDelFront()));
-    List<Donante> importados = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"));
+    List<Donante> importados = lector.importar(getClass().getResourceAsStream("/carga-real-a.csv"))
+            .getElementos();
 
     assertTrue(importados.size() > 400, "la carga trae muchas filas");
     long nombresBlancos = importados.stream()

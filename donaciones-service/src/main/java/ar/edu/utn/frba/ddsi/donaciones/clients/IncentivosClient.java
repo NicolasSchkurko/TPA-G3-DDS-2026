@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.clients;
 
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.AltaPerfilesLoteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.ResultadoLotePerfilesDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,6 +35,9 @@ public class IncentivosClient {
     /** Sufijo del avance por donación, con el id del usuario como path variable. */
     private static final String RUTA_DONACION = "/api/perfiles/donacion";
 
+    /** Sufijo del alta en lote (hasta 500 perfiles por llamada). */
+    private static final String RUTA_PERFILES_LOTE = "/api/perfiles/lote";
+
     private final RestTemplate restTemplate;
 
     @Value("${servicio.incentivos.url}")
@@ -51,6 +57,26 @@ public class IncentivosClient {
             log.error("No se pudo crear el perfil {} (nombreUsuario='{}', role='{}') en {}: {}",
                     dto.getIdUsuario(), dto.getNombreUsuario(), dto.getRole(),
                     url(RUTA_PERFILES), e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Crea perfiles en lote. La importación CSV manda sus perfiles acá en bloques en vez de un
+     * POST por fila: mismos datos, 500 veces menos ida y vuelta. Un error de integración relanza;
+     * los perfiles que ya existían vienen como {@code yaExistian} (idempotente).
+     */
+    public ResultadoLotePerfilesDTO peticionCrearPerfilesEnLote(List<IDDTO> perfiles) {
+        String url = url(RUTA_PERFILES_LOTE);
+
+        try {
+            ResultadoLotePerfilesDTO respuesta = restTemplate.postForObject(
+                    url, new AltaPerfilesLoteDTO(perfiles), ResultadoLotePerfilesDTO.class);
+            log.debug("{} perfiles enviados a incentivos en lote", perfiles.size());
+            return respuesta;
+        } catch (Exception e) {
+            log.error("No se pudieron crear {} perfiles en {}: {}",
+                    perfiles.size(), url, e.getMessage());
             throw e;
         }
     }
