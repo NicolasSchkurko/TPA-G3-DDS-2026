@@ -47,7 +47,6 @@ public class PlanificadorDeRutasScheduler {
     List<Camion> camionesDisponibles;
 
     try {
-      // Filtrar ítems en PENDIENTE que NO estén ya asignados a una ruta activa (PROGRAMADA o EN_CURSO)
       itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
               .filter(item -> item.getParada() == null
                       || item.getParada().getRuta() == null
@@ -71,6 +70,8 @@ public class PlanificadorDeRutasScheduler {
     for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
       List<ItemEntrega> lote = itemsPendientes.subList(
               inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
+
+      // Se pasa la lista de camiones disponibles; la aislación de estado la realiza el proveedor/simulador por lote
       planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
     }
   }

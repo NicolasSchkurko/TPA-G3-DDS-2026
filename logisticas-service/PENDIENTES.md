@@ -13,61 +13,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | # | Punto | Por qué está acá |
 |---|---|---|
 | 1 | 34 | `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas |
-| 2 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
-| 3 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 4 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
----
-
-## 17. El planificador resetea la carga de los camiones y nunca la persiste
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:63`, `ProveedorRutasExternoSimulado.java:77`, `PlanificadorDeRutasScheduler.java:62`
-
-### Qué pasa
-
-`procesarAgrupacion` muta los `Camion` que recibió:
-
-```java
-for (Camion c : camionesDisponibles) {
-    asignacion.put(c.getPatente(), new ArrayList<>());
-    c.resetearCargaOcupada();
-}
-...
-c.cargar(item, ciudad);
-```
-
-`resetearCargaOcupada` pone `pesoOcupado`, `volumenOcupado` y `ciudadDestinoActual` en cero;
-`cargar` los vuelve a acumular. Pero:
-
-1. **Nunca se guarda.** No hay `repoCamiones.save()` en ninguna parte de la clase: no tiene
-   repositorio inyectado. Las columnas `peso_ocupado_kg` y `volumen_ocupado_m3` quedan siempre
-   en 0.
-2. **Las entidades están detached.** `PlanificadorDeRutasScheduler:45` las saca de
-   `repoCamiones.findAll()`, cuya transacción ya se cerró, y después las muta desde un
-   `CompletableFuture.runAsync` (línea 28), o sea en otro hilo. Mutar entidades JPA fuera de
-   sesión es una escritura que no existe.
-
-El efecto es que `Camion.puedeCargar(ItemEntrega)` (líneas 76-79) siempre calcula contra 0, y
-`Camion.estaVacio()` siempre da `true`. Por eso la rama 2 de la línea 88 (`c.estaVacio()`)
-gana siempre y la rama 1 de la línea 77 es **código muerto**: `ciudadDestinoActual` se acaba
-de resetear a `null` en la línea 63, así que `ciudad.equals(c.getCiudadDestinoActual())`
-nunca puede dar true. La agrupación por ciudad, que es el objetivo del algoritmo, no está
-implementada.
-
-Y `PlanificadorDeRutasScheduler:62` pasa la **misma** lista `camionesDisponibles` a cada uno
-de los lotes del `for` (línea 60). Cada lote dispara su propio `runAsync` asíncrono, así que N
-hilos resetean y cargan los mismos objetos `Camion` a la vez, sin sincronización. Con dos
-lotes de 100, la carga acumulada es una intercalación no determinista de los dos.
-
-### Propuesta
-
-Decidir qué representa el estado de carga y persistirlo: si es parte del modelo, guardar los
-camiones al final de la asignación, dentro de una transacción, en el hilo que la hace. Si
-`ciudadDestinoActual` es estado en memoria de una sola pasada, que el planificador deje de
-compartir las instancias entre lotes y use `subList` de una copia por hilo. Y sacar la rama 1
-muerta o arreglar el reseteo para que no la mate.
-
+| 2 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 3 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 ---
 
 ## 20. Verificado: logística no invoca a `donaciones-service` ni a `incentivos`, y no habla con notificaciones
@@ -1213,3 +1160,17 @@ Las interfaces `RepositorioPaises`, `RepositorioProvincias` y `RepositorioCiudad
 
 **Qué se resolvió:**
 Se corrigieron los parámetros genéricos de `JpaRepository` en `RepositorioPaises`, `RepositorioProvincias` y `RepositorioCiudades` para utilizar `Long` como el tipo de ID correspondiente a la entidad.
+
+### 17. Intercalación no determinista y pérdida de asignación por ciudad en el calculador simulado de rutas
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `ProveedorRutasExternoSimulado.java`, `PlanificadorDeRutasScheduler.java`
+
+Al procesar los lotes de ruteo, el simulador mutaba directamente las instancias compartidas de `Camion` en hilos asíncronos paralelos (`runAsync`), provocando condiciones de carrera (*race conditions*). Además, el reseteo del estado del camión al inicio del procesamiento destruía el campo `ciudadDestinoActual`, haciendo que la búsqueda de camiones con ruta asignada a la misma ciudad fallara siempre (código muerto) y asignara camiones de forma subóptima.
+
+**Qué se resolvió:**
+1. Se aisló el estado de simulación instanciando una estructura efímera/copia de `Camion` por cada lote y por cada hilo de planificación.
+2. Se mantuvo la actualización de `ciudadDestinoActual` durante la iteración de asignación del simulador, permitiendo la correcta agrupación por ciudad.
+3. Se garantizó que la persistencia definitiva de asignaciones se realice únicamente al recibir el callback correspondiente (`procesarCallbackRutas`).
+
