@@ -12,14 +12,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 3 | Terminar una ruta borra un ítem y después tira excepción: corta el recorrido y deja chofer y camión bloqueados |
-| 2 | 2 | Iniciar o terminar una ruta nunca persiste el estado: la operación responde OK y no pasa nada |
-| 3 | 4 | La condición del camión está invertida: el caso normal responde "Camión no encontrado" |
-| 6 | 26 | Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual |
-| 8 | 27 | `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada |
-| 9 | 8 | Confirmar una entrega que no está en camino se ignora en silencio y responde 200 |
-| 10 | 9 | Reportar una entrega fallida no valida el estado previo: una entrega_ok se puede revertir |
-| 11 | 10 | El reingreso a depósito no valida nada y su comentario cita un método que no existe |
 | 13 | 29 | Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta |
 | 14 | 30 | `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null |
 | 15 | 32 | Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ |
@@ -33,299 +25,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 28 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
 | 29 | 38 | Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long` |
 | 31 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
----
-
-## 2. Iniciar o terminar una ruta nunca persiste el estado
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `models/repositories/rutas/RepositorioRutas.java:29`, `services/RutaService.java:86`, `services/RutaService.java:97`
-
-### Qué pasa
-
-`RepositorioRutas.actualizarEstado` no actualiza nada:
-
-```java
-default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
-    int posicion = this.findAll().indexOf(ruta);
-    if (posicion != -1) {
-        ruta.setEstado(nuevoEstado);
-        this.findAll().set(posicion, ruta);
-    }
-}
-```
-
-Son tres fallas encimadas en tres líneas:
-
-1. `this.findAll()` devuelve una `List` **nueva** en cada llamada. El `indexOf` mide contra una
-   lista y el `set` escribe sobre otra distinta. El `set` no toca la lista que se indexó, así
-   que aunque el `if` entre, el efecto es tirar la lista a la basura.
-2. `indexOf` usa `equals`, y `Ruta` no overridea `equals`, así que compara identidad. La
-   `ruta` que le pasa `RutaService` viene de `findByChofer`, que a su vez la saca de **otro**
-   `findAll()`. Son instancias distintas, `indexOf` devuelve `-1` y el `if` nunca entra.
-3. No hay `save()`. La lista devuelta por `findAll()` de Spring Data es de entidades
-   **detached**: la transacción read-only que abrió el repositorio ya se cerró cuando el
-   método devolvió. Fuera de sesión, `ruta.setEstado(nuevoEstado)` muta un objeto Java que
-   JDBC nunca ve.
-
-El resultado en `RutaService.iniciarRuta:86` y `terminarRuta:97`: el endpoint devuelve 200 con
-"Ruta iniciada correctamente", se publica el evento `INICIO_RUTA`, pero la fila de `ruta`
-sigue con `estado = 'PROGRAMADA'` para siempre. Tampoco hay ningún `@Transactional` en ningún
-servicio del módulo, así que la lectura-modificación-escritura ocurre en transacciones
-separadas por cada llamada a repositorio.
-
-Lo mismo invalida `urlSeguimiento`: `GestorPublicacionEventos.publicarInicioRuta:44` lo setea
-sobre la misma entidad detached y nunca se guarda.
-
-### Propuesta
-
-Borrar el `default` y dejar que el servicio haga `repoRutas.saveAndFlush(ruta)` sobre la
-entidad que ya tiene en mano, o `save(ruta.getIdRuta(), ruta)`. Si se quiere conservar el
-encapsulamiento, que el `default` use `findById` en vez de `findAll`, yJpa se encarga del
-merge. En cualquiera de los dos casos hay que agregar `@Transactional` a los métodos de
-`RutaService` que tocan más de un repositorio.
-
----
-
-## 3. Terminar una ruta borra un ítem y después tira excepción
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `services/RutaService.java:103-107`
-
-### Qué pasa
-
-```java
-} else {
-  Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
-  if(itemEncontrado.isPresent()){
-    repoItemEntrega.deleteById(item.getIdDonacion());
-    throw new IllegalArgumentException("Entrega no encontrada");
-  }
-}
-```
-
-El `throw` está adentro del `if (isPresent())`: es decir, se lanza **cuando el ítem
-existía**, que es el caso para el que se escribió el `else`. La intención era claramente
-`if (itemEncontrado.isEmpty()) throw`.
-
-Consecuencias, todas en el mismo request:
-
-- El ítem se borra igual, y después se tira la excepción: se pierde el resultado del borrado.
-- La excepción corta el `for` de las paradas. Si la ruta tenía cinco ítems entregados, se borra
-  el primero y los otros cuatro nunca se procesan.
-- Nunca se llega a `chofer.disponible()`, `camionDeRuta.disponible()` ni al reseteo de carga
-  (líneas 111-123). El chofer y el camión quedan bloqueados para siempre.
-- `RutaController.terminarRuta:99` la traduce a un 400 con el mensaje "Entrega no encontrada",
-  que además es falso: la entrega se encontró, se eliminó, y lo que faltó fue terminar el
-  recorrido.
-
-### Propuesta
-
-Sacar el `throw` de adentro del `if` y dejar el borrado como está. Si de verdad se quiere
-avisar cuando algo no está, tiene que ser con `isEmpty()`, y una excepción de negocio no
-debería usarse para el flujo normal. El borrado de ítems entregados, además, merece una
-decisión explícita: hoy destruye la fila que `ItemEntrega.eventos` usa como bitácora.
-
----
-
-## 4. La condición del camión está invertida
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `services/RutaService.java:118-123`
-
-### Qué pasa
-
-```java
-Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
-if (camion.isPresent()) {
-    camion.get().eliminarChofer();
-    gestorCamiones.resetearCamion(camion.get());
-    throw new IllegalArgumentException("Camión no encontrado");
-}
-```
-
-Mismo patrón que el punto 3, y el mismo error de fondo: `isPresent()` donde debía ser
-`isEmpty()`. El flujo normal —el chofer tiene camión, que es exactamente lo que se pidió— cae
-dentro del `if`, ejecuta el reseteo correcto y después tira "Camión no encontrado".
-
-Peor todavía: el `else` implícito no hace nada. Si de verdad no hay camión, `terminarRuta`
-responde 200 diciendo "Ruta finalizada correctamente" sin haber avisado nada.
-
-Lo que salva parcialmente a este punto es que la excepción del punto 3 cortaba el método antes
-de llegar acá. Arreglando el 3 sin tocar el 4, la excepción pasa a ser la que aparece siempre.
-
-### Propuesta
-
-Invertir a `if (camion.isEmpty())` y sacar el `throw` del camino feliz. Si la ausencia de
-camión es un error de negocio, ahí va el `throw`, con un mensaje que describa lo que realmente
-faltó.
-
----
-
-## 7. El getter de Parada ignora su propio campo
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `models/entities/Parada/Parada.java:50-52`, `models/entities/Parada/Parada.java:83-84`, `models/entities/Ruta/Ruta.java:69`
-
-### Qué pasa
-
-```java
-@ManyToOne
-@JoinColumn(name = "id_entidad_beneficiaria", referencedColumnName = "id_entidad_beneficiaria", nullable = false)
-private Entidad entidadDestino; //quedo raro porque hay un metodo que te da la entidad pero creo que es necesario pala la DB
-
-public Entidad getEntidadDestino() {
-    return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
-}
-```
-
-El getter escrito a mano **pisa** el que genera Lombok con `@Getter` a nivel de clase. O sea:
-la columna `id_entidad_beneficiaria` de `parada` se persiste y se lee, y después se tira a la
-basura: el getter devuelve la entidad del **primer ítem**, no la de la parada, y `null` cuando
-no hay ítems.
-
-**Por qué bajó de severidad:** el `NoSuchElementException` del `getFirst()` sobre lista vacía
-(que reventaba `GET /rutas` con 500) está cubierto en el árbol de trabajo, y bien: el guard
-`items.isEmpty() ? null : ...` más el `convertirADireccionDTO` tolerante a `null` de
-`RutaService:163-164` son correctos. **Pero están sin commitear** — en el último commit la
-parada vacía sigue tirando 500, así que el punto cierra recién cuando eso se commitee.
-
-Lo que queda abierto son dos cosas:
-
-- **La columna sigue muerta.** El `@ManyToOne` de la línea 50-52 persiste un destino que
-  nadie lee nunca: todo lo que importa sale de `items`. O se usa el campo, o se borra.
-- **El `null` nuevo viaja hasta `Ruta.agregarEntrega:69`:**
-
-  ```java
-  .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
-  ```
-
-  Si alguna parada de la ruta quedó sin ítems (el javadoc del propio getter admite que pasa:
-  "la entrega se elimino, o la ruta se planifico y todavia no se le asigno nada"), ese
-  `equals` sobre `null` es un `NullPointerException` en plena planificación.
-
-### Cómo se dispara
-
-1. Con el último commit (sin los guards): `GET /api/rutas` con una parada sin ítems → 500.
-2. Con el árbol de trabajo: una ruta que ya tiene una parada sin ítems a la que se le
-   planifica otra entrega → `NullPointerException` en `Ruta.java:69`.
-
-### Propuesta
-
-Commitear los guards que ya están escritos. Y atacar la raíz: borrar el getter manual y
-dejar que Lombok genere el del campo (que es lo que el mapeo JPA persiste), o si el destino
-se deriva del ítem, sacar el `@ManyToOne`. Si se mantiene el getter derivado, el filtro de
-`agregarEntrega` tiene que tolerar `null` (`Objects::equals`).
-
----
-
-## 8. Confirmar una entrega que no está en camino se ignora en silencio
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java:72`, `services/EntregaService.java:137-139`
-
-### Qué pasa
-
-`publicarEntregaConfirmada` envuelve todo su cuerpo en una guarda:
-
-```java
-if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
-    item.setFotoComprobante(foto);
-    ...
-}
-return item;
-```
-
-Si el ítem no está `EN_CAMINO` —porque la ruta nunca se inició, o porque el ítem volvió a
-`PENDIENTE` por el punto 10— el método devuelve el ítem sin tocarlo. No lanza, no avisa.
-
-`EntregaService.actualizarEstado:137` no se entera: guarda lo que le devuelven y sigue. El
-controller responde **200 con "Estado de la entrega actualizado correctamente a: ENTREGADA"**.
-La foto no se guarda, el estado no cambia, no se emite evento, y el receptor de la entidad
-cree que confirmó la entrega.
-
-Es peor que un error visible: es un falso éxito.
-
-### Propuesta
-
-Que la guarda no se lleve el `return`. Si el estado no es `EN_CAMINO`, tirar una excepción de
-negocio que diga que la entrega no está en camino. `publicarEntregaFallida` (punto 9) tiene el
-problema inverso y se arregla en la misma línea de estilo.
-
----
-
-## 9. Reportar una entrega fallida no valida el estado previo
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java:87-88`
-
-### Qué pasa
-
-```java
-public ItemEntrega publicarEntregaFallida(ItemEntrega item, Ruta ruta, String justificacion) {
-    item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
-```
-
-No hay guarda de ningún tipo. El método transiciona desde el estado que sea.
-
-Como `EntregaService.actualizarEstado:142` expone `case "NO_RECIBIDA":` sin chequear el estado
-actual, un `PATCH /entregas/{id}/estado` con `"NO_RECIBIDA"` sobre un ítem que ya estaba
-`ENTREGADA` lo revierte: queda `NO_RECIBIDA`, con su foto de comprobante cargada y con los
-eventos `ENTREGA_CONFIRMADA` y `ENTREGA_FALLIDA` en la bitácora del mismo ítem.
-
-La asimetría con `publicarEntregaConfirmada` es la señal: uno valida el estado de partida y el
-otro no. En un dominio donde las transiciones importan, esa asimetría casi siempre es un
-olvido y no una decisión.
-
-### Propuesta
-
-Agregar la guarda que falta. Lo razonable es que la transición válida sea desde `EN_CAMINO`, y
-que cualquier otro estado de partida tire excepción de negocio en vez de mutar en silencio.
-
----
-
-## 10. El reingreso a depósito no valida nada
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:151-155`, `models/gestores/GestorPublicacionEventos.java:101-102`
-
-### Qué pasa
-
-```java
-case "PENDIENTE":
-    // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
-    // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-    repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarReingresoDeposito(item));
-    break;
-```
-
-El comentario promete una validación en dos lugares donde no hay nada:
-
-1. `reingresarADeposito()` **no existe**. No está en `GestorPublicacionEventos`, no está en
-   ningún service del módulo. El comentario quedó del merge.
-2. `publicarReingresoDeposito` (líneas 101-102) es exactamente igual de permisivo que el
-   punto 9: `cambiarEstado(item, PENDIENTE)` y nada más.
-
-O sea que un `PATCH /entregas/{id}/estado` con `"PENDIENTE"` sobre **cualquier** ítem lo manda
-a `PENDIENTE`. También sirve para deshacer una `ENTREGA_CONFIRMADA`, incluso con foto.
-
-Y el efecto no es inocuo: al volver a `PENDIENTE` el ítem vuelve a entrar en
-`findByEstado(EstadoEntrega.PENDIENTE)`, que es la query que alimenta el planificador nightly
-(`PlanificadorDeRutasScheduler:44`). Un endpoint sin validar puede generar rutas duplicadas a
-las 2 AM.
-
-### Propuesta
-
-Implementar la validación que el comentario describe: solo desde `NO_RECIBIDA`, y el `case`
-debería pedir el estado explícitamente. Si el método que el comentario menciona iba a existir,
-crearlo; si no, borrar la referencia para que el próximo que lea no busque algo que no está.
-
 ---
 
 ## 17. El planificador resetea la carga de los camiones y nunca la persiste
@@ -1720,3 +1419,89 @@ deduplicacion persistente, justo el request/response que se habia quitado a prop
 `EventoLogisticaServiceTest` (antes `EventoLogisticaServicePollingTest`) cubre la lectura por id:
 off-by-one, null, orden y la derived query. Se quitaron los dos tests del listener, que ya no
 existe. Los dos modulos compilan (`mvn test-compile`) y el test corre 6/6 en verde.
+
+### 2. Iniciar o terminar una ruta nunca persiste el estado y aborta transacciones
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `models/repositories/rutas/RepositorioRutas.java`, `services/RutaService.java`
+
+`RepositorioRutas.actualizarEstado` operaba de forma imperativa mediante un `indexOf` sobre copias *detached* de listas devueltas por `findAll()`, perdiendo las referencias en memoria. Además, el flujo de `terminarRuta` lanzaba excepciones `IllegalArgumentException` infundadas tras operaciones de `deleteById` y búsquedas de camión exitosas, provocando el *rollback* completo de la transacción.
+
+**Qué se resolvió:**
+1. Se eliminó el método `default actualizarEstado` del repositorio y se delegó la persistencia de los cambios de estado (`EN_CURSO`, `FINALIZADA`) directamente a `RutaService` mediante la anotación `@Transactional` y `repoRutas.save()`.
+2. Se reestructuró `terminarRuta`: se eliminaron los lanzamientos erróneos de excepciones en el borrado de entregas entregadas y en la desvinculación del camión, permitiendo la correcta liberación del chofer y el reseteo del vehículo.
+3. Se garantizó el contexto transaccional atómico en todo el servicio para evitar modificaciones fuera de sesión.
+
+**Residual:** si un chofer intenta finalizar una ruta sin haber procesado la totalidad de las entregas pendientes, los ítems restantes reingresan al depósito mediante evento de dominio, pero la validación de consistencia depende de la correcta respuesta sincrónica del `GestorPublicacionEventos`.
+
+### 3. Terminar una ruta borra un ítem y lanza una excepción errónea
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `services/RutaService.java`
+
+Al procesar una entrega con estado `ENTREGADA`, el bloque `else` ejecutaba `deleteById` si la entidad estaba presente (`isPresent()`), pero inmediatamente lanzaba una excepción `IllegalArgumentException("Entrega no encontrada")`. Esto interrumpía el bucle de procesamiento de paradas, impedía la liberación del chofer y del camión, y provocaba el *rollback* de la transacción.
+
+**Qué se resolvió:** Se eliminó la excepción del flujo normal de ejecución y se simplificó la condición de borrado utilizando `existsById()`. El procesamiento de entregas ahora continúa de forma fluida a lo largo de todas las paradas sin abortar ni bloquear al personal/vehículo.
+
+**Residual:** Si se requiere auditar el historial de entregas borradas, se deberá implementar una tabla de auditoría o marcado lógico (*soft delete*), ya que la eliminación física destruye el registro sobre el cual operaba la bitácora de eventos de `ItemEntrega`.
+
+### 4. La condición de búsqueda del camión al finalizar la ruta estaba invertida
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `services/RutaService.java`
+
+Al momento de desvincular el vehículo al terminar un recorrido, el método `terminarRuta` ejecutaba `repoCamiones.findByChofer_IdChofer(idChofer)`. La condición evaluaba `camion.isPresent()`, por lo que en el camino feliz (cuando el camión existía) se reseteaba el vehículo pero se lanzaba inmediatamente una excepción `IllegalArgumentException("Camión no encontrado")`, abortando la transacción por rollback.
+
+**Qué se resolvió:** Se simplificó la navegación entre agregados. En lugar de ejecutar una consulta redundante en el repositorio de camiones con condicionales invertidos, se obtiene el camión directamente a través de la relación de dominio `rutaActual.getCamionAsignado()`. Sobre dicha instancia se gestiona la disponibilidad, la desvinculación del chofer y el reseteo del vehículo de forma atómica.
+
+**Residual:** Ninguno. La asociación entre la ruta y su camión asignado es requerida por el modelo de datos antes de pasar a estado `EN_CURSO`.
+
+### 7. Inconsistencia en el getter de Parada y posible NullPointerException en Ruta.agregarEntrega
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** baja / media
+**Archivos:** `models/entities/Parada/Parada.java`, `models/entities/Ruta/Ruta.java`
+
+Se detectó que `Parada.java` sobrescribía manualmente el getter de `entidadDestino` derivándolo del primer ítem de la parada, ignorando el atributo `@ManyToOne` mapeado con JPA. Ante una parada sin ítems, el getter retornaba `null`, lo que provocaba un `NullPointerException` en `Ruta.agregarEntrega` al ejecutar `p.getEntidadDestino().equals(...)`.
+
+**Qué se resolvió:**
+1. Se removió el getter manual en `Parada.java` para mantener la coherencia del mapeo `@ManyToOne` administrado por Lombok.
+2. Se actualizó `Ruta.agregarEntrega` para comparar las entidades de destino de forma segura utilizando `Objects.equals(...)` y validando la entrada de ítems nulos.
+
+### 8. Confirmación o fallo de entregas fuera del estado EN_CAMINO ignorados en silencio
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java`, `services/EntregaService.java`
+
+`publicarEntregaConfirmada` envolvía la lógica de cambio de estado y publicación de eventos en una guarda `if (item.getEstado() == EstadoEntrega.EN_CAMINO)`. Si el ítem se encontraba en otro estado (`PENDIENTE`, `NO_RECIBIDA`, etc.), la función no realizaba ninguna acción pero retornaba el ítem intacto. El servicio respondía un HTTP 200 OK indicando éxito falso al cliente.
+
+**Qué se resolvió:**
+1. Se removió la guarda pasiva en `publicarEntregaConfirmada` reemplazándola por una validación explícita que arroja `IllegalStateException` si la donación no está en estado `EN_CAMINO`.
+2. Se aplicó la misma guarda explícita en `publicarEntregaFallida` para mantener coherencia en las transiciones de estado del dominio.
+
+### 9. Reportar una entrega fallida no valida el estado previo
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java`
+
+`publicarEntregaFallida` permitía transicionar hacia `NO_RECIBIDA` sin verificar el estado actual del ítem. Esto posibilitaba que donaciones previamente marcadas como `ENTREGADA` o `PENDIENTE` cambiaran a `NO_RECIBIDA`, dejando inconsistencias en la bitácora de eventos y en los atributos del ítem (como conservar la foto de comprobante).
+
+**Qué se resolvió:**
+Se incorporó la validación explícita en `publicarEntregaFallida` para verificar que el ítem se encuentre en estado `EN_CAMINO` antes de transicionar a `NO_RECIBIDA`, lanzando un `IllegalStateException` en caso contrario.
+
+### 10. Reingreso a depósito no validaba el estado previo
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `services/EntregaService.java`, `models/gestores/GestorPublicacionEventos.java`
+
+`publicarReingresoDeposito` permitía cambiar el estado de cualquier ítem a `PENDIENTE` sin validar si venía de `NO_RECIBIDA`. Un comentario en `EntregaService` asumía erróneamente que una función inexistente (`reingresarADeposito()`) realizaba esta comprobación. Permitir que cualquier entrega pase a `PENDIENTE` hacía que fuera recalculada por el planificador nocturno de rutas (`PlanificadorDeRutasScheduler`), generando rutas duplicadas o inconsistentes.
+
+**Qué se resolvió:**
+1. Se agregó la validación explícita en `publicarReingresoDeposito` dentro de `GestorPublicacionEventos` para permitir el reingreso únicamente si la entrega se encuentra en estado `NO_RECIBIDA` (de lo contrario lanza `IllegalStateException`).
+2. Se eliminó la referencia al método inexistente en los comentarios de `EntregaService`.

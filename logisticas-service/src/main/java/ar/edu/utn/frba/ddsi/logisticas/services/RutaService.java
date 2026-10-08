@@ -72,10 +72,14 @@ public class RutaService {
   public void iniciarRuta(UUID idChofer) {
     Ruta rutaActual = rutaDelChofer(idChofer);
 
-    repoRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
+    // 1. Cambiamos el estado de la entidad y persistimos con save()
+    rutaActual.setEstado(EstadoRuta.EN_CURSO);
+    repoRutas.save(rutaActual);
+
+    // 2. Publicamos el evento y guardamos los ítems actualizados
     List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
-    for(Parada parada : paradas) {
-        parada.getItems().forEach(repoItemEntrega::saveAndFlush);
+    for (Parada parada : paradas) {
+      parada.getItems().forEach(repoItemEntrega::saveAndFlush);
     }
   }
 
@@ -87,36 +91,39 @@ public class RutaService {
             .orElseThrow(() -> new IllegalStateException("No se encontró la ruta correspondiente al chofer " + idChofer));
   }
 
+  @Transactional
   public void terminarRuta(UUID idChofer) {
     Ruta rutaActual = rutaDelChofer(idChofer);
 
-    repoRutas.actualizarEstado(rutaActual, EstadoRuta.FINALIZADA);
-    for(Parada parada : rutaActual.getParadas()){
-      for(ItemEntrega item : parada.getItems()){
+    // 1. Persistencia correcta del cambio de estado a la ruta
+    rutaActual.setEstado(EstadoRuta.FINALIZADA);
+    repoRutas.save(rutaActual);
+
+    // 2. Procesamos el estado de los ítems
+    for (Parada parada : rutaActual.getParadas()) {
+      for (ItemEntrega item : parada.getItems()) {
         if (item.getEstado() != EstadoEntrega.ENTREGADA) {
           gestorPublicacionEventos.publicarReingresoDeposito(item);
         } else {
-          Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
-          if(itemEncontrado.isPresent()){
+          // Si fue entregado y existe en la BD, se elimina correctamente (sin lanzar exception)
+          if (repoItemEntrega.existsById(item.getIdDonacion())) {
             repoItemEntrega.deleteById(item.getIdDonacion());
-            throw new IllegalArgumentException("Entrega no encontrada");
           }
         }
       }
     }
+
+    // 3. Liberar chofer
     Chofer chofer = rutaActual.getCamionAsignado().getChofer();
     chofer.disponible();
     repoChoferes.save(chofer);
+
+    // 4. Liberar y desvincular camión
     Camion camionDeRuta = rutaActual.getCamionAsignado();
     camionDeRuta.disponible();
+    camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
+    gestorCamiones.resetearCamion(camionDeRuta);
     repoCamiones.save(camionDeRuta);
-
-    Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
-    if (camion.isPresent()) {
-      camion.get().eliminarChofer();
-      gestorCamiones.resetearCamion(camion.get());
-      throw new IllegalArgumentException("Camión no encontrado");
-    }
   }
 
   private RutasDTO convertirARutasDTO(List<Ruta> rutas){

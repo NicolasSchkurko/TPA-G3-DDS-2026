@@ -25,12 +25,4 @@ public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
                         chofer.equals(ruta.getCamionAsignado().getChofer()))
                 .findFirst();
     }
-
-    default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
-        int posicion = this.findAll().indexOf(ruta);
-        if (posicion != -1) {
-            ruta.setEstado(nuevoEstado);
-            this.findAll().set(posicion, ruta);
-        }
-    }
 }
