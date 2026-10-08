@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.lector;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ArchivoCsvSinEncabezadosException;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ConversorNuloException;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.EncabezadoCsvDuplicadoException;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.FilaConverter;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,11 +38,12 @@ public class LectorCSVtest {
     String csvContenido = "Nombre,Edad\nJuan,30\nMaria,25";
     InputStream inputStream = crearStreamDesdeString(csvContenido);
 
-    List<String> resultados = lector.importar(inputStream);
+    ResultadoLectura<String> resultado = lector.importar(inputStream);
 
-    assertEquals(2, resultados.size());
-    assertEquals("Juan-30", resultados.get(0));
-    assertEquals("Maria-25", resultados.get(1));
+    assertEquals(2, resultado.getElementos().size());
+    assertEquals("Juan-30", resultado.getElementos().get(0));
+    assertEquals("Maria-25", resultado.getElementos().get(1));
+    assertTrue(resultado.getErrores().isEmpty());
   }
 
   @Test
@@ -53,11 +54,13 @@ public class LectorCSVtest {
     InputStream inputStream = crearStreamDesdeString(csvContenido);
 
 
-    List<String> resultados = lector.importar(inputStream);
+    ResultadoLectura<String> resultado = lector.importar(inputStream);
 
-    assertEquals(2, resultados.size(), "Debería haber ignorado 1 fila");
-    assertEquals("Juan-30", resultados.get(0));
-    assertEquals("Pedro-40", resultados.get(1));
+    assertEquals(2, resultado.getElementos().size(), "Debería haber ignorado 1 fila");
+    assertEquals("Juan-30", resultado.getElementos().get(0));
+    assertEquals("Pedro-40", resultado.getElementos().get(1));
+    assertEquals(1, resultado.getErrores().size(), "La fila descartada queda registrada como error");
+    assertTrue(resultado.getErrores().get(0).contains("DESCARTAR"));
   }
 
   @Test
@@ -107,9 +110,9 @@ public class LectorCSVtest {
     String csvContenido = "Nombre;Edad\nCarlos;50";
     InputStream inputStream = crearStreamDesdeString(csvContenido);
 
-    List<String> resultados = lector.importar(inputStream);
+    ResultadoLectura<String> resultado = lector.importar(inputStream);
 
-    assertEquals(1, resultados.size());
-    assertEquals("Carlos-50", resultados.get(0));
+    assertEquals(1, resultado.getElementos().size());
+    assertEquals("Carlos-50", resultado.getElementos().get(0));
   }
 }

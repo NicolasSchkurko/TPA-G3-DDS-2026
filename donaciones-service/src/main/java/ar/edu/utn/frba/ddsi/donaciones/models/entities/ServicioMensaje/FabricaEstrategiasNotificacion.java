@@ -26,6 +26,16 @@ public class FabricaEstrategiasNotificacion {
                         EstrategiaNotificacion::getTipoEvento,
                         Function.identity()
                 ));
+
+        // Fail-fast: si a una estrategia le falta el @Component (como pasaba con
+        // NotificacionEntregaFallida), mejor romper al arrancar que la primera vez que se
+        // dispare el evento en producción.
+        for (TipoEventoNotificacion tipo : TipoEventoNotificacion.values()) {
+            if (!this.estrategias.containsKey(tipo)) {
+                throw new IllegalStateException(
+                        "No hay una EstrategiaNotificacion registrada como bean para " + tipo);
+            }
+        }
     }
 
     public EstrategiaNotificacion obtenerEstrategia(TipoEventoNotificacion evento) {

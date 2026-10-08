@@ -57,7 +57,9 @@ public class BienResumenDTO {
       };
     }
 
-    if (tipoBien == null) return null;
+    if (tipoBien == null) {
+      throw new IllegalArgumentException("El tipo de bien es obligatorio");
+    }
     return switch (tipoBien.toUpperCase()) {
       case "CON_ESTADO", "CONESTADO" -> new BienConEstado(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, usado != null ? usado : false);
       case "PERECEDERO" -> new BienPerecedero(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, fechaVencimiento != null ? fechaVencimiento : LocalDate.now().plusMonths(1));

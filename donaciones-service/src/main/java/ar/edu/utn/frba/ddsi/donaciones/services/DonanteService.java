@@ -5,16 +5,19 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.ReporteImportacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,9 +25,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +42,13 @@ public class DonanteService {
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
+
+  // Reportes en memoria de importaciones CSV en curso/terminadas, consultables por id. Y un
+  // executor propio (no el ForkJoinPool.commonPool() de CompletableFuture.runAsync) para que una
+  // importación grande no compita por los mismos hilos que usa el resto de la app para tareas
+  // paralelas (ver fabricaEstrategias.ejecutar, que también puede usar el common pool).
+  private final Map<UUID, ReporteImportacionDTO> reportesImportacion = new ConcurrentHashMap<>();
+  private final ExecutorService executorImportacion = Executors.newFixedThreadPool(2);
 
   public DonanteService(RepositorioPersonas repositorioPersonas,
                         RepositorioCiudades repositorioCiudades,
@@ -99,21 +113,52 @@ public class DonanteService {
     System.out.println("Donante dado de baja (si existía).");
   }
 
-  public String importarDonantes(MultipartFile file, List<MapeoCSV> mapeosCsv) {
+  public UUID importarDonantes(MultipartFile file, List<MapeoCSV> mapeosCsv) {
+    byte[] bytes;
     try {
-      byte[] bytes = file.getBytes();
-      CompletableFuture.runAsync(() -> {
-        try (InputStream is = new ByteArrayInputStream(bytes)) {
-          LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosCsv));
-          List<Donante> importados = lector.importar(is);
-          for (Donante d : importados) {
-            try { crearPersona(PersonaDonanteDTO.from(d)); }
-            catch (Exception ignored) {}
-          }
-        } catch (IOException ignored) {}
-      });
-      return "Importación en segundo plano iniciada.";
-    } catch (IOException e) { throw new RuntimeException("Error CSV", e); }
+      bytes = file.getBytes();
+    } catch (IOException e) {
+      throw new RuntimeException("No se pudo leer el archivo CSV", e);
+    }
+
+    UUID importId = UUID.randomUUID();
+    reportesImportacion.put(importId, ReporteImportacionDTO.enProgreso(importId));
+    executorImportacion.submit(() -> procesarImportacion(importId, bytes, mapeosCsv));
+    return importId;
+  }
+
+  private void procesarImportacion(UUID importId, byte[] bytes, List<MapeoCSV> mapeosCsv) {
+    List<String> errores = new ArrayList<>();
+    int totalFilas = 0;
+    int exitosos = 0;
+
+    try (InputStream is = new ByteArrayInputStream(bytes)) {
+      LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosCsv));
+      ResultadoLectura<Donante> resultado = lector.importar(is);
+      totalFilas = resultado.getTotalFilas();
+      errores.addAll(resultado.getErrores());
+
+      for (Donante d : resultado.getElementos()) {
+        try {
+          crearPersona(PersonaDonanteDTO.from(d));
+          exitosos++;
+        } catch (Exception e) {
+          errores.add("Donante '" + d.getPersona().getNombreDeUsuario() + "': " + e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      errores.add("Error inesperado al procesar el archivo: " + e.getMessage());
+    }
+
+    reportesImportacion.put(importId, ReporteImportacionDTO.completado(importId, totalFilas, exitosos, errores));
+  }
+
+  public ReporteImportacionDTO obtenerReporteImportacion(UUID importId) {
+    ReporteImportacionDTO reporte = reportesImportacion.get(importId);
+    if (reporte == null) {
+      throw new EntityNotFoundException("No se encontró una importación con ID: " + importId);
+    }
+    return reporte;
   }
 
   public List<MediosContactoDTO> obtenerMediosContacto(UUID id) {
