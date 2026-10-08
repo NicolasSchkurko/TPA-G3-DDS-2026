@@ -4,8 +4,11 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.http.HttpClient;
 
 @SpringBootApplication
 @EnableScheduling
@@ -27,6 +30,9 @@ public class DonacionesServiceApplication {
 
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        // La factory default (HttpURLConnection) no soporta PATCH: el avance de donación a
+        // incentivos es PATCH y con ella responde con "Invalid HTTP method: PATCH". El
+        // HttpClient del JDK soporta PATCH sin dependencias extra.
+        return new RestTemplate(new JdkClientHttpRequestFactory(HttpClient.newHttpClient()));
     }
 }
