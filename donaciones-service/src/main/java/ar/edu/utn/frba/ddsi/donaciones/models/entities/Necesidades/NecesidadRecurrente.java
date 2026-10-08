@@ -28,6 +28,11 @@ public class NecesidadRecurrente extends Necesidad {
         return this.cantidadRecibidaEnPeriodo() >= cantidadObjetivo;
     }
 
+    @Override
+    public Integer cantidadFaltante() {
+        return cantidadObjetivo - cantidadRecibidaEnPeriodo();
+    }
+
     public Integer cantidadRecibidaEnPeriodo() {
         LocalDate fechaLimite = LocalDate.now().minusDays(this.plazoEnDias);
 

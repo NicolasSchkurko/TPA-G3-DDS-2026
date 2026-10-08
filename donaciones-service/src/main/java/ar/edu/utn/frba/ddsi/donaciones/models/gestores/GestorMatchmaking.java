@@ -21,11 +21,16 @@ public class GestorMatchmaking {
                 )
         );
 
-        if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
+        // posicion es 1-based: así la setean AlgoritmoAsignacion.extraerRanking y
+        // AsignadorDonaciones.obtenerInterseccion, y así la expone PropuestaAsignacionDTO al
+        // front. Indexar con get(posicion) desfasaba en uno: "la propuesta número 1" de la
+        // pantalla terminaba asignando la segunda de la lista.
+        int size = resultado.getPropuestasOrdenadas().size();
+        if (posicion == null || posicion < 1 || posicion > size) {
             throw new IllegalArgumentException("Posición de propuesta inválida");
         }
 
-        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
+        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion - 1);
         return  propuesta;
     }
 }

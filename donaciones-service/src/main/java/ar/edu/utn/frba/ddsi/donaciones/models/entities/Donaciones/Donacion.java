@@ -113,6 +113,15 @@ public class Donacion {
 
     public void actualizarEstado(Estado nuevoEstado, String justificacion) {
         this.estado = nuevoEstado;
+        // Única escritura de fechaEntrega en todo el módulo: de acá dependen
+        // SubAtendidos.cantidadDonacionesUltimoTrimestre y
+        // NecesidadRecurrente.cantidadRecibidaEnPeriodo, que hasta ahora siempre veían null.
+        // Centralizado aquí (no en los gestores) porque hay dos caminos a ENTREGADO:
+        // GestorAsignaciones.cambiarEstado (manual) y
+        // GestorEventosLogistica.manejarEntregaConfirmada (evento de logística).
+        if (nuevoEstado == Estado.ENTREGADO && this.fechaEntrega == null) {
+            this.fechaEntrega = LocalDate.now();
+        }
         registrarAuditoriaEstado(nuevoEstado, justificacion);
     }
 

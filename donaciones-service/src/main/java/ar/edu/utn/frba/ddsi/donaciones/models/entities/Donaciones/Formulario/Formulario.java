@@ -46,6 +46,9 @@ public class Formulario {
     public Formulario(Donante donante, List<Bien> bienes, LocalDate fechaRealizacion) {
         this.donante = donante;
         this.donaciones = bienes;
-        this.fechaRealizacion = fechaRealizacion;
+        // Default a hoy si no viene: FormularioRequestDTO.fechaRealizacion no tiene validación,
+        // y un null acá hacía explotar con NPE a DonanteService.revisarActividades
+        // (getFechaRealizacion().plusDays(20)) una vez que formularios dejó de ser @Transient.
+        this.fechaRealizacion = fechaRealizacion != null ? fechaRealizacion : LocalDate.now();
     }
 }

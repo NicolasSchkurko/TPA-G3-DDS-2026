@@ -14,10 +14,10 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.Ti
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
+import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -47,19 +47,21 @@ public class GestorAsignaciones {
     }
 
     public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
-        Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(id);
-
-        if (donacionOpt.isEmpty()) {
-            throw new RuntimeException("Donación no encontrada con ID: " + id);
-        }
+        Donacion donacion = repositorioDonaciones.obtenerPorId(id)
+                .orElseThrow(() -> new EntityNotFoundException("Donación no encontrada con ID: " + id));
 
         Estado estado = parseEstado(nuevoEstado);
 
-        Donacion donacion = donacionOpt.get();
         donacion.actualizarEstado(estado, justificacion);
-        repositorioDonaciones.guardar(donacion);
 
+        // Las acciones posteriores van ANTES de guardar: si fallan (por ejemplo porque la
+        // donación todavía no tiene entidad asignada), el estado nuevo no debe quedar
+        // persistido. Antes el guardar pasaba primero y una falla acá dejaba el cambio de
+        // estado ya commiteado mientras el controller, al atrapar la excepción como
+        // RuntimeException, respondía 404 (como si la donación no existiera).
         procesarAccionesPostCambioEstado(donacion, estado, nuevoEstado);
+
+        repositorioDonaciones.guardar(donacion);
 
         return donacion;
     }
@@ -89,6 +91,15 @@ public class GestorAsignaciones {
     private void procesarAccionesPostCambioEstado(Donacion donacion, Estado estado, String nuevoEstado) {
         boolean esAsignado = "ASIGNADO".equalsIgnoreCase(nuevoEstado) || estado == Estado.ASIGNADO;
         if (!esAsignado) return;
+
+        if (donacion.getEntidad() == null) {
+            throw new IllegalArgumentException(
+                    "No se puede marcar la donación " + donacion.getId() + " como ASIGNADO: todavía no tiene una entidad beneficiaria asignada.");
+        }
+        if (donacion.getSubcategoria() == null) {
+            throw new IllegalArgumentException(
+                    "No se puede marcar la donación " + donacion.getId() + " como ASIGNADO: no tiene subcategoría.");
+        }
 
         IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
         dto.setFechaEntrega(donacion.getFechaEntrega());

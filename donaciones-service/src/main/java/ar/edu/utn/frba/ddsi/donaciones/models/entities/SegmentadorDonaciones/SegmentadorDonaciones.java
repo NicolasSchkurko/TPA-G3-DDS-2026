@@ -41,7 +41,10 @@ public class SegmentadorDonaciones {
     }
 
     private static String generarClaveSegmentacion(Bien bien) {
-        String clave = bien.getSubcategoria().getNombre();
+        // La unidad entra en la clave: sin esto, un grupo podía mezclar kilos con litros de la
+        // misma subcategoría en una sola Donación, y Donacion.sumaCantidadBienes() los suma como
+        // si fueran la misma unidad (15 = 10 kilos + 5 litros).
+        String clave = bien.getSubcategoria().getNombre() + "-" + (bien.getUnidadUtilizada() != null ? bien.getUnidadUtilizada().name() : "SIN_UNIDAD");
 
         if (bien instanceof BienPerecedero perecedero) {
             clave = clave + "-" + perecedero.getFechaVencimiento().toString();

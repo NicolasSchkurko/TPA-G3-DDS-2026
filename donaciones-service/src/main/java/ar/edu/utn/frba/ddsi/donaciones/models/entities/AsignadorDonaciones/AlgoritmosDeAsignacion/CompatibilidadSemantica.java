@@ -65,8 +65,21 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
     }
 
     private double calcularScore(Necesidad necesidad, Donacion donacion) {
-        int cantidadFaltante = necesidad.getCantidadObjetivo() - necesidad.cantidadRecibida();
+        // cantidadFaltante() usa la misma ventana que esCompatibleCon()/estaSatisfecha(): para
+        // una NecesidadRecurrente eso es cantidadRecibidaEnPeriodo(), no el histórico completo.
+        // Antes medían contra columnas distintas: una recurrente ya llenada en el pasado quedaba
+        // "compatible" (período en 0) pero con score <= 0 (histórico ya cubierto), así que el
+        // filtro de la línea de arriba la descartaba para siempre.
+        int cantidadFaltante = necesidad.cantidadFaltante();
         int cantidadDonada = donacion.sumaCantidadBienes();
+
+        // Blindaje de división por cero: una donación con suma de bienes 0 (o una necesidad sin
+        // nada pendiente, score <= 0 ya la filtra el caller) no debe producir NaN, que al no
+        // cumplir "score <= 0" se cuela en el PriorityQueue y rompe el orden del heap.
+        if (cantidadFaltante <= 0 || cantidadDonada <= 0) {
+            return 0;
+        }
+
         return cantidadDonada <= cantidadFaltante
                ? (double) cantidadDonada / cantidadFaltante
                : (double) cantidadFaltante / cantidadDonada;

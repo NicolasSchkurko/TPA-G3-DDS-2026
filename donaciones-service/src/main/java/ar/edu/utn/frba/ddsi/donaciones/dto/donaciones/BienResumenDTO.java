@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,10 +14,16 @@ public class BienResumenDTO {
   private String descripcion;
   private String subcategoria;
   private String categoria;
+
+  @Positive(message = "cantidad debe ser positiva")
   private Integer cantidad;
+
   private String unidadDeMedida;
   private String urlFoto;
+
+  @NotBlank(message = "tipoBien es obligatorio")
   private String tipoBien;
+
   private Boolean usado;
   private LocalDate fechaVencimiento;
 
@@ -45,7 +53,9 @@ public class BienResumenDTO {
       };
     }
 
-    if (tipoBien == null) return null;
+    if (tipoBien == null) {
+      throw new IllegalArgumentException("El tipo de bien es obligatorio");
+    }
     return switch (tipoBien.toUpperCase()) {
       case "CON_ESTADO", "CONESTADO" -> new BienConEstado(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, usado != null ? usado : false);
       case "PERECEDERO" -> new BienPerecedero(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, fechaVencimiento != null ? fechaVencimiento : LocalDate.now().plusMonths(1));
