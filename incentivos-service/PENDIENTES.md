@@ -12,28 +12,26 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 1 | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
-| 2 | 10 | Decidir si el ranking cuenta insignias o misiones, como pide el enunciado |
-| 3 | 23 | Quedan decisiones de identidad y ampliar la cobertura de persistencia JPA |
-| 4 | 37 | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 5 | 6 | Vigilancia: mantener las lecturas de relaciones lazy dentro de transacciones |
+| 1 | 39 | Un perfil queda huérfano si la baja del donante en donaciones no llega |
+| 2 | 1 | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
+| 3 | 10 | Decidir si el ranking cuenta insignias o misiones, como pide el enunciado |
+| 4 | 23 | Quedan decisiones de identidad y ampliar la cobertura de persistencia JPA |
+| 5 | 37 | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 6 | 6 | Vigilancia: mantener las lecturas de relaciones lazy dentro de transacciones |
+| 7 | 41 | La difusión en redes no es verificable: la imagen la genera un workflow n8n fuera del repo |
+| 8 | 40 | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
+| 9 | 42 | Un ítem que falla tumba el lote entero de alta de perfiles |
+| 10 | 43 | El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones |
+| 11 | 44 | Un `nombreUsuario` largo revienta el alta con un 409 confuso |
+| 12 | 45 | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
+| 13 | 46 | Un período de ranking ya existente responde 400 en vez de 409 |
 
 Los puntos 1 y 10 requieren decisiones del equipo: el primero necesita acordar una identidad
 compartida entre servicios; el segundo conserva, por ahora, la decisión documentada de contar
 insignias. El punto 9 también es una decisión de arquitectura ya documentada, no un faltante.
-El punto 4 ya está corregido porque `common-lib` fue eliminado del repositorio. La vigilancia
-del punto 6 sigue aplicando al agregar endpoints.
-
-Los cerrados se agruparon en tandas porque se corrigieron juntos:
-
-| Tanda | Puntos | Por qué juntos |
-|---|---|---|
-| 1ª | 21, 12, 8 | Autorización incompleta y llamadas HTTP dentro de transacciones |
-| 2ª | 26, 27, 28 | La progresión del donante se medía mal y se duplicaba |
-| 3ª | 13, 14 | Una sola cadena de fallo: el 500 provocaba el reintento, el reintento corrompía |
-| 4ª | 25, 36, 17, 30 | Los cuatro eran fallos de progresión del donante y ninguno se manifestaba solo |
-| 5ª | 22, 31, 32 | El 31 y el 32 hablan de lo mismo: un dato inválido que entra sin que nadie lo revise y rompe algo lejos de donde entró |
-| 6ª | 33, 34, 24, 2 | Los cuatro son de coherencia entre lo que el código dice y lo que hace |
+El punto 41 es una verificación pendiente, no un bug: la generación de la imagen vive en un
+workflow de n8n que no está en el repositorio.
+La vigilancia del punto 6 sigue aplicando al agregar endpoints.
 
 El detalle de cada fix está en [Corregidos](#corregidos), un ítem por corrección.
 
@@ -42,10 +40,8 @@ de persistencia JPA. La llamada HTTP a n8n dentro de la transacción, el enum JD
 como dominio y la falta total de pruebas JPA ya fueron atendidos; se detallan en su sección.
 
 El punto 35 (los "pendientes" en memoria dicen deduplicar y no deduplican) **ya no es un punto
-aparte**: quedó absorbido por el
-[anexo del punto 3](#punto-anexo-los-buffers-pendientes-en-memoria-absorbe-el-ex-punto-35).
-La parte de notificaciones se resolvió con RabbitMQ y las publicaciones a n8n ahora usan una
-outbox persistente con reclamos exclusivos y reintentos.
+aparte**: la parte de notificaciones se resolvió con RabbitMQ y las publicaciones a n8n ahora
+usan una outbox persistente con reclamos exclusivos y reintentos.
 
 ---
 
@@ -178,17 +174,6 @@ perezosamente": `convertirPerfilADTO` lee `io.getInsignia().getNombre()`, así q
 lectura del perfil tiene que traerla. Hoy lo cubre el `@EntityGraph` de `findByIdUsuario` y
 el de `paginaInsigniasPorIdUsuario`, pero un endpoint nuevo que mapee un perfil por otro
 camino va a necesitar el suyo.
----
-
-## 4. `common-lib` estaba en el repositorio pero no en el build
-
-**Estado:** corregido
-**Archivos:** `pom.xml`
-
-`common-lib/` ya no existe en el repositorio y tampoco está declarado como módulo ni es
-referenciado por los servicios. El código muerto quedó eliminado; no hace falta incorporarlo
-al build.
-
 ---
 
 ## 9. Logística no se integra de forma directa: es decisión de arquitectura
@@ -482,449 +467,279 @@ setter, que es justo lo que se sacó.
    que se agreguen.
 ---
 
+## 39. Un perfil queda huérfano si la baja del donante en donaciones no llega
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/controllers/PerfilController.java` (`DELETE /api/perfiles/interno/{idUsuario}`), `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java` (`eliminarPerfilPorBajaDeDonante`, `borrarPerfilYHistorial`). Contraparte: punto 35 de `donaciones-service/PENDIENTES.md`.
+
+### Qué pasa
+
+El perfil gamificado de un donante dado de baja en `donaciones-service` **sobrevive en la base de incentivos**. La baja la dispara y la ejecuta donaciones por HTTP síncrono (`DELETE /api/perfiles/interno/{idUsuario}`); incentivos no tiene forma de enterarse por sí solo de que el donante dejó de existir. Cuando esa llamada no llega —o llega con un id que no matchea— el perfil queda huérfano y nada lo limpia después.
+
+### Por qué no se ve
+
+1. `PerfilService.eliminarPerfilPorBajaDeDonante` es idempotente y **devuelve 200 aunque no borre nada**: hace `if (!repositorioPerfiles.existsById(idUsuario)) return;`. Un id que no coincide con ningún perfil (perfil creado con otro id, datos viejos o de un seed) es indistinguible de un borrado exitoso. El llamador no puede saber si quedó algo.
+2. La baja depende de que donaciones ejecute la llamada, y **en el momento correcto**: si la baja local aborta antes (por la FK del punto 34 de donaciones) o falla la red, la cascada no corre y no hay reintento.
+3. No hay ninguna consulta ni job que detecte perfiles cuyo `idUsuario` ya no exista en donaciones.
+
+### Propuesta
+
+1. Consumir un evento `donante.baja` publicado por donaciones (Rabbit) y borrar ahí el perfil y su historial de impactos de forma idempotente, con DLQ y reintentos. Deja de depender de una llamada HTTP en medio de la baja del otro servicio.
+2. Exponer una **reconciliación** (endpoint de admin o job) que liste/borre perfiles sin donante, o un borrado de respaldo por `nombreUsuario`.
+3. Verificar que el despliegue tenga el endpoint `/api/perfiles/interno/{idUsuario}` (commit `7e9da04`); sin él, la llamada de donaciones da 404 y la baja entera falla.
+
+---
+
+## 41. La generación de la imagen y la publicación viven en un workflow de n8n fuera del repositorio
+
+**Estado:** abierto (verificación pendiente)
+**Severidad:** media
+**Archivos:** `.../clients/N8nClient.java`, `.../services/PublicacionesN8nService.java`,
+`.../dto/n8n/PerfilPublicacionDTO.java`
+
+### Qué pasa
+
+El enunciado pide "un mecanismo automatizado que **genera una imagen y publica en redes
+sociales**" cada vez que se desbloquea una insignia. Acá el servicio solo **encola un `prompt`**
+(`"en el centro debe decir <insignia>"`), un `mensaje` y la red, y los POSTea al webhook de n8n:
+la generación de la imagen y la publicación efectiva viven en un **workflow de n8n que no está
+versionado en el repositorio**, así que no hay forma de verificarlo ni de reproducirlo con el
+código. En la prueba real, el webhook de producción respondía
+`404 "The requested webhook POST incentivos is not registered"` (el workflow no estaba activo).
+
+### Propuesta
+
+1. Versionar el workflow de n8n (export JSON) en el repo, o mover la generación de la imagen al
+   servicio (plantilla + render) y dejar a n8n solo la publicación.
+2. Documentar el contrato del webhook (payload esperado) y cómo activarlo, para que la difusión
+   sea verificable de punta a punta.
+
+---
+
+## 40. La publicación en redes arranca con una coma y la red está fija en `discord`
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `.../clients/N8nClient.java`, `.../N8nClientTest.java`
+
+### Qué pasa
+
+`encolarInsignia` arma el `mensaje` de la publicación como
+`", por ganar la insignia " + event.insigniaObtenida() + ...`: **arranca con `", "`**, resto de
+una concatenación a la que le falta el prefijo, así que el texto que sale a la red empieza con
+una coma. Además la red está **hardcodeada en `"discord"`**. El test solo verifica
+`containsString`, así que pasa igual con la coma.
+
+### Propuesta
+
+Armar el mensaje completo (por ejemplo `event.nombreUsuario() + " ganó la insignia ..."`), hacer
+configurable la red social, y cambiar el test a una igualdad exacta sobre `mensaje`.
+
+---
+
+## 42. `crearPerfilesEnLote` no puede ser parcial: un ítem que falla tumba el lote entero
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `services/PerfilService.java:143-178`, `controllers/PerfilController.java:80-84`
+
+### Qué pasa
+
+El endpoint `POST /api/perfiles/lote` promete *"los que fallan vienen detallados en `errores`
+sin tumbar el resto"*, pero `crearPerfilesEnLote` es **un solo `@Transactional`** que atrapa las
+excepciones por ítem:
+
+```java
+@Transactional
+public ResultadoLotePerfilesDTO crearPerfilesEnLote(List<PerfilDonanteDTO> perfiles) {
+    for (PerfilDonanteDTO perfil : perfiles) {
+        try {
+            ...
+            crearPerfilNuevo(perfil);   // adentro hace repositorioPerfiles.flush()
+        } catch (Exception e) {
+            errores.add(...);           // sigue con el próximo
+        }
+    }
+```
+
+Cuando un ítem provoca una excepción **de persistencia** en el `flush()`, el `catch` la traga
+pero la sesión de Hibernate queda inservible (transacción rollback-only): el commit al final del
+método lanza `UnexpectedRollbackException` y **se revierten los perfiles que sí se habían
+creado**, con un 500. El `catch (Exception)` además traga errores de programación y devuelve
+`e.getMessage()` crudo al cliente.
+
+### Cómo se dispara
+
+Cualquier ítem del lote que viole una constraint en el INSERT. El más fácil: `nombreUsuario` no
+tiene límite de largo (`PerfilDonanteDTO` solo lo marca `@NotBlank`) y la columna es
+`varchar(255)`; un nombre de 300 caracteres revienta el `flush` y con él todo el lote.
+
+### Propuesta de arreglo
+
+Una transacción por ítem (`TransactionTemplate` o un método `REQUIRES_NEW`) para que el fallo de
+uno no marque rollback-only al resto, capturar solo las excepciones esperadas y no devolver
+`getMessage()` crudo. Complementa al punto 44.
+
+---
+
+## 43. El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `models/repositories/SpringRepositories/RepositorioRankings.java:30-31`,
+`services/RankingService.java:168-172`
+
+### Qué pasa
+
+`GET /api/rankings` es paginado, pero la consulta que lo alimenta hace `fetch` de una colección
+y a la vez recibe `Pageable`:
+
+```java
+@EntityGraph(attributePaths = "posiciones")
+Page<RankingMensual> findAllByOrderByPeriodoDesc(Pageable pageable);
+```
+
+Hibernate no puede aplicar `LIMIT`/`OFFSET` sobre un `fetch join` a una colección: ignora el
+límite y **trae todos los rankings con todas sus posiciones a memoria**, y recién ahí Spring
+arma la página. La respuesta sale correcta, pero el costo crece con todo el historial.
+
+### Cómo se dispara
+
+Pedir una página del historial (`GET /api/rankings?size=10`) cuando hay muchos rankings
+publicados —uno por mes— y cada uno con todos los donantes de ese mes.
+
+### Propuesta de arreglo
+
+Paginar sobre `RankingMensual` sin el `@EntityGraph` y resolver las posiciones por página, o una
+`@Query` con `countQuery` aparte como ya se hizo en `paginaInsigniasPorIdUsuario`.
+
+---
+
+## 44. El alta de perfil no acota el largo de `nombreUsuario`: un nombre largo revienta con un 409 confuso
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `dto/Persona/PerfilDonanteDTO.java:19-20`, `models/entities/Perfil/Perfil.java`
+
+### Qué pasa
+
+`PerfilDonanteDTO.nombreUsuario` solo tiene `@NotBlank`; no hay `@Size` ni `@Column(length = ...)`
+en `Perfil`. La columna queda `varchar(255)`, así que un nombre de más de 255 caracteres pasa la
+validación y falla en el INSERT con `DataIntegrityViolationException`, que el handler traduce a
+**409 "hay datos relacionados que la impiden"** — un mensaje que no tiene nada que ver con la
+causa. `role` está igual de suelto.
+
+### Cómo se dispara
+
+`POST /api/perfiles` (o `/lote`, ver punto 42) con `nombreUsuario` de 256+ caracteres.
+
+### Propuesta de arreglo
+
+`@Size(max = 255)` en el DTO y `@Column(length = ...)` en la entidad, para que sea un 400 con el
+campo señalado.
+
+---
+
+## 45. La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `services/PublicacionesN8nService.java:70-79`,
+`models/entities/PublicacionPendienteN8n.java:74-83`
+
+### Qué pasa
+
+`reintentar` agenda el próximo intento con backoff exponencial acotado a una hora
+(`RETRASO_MAXIMO_SEGUNDOS = 3600`) y no hay máximo de intentos ni cola de descarte: una
+publicación que nunca va a poder enviarse (payload inválido, red inexistente) se reintenta cada
+hora **indefinidamente**. `intentos` y `ultimoError` se guardan, así que el dato está, pero nada
+corta el ciclo.
+
+### Cómo se dispara
+
+Una fila en `publicacion_pendiente_n8n` cuyo `POST` a n8n siempre falla (por ejemplo el webhook
+responde 4xx por el payload): el scheduler `procesarPendientes` la reintenta en cada ciclo.
+
+### Propuesta de arreglo
+
+Un tope de intentos (`intentos >= N` → estado `DESCARTADA`) o una DLQ, y un log/alerta cuando se
+descarta.
+
+---
+
+## 46. Un período de ranking ya existente responde 400 en vez de 409
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `services/RankingService.java:124-135`
+
+### Qué pasa
+
+`generarYGuardar` lanza `IllegalArgumentException("Ya existe un ranking para el período: ...")`
+cuando `findByPeriodo(...)` encuentra algo. `GlobalExceptionHandler` mapea
+`IllegalArgumentException` a **400**, aunque el conflicto con un recurso existente es un **409**
+(y `ConflictoException` ya existe para eso). Además, el camino del scheduler
+(`crearRankingMensualActual`) usa el mismo método, así que si un admin generó el mes anterior a
+mano, el scheduler loguea un **ERROR** por un caso esperado.
+
+### Cómo se dispara
+
+`POST /api/rankings` con un período ya publicado (devuelve 400), o el `RankingScheduler` cuando
+el ranking del mes anterior ya existe.
+
+### Propuesta de arreglo
+
+Lanzar `ConflictoException` (409) en el camino HTTP y tratar "ya existe" como no-op idempotente
+en el camino del scheduler.
+
+---
+
 ## Corregidos
 
-### `incentivos-service` no tenía AMQP: las notificaciones iban por HTTP síncrono
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `pom.xml`, `.../config/RabbitMQConfig.java`, `.../clients/NotificacionClient.java`,
-`src/main/resources/application.properties`
-
-El enunciado pide textualmente que la integración con el servicio de notificaciones sea
-"asíncrona, a través de una cola de mensajes". `incentivos-service` no tenía
-`spring-boot-starter-amqp`, ninguna clase tocaba `RabbitTemplate` y no declaraba ni exchange ni
-cola. Publicaba con `restTemplate.postForEntity` dentro de un
-`@TransactionalEventListener`, o sea **sincrónico y bloqueante**: si notificaciones tardaba o
-estaba caído, el hilo quedaba esperando.
-
-**Qué se cambió:**
-1. `spring-boot-starter-amqp` en el pom.
-2. `RabbitMQConfig` declarando `notificaciones.exchange` y el `Jackson2JsonMessageConverter`,
-   que sin él el `RabbitTemplate` queda con `SimpleMessageConverter` y no puede serializar el
-   DTO.
-3. `NotificacionClient` publica con `convertAndSend` en vez de llamar por HTTP. Si el broker
-   falla, guarda en pendientes y propaga, que es el mismo contrato que tenía.
-
-**El exchange lo declara el que publica** y notificaciones ata su cola: es la frontera elegida
-para que el nombre de las colas no viva en los dos lados.
-
-**Cómo se verificó:** un mensaje con `routing_key=notificaciones.incentivo` llega al consumidor
-y termina persistido en la base de notificaciones.
-
-### El DTO mandaba `direccionContacto` y el receptor lee `direccionDeContacto`
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `.../dto/Notificaciones/PerfilNotificacionDTO.java`
-
-El DTO de incentives declaraba `direccionContacto`; el de notificaciones declara
-`direccionDeContacto`. Con Jackson el campo desalineado **no da error**: queda en `null` en
-silencio, y como `direccionDeContacto` está en `nullable = false`, el INSERT del otro lado muere
-con violación de restricción.
-
-Es el peor tipo de bug de contrato: no falla al publicar, falla en el servidor del otro servicio y
-sin rastro de la causa.
-
-**Qué se cambió:** el campo se renombró a `direccionDeContacto`, que es lo que lee el receptor. No
-se agregó un `@JsonProperty` como alias porque un alias invisible es exactamente lo que reproduce
-el bug la próxima vez. El DTO ahora implementa `Serializable` y tiene constructor sin
-argumentos, que es lo que el converter necesita para deserializar.
-
-### `SecurityConfig` exigía HTTP Basic con contraseña autogenerada: los demás servicios no podían llamar
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `.../config/SecurityConfig.java`, `pom.xml`
-
-`incentivos-service` exigía HTTP Basic en todo salvo el perfil público, y **no hay
-`UserDetailsService`**: usaba la contraseña que Spring Boot genera al arrancar, que cambia en cada
-arranque. No existía credencial fija que un llamador pudiera conocer, así que la integración no
-tenía cómo resolverse: `POST /api/perfiles` y `PATCH /api/perfiles/donacion/{id}` devolvían
-`401` desde `donaciones-service`.
-
-Se comprobó levantando donaciones-service e incentivos juntos: `POST /api/personas` devolvía `500`, y el log
-de la causa era `No se pudo crear el perfil ... : 401`.
-
-**Qué se decidió:** dejar el servicio abierto, igual que los otros tres módulos. Lo que se
-pierde es la superficie pública del perfil del punto 8, que queda abierta igual. Lo que queda es
-la autorización de las operaciones de admin, que se validan por header `Admin-Id` —que es un
-header que controla el cliente, así que nunca fue seguridad— y está anotada como punto 1.
-
-**Lo que no se hizo, a propósito:** quitar `spring-boot-starter-security` del pom. Se conserva la
-dependencia y la clase, con la política escrita y explícita, para que quede a la vista dónde
-reintroducir una política real si algún día se define. Borrar la dependencia sería menos
-explícito, no más seguro.
-
-**Cómo se verificó:** `POST /api/personas` responde `201` y el perfil queda creado en la base de
-incentivos.
-
-### El `@Query` de `findAllByMisionActual` no tenía `FROM`
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `.../repositories/SpringRepositories/RepositorioPerfiles.java`
-
-`@Query("SELECT p JOIN p.progresoMisionActual pm WHERE ...")` no es JPQL válido: le falta
-`FROM Perfil p`. Todos los demás `@Query` del repositorio lo tienen. Spring Data lo rechaza al
-construir el repositorio con un `Validation failed for query` que **no dice que falta el FROM**,
-y como el bean del repositorio no se podía crear, **el servicio entero no arrancaba**.
-
-Los 302 tests pasaban en verde porque mockean el repositorio: la query nunca se validaba. Solo se
-detectó levantando el servicio.
-
-**Cómo se verificó:** el servicio levanta y el contexto de Spring arma completo.
-
-### Faltaba el bloque `spring.rabbitmq.*`
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `src/main/resources/application.properties`
-
-Sin el bloque, el `CachingConnectionFactory` usa `localhost:5672` y `guest`/`guest`. En la
-máquina de desarrollo funciona; dentro de un contenedor busca `localhost`, que es el propio
-contenedor. Agregado con variables de entorno, como el resto de la configuración.
-
----
-# Corregidos
-
-Lo que ya está arreglado, para no volver a tocarlo. Los números son los que tenía cada punto
-cuando se corrigió, así que no aparecen en la lista de arriba.
-
-**Un ítem por fix, en el orden en que se fueron cerrando.** Cuando hubo una decisión
-consciente —algo que el código deja de hacer a propósito, y que conviene no rehacer sin
-volver a leer el porqué— va en la misma línea en cursiva. Las decisiones que están en su
-propio punto del backlog, con el detalle largo, se dejan acá en una línea y no se repiten.
-
----
-
-## Tanda 1 — 21 + 12 + 8
-
-- **21. Las rutas de ranking exigen administrador.** `POST /api/rankings` y
-  `DELETE .../{idRanking}` validan `Admin-Id` y llaman a `ValidadorAdmin`; antes cualquiera
-  creaba rankings de meses arbitrarios o borraba los publicados. *El scheduler entra por un
-  método privado que no valida permisos*: es una entrada interna del proceso, no una ruta
-  HTTP, y dejarlo pasar por el método público obligaría a inventar un id de admin.
-- **12. Las llamadas HTTP salieron de las transacciones.** Timeouts configurables (3 s de
-  conexión, 5 s de lectura) en vez del infinito del `RestTemplate` pelado, y los eventos
-  llevan `idUsuario` en vez del contacto, que ahora se resuelve en `AFTER_COMMIT`. Desapareció
-  la peor: `SincronizacionPerfiles` pedía el contacto una vez por donante dentro de un bucle
-  transaccional. *No se pusieron reintentos automáticos*: publicar en n8n es un `POST` sin
-  idempotency key, así que un reintento a ciegas publica dos veces.
-- **8. La categoría del donante es visible públicamente.**
-  `GET /api/perfiles/{idUsuario}/publico` con `permitAll()`. *Con un DTO aparte, porque la
-  ruta está abierta*: lo que sale de ahí queda expuesto y no puede ser el `PerfilDTO`
-  completo. Un perfil sin categoría devuelve `nombreCategoria = null`, no 404: el donante
-  existe y su nombre tiene que poder verse igual.
-
-## Tanda 2 — 26 + 27 + 28
-
-- **26. La constancia cuenta meses calendario.** `cantidad` se usaba como margen en días, así
-  que tres `PATCH` en tres días consecutivos completaban la misión de tres meses. Ahora cuenta
-  hacia atrás: dos donaciones del mismo mes cuentan una sola vez y un mes vacío corta la
-  racha. *Para las misiones con constancia, `progreso` pasó a contar meses y no donaciones.*
-- **27. `conseguirMisiones` respeta el orden del admin.** `findAllById` genera un
-  `WHERE id IN (...)` sin `ORDER BY`, y el orden de la lista **es** la secuencia de progresión
-  del donante, porque `agregarMision` asigna `posicion = size + 1`.
-- **28. La insignia ya no se otorga dos veces.** El seed ponía la misma misión en dos
-  categorías, así que al cambiar de categoría la racha volvía a estar completa y se otorgaba
-  la insignia otra vez. `insigniasObtenidas` pasó de `List` a `LinkedHashSet` con `equals`
-  por `(perfil, insignia)`, y `progresarMision` usa lo que devuelve `Set.add`: no guarda ni
-  dispara `MisionCompletada` dos veces, pero devuelve `true` igual porque **el donante sí tiene
-  que avanzar** de misión. *No se puso `@UniqueConstraint`*: sin `@Version` el problema real
-  era otro y más grave, y hacía que la transacción perdedora perdiera una donación legítima.
-
-## Tanda 3 — 13 + 14
-
-Una sola cadena de fallo: el 13 provocaba el 500, el cliente reintentaba y el 14 convertía
-ese reintento en datos corruptos. Arreglando uno solo el otro seguía haciendo daño.
-
-- **13. `N8nClient` ya no relanza después del commit.** El `catch` del listener
-  `AFTER_COMMIT` logueaba y lanzaba; la excepción subía por el `processCommit` y el donante
-  veía un 500 **con la transacción ya confirmada**.
-- **14. La ingesta de|es idempotente.** `ImpactoDonacion.idDonacion` es el id de origen y
-  además la primary key local, así que un reintento se reconoce con un `findById`;
-  `completMision` guarda la respuesta para poder repetirla. *Se descartó comparar el payload*
-  como clave: era menos discriminante (dos donaciones distintas con los mismos cuatro campos
-  se tomarían por un reintento) y no cubría dos peticiones simultáneas. **Requisito para el
-  otro servicio:** `donaciones-service` tiene que mandar el id de la donación o toda donación
-  entra con 400.
-
-## Sueltos — 7, 11, 15, 16, 18, 19, 20
-
-- **7. Validación de entrada en los DTO.** `spring-boot-starter-validation` más `@Valid` en
-  todos los `@RequestBody`, y las factories validan en código la integridad de la `Regla` que
-  Bean Validation no puede expresar. De paso, `ChronoUnit.toString()` ("Months") pasó a
-  `name()` ("MONTHS").
-- **11. `ValoresDistintos` guardaba el estado en la misión, no en el donante.** Mutaba una
-  lista que vive en la entidad de la misión, o sea compartida por todos los que la hacen: al
-  tercero figuraba completa para los tres. El avance ahora vive en `ValorObservado`, y el
-  contexto va en la firma (`ProgresoDelDonante`) y no en un campo de la operación, justamente
-  para que el estado compartido no pueda volver. *Migración pendiente en prod*: la tabla
-  `valor_observado` hay que crearla a mano donde la base ya existe.
-- **15. Editar una misión ya no borra el progreso de todos.** `Mision.actualizar` devuelve si
-  cambió lo que el donante tiene que cumplir, y solo ahí se reinicia. *Contra lo obvio:
-  `SuperaCantidad` NO compara el umbral*, porque subir el mínimo exigido no invalida lo que
-  el donante ya acreditó.
-- **16. El progreso de la misión se expone**, con `progresoFaltante` y el desglose, y el DTO
-  ya no invierte `progresoActual` con `progresoObjetivo`.
-- **18. Los borrados contestan 409 con la cantidad de referencias.** Antes: 500 opaco por
-  violación de FK, y `eliminarMision` devolvía 204 sin avisar cuando la misión no existía. La
-  guarda va **antes** de tocar la secuencia de posiciones, que antes quedaba movida sin
-  haber borrado nada.
-- **19. La secuencia de categorías.** El tope sale de `listarPosiciones()` y no de `count()`,
-  que daba por hecho justo lo que no estaba garantizado. *No se puso
-  `@Column(unique = true)`*: es incompatible con los `UPDATE` en bloque del gestor, que al
-  mover la fila de la 3 a la 4 pisaría a la que todavía sigue en la 4.
-- **20. Códigos de estado consistentes y `desdeEntidad` null-safe.** `convertirPerfilADTO`
-  estaba duplicado cuatro veces. *Deuda que quedó*: `obtenerPorId` sigue devolviendo `null` en
-  vez de `Optional`, y "no existe" lanza dos excepciones distintas según el servicio.
-
-## Tanda 4 — 25 + 36 + 17 + 30
-
-Los cuatro eran fallos de progresión del donante, y cada uno rompía el mismo camino por un
-lado distinto.
-
-- **25. `crearPerfil` abre transacción.** Sin ella la categoría volvía desligada de la
-  sesión, y `PersistentBag.isEmpty()` devuelve el tamaño cacheado **sin inicializar**: el
-  perfil quedaba sin misión para siempre, en silencio y sin ningún error. Además la consulta
-  de la categoría base trae la secuencia con `fetch`, para no depender del alcance de la
-  transacción.
-- **36. `@Version` en `Perfil` y `Categoria`, con reintento y 409.** Sin eso dos donaciones
-  simultáneas perdían una, y si las dos completaban la misión cada una insertaba su
-  `InsigniaObtenida` porque el `Set` en memoria de cada petición es distinto. *Va en la raíz
-  del agregado*, no en `ProgresoMision`, para cubrir también el avance de categoría y el set
-  de insignias. *El reintento usa `TransactionTemplate`* y no `@Transactional(REQUIRES_NEW)`
-  en un método privado, porque las llamadas internas no pasan por el proxy.
-- **17. `orphanRemoval` donde la referencia se reemplaza.** En `Perfil.progresoMisionActual` y
-  en `Mision.reglaDeProgreso` (que cubre de una vez la `Regla` vieja y, por su
-  `cascade = ALL`, su constancia y su operación). *Explícitamente NO* en
-  `Mision.insigniaObjetivo`, porque la referencian todos los que ya la obtuvieron, ni en
-  `Regla.constancia`/`operacion`, que se van con la regla vieja.
-- **30. Quitar una misión ya no bloquea al donante.** Buscaba la posición pedida y, si ya no
-  existía, lo dejaba sin misión para siempre —sin progreso, sin insignia, sin ranking— y sin
-  evento que lo explicara. Ahora retrocede a la misión más cercana por debajo. *El donante
-  pierde el avance de la misión que se le sacó*: preferible a dejarlo congelado.
-
-## Tanda 5 — 22 + 31 + 32
-
-- **31. Una posición fuera de rango es un 400.** El gestor se salía en silencio y el caller
-  escribía la posición pedida igual, dejando la secuencia con huecos; con
-  `posicionSecuencia: 0` la categoría **secuestraba la categoría base** y todos los donantes
-  nuevos arrancaban en ella. *El rango es `[1, max]` en la edición y `[1, max+1]` en el
-  alta*: en la edición el número de categorías no cambia, y admitir la `max+1` dejaba un hueco.
-- **32. No se publica el ranking de un período sin cerrar.** Un solo ranking futuro
-  rompía el "actual" entero: `findFirstByOrderByPeriodoDesc()` lo tomaba y `puestoRanking`
-  daba 404 para todos. *El "actual" ahora se resuelve con el último mes cerrado* — el filtro
-  va en la consulta, no solo en la validación del alta, así que tampoco lo rompen los datos
-  que ya estaban en una base de desarrollo.
-- **22. Las consultas de las tablas grandes.** El filtro del ranking pasó de `MONTH()/YEAR()`
-  a un rango semiabierto; la evolución mensual se agrupa en SQL en vez de traer toda la tabla
-  para agrupar en Java; tres N+1 eliminados con `@EntityGraph`, incluido
-  `InsigniaObtenida.insignida` que pasó de `EAGER` a `LAZY`; y `evaluarConstanciaPerfiles` va
-  por bloques de 500 en transacciones separadas, con orden explícito porque paginar por offset
-  sin `ORDER BY` no es estable. *La consulta de las donaciones de cada perfil sigue siendo una
-  por perfil*: es un compromiso, no un descuido. *Los índices son declaraciones*: sin una base
-  de prueba no hay `EXPLAIN` que confirme que la base los usa.
-
-## Tanda 6 — 33 + 34 + 24 + 2
-
-Los cuatro eran el mismo error en cuatro lugares: **el código afirmaba una propiedad que no
-tenía**.
-
-- **33. "Supera" es estricto.** `>=` pasó a `>`. El enunciado dice "supera 6 bienes" y en
-  español "supera" es "excede": un donante con 6 se llevaba la insignia de los de 7. Con `>=`
-  el nombre de la clase también mentía. *El umbral sigue sin compararse en
-  `esEquivalenteA`.*
-- **34. Dos guardas que faltaban.** El filtro del listado de misiones parseaba el enum sin
-  normalizar, así que `?atributo=CATEGORÍA` con acento daba 400 mientras el `POST` de la misma
-  misión aceptaba esa cadena; ahora reusa el normalizador de `MisionFactory` y el error dice
-  qué valores valen. Y `crearConstancia` decía rechazar la constancia a medio y devolvía
-  `null`: por HTTP lo cubría el bean validation, pero una llamada interna creaba una misión
-  **sin exigencia de racha** sin que nada lo indicara.
-- **24. La insignia tiene sus tres datos.** El enunciado pide nombre, descripción e imagen y
-  solo se podía cargar el nombre; el texto de la insignia se derivaba del nombre de la misión,
-  y al editar venía de otra fuente. *La imagen es una URL y no los bytes*: no hay dónde
-  guardarlos, base64 haría que editar el nombre reenvíe el archivo entero, y un `byte[]` en
-  `Insignia` rompería la deduplicación del punto 28 en silencio.
-- **2. El ranking se persiste completo.** Pedir el podio con `limite=50` devolvía 10 con un
-  200 y sin avisar; ahora el snapshot es completo y el recorte es al responder. *La tabla de
-  posiciones crece con todos los donantes del mes, no con diez*: un ranking publicado es un
-  hecho del período.
-
-## Absorbidos o a medias
-
-- **23. Higiene de código** (código muerto, setters, logs, nombres). La parte grande se hizo;
-  quedan tres cosas anotadas en su propio punto.
-- **35. Los buffers "pendientes" en memoria.** Quedó absorbido por el anexo del punto 3,
-  porque era el mismo código. Las notificaciones se movieron a RabbitMQ y n8n a una outbox
-  persistente con leases y reintentos.
-
----
-
-## Tanda 7 — 3 + 38
-
-Estos dos eran el mismo defecto visto desde dos ángulos: el **3** documenta el requisito del
-enunciado y el **38** la evidencia medida. Se corrigieron juntos.
-
-- **3. Las notificaciones van por HTTP síncrono y el requisito pide cola de mensajes.** El
-  enunciado dice, textualmente, que *"la integración entre los servicios de dominio y el
-  Servicio de Notificaciones deberá realizarse de forma asíncrona, a través de una cola de
-  mensajes, a fin de no afectar la disponibilidad del sistema ante picos de carga o fallas
-  transitorias"*. Este módulo no tenía `spring-boot-starter-amqp`, ningún exchange, ninguna
-  cola: la notificación salía por `RestTemplate.postForEntity` dentro del
-  `@TransactionalEventListener`, o sea **sincrónica y bloqueante**. Si notificaciones no
-  respondía, el evento ya commiteado tiraba la excepción hacia atrás — justo lo contrario de
-  lo que pide el texto.
-
-  Ahora hay un `RabbitMQConfig` propio que declara `notificaciones.exchange`, y la
-  notificación sale por `convertAndSend(RK_INCENTIVO, dto)` en vez del `postForEntity`. Se
-  eligió que el exchange lo declare **quien publica** y que notificaciones solo ate su cola: es
-  la misma frontera que se usa para el broker de logística, y evita que el nombre de las
-  colas viva en los dos lados.
-
-  De paso cayó el `direccionContacto` / `direccionDeContacto` que describía el punto 3: con
-  Jackson el campo quedaba en `null` sin error, y como en el receptor es `nullable = false`
-  el INSERT moría por violación de restricción. El nombre del campo del DTO de transporte pasó
-  a ser el que el receptor lee.
-
-- **38. Incentivos publica por HTTP y no llega a nadie.** Era la confirmación ejecutable del 3.
-  El resultado medido antes del arreglo era `POST http://localhost:8083/` → **404** (la
-  propiedad apuntaba a la raíz con barra final), `POST .../api/notificaciones` → **401** (el
-  receptor exigía credenciales) y **0** notificaciones persistidas. Dos motivos
-  independientes, los dos eliminados: la ruta que usaba el cliente ya no existe porque **ya no
-  hay cliente HTTP** en este módulo, y el 401 desapareció cuando se sacó
-  `spring-boot-starter-security` de las dependencias comunes del pom padre.
-
-### Cómo se verificó
-
-Con los cuatro servicios levantados contra MySQL y RabbitMQ reales: se crea un donante en
-`donaciones-service` (que le crea el perfil por HTTP) y se hace
-`PATCH /api/perfiles/donacion/{idUsuario}` hasta completar la misión. Los tres avisos que
-dispara el evento de dominio llegan por Rabbit y quedan `ENVIADA` con `fecha_envio` puesta:
-
-```
-ENVIADA  luis@test.com  ¡Misión completada!       Completaste 'Primera donación' y obtuviste la insignia 'Primer paso'...
-ENVIADA  luis@test.com  Nueva categoría           Completaste la categoría 'Colaborador' y avanzaste a 'Sostenedor'.
-ENVIADA  luis@test.com  Nueva misión disponible   Completaste 'Primera donación'. Tu nueva misión es 'Racha'.
-```
-
-Lo que se prueba acá es el camino del Rabbit, no que el HTTP dejó de dar 404: **no queda
-cliente HTTP**. La propiedad `servicio.notificaciones.url` quedó sin uso y se puede borrar.
-
-### Las publicaciones a n8n sobreviven reinicios y fallas temporales
-
-El listener de `MisionCompletada` ahora guarda la publicación en
-`publicacion_pendiente_n8n` dentro de la misma transacción que persiste el perfil. Un scheduler
-reclama las filas con un lease corto, llama a n8n fuera de la transacción y elimina la fila
-solo cuando recibe una respuesta exitosa. Si la llamada falla, guarda el error y programa un
-reintento con espera exponencial acotada; si la instancia cae después de reclamar una fila, el
-lease vence y otra ejecución puede recuperarla.
-
-La entrega es **al menos una vez**, no exactamente una vez: si n8n procesa el webhook y la
-instancia cae antes de borrar la fila, el webhook puede repetirse cuando venza el lease. El
-destino debería tratar los eventos de forma idempotente si repetir una publicación tiene
-efectos visibles.
-
-### Dos cosas que hubo que arreglar en el otro extremo
-
-Del lado de `notificaciones-service` hizo falta corregir el `__TypeId__` del converter, que
-rompía la deserialización de estos avisos (punto 16 de su backlog), y el default de la URL de
-n8n (punto 17 del suyo). Los dos hacen falta para que esta tanda cierre: sin ellos el mensaje
-llega pero muere del otro lado.
-
-### `GET /api/metricas/{id}/periodo` respondía 500: el `Optional<Object[]>` traía el array de filas
-
-**Estado:** corregido
-**Severidad:** alta
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
-`.../dto/Perfil/ResumenMetricaDTO.java`, `.../services/MetricasService.java`,
-`.../services/MetricaPorPeriodoJpaTest.java`
-
-El método declaraba `Optional<Object[]>` y Spring Data devuelve ahí el *array de filas*, no la
-fila: con donaciones, `resumen[0]` era la fila entera (`ClassCastException ... cannot be cast to
-class java.util.UUID`) y sin donaciones un array vacío (`ArrayIndexOutOfBoundsException: Index 0
-out of bounds for length 0`), o sea que el caso "no hay métrica para ese donante" daba 500 en vez
-del 404. Ahora hay una proyección tipada (`ResumenMetricaDTO`, record) con expresión de
-constructor JPQL, y el service usa los campos sin casts.
-
-**Decisión del equipo (2026-10-07): el borde superior del período es inclusivo (`<= :hasta`)** —
-una donación guardada a las 00:00 del día siguiente a `hasta` cuenta dentro del período. Lo
-cubren los tests de `MetricaPorPeriodoJpaTest` (H2 real, 4 tests); no lo "arreglen" después.
-
-### La pasada de constancia tocaba `valoresObservados` (LAZY) sobre entidades desligadas
-
-**Estado:** corregido
-**Severidad:** media
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `.../services/PerfilService.java`,
-`.../services/PerfilServiceConstanciaTransaccionalTest.java`
-
-`evaluarConstanciaPerfiles` no era transaccional: consultaba los perfiles (que llegan desligados
-de la transacción propia del repositorio) y recién después abría la transacción del bloque. Si la
-racha caducaba, o el donante no tenía donaciones que hicieran progresar la misión,
-`reiniciarProgreso()` tocaba el `@ElementCollection` LAZY `valoresObservados` sobre una entidad
-desligada y lanzaba `LazyInitializationException`, con lo que la pasada entera se caía. La
-consulta y el recálculo ahora corren dentro del mismo `transactionTemplate.execute(...)`, con el
-bloque de 500 y el orden por `idUsuario` intactos.
-
-**Cómo se verificó:** `PerfilServiceConstanciaTransaccionalTest` afirma que la consulta corre con
-transacción activa; con el código anterior el test falla. Suite completa 313 en verde.
-
-### `GET /api/metricas/{id}/actividad` respondía 500 por el `Object[]` de los totales
-
-**Estado:** corregido
-**Severidad:** alta
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
-`.../services/MetricasService.java`, `.../services/MetricaActividadJpaTest.java`
-
-`obtenerTotalesDonaciones` era una native query de dos columnas declarada `Object[]`: Spring Data
-devuelve ahí el *array de filas*, así que `totales[0]` era la fila entera y
-`MetricasService.numero(...)` lanzaba `ClassCastException: [Ljava.lang.Object; cannot be cast to
-class java.lang.Number`. Ahora el repo devuelve `List<Object[]>` y el service toma la única fila
-del agregado (`get(0)`), que existe siempre, incluso sin donaciones.
-
-**Cómo se verificó:** `MetricaActividadJpaTest` (H2 real, 2 tests: con donaciones y sin
-donaciones) fallaba con el mismo `ClassCastException` que en producción; con el fix pasa.
-
-### Regresión de `/periodo`: un refactor sacó el `GROUP BY` y "sin donaciones" dejó de ser 404
-
-**Estado:** corregido
-**Severidad:** media
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `.../models/repositories/SpringRepositories/RepositorioDonaciones.java`,
-`.../test/.../models/repositories/RendimientoConsultasTest.java`
-
-`obtenerResumenMetrica` quedó sin `GROUP BY`, y un agregado sin `GROUP BY` devuelve **siempre una
-fila** (con ceros): un período sin donaciones respondía 200 con nulos en vez del 404 que pide el
-contrato. Se restauró `GROUP BY d.idUsuario` (y `d.idUsuario` en el SELECT). De paso se
-actualizaron dos tests de `RendimientoConsultasTest` que afirmaban el JPQL viejo de
-`obtenerEvolucionMensual`, hoy native query con `EXTRACT(...)` y `NULLIF(TRIM(...), '')`.
-
-**Cómo se verificó:** `MetricaPorPeriodoJpaTest.metricaDeUnPeriodoSinDonacionesEsVacia` vuelve a
-dar `Optional.empty()` → 404; suite completa 315 en verde.
-
-### El id interno del perfil es ahora el id del donante (`idPerfil` eliminado)
-
-**Estado:** corregido
-**Severidad:** media
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `.../models/entities/Perfil/Perfil.java`,
-`.../models/repositories/SpringRepositories/RepositorioPerfiles.java`,
-`.../services/PerfilService.java`, `.../services/MetricasService.java` (+ los tests)
-
-`Perfil` tenía `@Id @GeneratedValue idPerfil` y un `idUsuario` **sin `unique`**: se podían
-insertar dos perfiles del mismo donante y `findByIdUsuario` (resultado único) reventaba con
-`NonUniqueResultException`. Ahora `idUsuario` es la `@Id` —un donante, un perfil— y desaparece
-`idPerfil`; las consultas pasan a `findById`/`existsById`/`deleteById`. Es el mismo criterio que
-`ImpactoDonacion.idDonacion`, que usa el id de origen como PK.
-
-**Ojo, migración:** cambia la PK de `perfil` (`id_perfil` → `id_usuario`). Con `ddl-auto=update`
-Hibernate no migra un cambio de PK, así que hay que recrear el schema (la base de desarrollo está
-vacía): `DROP DATABASE incentivos_db;` y reiniciar el servicio, o un `DDL_AUTO=create-drop` de una
-pasada. La FK `insignia_obtenida.perfil_id` mantiene su nombre.
-
-**Cómo se verificó:** suite completa 322 tests en verde (incluye los `@DataJpaTest` que recrean el
-schema en H2).
+Un ítem por fix, en el orden en que se cerraron. Los números son los que tenía el punto cuando se
+corrigió; los que no llevan número son fixes sin punto propio. Cuando hubo una decisión consciente
+que conviene no deshacer sin leer el porqué, va en cursiva en la misma línea.
+
+- **21.** Las rutas de ranking exigen administrador (`Admin-Id` + `ValidadorAdmin`). *El scheduler entra por un método privado sin permisos.*
+- **12.** Las llamadas HTTP salieron de las transacciones (timeouts; el contacto se resuelve en `AFTER_COMMIT`). *Sin reintentos automáticos: el `POST` a n8n no tiene idempotency key.*
+- **8.** La categoría del donante es visible en `GET /api/perfiles/{idUsuario}/publico` (`permitAll`). *Con DTO aparte; sin categoría devuelve `null`, no 404.*
+- **26.** La constancia cuenta meses calendario, no donaciones. *En misiones con constancia, `progreso` cuenta meses.*
+- **27.** `conseguirMisiones` respeta el orden del admin (`findAllById` no ordena y la lista **es** la secuencia).
+- **28.** La insignia no se otorga dos veces (`LinkedHashSet` con `equals` por `(perfil, insignia)`). *Sin `@UniqueConstraint`; igual devuelve `true` para que el donante avance.*
+- **13.** `N8nClient` ya no relanza después del commit.
+- **14.** La ingesta de donaciones es idempotente por `ImpactoDonacion.idDonacion` (PK de origen) y `completMision` repite la respuesta. *Se descartó comparar el payload como clave.*
+- **7.** Validación de entrada en los DTO (`spring-boot-starter-validation` + `@Valid`; las factories validan la `Regla`). `ChronoUnit.toString()` pasó a `name()`.
+- **11.** `ValoresDistintos` guarda el estado en el donante (`ValorObservado`), no en la misión compartida. *Migración en prod: crear la tabla `valor_observado`.*
+- **15.** Editar una misión ya no borra el progreso de todos (`Mision.actualizar` decide). *`SuperaCantidad` no compara el umbral.*
+- **16.** El progreso de la misión se expone (`progresoFaltante` y desglose) y el DTO no invierte actual/objetivo.
+- **18.** Los borrados contestan 409 con la cantidad de referencias, y la guarda va antes de tocar la secuencia.
+- **19.** El tope de la secuencia de categorías sale de `listarPosiciones()`, no de `count()`. *Sin `@Column(unique = true)`: rompe los `UPDATE` en bloque.*
+- **20.** Códigos de estado consistentes y `desdeEntidad` null-safe; `convertirPerfilADTO` unificado. *Deuda: `obtenerPorId` devuelve `null` y "no existe" lanza dos excepciones distintas.*
+- **25.** `crearPerfil` abre transacción (la categoría volvía desligada y el perfil quedaba sin misión en silencio).
+- **36.** `@Version` en `Perfil` y `Categoria`, con reintento y 409. *En la raíz del agregado; el reintento usa `TransactionTemplate`.*
+- **17.** `orphanRemoval` donde la referencia se reemplaza (`Perfil.progresoMisionActual`, `Mision.reglaDeProgreso`). *No en `insigniaObjetivo` ni en `Regla.constancia`/`operacion`.*
+- **30.** Quitar una misión ya no bloquea al donante: retrocede a la más cercana. *Pierde el avance de la misión sacada.*
+- **31.** Una posición fuera de rango es 400 (antes `posicionSecuencia: 0` secuestraba la categoría base). *Rango `[1, max]` en edición y `[1, max+1]` en alta.*
+- **32.** No se publica el ranking de un período sin cerrar; el "actual" es el último mes cerrado.
+- **22.** Consultas de tablas grandes: rango semiabierto en el ranking, agrupado en SQL, N+1 con `@EntityGraph` (`InsigniaObtenida.insignia` a `LAZY`), constancia por bloques de 500 con orden explícito. *La consulta de donaciones por perfil sigue siendo una por perfil; los índices son declaraciones.*
+- **33.** "Supera" es estricto (`>`). *El umbral no se compara en `esEquivalenteA`.*
+- **34.** Dos guardas: el filtro de misiones normaliza el enum (acentos) y `crearConstancia` rechaza la constancia a medias.
+- **24.** La insignia tiene sus tres datos (nombre, descripción e imagen como URL). *URL y no bytes: un `byte[]` rompería la deduplicación del 28.*
+- **2.** El ranking se persiste completo; el recorte va al responder. *La tabla de posiciones crece con todos los donantes del mes.*
+- **23.** Higiene de código (código muerto, setters, logs, nombres): la parte grande se hizo; quedan tres cosas anotadas en su punto.
+- **35.** Los buffers "pendientes" en memoria: notificaciones a RabbitMQ y n8n a una outbox persistente.
+- **4.** `common-lib` se eliminó del repositorio: no era un módulo del build ni lo referenciaba nadie.
+- **3 / 38.** Las notificaciones van por Rabbit (`notificaciones.exchange`) en vez de HTTP síncrono; se eliminó el 401 del receptor y la ruta muerta.
+- **—** AMQP: `spring-boot-starter-amqp` + `RabbitMQConfig` con `Jackson2JsonMessageConverter` (sin él no serializaba el DTO).
+- **—** El DTO de notificación pasó a `direccionDeContacto` (el receptor leía ese nombre; el desalineado moría en el INSERT del otro lado). *Sin alias `@JsonProperty`.*
+- **—** `SecurityConfig` exigía HTTP Basic con contraseña autogenerada y los otros servicios no podían llamar. *Se dejó el servicio abierto a propósito; se conserva la clase como lugar para reintroducir política.*
+- **—** El `@Query` de `findAllByMisionActual` no tenía `FROM`: el servicio no arrancaba (los tests mockeaban el repo).
+- **—** Faltaba el bloque `spring.rabbitmq.*`: dentro del contenedor apuntaba a `localhost`.
+- **—** Publicaciones a n8n con outbox durable (`publicacion_pendiente_n8n`), lease y reintento con backoff. *Entrega "al menos una vez".*
+- **—** `GET /api/metricas/{id}/periodo` daba 500: `Optional<Object[]>` traía el array de filas → proyección tipada `ResumenMetricaDTO`. *Decisión: borde superior inclusivo (`<= :hasta`).*
+- **—** `GET /api/metricas/{id}/actividad` daba 500: `obtenerTotalesDonaciones` era `Object[]` → `List<Object[]>` + `get(0)`.
+- **—** Regresión de `/periodo`: se restauró el `GROUP BY` (sin donaciones volvía 200 con nulos en vez de 404) y se actualizaron dos asserts de `RendimientoConsultasTest`.
+- **—** El id del perfil es ahora el `idUsuario` del donante (se eliminó `idPerfil`); consultas a `findById`/`existsById`/`deleteById`. *Migración: recrear el schema, cambia la PK.*
+- **—** La pasada de constancia corre la consulta y el recálculo en la misma transacción (evita `LazyInitializationException` sobre `valoresObservados`).
+- **—** Del otro lado: el `__TypeId__` del converter en notificaciones y el default de la URL de n8n.

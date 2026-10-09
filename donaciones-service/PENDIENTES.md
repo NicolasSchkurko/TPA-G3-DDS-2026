@@ -33,6 +33,30 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 26 | 26    | El PUT de necesidad ignora el id de entidad y castea a ciegas                                     |
 | 28 | 28    | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica                             |
 | 29 | 29    | `POST /donaciones/formulario` devuelve 400 sin decir por qué                                    |
+| 34 | 34    | Tras donar con un formulario, el donante no se puede dar de baja (FK sin cascade)                  |
+| 35 | 35    | Dar de baja un donante no borra siempre su perfil en incentivos (cascada frágil)                    |
+| 36 | 36    | La nomenclatura de subcarpetas no coincide con la de incentivos                                      |
+| 37 | 37    | Los repositorios usan dos convenciones distintas entre servicios                                     |
+| 38 | 38    | Los listados devuelven la colección entera: falta paginación                                         |
+| 39 | 39    | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                             |
+| 40 | 40    | La importación CSV no actualiza donantes ya cargados: los duplica                                     |
+| 41 | 41    | La modificación de donante ignora campos y la baja deja la Persona huérfana                          |
+| 42 | 42    | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                               |
+| 43 | 43    | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                               |
+| 44 | 44    | Los schedulers corren sin transacción: los jobs mueren con LazyInitializationException en silencio    |
+| 45 | 45    | `EventosListener`: el catch no evita el requeue de escrituras y el cursor puede perder el evento       |
+| 46 | 46    | `PUT /api/admins/{id}` inserta un administrador nuevo en cada modificación                            |
+| 47 | 47    | `REINGRESO_DEPOSITO` deja la donación varada en `PENDIENTE_ASIGNACION` sin resultado de matchmaking    |
+| 48 | 48    | `DELETE /personas/{id}/medios-contacto` no borra nada y responde 302                                  |
+| 49 | 49    | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                  |
+| 50 | 50    | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara   |
+| 51 | 51    | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias           |
+| 52 | 52    | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente               |
+| 53 | 53    | La asignación notifica dos veces: mensaje directo y estrategia de notificación                         |
+| 54 | 54    | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                   |
+| 55 | 55    | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals       |
+| 56 | 56    | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                    |
+| 57 | 57    | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                   |
 
 ---
 
@@ -917,1113 +941,608 @@ servicios— responde `201` con persistencia real.
 
 ---
 
+## 34. Tras donar por el formulario, el donante no se puede dar de baja (FK sin cascade)
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/Formulario.java` (líneas 27-29), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Donacion.java` (líneas 37-39), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 132-136), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDonantes.java` (línea 50), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/GlobalExceptionHandler.java` (línea 52)
+
+### Qué pasa
+
+`POST /api/donaciones/formulario` crea un `Formulario` con FK `donante_id` (`@ManyToOne` **sin cascade REMOVE**) y, al segmentar, una o más `Donacion` que **también** apuntan al donante por `donante_id` (mismo criterio, sin cascade REMOVE). A partir de esa donación, `DELETE /api/personas/{id}` recorre `DonanteController.eliminarDonante` → `DonanteService.eliminarPersona` → `RepositorioDonantes.eliminarPorId` → `jpaRepository.deleteById(id)`, y el `delete` **choca contra la FK**: la base tira violación de integridad y `GlobalExceptionHandler.manejarDataIntegrityViolation` la mapea a **409 CONFLICT**. El donante (y su Persona) queda vivo.
+
+En la práctica: **cualquier donante que haya donado alguna vez no se puede dar de baja**, que es el caso normal (un donante existe justamente para donar). Se reproduce a mano: `POST /api/donaciones/formulario` con el id de un donante y después `DELETE /api/personas/{id}` responde 409.
+
+### Por qué no se ve / workaround
+
+El propio `DonacionController.eliminarFormulario` documenta la causa ("Formulario.donante_id es FK no nula sin cascade REMOVE: hay que borrar los formularios de un Donante antes de poder borrar al Donante (si no, 409)"), y se agregó `GET /api/donaciones/formularios` + `DELETE /api/donaciones/formularios/{id}` para liberar al donante. Pero es un **workaround manual**: el front no lo hace, así que desde la UI "borrar el perfil" simplemente no borra — recibe un 409 con un cuerpo de error de integridad, igual que cualquier otro conflicto.
+
+### Propuesta
+
+1. Que la baja del donante resuelva en **una sola transacción** lo que la referencia: borrar (o anonimizar) los `Formulario` y las `Donacion` del donante antes del `delete`, o pasar las FK a `ON DELETE CASCADE`/`@OnDelete` según qué deba sobrevivir (las donaciones ya entregadas probablemente no).
+2. Decidir la política: si un donante con historial no debería borrarse físicamente, hacer **baja lógica** (soft delete) en vez de un `delete` que siempre va a chocar contra su propio historial.
+3. Mientras tanto, que `DELETE /api/personas/{id}` haga el trabajo del lado del servidor (borrar en orden, o un `?forzar=true`), para que el front no dependa de dos llamadas en el orden correcto.
+
+---
+
+## 35. Dar de baja un donante no borra siempre su perfil en incentivos
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 126-136), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/IncentivosClient.java` (líneas 105-121). Del otro lado: `incentivos-service/.../controllers/PerfilController.java` (`DELETE /api/perfiles/interno/{idUsuario}`) e `incentivos-service/.../services/PerfilService.java` (`eliminarPerfilPorBajaDeDonante`). Ver también el punto 39 de `incentivos-service/PENDIENTES.md`.
+
+### Qué pasa
+
+Al dar de baja un donante en donaciones, el perfil que ese donante tiene en la base de incentivos **no siempre desaparece**: queda huérfano. La baja en cascada existe desde el commit `7e9da04` ("Arreglo de Eliminar perfil", 2026-10-08): `DonanteService.eliminarPersona` avisa con `DELETE /api/perfiles/interno/{idUsuario}` antes del `delete` local. El problema no es que falte el aviso, sino que la cascada es **mejor esfuerzo y no es atómica ni confiable**.
+
+### Por qué pasa (causas concretas)
+
+1. **Orden y atomicidad.** La llamada a incentivos va **antes** del `delete` local y no comparten transacción. Si el `delete` local falla (punto 34), el request termina en 409 pero el aviso a incentivos ya se hizo: los dos lados quedan desincronizados (perfil borrado, donante vivo) y nada lo detecta. En cualquier otro punto de fallo queda al revés (donante borrado, perfil vivo).
+2. **Sin reintentos ni outbox.** Si incentivos está caído o la URL quedó desalineada, la excepción **aborta la baja entera** y el huérfano queda; nada lo reintenta después.
+3. **Idempotente pero silencioso.** `PerfilService.eliminarPerfilPorBajaDeDonante` hace `if (!repositorioPerfiles.existsById(idUsuario)) return;`: responde 200 sin borrar nada cuando el id no coincide con ningún perfil (perfil creado con otro id, datos viejos o de un seed). El llamador no puede distinguir "se borró" de "no había nada".
+4. **Versión.** El endpoint `/api/perfiles/interno/{idUsuario}` y la llamada son del commit `7e9da04`. Cualquier despliegue anterior de uno de los dos servicios deja el alta y la baja desalineadas (incentivos sin el endpoint → 404 → excepción → donante vivo).
+
+### Propuesta
+
+1. Mover la baja al **canal de eventos** que ya usan los dos servicios: donaciones publica `donante.baja` en el exchange (mismo patrón que las notificaciones asíncronas) e incentivos lo consume de forma idempotente, con DLQ y reintentos. Así la baja no depende de que incentivos esté arriba en el momento.
+2. Si se mantiene HTTP: envolverlo con reintentos/outbox y **no abortar** la baja local si incentivos falla —dejar el huérfano marcado para reconciliar— en vez de bloquear el borrado del donante.
+3. Agregar una **reconciliación** (job o endpoint de admin) que borre perfiles cuyo `idUsuario` ya no exista en donaciones.
+4. Confirmar que el build que se prueba tiene `7e9da04` en **los dos** servicios.
+
+---
+
+## 36. La nomenclatura de subcarpetas no coincide con la de incentivos
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** todo el árbol de `src/main/java/ar/edu/utn/frba/ddsi/donaciones/` (paquetes `dto/`, `models/sheduler`, `messaging/` y `RabbitMQ/`, `exceptions/`)
+
+### Qué pasa
+
+La idea es que donaciones e incentivos tengan la misma estructura; hoy no coinciden en varios niveles:
+
+- **DTOs.** Donaciones usa camelCase (`dto/admin`, `dto/donaciones`, `dto/personaDonante`, `dto/entidadBeneficiaria`, ...) y deja cuatro DTOs sueltos en la raíz de `dto/` (`AsignarPropuestaRequestDTO`, `DireccionDTO`, `PropuestaAsignacionDTO`, `ResultadoMatchmakingDTO`). Incentivos usa PascalCase (`dto/Admin`, `dto/Perfil`, `dto/Persona`, `dto/Notificaciones`) y tiene `controllers/request/` para los filtros; donaciones no tiene ese subpaquete.
+- **Schedulers.** Donaciones los tiene en `models/sheduler` (con el typo en el nombre); incentivos en `models/ServiciosInternos/scheduler/`.
+- **Mensajería.** Donaciones tiene dos paquetes al mismo nivel para la integración (`messaging/` y `RabbitMQ/`); incentivos no tiene ninguno: resuelve todo en `clients/`.
+- **Excepciones.** `exceptions/CsvExceptions` rompe la convención en minúscula del resto.
+
+Lo que **sí** coincide, y conviene preservar: `models/gestores` divididos por **comportamiento** y no por entidad. Donaciones: `GestorAsignaciones`, `GestorFormulario`, `GestorMatchmaking`, `GestorEventosLogistica`. Incentivos: `SecuenciaCategoria`, `SincronizacionPerfiles`, `ValidadorAdmin`. Las entidades también están agrupadas por entidad (`models/entities/<Entidad>/...`) en los dos servicios.
+
+### Propuesta
+
+Fijar una única convención de nombres de subcarpetas (minúscula, un solo paquete de mensajería, `scheduler` bien escrito, DTOs agrupados por dominio sin sueltos en la raíz) y aplicarla en donaciones para espejar incentivos.
+
+---
+
+## 37. Los repositorios usan dos convenciones distintas entre servicios
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `donaciones-service/src/main/java/.../models/repositories/` y `incentivos-service/src/main/java/.../models/repositories/`
+
+### Qué pasa
+
+Los dos servicios persisten con Spring Data, pero con convenciones distintas:
+
+- **Incentivos:** las interfaces (`RepositorioX extends JpaRepository`) viven en `models/repositories/SpringRepositories/` y los services las usan directo, sin fachada. Queda mezclada ahí `RepositorioNotificacionesPendientes`: es una **clase** con un buffer en memoria (no es persistencia) en la raíz de `repositories/`.
+- **Donaciones:** las interfaces (`XJpaRepository`) viven en `models/repositories/interfaces/` y sobre ellas hay **fachadas de clase** (`RepositorioX` con `@Repository`) en `models/repositories/repos/`, que son las que usan services y gestores. Son 14 fachadas para 14 entidades, casi todas delegando directo en la interfaz.
+
+Ninguna de las dos es incorrecta: el problema es que no son la misma, y que la fachada obliga a mantener un archivo extra por entidad.
+
+### Propuesta
+
+**Decisión tomada (2026-10-09): sin fachadas.** Donaciones pasa a que services y gestores usen las interfaces `XJpaRepository` de `models/repositories/interfaces/` directo (como incentivos) y se eliminan las 14 fachadas de `models/repositories/repos/`; incentivos queda como está. Queda como trabajo pendiente la migración y el borrado de las fachadas. Aparte: mover el buffer de notificaciones pendientes de incentivos fuera de `repositories`, porque no es un repositorio de persistencia.
+
+---
+
+## 38. Los listados devuelven la colección entera: falta paginación
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `controllers/DonacionController.java`, `controllers/DonanteController.java`, `controllers/EntidadBeneficiariaController.java` y los services/fachadas de cada listado
+
+### Qué pasa
+
+Los endpoints que devuelven colecciones lo hacen con `List<...>` completo, sin `Pageable` ni paginación. El volumen no es teórico: la importación CSV cargó 499 donantes y `GET /api/personas` los devuelve todos en un solo payload.
+
+Endpoints que correspondería paginar (listados que crecen sin techo):
+
+- `GET /api/donaciones` → `DonacionService.obtenerTodas()`
+- `GET /api/donaciones/formularios` → `DonacionService.obtenerFormularios()`
+- `GET /api/donaciones/pendientes` → `DonacionService.obtenerTodosLosResultadosMatchmaking()`
+- `GET /api/personas` → `DonanteService.listarTodas()`
+- `GET /api/entidades` → `EntidadBeneficiariaService.obtenerTodas()`
+
+En incentivos ya se pagina con `Page`/`Pageable` en misiones, categorías, insignias e historial de rankings; la excepción es el detalle del ranking (`RankingMesDTO.ranking` sigue siendo una lista completa). Los sublistados acotados por recurso (`/{id}/medios-contacto`, `/{id}/necesidades`, `/{id}/donaciones`) pueden quedar como están: crecen con el recurso, no con el sistema.
+
+### Por qué no se ve
+
+Con pocos datos de demo no molesta; el problema aparece con los datos reales. Y como el contrato actual es un array plano, cambiar a `Page` cambia la forma de la respuesta: hay que actualizar en el mismo cambio a los consumidores —la collection `servicio donaciones` (cinco requests iteran las listas para limpiar) y el front—.
+
+### Propuesta
+
+Sumar paginación en los cinco listados: `Pageable` en el controller (default chico, 10-20 por página, como incentivos), `Page<DTO>` en service y fachada (`findAll(pageable)`), y actualizar los consumidores. Los tests actuales no tocan estos métodos, así que el cambio no rompe la suite; el riesgo es todo de contrato.
+
+---
+
+## 39. `DonacionController` inyecta `RabbitTemplate` sin usarlo
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonacionController.java`
+
+### Qué pasa
+
+El controller declara `private final RabbitTemplate rabbitTemplate` y lo recibe por constructor, pero no lo usa en ningún método: es una inyección muerta. Además deja la infraestructura de mensajería en la capa de controllers. En incentivos ningún controller conoce el broker: los controllers solo inyectan services, y las publicaciones pasan por services/clients.
+
+### Propuesta
+
+Quitar la dependencia del controller. Si en algún momento hace falta publicar desde un endpoint, que salga por el service correspondiente (o por `messaging/`), no por el controller.
+
+---
+
+## 40. La importación CSV no actualiza donantes ya cargados: los duplica
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (`importarDonantes`, `persistirConNotificacion`), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/filaconverter/PersonaDonanteFilaConverter.java`, `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/interfaces/DonanteJpaRepository.java` y `PersonaJpaRepository.java`
+
+### Qué pasa
+
+El enunciado pide importar "creando nuevos usuarios **o actualizando** la información de los ya existentes". Hoy el import solo crea: `PersonaDonanteFilaConverter` arma siempre un `Donante` nuevo, el `id` de `Persona` es un `UUID.randomUUID()` generado en el constructor, y `RepositorioDonantes.guardar` solo controla `existsById` —con un UUID nuevo nunca da true—. Una fila de alguien ya cargado **crea una `Persona` + `Donante` duplicados** y el import la cuenta como `exitoso`. Además se propaga a incentivos: `persistirConNotificacion` agrega el id nuevo a `perfilesPendientes` y crea un perfil duplicado allá. No hay finders por documento/CUIT/mail/usuario para detectar al existente.
+
+### Propuesta
+
+En `importarDonantes` (o en el converter), buscar al donante por documento/CUIT/mail/usuario y, si existe, actualizar en vez de crear, contándolo aparte en el reporte (p. ej. `actualizados`). Requiere finders nuevos en `DonanteJpaRepository`/`PersonaJpaRepository`.
+
+---
+
+## 41. La modificación de donante ignora campos y la baja deja la Persona huérfana
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDonantes.java` (`modificarDonante`), `.../models/repositories/repos/RepositorioPersonas.java` (`modificarPersona`), `.../services/DonanteService.java` (`actualizarPersona`, `eliminarPersona`)
+
+### Qué pasa
+
+El enunciado pide alta, baja y modificación de donantes humanas y jurídicas. La modificación guarda poco y responde 200 (el cliente cree que guardó):
+
+- `RepositorioDonantes.modificarDonante` solo pisa `direccion`.
+- `RepositorioPersonas.modificarPersona` solo pisa `mediosDeContacto` y, si es jurídica, `razonSocial`/`cuit`. Para humanas no se actualizan `nombre`, `apellido`, `documento`, `edad` ni `genero`; para jurídicas se ignoran `rubro`, `tipoJuridico` y `representantes`.
+
+Y la baja (`eliminarPersona`) borra el `Donante` pero **no la `Persona`**, que queda huérfana en la base. (El 409 por formularios asociados está en el punto 34; el id del PUT, en el punto 13.)
+
+### Propuesta
+
+Completar el update campo por campo según el tipo de persona, o devolver 400 por lo que hoy se ignora en silencio. En la baja, borrar también la `Persona` en la misma transacción; la política de bajas con historial se discute en los puntos 34 y 35.
+
+---
+
+## 42. Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Estado.java`, `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorEventosLogistica.java` (`manejarEntregaFallida`)
+
+### Qué pasa
+
+El enunciado pide trazar: "En depósito", "Asignación realizada", "Lista para entregar", "En traslado", "Entregada", "Entrega fallida" y "Vencida". El enum hoy es `EN_DEPOSITO`, `PENDIENTE_ASIGNACION`, `EN_TRASLADO`, `ASIGNADO`, `ENTREGADO`, `VENCIDO`, y cubre 5 de 7:
+
+- **"Lista para entregar"** no tiene valor que lo represente: entre `ASIGNADO` y `EN_TRASLADO` el estado de la donación no cambia.
+- **"Entrega fallida"** no es un estado: `manejarEntregaFallida` devuelve la donación a `EN_DEPOSITO` con una justificación (queda registrado en el historial).
+
+La auditoría/trazabilidad persistente sí existe: `Donacion` guarda el historial de estados en la tabla `donacion_historial_estados` (`@ElementCollection`).
+
+### Propuesta
+
+Definir el mapeo con el equipo: agregar `LISTA_PARA_ENTREGAR` (al planificar la ruta) y/o `ENTREGA_FALLIDA` como valores del enum, o documentar que `ASIGNADO` cubre "lista para entregar" y que la fallida vuelve a depósito a propósito.
+
+---
+
+## 43. "Consultar rankings" no está expuesto en donaciones: confirmar alcance
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** controllers de donaciones (no hay endpoint)
+
+### Qué pasa
+
+El enunciado del servicio incluye, en la exposición REST, "permite consultar rankings". En donaciones no hay ningún endpoint de rankings: el ranking de donantes vive en `incentivos-service` (`GET /api/rankings/...`), y lo más cercano acá es `GET /api/donaciones/pendientes`, que devuelve las propuestas de matchmaking ordenadas (con posición y score) pero no un ranking.
+
+### Propuesta
+
+Definir si la consulta queda delegada en incentivos-service (dejarlo documentado) o si donaciones debería exponer un ranking propio (p. ej. el de sub-atendidos que ya calcula el matchmaking).
+
+---
+
+## 44. Los schedulers corren sin transacción: los jobs mueren con `LazyInitializationException` en silencio
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/sheduler/AsignacionScheduler.java` (líneas 35-41), `.../models/sheduler/ActividadDonanteScheduler.java` (líneas 15-18), `.../services/DonanteService.java` (líneas 241-247), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 45-58), `.../models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/CompatibilidadSemantica.java` (líneas 25-29)
+
+### Qué pasa
+
+Un `grep` de `@Transactional` en `src/main` devuelve solo dos archivos: `DonacionService` y `EventosListener`. Los schedulers no están cubiertos, y cada llamada a una fachada abre y cierra su propia transacción de Spring Data: los objetos vuelven **detached**. En el hilo del scheduler no hay OSIV (eso es solo para requests), así que la primera colección LAZY que se toca revienta con `LazyInitializationException`.
+
+- **Asignación** (`cron 0 0 18,0,2,4,6,8 * * *`): `buscarDonacionesSinAsignar()` + `obtenerTodas()` → `AsignadorDonaciones.ejecutarMatchmakingBatch` → `CompatibilidadSemantica.rankear` línea 26 (`entidad.getNecesidades()`). El `catch (Exception)` por donación que se agregó al corregir el punto 9 se traga la LIE y la loguea con `System.err`: el batch termina "sin errores" y **ningún resultado de matchmaking se guarda**. El único camino que funciona es `POST /donaciones/matchmaking/ejecutar`, porque `DonacionService.ejecutarMatchmakingADemanda` sí es `@Transactional`.
+- **Inactividad** (`cron 0 0 0 * * ?`): `revisarActividades` línea 243 evalúa `p.getFormularios()` sobre un `Donante` detached → LIE. No hay try/catch: muere en el primer donante y el aviso de inactividad no se manda nunca.
+
+### Por qué no se ve
+
+Los dos jobs no dejan rastro visible: el de asignación escribe una línea por donación en `System.err` (que parece "un dato que se salteó") y el de inactividad muere sin log. El punto 16 figura como corregido (se sacó el `@Transient`), pero **en el hilo del scheduler la colección sigue sin poder inicializarse**.
+
+### Propuesta
+
+`@Transactional` en los métodos de entrada de cada corrida (o un bean intermedio transaccional que envuelva el batch completo, como ya hace el camino a demanda). Con eso el `EntityManager` queda abierto durante todo el procesamiento y las colecciones lazy se inicializan.
+
+---
+
+## 45. `EventosListener`: el catch no evita el requeue de escrituras y el cursor puede perder el evento
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/RabbitMQ/EventosListener.java` (líneas 37-81), `.../models/gestores/GestorEventosLogistica.java` (los tres manejadores), `src/main/resources/application.properties` (sin configuración de listener)
+
+### Qué pasa
+
+`recibirEvento` es `@Transactional` (se agregó para que las colecciones lazy no revienten) y adentro tiene un `try/catch (RuntimeException)` que loguea y descarta. Con una excepción que no toca la base (p. ej. el `UUID.fromString` inválido del punto 20) el aislamiento funciona. Pero con una excepción de una **escritura** el mecanismo se da vuelta:
+
+1. `EventosListener.java` línea 52: el listener abre la transacción.
+2. Una escritura de `GestorEventosLogistica` (`repositorioDonaciones.guardar`, líneas 106/130/150) falla dentro de esa transacción: el interceptor de Spring Data participa de la transacción existente y la marca **rollback-only**.
+3. El `catch` de la línea 75 traga la excepción y el método retorna normal, pero el commit de fin de método tira `UnexpectedRollbackException` **fuera del try**.
+4. Spring AMQP lo ve como fallo del listener y reencola el mensaje de inmediato (`defaultRequeueRejected` queda en `true`, no hay configuración de retry en `application.properties`): el hot loop que el comentario dice evitar sigue pasando, ahora para fallas de base.
+
+Y hay un segundo camino de pérdida: si `procesarEvento` terminó y `ultimoIdProcesado` quedó actualizado en la línea 73, pero el commit falla después (flush diferido, constraint, DB caída), el mensaje se reencola; en la reentrega la línea 61 (`evento.getId() <= ultimoIdProcesado`) lo descarta y se ackea: **los cambios se revirtieron y el evento quedó perdido**, sin retry. El cursor, además, es un campo en memoria: con dos instancias no se comparte y se resetea al reiniciar.
+
+### Por qué no se ve
+
+El punto 20 y su nota de corregido afirman que el try/catch del listener impide que la cola quede trabada, y eso es cierto solo para los errores que no pasan por la base. Para el resto, el log muestra el mismo evento reintentando y el síntoma se confunde con "el broker está raro".
+
+### Propuesta
+
+Definir el contrato de error: si el evento es recuperable, dejar que la excepción salga (con retry/backoff configurado y sin `try/catch` adentro de la transacción); si no lo es, mandarlo a una dead-letter queue. Y decidir el cursor: persistirlo, coordinarlo, o sacarlo y basar la idempotencia en el estado de la donación.
+
+---
+
+## 46. `PUT /api/admins/{id}` inserta un administrador nuevo en cada modificación
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/AdminService.java` (líneas 53-75, en particular 60 y 69), `.../models/repositories/repos/RepositorioAdministradores.java` (líneas 46-52), `.../models/entities/administrador/Administrador.java` (línea 22), `.../dto/admin/AdminDTO.java` (líneas 25-31), `.../controllers/AdminController.java` (líneas 50-58)
+
+### Qué pasa
+
+Es exactamente el patrón del punto 13, que se arregló solo del lado de la Persona:
+
+- `actualizarAdmin` construye `datosNuevos = dto.toDomain()`, y `AdminDTO.toDomain` hace `new Administrador(...)`; el campo `@Id` de `Administrador` es `private UUID id = UUID.randomUUID()`, así que `datosNuevos` **siempre tiene un UUID nuevo** (el id del DTO no se lee).
+- Se mutan los campos de `existente` (líneas 64-66) pero **nunca se guarda `existente`**: se llama `repositorioAdministradores.actualizar(id, datosNuevos)` (línea 69), que con `existsById(id)` verdadero hace `jpaRepository.save(datosNuevos)` → `merge()` sin fila con ese id → **INSERT** (más una `Humana` y un medio nuevos por cascade).
+- La respuesta devuelve `AdminDTO.from(existente)`, o sea el id viejo: 200 mintiendo.
+
+### Cómo se dispara
+
+`PUT /api/admins/{idExistente}` con cualquier body válido, una o más veces: cada llamada agrega otra fila y el admin original queda con los datos viejos.
+
+### Propuesta
+
+Persistir `existente` (que es el que tiene el id del path) en lugar de `datosNuevos`, o setearle el id del path a `datosNuevos` antes de guardar. Sumar un test de "dos PUT seguidos no duplican".
+
+---
+
+## 47. `REINGRESO_DEPOSITO` deja la donación varada en `PENDIENTE_ASIGNACION` sin resultado de matchmaking
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorEventosLogistica.java` (líneas 143-151, la sentencia en 149), `.../models/repositories/repos/RepositorioDonaciones.java` (líneas 34-40), `.../services/DonacionService.java` (líneas 262-268), `.../models/gestores/GestorMatchmaking.java` (líneas 22-27), `.../models/sheduler/AsignacionScheduler.java` (línea 38)
+
+### Qué pasa
+
+Cuando logística reporta `ENTREGA_FALLIDA`, la donación vuelve a `EN_DEPOSITO` y el scheduler la puede volver a matchear. Pero cuando el ítem reingresa físicamente al depósito, logística publica `REINGRESO_DEPOSITO` y `manejarReingresoDeposito` la deja en **`PENDIENTE_ASIGNACION`**, un estado que significa "hay un resultado de matchmaking para aprobar".
+
+Y no hay ningún resultado: `DonacionService.asignarPropuesta` borró el `ResultadoMatchmaking` al asignar (línea 175). Entonces:
+
+- `GET /donaciones/pendientes` no la lista (no hay resultado que mostrar).
+- `POST /donaciones/asignar` responde `IllegalArgumentException("No hay resultado de matchmaking...")`.
+- El scheduler solo recoge `EN_DEPOSITO` (`buscarDonacionesSinAsignar`); `buscarDonacionesPendientesDeAsignar()` existe pero **no la usa nadie**.
+
+La donación queda varada indefinidamente salvo un `PATCH /donaciones/{id}/estado` manual a `EN_DEPOSITO`.
+
+### Cómo se dispara
+
+Flujo normal post-entrega fallida: `ENTREGA_FALLIDA` (vuelve a `EN_DEPOSITO`) y después `REINGRESO_DEPOSITO` desde logística.
+
+### Propuesta
+
+Mandar `REINGRESO_DEPOSITO` a `EN_DEPOSITO` (igual que `ENTREGA_FALLIDA`) o volver a generar el `ResultadoMatchmaking`. Si se decide usar `PENDIENTE_ASIGNACION`, que el scheduler también recoja donaciones en ese estado **sin** resultado y las re-matchet.
+
+---
+
+## 48. `DELETE /personas/{id}/medios-contacto` no borra nada y responde 302
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonanteController.java` (líneas 146-155, la respuesta en 151), `.../dto/notificaciones/MediosContactoDTO.java` (líneas 24-32), `.../services/DonanteService.java` (líneas 234-239), `.../models/repositories/repos/RepositorioPersonas.java` (líneas 113-126), `.../models/entities/Mensaje/MedioDeContacto/MediosDeContacto.java` (líneas 50-63)
+
+### Qué pasa
+
+Dos defectos en el mismo endpoint:
+
+1. **No borra.** El body se convierte en una instancia **nueva** (`MediosContactoDTO.toDomain()` no lleva id) y `MediosDeContacto.eliminarMedioDeContacto` compara con `remove(...)`/`equals(...)`. `MedioDeContacto`, `Mail`, `Telefono` y `Whatsapp` **no sobrescriben `equals`/`hashCode`** (el único `equals` del módulo está en `PropuestaAsignacion`), así que la comparación es por identidad y siempre da falso: la lista queda intacta y `actualizar(...)` guarda sin cambios. La guarda de promoción del predeterminado que se agregó al corregir el punto 19 **tampoco aplica por este camino**, por la misma razón.
+2. **Responde 302.** El controller devuelve `new ResponseEntity<>(actualizada, HttpStatus.FOUND)`: un `302` sin `Location` en un DELETE exitoso. Los clientes que solo aceptan 2xx (fetch, Angular) lo tratan como redirección/error.
+
+### Por qué no se ve
+
+La respuesta trae el donante serializado y parece "el donante actualizado"; el medio sigue en la lista y el próximo envío de notificación lo sigue usando.
+
+### Propuesta
+
+Comparar por contenido (implementar `equals` por tipo+valor) o buscar el medio por índice/id antes de remover, y devolver `200`/`204` en lugar de `302`.
+
+---
+
+## 49. El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/DonacionesServiceApplication.java` (líneas 36-42), `.../clients/IncentivosClient.java` (líneas 53-115)
+
+### Qué pasa
+
+El único bean de transporte se construye así:
+
+```java
+return new RestTemplate(new JdkClientHttpRequestFactory(HttpClient.newHttpClient()));
+```
+
+`HttpClient.newHttpClient()` no setea `connectTimeout` (el JDK no tiene default) y a la `JdkClientHttpRequestFactory` nadie le llama `setReadTimeout`. No hay `RestTemplateBuilder` ni propiedades que lo compensen.
+
+### Cómo se dispara
+
+Incentivos (u otro host) acepta el TCP y nunca responde, o la ruta cae en un blackhole: el request queda colgado **sin cota**. Afecta a `POST /api/personas`, `DELETE /api/personas/{id}`, al `@RabbitListener` de eventos (que llama a incentivos y tiene concurrency 1: la cola de eventos deja de consumirse) y a los 2 hilos del pool de importación CSV.
+
+### Por qué no se ve
+
+Con el otro servicio **caído** el connect falla rápido y el error aparece; el cuelgue (overload, red que descarta paquetes) es el caso que no aparece en una demo.
+
+### Propuesta
+
+Configurar `HttpClient.connectTimeout` (2-5s) y `JdkClientHttpRequestFactory.setReadTimeout` (5-10s), parametrizables por properties, y un backoff/aislamiento para el listener.
+
+---
+
+## 50. La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java` (líneas 170-181 y 186-229, publicación en 228), `.../messaging/ProductorLogistica.java` (líneas 47-70), `.../config/RabbitMQConfig.java` (líneas 23-28)
+
+### Qué pasa
+
+`asignarPropuesta` es `@Transactional(rollbackFor = Exception.class)` y publica al final del método: `ProductorLogistica.publicarDonacionAsignada` hace `convertAndSend` al exchange `logistica.integracion.hash` **sin try/catch** (relanza a propósito: si no se publica, nadie entrega la donación). Pero ese exchange lo declara logística (`CustomExchange` en su `RabbitMQConfig`): donaciones solo tiene la constante y el comentario —la nota del Corregido #2 dice que este módulo lo declara, pero el bean no existe—.
+
+Consecuencias:
+
+- **Logística nunca arrancó** (broker sin el exchange): `convertAndSend` tira `AmqpException` → 500 y **rollback** de la asignación… pero las notificaciones al donante y a la entidad, que salen antes en el mismo flujo y tragan sus errores, **ya se enviaron**: se avisó una asignación que quedó sin efecto.
+- **El commit falla después de publicar** (constraint diferido, caída de DB): el mensaje a logística ya salió y describe un estado que se revirtió. El javadoc del productor ("si no se publica, la donación queda asignada") describe lo contrario del rollback real.
+
+### Por qué no se ve
+
+En la demo los cuatro servicios suelen estar arriba y logística declaró el exchange al arrancar. El problema aparece cuando donaciones corre solo (o logística todavía no subió).
+
+### Propuesta
+
+Declarar el exchange en `RabbitMQConfig` (es de los que este servicio publica: la misma regla que dejó el Corregido #2) y sacar la publicación del cuerpo transaccional: publicar en `afterCommit` o con un outbox, para que el mensaje salga solo si la asignación quedó persistida.
+
+---
+
+## 51. `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/EntidadBeneficiariaService.java` (líneas 82-88 y 105-109), `.../models/repositories/repos/RepositorioEntidadesBeneficiarias.java` (líneas 75-84 y 86-98), `.../models/repositories/repos/RepositorioNecesidades.java` (líneas 67-69), `.../models/entities/Donaciones/Donacion.java` (líneas 46-49)
+
+### Qué pasa
+
+El `@Transactional` del punto 8 se agregó solo a `DonacionService`; `EntidadBeneficiariaService` sigue sin ninguno. Dos síntomas del mismo patrón:
+
+- **Alta:** `POST /entidades/{idInexistente}/necesidades` → `crearNecesidad` commitea la necesidad primero; después `agregarNecesidadAEntidad` no encuentra la entidad y tira `IllegalArgumentException` → 400. Queda una `Necesidad` huérfana (más la subcategoría creada) que ningún listado muestra.
+- **Baja:** `DELETE /entidades/{id}/necesidades/{idNecesidad}` sobre una necesidad con donaciones asignadas → `eliminarNecesidadDeEntidad` **desvincula y commitea**; después `repositorioNecesidades.eliminarPorId` choca con la FK `necesidad_id` (`Donacion.necesidad` no tiene cascade) → 409. La necesidad queda viva pero sin entidad: desaparece de `GET /entidades/{id}/necesidades`, `verDonaciones()` deja de ver esas donaciones y el matchmaking no puede proponerla. No hay endpoint para re-vincularla.
+
+### Por qué no se ve
+
+Los dos endpoints responden códigos que suenan a validación (400/409) y nadie mira la base; la necesidad huérfana es invisible para las consultas normales.
+
+### Propuesta
+
+`@Transactional(rollbackFor = Exception.class)` en los métodos de escritura del servicio (agregar/eliminar necesidad, registrar/actualizar entidad); y en la baja, validar que la necesidad se puede borrar **antes** de desvincularla (o borrar en el orden inverso).
+
+---
+
+## 52. El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 70-79, 87-94 y 257-263), `.../clients/IncentivosClient.java` (líneas 58-69), `.../models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionRegistroPersona.java` (líneas 35-38), `.../models/entities/ServicioNotificaciones/ServicioNotificaciones.java` (líneas 39-45)
+
+### Qué pasa
+
+`crearPersona` ejecuta primero `incentivosClient.peticionCrearPerfil(perfilDe(nuevoDonante))` y **después** `persistirConNotificacion`, que a su vez ejecuta la notificación `REGISTRO_PERSONA` **antes** de `registrarPersona`/`registrarDonante`. Con un donante humano sin medios válidos (p. ej. `POST /api/personas` sin `mediosDeContacto`, o con `{"tipo":"EMAIL"}` sin valor, que el DTO descarta en silencio), la notificación tira `IllegalArgumentException("No hay un medio de contacto predeterminado...")` → **400**, no se persiste nada local… y el perfil en incentivos **ya quedó creado**. Reintentar con otro body genera otro UUID → otro perfil; el huérfano no se limpia (mismo daño de fondo que el punto 35, pero en el alta).
+
+A esto se suma que `DonanteService` no tiene `@Transactional`: cualquier fallo entre los dos `save` deja `Persona` sin `Donante` (o al revés) e incentivos desincronizado.
+
+### Por qué no se ve
+
+El 400 se lee como "body inválido" y nadie mira el otro servicio; el perfil fantasma puede aparecer en rankings y recibir notificaciones.
+
+### Propuesta
+
+Validar y persistir primero, en una transacción; recién después crear el perfil externo y notificar (idealmente por evento/outbox, como discute el punto 35).
+
+---
+
+## 53. La asignación notifica dos veces: mensaje directo y estrategia de notificación
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java` (líneas 170-181), `.../models/gestores/GestorAsignaciones.java` (líneas 38-42 y 122-137), `.../models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionDonacionAsignada.java` (líneas 26-56), `.../clients/NotificacionesClient.java` (líneas 29-40)
+
+### Qué pasa
+
+Por cada `POST /donaciones/asignar` salen **dos** notificaciones por destinatario:
+
+1. `gestorAsignaciones.asignarPropuesta` termina en `notificarAsignacion`, que publica un `NotificacionDTO` directo al medio predeterminado de la entidad y otro al del donante (líneas 130 y 134).
+2. Inmediatamente después, `DonacionService.asignarPropuesta` llama `cambiarEstado(..., "ASIGNADO", ...)` → `procesarAccionesPostCambioEstado` → `fabricaEstrategiasNotificacion.ejecutar(DONACION_ASIGNADA, donacion)` → `NotificacionDonacionAsignada` vuelve a publicar el aviso a los mismos destinatarios (todos sus medios).
+
+No hay deduplicación: son dos mensajes distintos con textos distintos al mismo exchange.
+
+### Por qué no se ve
+
+Las dos publicaciones "funcionan"; el usuario recibe el aviso repetido y se lee como ruido, no como bug.
+
+### Propuesta
+
+Dejar un solo camino de notificación: que `asignarPropuesta` no notifique y lo haga el cambio de estado, o que `procesarAccionesPostCambioEstado` no re-ejecute `DONACION_ASIGNADA` cuando el flujo ya notificó.
+
+---
+
+## 54. `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java` (líneas 150-153), `.../models/repositories/repos/RepositorioDonaciones.java` (líneas 76-78), `.../models/entities/AsignadorDonaciones/ResultadoMatchmaking.java` (líneas 28-30), `.../exceptions/GlobalExceptionHandler.java` (líneas 52-57)
+
+### Qué pasa
+
+`eliminarDonacion` solo hace `repositorioDonaciones.eliminarPorId(id)`. Pero `ResultadoMatchmaking.donacion` es un `@ManyToOne` con FK `donacion_id` y **sin** cascade REMOVE, y toda donación que pasó por matchmaking tiene su fila en `resultado_matchmaking`. El delete viola la FK → `DataIntegrityViolationException` → **409**. El resultado solo se borra al aprobar la asignación (`DonacionService.asignarPropuesta`); no hay endpoint ni job que limpie resultados de donaciones borradas/varadas.
+
+### Cómo se dispara
+
+`POST /donaciones/matchmaking/ejecutar` (o el scheduler, cuando funcione) sobre una donación en depósito, y después `DELETE /donaciones/{id}`.
+
+### Por qué no se ve
+
+Hasta la primera corrida de matchmaking el DELETE funciona; después falla "sin motivo visible" y el front no tiene forma de distinguirlo.
+
+### Propuesta
+
+Borrar o desvincular el `ResultadoMatchmaking` dentro de `eliminarDonacion` (en una transacción), o darle un cascade explícito al vínculo.
+
+---
+
+## 55. El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/GlobalExceptionHandler.java` (líneas 59-69)
+
+### Qué pasa
+
+El advice no extiende `ResponseEntityExceptionHandler` y declara `@ExceptionHandler(Exception.class)`, así que además del catch-all de negocio captura las excepciones estándar de Spring MVC que no están mapeadas: `HttpMessageNotReadableException` (JSON mal formado o fecha con formato inválido), `MethodArgumentTypeMismatchException` (UUID de path inválido), `HttpRequestMethodNotSupportedException`, `NoResourceFoundException`. Todas responden **500** con `ex.getMessage()` de Jackson/Spring, que incluye tipos Java y el detalle del parseo.
+
+### Cómo se dispara
+
+- `POST /api/donaciones/formulario` con `"fechaRealizacion":"ayer"` → 500 (debería 400).
+- `GET /api/personas/abc` → 500 (debería 400).
+- `DELETE /api/donaciones` → 500 (debería 405).
+- `GET /api/ruta-inexistente` → 500 (debería 404).
+
+### Por qué no se ve
+
+Un 500 genérico en el cliente se lee como "el servicio se rompió" y se reintenta o se escala; la causa real es un request mal formado.
+
+### Propuesta
+
+Extender `ResponseEntityExceptionHandler` (o agregar handlers para esas excepciones) para devolver 400/404/405, y en el catch-all devolver un mensaje genérico en vez de `getMessage()` crudo.
+
+---
+
+## 56. Los PUT de persona, entidad y admin traducen validación a 404 mudo
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonanteController.java` (líneas 74-82), `.../controllers/EntidadBeneficiariaController.java` (líneas 64-72), `.../controllers/AdminController.java` (líneas 50-58); DTOs: `.../dto/personaDonante/PersonaDonanteDTO.java` (líneas 118-135), `.../dto/entidadBeneficiaria/EntidadBeneficiariaDTO.java` (líneas 29-34), `.../dto/admin/AdminDTO.java` (líneas 25-31)
+
+### Qué pasa
+
+A diferencia de `DonacionController` (arreglado al corregir el punto 21), estos tres controllers siguen con `catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }`. Pero la `IllegalArgumentException` no es solo "no existe": los DTO también la usan para validar el body:
+
+- `PersonaDonanteDTO`: `"Tipo de persona inválido"` y `Genero.valueOf(...)` con un género fuera del enum.
+- `EntidadBeneficiariaDTO`: `"La razón social es obligatoria..."`.
+- `AdminDTO`: `"El administrador debe tener un medio de contacto asignado."`.
+
+Ese catch local convierte un body inválido en un **404 sin cuerpo**, idéntico a "el recurso no existe", y saltea el handler global que mapea IAE → 400.
+
+### Cómo se dispara
+
+- `PUT /api/personas/{idExistente}` con `{"tipoPersona":"MASCOTA"}` → 404 (debería 400).
+- `PUT /api/entidades/{idExistente}` sin razón social → 404.
+- `PUT /api/admins/{idExistente}` con `{}` → 404.
+
+### Propuesta
+
+Quitar los catches de esos tres controllers y dejar que el `GlobalExceptionHandler` mapee por tipo (IAE → 400, `EntityNotFoundException` → 404), como ya se hizo en `DonacionController`.
+
+---
+
+## 57. Los POST de medios de contacto aceptan nulos/vacíos y responden 201
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/notificaciones/MediosContactoDTO.java` (líneas 24-32), `.../services/DonanteService.java` (líneas 227-232), `.../controllers/DonanteController.java` (líneas 136-144), `.../models/entities/Mensaje/MedioDeContacto/MediosDeContacto.java` (líneas 42-44)
+
+### Qué pasa
+
+`MediosContactoDTO.toDomain()` devuelve `null` si `tipo` o `valor` vienen null, y no valida formato ni contenido: `agregarMedioContacto` pasa ese resultado a `agregarMedioDeContacto`, que agrega a la lista **sin guarda de null**, y el endpoint responde **201** aunque no se haya agregado nada. Con `{"tipo":"EMAIL","valor":""}` se persiste un `Mail` vacío: el fallo aparece recién en el próximo envío (`ServicioNotificaciones` valida "no vacío" al enviar, no al guardar).
+
+### Cómo se dispara
+
+- `POST /api/personas/{id}/medios-contacto` con `{}` → 201 sin agregar nada.
+- `POST /api/personas/{id}/medios-contacto` con `{"tipo":"EMAIL","valor":""}` → 201 con un email vacío persistido.
+
+### Por qué no se ve
+
+La respuesta trae el donante serializado y los `null` desaparecen del JSON; el problema real aparece un salto después, al notificar.
+
+### Propuesta
+
+Validar en el DTO (`@NotBlank` en valor, tipo soportado) y rechazar en `agregarMedioDeContacto` el `null`; alinear la validación de contenido con la que ya hace `ServicioNotificaciones`.
+
+---
+
 ## Corregidos
 
-### 33. La importación CSV dejaba a los donantes sin medio de contacto predeterminado
-
-**Estado:** corregido
-**Severidad:** alta
-**Corregido:** 2026-10-08 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/filaconverter/PersonaDonanteFilaConverter.java`
-
-### Qué pasaba
-
-El converter agregaba los medios de contacto que trae el CSV (mail, teléfono, whatsapp) pero
-**nunca marcaba el predeterminado**. `ServicioNotificaciones` (línea 41) exige uno para
-enviar, así que la notificación de registro (`REGISTRO_PERSONA`) tiraba
-`IllegalArgumentException("No hay un medio de contacto predeterminado para enviar la
-notificacion")` para **todas** las filas y el alta entera no se persistía. Se descubrió en
-vivo: una carga real de 499 filas terminó 0 exitosos / 499 fallidos con ese mensaje (ya con
-el punto 32 corregido, que era el que rompía antes).
-
-El alta por HTTP no tenía el problema porque `PersonaDonanteDTO.resolverMedioPredeterminado`
-(líneas 150-165) aplica el criterio: si hay medios y ninguno especificado, el primero es el
-predeterminado.
-
-### Qué se cambió
-
-`PersonaDonanteFilaConverter.vincularMediosDeContacto` aplica el mismo criterio que el alta
-HTTP: si quedaron medios y no hay predeterminado marcado, se setea el primero.
-
-### Cómo se verificó
-
-Test nuevo `CargaRealCsvTest.todosQuedanConMedioPredeterminado`: con la carga real de 499
-filas, ningún donante con medios queda sin predeterminado (el RED fue la corrida real contra
-docker: 499/499 fallidos con el mensaje exacto). Suite: donaciones 50/50, BUILD SUCCESS.
-
----
-
-### 32. La importación CSV ignoraba las columnas si el mapeo no coincidía mayúscula por mayúscula
-
-**Estado:** corregido
-**Severidad:** media
-**Corregido:** 2026-10-08 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/LectorCSV.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/lector/csv/filaconverter/PersonaDonanteFilaConverter.java`
-
-### Qué pasaba
-
-`LectorCSV` vinculaba los encabezados con `encabezado.trim()` y el
-`PersonaDonanteFilaConverter` buscaba las columnas del mapeo **tal cual** llegaban del
-request: sin normalizar mayúsculas de ninguno de los dos lados. Con un mapeo de
-`"nombre completo"` contra un encabezado `"Nombre Completo"`, el `get()` fallaba, la fila
-llegaba al converter con nombre y apellido `""`, y la Humana devolvía
-`getNombreDeUsuario()` = `" "` → incentivos la rechazaba con
-`400 "El donante requiere un nombre de usuario"`, una por fila: exactamente el error que
-lluvioso del perfil durante una carga CSV real. Si además el `TipoPersona` no coincidía, la
-fila entera se descartaba con un warning y el donante ni existía.
-
-### Qué se cambió
-
-Ambos lados usan ahora una clave canónica (`trim().toLowerCase()`): `LectorCSV` al armar el
-mapa `encabezado → valor`, y el converter al buscar cada nombre de columna del mapeo. El
-resto del comportamiento queda igual (el `EncabezadoCsvDuplicadoException` ahora también es
-insensible al casing, que es el criterio nuevo).
-
-**La causa real de la carga que disparó este punto** no era del código sino del
-`mapeos` del request: la collection de Postman (`ciclo-completo`) mapeaba
-`NOMBRE_RAZON_SOCIAL → ["Nombre","Apellido"]` y `TELEFONO → ["Telefono"]`, columnas que no
-existen en el CSV real (`"Nombre/Razón Social"`, `"Teléfono"`, ambas con tilde o barra).
-Con mapeos que nombran columnas inexistentes, las humanas nacen con nombre en blanco
-(`nombreUsuario = " "`) y las jurídicas con `""` — que es exactamente lo que mostró el log
-corregido de `IncentivosClient` (`(nombreUsuario=' ', role='DONANTE')`). La collection quedó
-corregida a los encabezados reales del CSV; si el front comparte ese mapeo, hay que
-corregirlo del mismo modo. La normalización del casing de este punto no puede compensar
-columnas que no existen.
-
-### Cómo se verificó
-
-Test nuevo `ImportarCsvConMapeosTest` (3 tests): importa un CSV con encabezados
-`"TipoPersona,Nombre Completo,Dni"` y mapeo `"tipopersona" / "nombre completo" / "dni"` (y
-otra corrida con encabezados ya canónicos), y exige 1 donante con `nombreUsuario` completo.
-**RED verificado** antes del arreglo: `expected: <1> but was: <0>` — la fila se descartaba
-entera. Suite: donaciones 37/37, BUILD SUCCESS.
-
----
-
-### 31. Logística registra un solo bien por donación: los bienes 2..N caen como "repetidos"
-
-**Estado:** corregido
-**Severidad:** media
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java` (junto con el punto 23)
-
-### Qué pasaba
-
-`ItemEntrega` (logística) tiene el `@Id` en `id_donacion`: un item por donación, con un solo
-par `cantidad`+`unidad`, y `EntregaService.itemsEnUnaTransaccion` hace `existsById(idDonacion)`
-antes de guardar cada par id-bien. Los bienes 2..N de la misma donación caían como "repetidos"
-y se perdían. Enviar N ids tampoco sirve: el segundo item colisiona con el primero. La
-decisión de granularidad que propone este punto: **el item es la cantidad agregada de la
-donación en una unidad**, no un bien físico.
-
-### Qué se cambió
-
-1. `publicarEntregaALogistica` suma las cantidades **por unidad de medida**
-   (`LinkedHashMap` + `merge` con `Integer::sum`, peso null → 0, igual que `BienResumenDTO`)
-   y manda una entrada por unidad con el id de donación repetido — el receptor exige
-   `bienes.size() == idsDonaciones.size()` (punto 27) y así los tamaños siempre alinean. Con
-   un segmento homogéneo, logística registra **un** item con el total real: nada se pierde,
-   y la idempotencia por re-delivery queda intacta.
-2. **Punto 23 (opción A de su propia propuesta):** `generarClaveSegmentacion` incluye la
-   `unidadUtilizada` (null-safe), así que los segmentos nuevos son de una sola unidad y la
-   agregación siempre es sumable.
-3. El modelo receptor no se tocó (hay trabajo en curso en esos archivos de logística).
-4. Residual: los segmentos **legacy** con unidades mezcladas (creados antes de este arreglo)
-   mandan dos entradas y logística registra solo la primera. Es data anterior al arreglo.
-
-### Cómo se verificó
-
-`ContratoLogisticaTest` ahora corre `asignarPropuesta` con 2 bienes (10 kg + 6 kg) y exige
-ids `[idDonacion]` + un único bien con `cantidad: 16`, `KILOGRAMOS`. **RED verificado**
-revirtiendo temporalmente el agregado: el mensaje salía `[id,id]` con 2 bienes — el
-mecanismo exacto del descarte por dedupe. Suite: donaciones 33/33, BUILD SUCCESS.
-
----
-
-### 23. La segmentación no incluye la unidad de medida y suma kilos con litros
-
-**Estado:** corregido
-**Severidad:** baja
-**Corregido:** 2026-10-07 · sin commit (opción A de la propia propuesta, como parte del punto 31)
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`
-
-### Qué pasaba
-
-`generarClaveSegmentacion` armaba la clave del segmento con subcategoría, fecha de vencimiento
-(si era perecedero) y usado/nuevo, pero **no entraba la unidad**: "10 kilos de arroz" y "5
-litros de aceite" de la misma subcategoría caían en la misma donación y
-`Donacion.sumaCantidadBienes()` los sumaba como 15, que es lo que consumen
-`CompatibilidadSemantica.calcularScore` y `Necesidad.cantidadRecibida()`.
-
-### Qué se cambió
-
-`generarClaveSegmentacion` incluye `bien.getUnidadUtilizada()` en la clave (con guarda de
-null, para los bienes que hoy llegan sin unidad): cada donación segmentada es de una sola
-unidad. Es la opción A que el propio punto proponía, y es la que hace posible el agregado por
-unidad del punto 31. No se migró a "convertir todo a peso" (la decisión del
-`UnidadDeMedida.toString` de "que siempre lo pese" sigue en pie como decisión más grande).
-
-### Cómo se verificó
-
-Test nuevo `SegmentadorDonacionesTest.segmentar_BienesDeDistintaUnidad_NoSeSuman`
-(kilo vs litro → 2 donaciones). **RED verificado** sin la unidad en la clave: devolvía 1
-donación (`expected: <2> but was: <1>`). Suite: donaciones 33/33, BUILD SUCCESS.
-
----
-
-### 27. La integración con logística ya va por broker, pero el contrato depende de DTOs duplicados a mano
-
-**Estado:** corregido (el residual que registró quedó resuelto junto con los puntos 31 y 23)
-**Severidad:** media
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/DireccionDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java`
-
-### Qué pasaba
-
-El contrato de entrega son DTOs copiados a mano en cada módulo, y la afirmación de este punto
-("los nombres de los campos coinciden hoy") quedó desactualizada. La revisión del receptor
-(`EntregaService.procesarPeticion` y `resolverEntidad` de logisticas-service) mostró dos
-desincronizaciones reales:
-
-1. **Faltaba `idEntidad`.** El emisor armaba `DireccionDTO.from(entidad.getDireccion())` sin
-   id, y el receptor lo exige: `resolverEntidad` hace `findById(dto.getIdEntidad())`
-   (`EntregaService:153-155`); con null tira IAE y el `DonacionListener` descarta el mensaje.
-   El 100% de las entregas se descartaba.
-2. **Tamaños incompatibles.** El emisor mandaba `List.of(donacion.getId())` con N bienes y el
-   receptor exige `bienes.size() == idsDonaciones.size()` (`EntregaService:119-122`): con
-   N > 1 bienes el mensaje se descartaba entero. El diseño documentado en el propio
-   `ProductorLogistica` ("el mensaje lleva un id de donación por bien") es el que usa el
-   receptor; el que no lo cumplía era `publicarEntregaALogistica`.
-
-### Qué se cambió
-
-1. `DireccionDTO` ahora declara `idEntidad` (UUID), y `publicarEntregaALogistica` lo setea con
-   `entidad.getId()`, que es la clave que logística guarda como `Entidad.idEntidadBeneficiaria`.
-2. El mensaje lleva **un id de donación por bien** (los tamaños siempre coinciden; la clave de
-   partición sigue siendo el menor de los ids, como documenta `ProductorLogistica`).
-3. El lado receptor no se tocó: ya esperaba exactamente esta forma del mensaje.
-4. El residual del modelo receptor (registra un solo bien por donación) que esta revisión
-   descubrió quedó resuelto después por los puntos 31 y 23 (agregado por unidad).
-
-### Cómo se verificó
-
-Test de contrato nuevo `ContratoLogisticaTest`: corre `asignarPropuesta` completo con el
-service real (deps mockeadas en los bordes), captura el `EntregaDTO` que entrega al
-`ProductorLogistica`, lo serializa como lo hace el `Jackson2JsonMessageConverter`
-(`ObjectMapper` default, estricto con campos desconocidos — si un lado renombra un campo, el
-test lo ve) y lo deserializa y valida contra mirrors campo a campo de los cuatro DTOs
-receptores, incluidos los campos que viajan en null. Fallaba antes del arreglo
-(`idEntidad: must not be null` — el descarte garantizado) y pasa después, incluido el caso
-multi-bien (2 bienes, ids alineados). Suite completa: donaciones 32/32, BUILD SUCCESS.
-
----
-
-### 22. No hay Bean Validation: entran cantidades negativas como `Bien.peso`
-
-**Estado:** corregido
-**Severidad:** baja
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `pom.xml`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/personaDonante/FormularioRequestDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/donaciones/BienResumenDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/donaciones/DonacionDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/controllers/DonacionController.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/GlobalExceptionHandler.java`
-
-### Qué pasaba
-
-Los DTOs de entrada eran cajas de Lombok sin una sola restricción y el pom ni siquiera
-declaraba `spring-boot-starter-validation` (desde Boot 2.3 no viene con starter-web), así que
-cualquier anotación se habría ignorado. `POST /donaciones/formulario` con
-`cantidad: -50` guardaba `Bien.peso = -50`, que arrastra `sumaCantidadBienes()`, los scores de
-`CompatibilidadSemantica` y los conteos de las necesidades; un bien sin `tipoBien` producía un
-`null` que llegaba a la segmentación.
-
-### Qué se cambió
-
-1. `pom.xml`: se agrega `spring-boot-starter-validation`.
-2. `FormularioRequestDTO`: `@NotNull` en `idDonante` y `fechaRealizacion` (esta última además
-   cierra el hueco que quedó del punto 30: la fecha que va a incentivos), y `@Valid` en
-   `bienes` para que cada `BienResumenDTO` de la lista también se valide.
-3. `BienResumenDTO`: `@NotNull @Positive` en `cantidad`, `@NotBlank` en `tipoBien`.
-4. `DonacionDTO`: `@Valid` en `bienes` (cascada para el `PUT /donaciones/{id}`).
-5. `DonacionController`: `@Valid` en los `@RequestBody` de `crearDonacion` y
-   `actualizarDonacion`.
-6. `GlobalExceptionHandler`: handler nuevo para `MethodArgumentNotValidException` → 400 con el
-   detalle de campos (`ErrorResponseDTO`, mismo patrón que el resto) y `log.warn`. Sin él, el
-   catch-all `Exception → 500` existente habría convertido la falla de validación en un 500.
-
-**Queda pendiente:** la validación de `Humana.edad` (`PersonaDonanteDTO`), que este punto
-mencionaba pero no tenía en su lista de archivos. Sigue en abierto.
-
-### Cómo se verificó
-
-Test nuevo `FormularioRequestValidacionTest` (MockMvc standalone contra el controller real,
-con el advice `GlobalExceptionHandler` registrado y el service mockeado):
-
-- Cantidad `-50` → 400 con `{"mensaje": "...cantidad...", "codigoEstado": 400}` y el service
-  **nunca invocado**.
-- Bien sin `tipoBien` → 400, service nunca invocado.
-- Formulario sin `fechaRealizacion` → 400, service nunca invocado.
-- Formulario válido → llega al service (protege contra sobre-bloqueo).
-
-Los tres casos inválidos respondían 200 antes del arreglo. Suite completa: donaciones 31/31,
-notificaciones 15/15, BUILD SUCCESS.
-
----
-
-### 6. Una estrategia de notificación no es bean: toda entrega fallida revienta
-
-**Estado:** corregido
-**Severidad:** crítica
-**Corregido:** 2026-10-07 · sin commit (el `@Component` ya estaba en el código; el pendiente estaba desactualizado)
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionEntregaFallida.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/ServicioMensaje/FabricaEstrategiasNotificacion.java`
-
-### Qué pasaba
-
-`NotificacionEntregaFallida` era la única de las seis estrategias sin `@Component`, así que
-nunca entraba al mapa de `FabricaEstrategiasNotificacion` (armado con
-`List<EstrategiaNotificacion>`) y toda entrega fallida revientaba con
-`IllegalArgumentException("No existe una estrategia para ENTREGA_NO_RECIBIDA")`.
-
-### Qué se cambió
-
-Nada en el código: al verificar el pendiente (Fase 1 del `bug-fixer`), la clase ya tiene
-`@Component` (`NotificacionEntregaFallida.java:11`) y por lo tanto la fábrica la registra vía
-la lista inyectada. El pendiente quedó desactualizado (probablemente corregido en una tanda
-anterior sin actualizar este archivo). Lo que **no** está implementado de la propuesta
-original es la defensa: que la fábrica falle al arrancar si algún `TipoEventoNotificacion` del
-enum no tiene estrategia registrada; hoy sigue fallando en runtime si se agrega un valor al
-enum sin su estrategia.
-
-### Cómo se verificó
-
-Lectura del código actual: `@Component` presente en la línea 11 y `FabricaEstrategiasNotificacion`
-inyectando `List<EstrategiaNotificacion>` (líneas 21-28), con lo que la estrategia entra al
-mapa y `ENTREGA_NO_RECIBIDA` existe.
-
----
-
-### 10. `fechaEntrega` nunca se persiste, y dos funcionalidades dependen de ella
-
-**Estado:** corregido
-**Severidad:** alta
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/DonacionFacade.java`
-
-### Qué pasaba
-
-Nadie escribía nunca `Donacion.fechaEntrega`: `SegmentadorDonaciones.crearDonacion` le pasaba
-`null` explícitamente (línea 66) y `DonacionDTO.toDomain()` tampoco lo seteaba. La columna
-quedaba siempre en `NULL`, y dos lógicas la usaban como si fuera dato real:
-
-- **`SubAtendidos.cantidadDonacionesUltimoTrimestre`** (líneas 57-63) filtra por
-  `d.getFechaEntrega() != null`: el count era **siempre 0**.
-- **`NecesidadRecurrente.cantidadRecibidaEnPeriodo`** (líneas 31-40) filtra por
-  `getFechaEntrega() != null && ...isAfter(fechaLimite)`: **siempre devolvía 0**.
-
-### Qué se cambió
-
-La fecha de realización del formulario —que `DonacionService.procesarFormulario` ya recibía
-del request y guardaba en `Formulario.fechaRealizacion`— es ahora la `fechaEntrega` de cada
-donación segmentada: `DonacionFacade.crearDonaciones` la pasa a
-`SegmentadorDonaciones.segmentar(donante, bienes, fecha)` y `crearDonacion` ya no manda
-`null`. Se corrigió junto con el punto 30, que necesitaba el valor para cumplir el `@NotNull`
-de incentivos. Si el request no trae `fechaRealizacion`, el valor sigue siendo `null`: cerrar
-esa entrada es territorio del punto 22 (Bean Validation).
-
-### Cómo se verificó
-
-`ContratoIncentivosTest.fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada` fallaba
-antes del arreglo (`expected: <2026-10-01> but was: <null>`) y pasa después. Los tres
-consumidores del campo (`SubAtendidos`, `NecesidadRecurrente` y el reporte a incentivos) ahora
-reciben un valor real. Suite completa: donaciones 27/27, BUILD SUCCESS.
-
----
-
-### 30. El payload de la donación no cumple el contrato de incentivos: toda asignación responde 400
-
-**Estado:** corregido
-**Severidad:** crítica
-**Corregido:** 2026-10-07 · sin commit
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/dto/incentivos/IncentivosDonacionDTO.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorAsignaciones.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`,
-`src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/DonacionFacade.java`
-
-### Qué pasaba
-
-El payload del reporte de asignación no cumplía el contrato que incentivos exige
-(`ImpactoDonacionDTO`, recibido con `@Valid @RequestBody` en `PerfilController:163-167`):
-
-| | Este servicio manda | Incentivos exige |
-|---|---|---|
-| `idDonacion` | **no existía el campo** en `IncentivosDonacionDTO` | `@NotNull UUID` — es la clave de idempotencia del otro lado |
-| `fechaEntrega` | `LocalDate` (`"2026-10-07"`) | `@NotNull LocalDateTime` |
-
-Y `fechaEntrega` además siempre salía `null`, porque nadie la persistía (ver punto 10 de esta
-lista). El `IncentivosClient` relanza la excepción y `procesarAccionesPostCambioEstado` no la
-captura, así que la asignación entera respondía 500 y `publicarEntregaALogistica` nunca se
-ejecutaba: logística no se enteraba de la entrega por un problema con incentivos.
-
-### Qué se cambió
-
-1. `IncentivosDonacionDTO` ahora declara `idDonacion` (UUID) y `fechaEntrega` como
-   `LocalDateTime`.
-2. `GestorAsignaciones.procesarAccionesPostCambioEstado` setea
-   `dto.setIdDonacion(donacion.getId())` y convierte la fecha con
-   `LocalDate.atStartOfDay()`, con guarda de `null` (si no hay fecha, incentivos responde 400
-   explícito, que es lo que el receptor pide).
-3. La causa raíz de la fecha nula (punto 10, corregido en la misma tanda):
-   `DonacionFacade.crearDonaciones` pasa `formulario.getFechaRealizacion()` a
-   `SegmentadorDonaciones.segmentar(donante, bienes, fecha)`, y `crearDonacion` ya no manda
-   `null`. `Donacion.fechaEntrega` sigue siendo `LocalDate`; la conversión a `LocalDateTime`
-   ocurre sólo en la frontera del DTO.
-4. El lado de incentivos no se tocó: el payload ahora cumple exactamente su contrato.
-
-### Cómo se verificó
-
-Test de contrato nuevo `ContratoIncentivosTest` (2 tests), en `src/test/.../incentivos/`:
-
-- `payloadDeAsignacion_cumpleContratoDeIncentivos`: captura el DTO que
-  `cambiarEstado(..., "ASIGNADO", ...)` le pasa al `IncentivosClient`, lo serializa con
-  Jackson (misma config default de Spring Boot: `JavaTimeModule`, fechas ISO) y lo
-  deserializa y valida contra un mirror del `ImpactoDonacionDTO` receptor con las mismas
-  anotaciones (`@NotNull`/`@NotBlank`/`@PositiveOrZero`).
-- `fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada`: la fecha del formulario
-  queda como `fechaEntrega` de cada donación segmentada.
-
-Los dos fallaban antes del arreglo —uno con `expected: <2026-10-01> but was: <null>` y el
-otro con `Cannot deserialize value of type java.time.LocalDateTime from String "2026-10-07"`—
-y pasan después. Suite completa: donaciones 27/27, notificaciones (upstream) 13/13,
-BUILD SUCCESS.
-
----
-
-### `IncentivosClient` publicaba contra la raíz del servicio: 404 y 405 garantizados
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `.../clients/IncentivosClient.java`
-
-Las dos llamadas entre `donaciones-service` e incentivos apuntaban a rutas que no existen:
-
-| Método                      | Antes                             | Ahora                               | Ruta real                                  |
-|-----------------------------|-----------------------------------|-------------------------------------|--------------------------------------------|
-| `peticionCrearPerfil`       | `POST http://localhost:8082/`     | `POST /api/perfiles`                | `POST /api/perfiles`                       |
-| `notificarDonacionAsignada` | `POST http://localhost:8082/{id}` | `PATCH /api/perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{idUsuario}` |
-
-El método HTTP del avance es **`PATCH`, no `POST`**: `POST` contra un endpoint que solo declara
-`PATCH` devuelve 405, y contra una ruta inexistente devuelve 404.
-
-**Lo que lo escondía:** el `catch (Exception)` con `System.err.println` se tragaba el error y
-el servicio seguía como si la notificación hubiera salido. Ahora loguea con nivel, incluye la
-URL exacta y **relanza**, para que el fallo de una integración no se confunda con un fallo de
-dominio.
-
-**Cómo se verificó:** `POST /api/personas` responde `201` y el perfil queda creado en la base de
-incentivos. Antes devolvía `500` por el `401` que le llegaba de vuelta.
-
-### `NotificacionesClient` apuntaba a la raíz: 404 en cada notificación
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `.../clients/NotificacionesClient.java`,
-`src/main/resources/application.properties`
-
-El cliente publicaba contra `http://localhost:8083/` (la raíz). La ruta real es
-`POST /api/notificaciones`, porque el controller cuelga de `@RequestMapping("/notificaciones")`
-y el servicio tiene `context-path=/api`.
-
-El error se veía en el log: `No se pudo enviar la notificación a
-http://localhost:8083/notificaciones: 404`. La ruta estaba mal en dos lugares —el default de la
-propiedad y el sufijo que compone el cliente— y los dos hacía falta.
-
-**Qué se cambió:** la propiedad apunta a `http://localhost:8083/api` y el cliente compone
-`/notificaciones`, normalizando la barra final para que no produzca `/api//notificaciones`. Si
-alguien configura la propiedad con el sufijo completo, el cliente lo detecta y no lo duplica.
-
-**Cómo se verificó:** al crear un donante, la notificación "Nuevo Registro en DonaTrack" llega
-y queda persistida en la base de notificaciones.
-
-### Las URLs por defecto no incluían el context-path
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `src/main/resources/application.properties`
-
-Los defaults apuntaban a la raíz de los servicios que tienen `context-path=/api`, así que
-cualquier llamada sin variable de entorno daba 404 aunque la ruta estuviera bien escrita:
-
-- `servicio.notificaciones.url` era `http://localhost:8083/` → ahora `http://localhost:8083/api`.
-- `servicio.incentivos.url` era `http://localhost:8082/` → ahora `http://localhost:8082`
-  (incentivos **no** tiene context-path, sus rutas ya empiezan con `/api`; el doble `/api`
-  habría sido el error en sentido contrario).
-
-**Cómo se verificó:** levantando los cuatro servicios y recorriendo todas las llamadas
-HTTP entre ellos.
-
-### Faltaba el bloque `spring.rabbitmq.*`
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `src/main/resources/application.properties`
-
-Sin el bloque, el `CachingConnectionFactory` se crea con los defaults de Spring Boot
-(`localhost:5672`, `guest`/`guest`). En la máquina de desarrollo funciona; dentro de un
-contenedor busca `localhost`, que es el propio contenedor, y no encuentra al broker.
-
-**Qué se cambió:** `spring.rabbitmq.host`, `port`, `username` y `password` parametrizados por
-variables de entorno, igual que el resto de la configuración.
-
-### Los DTO de integración están duplicados a mano entre los dos servicios
-
-**Estado:** documentado, no corregido
-**Severidad:** media
-**Archivos:** `.../dto/logistica/entrega/EntregaDTO.java`, `.../dto/logistica/entrega/BienDTO.java`
-
-Ver punto 27. El contrato son DTO copiados en cada módulo sin nada que los mantenga
-sincronizados. Los nombres de campo coinciden hoy; si uno de los dos lados renombra, el mensaje
-llega al listener y falla con `MessageConversionException`, que no dice cuál de los dos se
-desalineó. Ese error se sufrió durante esta tanda y costó tiempo de diagnóstico.
-
----
-
-# Corregidos
-
-### 1. Las dos llamadas a otros servicios apuntaban a rutas que no existían
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `.../clients/IncentivosClient.java`, `.../clients/NotificacionesClient.java`
-
-### Qué pasaba
-
-Los dos clientes de salida apuntaban mal, por motivos distintos:
-
-**`IncentivosClient`.** La propiedad por defecto era `http://localhost:8082` sin el context-path,
-y las rutas que concatenaba no existían:
-
-| Llamada           | Antes                          | Ahora                               |
-|-------------------|--------------------------------|-------------------------------------|
-| Crear perfil      | `POST /`                       | `POST /api/perfiles`                |
-| Reportar donación | `POST /perfiles/donacion/{id}` | `PATCH /api/perfiles/donacion/{id}` |
-
-Lo de `POST` contra un endpoint que solo declara `PATCH` es lo que más fácil de pasar por alto:
-aunque la ruta hubiera existido, el métodoverbs mismatch da **405**, no 404.
-
-**`NotificacionesClient`.** Iba por HTTP a la raíz del otro servicio, así que cada
-notificación daba 404. Y según el enunciado no tenía que ir por HTTP en absoluto: la integración
-de los servicios de dominio con notificaciones es asíncrona por cola de mensajes.
-
-### Qué se hizo
-
-- `IncentivosClient` usa las rutas reales, con `exchange(..., HttpMethod.PATCH, ...)` para el
-  informe de donación, y loguea la URL que intenta antes de llamar.
-- `NotificacionesClient` **migró a Rabbit**: publica en `notificaciones.exchange` con la routing key
-  `notificaciones.donacion`. Es la razón por la que se agregó el exchange a este `RabbitMQConfig`.
-
-### Cómo se verificó
-
-Los cuatro servicios levantados contra MySQL y RabbitMQ reales:
-
-- `POST /api/personas` en donating → **201**, y el perfil aparece creado en la base de
-  incentivos.
-- `PATCH /api/perfiles/donacion/{id}` en incentivos → **200 `true`**, que es la respuesta de que
-  la misión se completó.
-- El alta de donante publica por Rabbit y la notificación queda `ENVIADA` con `fecha_envio`.
-
----
-
-### 2. Dos bindings de Rabbit ataban al exchange equivocado
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `.../config/RabbitMQConfig.java`
-
-### Qué pasaba
-
-Este módulo declaraba **colas y bindings que son de logística**, y encima los ataba al exchange
-equivocado. Logística tenía su propia copia de esos beans, idéntica salvo por esos dos bindings
-mal atados.
-
-Con las dos declaraciones, el broker aceptaba ambas. El binding bueno de este módulo tapaba el
-malo del otro, así que en el arranque normal de los cuatro juntos todo parecía andar. Pero
-levantando logística sola, las colas que este módulo declara no existen y la cadena se corta:
-**el bug estaba oculto por el orden de arranque**.
-
-### Qué se hizo
-
-La frontera quedó así: **cada servicio declara lo suyo y nada más.**
-
-- Este módulo declara `logistica.integracion.hash`, `logistica.eventos.exchange` y
-  `notificaciones.exchange` (los tres de los que publica), más **su** cola de eventos y **su**
-  binding.
-- Logística declara las colas que consume.
-
-Un exchange es un punto de encuentro: lo declara quien publica y lo usan todos los que lo
-consumen, así que el nombre no vive en los dos lados.
-
-De paso se sacaron los dos bindings con `#.` del routing key. En RabbitMQ el comodín `#` **exige
-al menos un nivel más**: `notificaciones.incentivo.#` no matchea su propia clave
-`notificaciones.incentivo`. El broker aceptaba el mensaje y lo descartaba — la peor combinación
-para diagnosticar, porque `routed=true` y no hay mensaje.
-
-### Cómo se verificó
-
-Los bindings declarados en el broker, con las tres routing keys de notificaciones unidas a la
-cola:
-
-```
---[notificaciones.donacion]--> notificaciones
---[notificaciones.evento.logistica]--> notificaciones
---[notificaciones.incentivo]--> notificaciones
-```
-
-Y los mensajes de los dos servicios de dominio salen efectivamente por esa cola.
-
----
-
-### 3. Se tragaba las excepciones de salida a propósito, sin log estructurado
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `.../clients/IncentivosClient.java`
-
-### Qué pasaba
-
-Los clientes de salida envolvían la llamada en un `try/catch` que **se tragaba la excepción sin
-loguear nada**. El síntoma era el peor posible: la operación de dominio se completaba y devolvía
-`201` o `200`, el servicio parecía sano, y el mensaje nunca había salido. Nadie se enteraba hasta
-que un donante se quejaba de que no le llegó la notificación.
-
-Es el mismo patrón que el `__TypeId__` del otro lado: **el servicio responde bien y el problema
-aparece un salto después.**
-
-### Qué se hizo
-
-Los clientes ahora loguean la URL que van a llamar y **relanzan**. Que re-lancen es lo correcto:
-el fallo de integración no es un fallo de la operación de dominio, y ocultarlo hacía que un
-problema de conectividad fuera indistinguible de un noop.
-
-Lo que se dejó como estaba: el `catch` sigue existiendo donde corresponde —publicar en Rabbit es
-un efecto secundario de una donación que ya está guardada, y si el broker está caído la donación
-ya está persistida. Ahí sí corresponde tragarse la excepción, pero **logueándola**.
-
-### Cómo se verificó
-
-El mensaje del `catch` incluye la URL y la routing key, que es lo que hace falta para diagnosticar
-sin tener que reproducir:
-
-```
-No se pudo publicar la notificación con routing key notificaciones.donacion: <motivo>
-```
-
----
-
-### 4. Punto 5 — El endpoint de vencer una donación manda un estado que el parser no conoce
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonacionService.java`
-
-### Qué pasaba
-
-`DonacionService.marcarComoVencida` llamaba `gestorAsignaciones.cambiarEstado(id, "VENCIDA", ...)`, pero el `switch` de `GestorAsignaciones.parseEstado` solo reconoce el case `"VENCIDO"` (el nombre real del enum `Estado.VENCIDO`). `"VENCIDA"` caía siempre en el `default` y tiraba `IllegalArgumentException`, que el controller traducía a un 404 limpio: `PATCH /donaciones/{id}/vencer` estaba roto el 100% de las veces.
-
-### Qué se hizo
-
-`marcarComoVencida` ahora llama a `cambiarEstado(id, "VENCIDO", ...)`, igualando el string al nombre real del enum. El desacople de fondo que proponía el punto —que `cambiarEstado` reciba un `Estado` y no un `String`— no se hizo: el `switch` de `parseEstado` sigue aceptando un string suelto, así que un futuro renombre del enum puede volver a romper esto en silencio.
-
-### Cómo se verificó
-
-Nota para toda esta tanda (puntos 5 a 29 del backlog original, entradas 4 a 28 de esta sección): no hay Maven instalado en este entorno, así que ninguno de estos arreglos se verificó corriendo `mvn compile`/`mvn test` ni levantando los servicios. La verificación fue por lectura manual del diff contra la descripción de cada bug; de acá en más se indica solo lo puntual revisado en cada entrada. Acá: se confirmó que el único string que `DonacionService` le pasa a `cambiarEstado` para vencer una donación ("VENCIDO") coincide exactamente con el único case que reconoce `GestorAsignaciones.parseEstado`.
-
----
-
-### 5. Punto 6 — Una estrategia de notificación no era bean: toda entrega fallida reventaba
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `models/entities/ServicioMensaje/EstrategiasMensajes/NotificacionEntregaFallida.java`, `models/entities/ServicioMensaje/FabricaEstrategiasNotificacion.java`
-
-### Qué pasaba
-
-`NotificacionEntregaFallida` era la única de las seis estrategias sin `@Component`. `FabricaEstrategiasNotificacion` arma su mapa inyectando `List<EstrategiaNotificacion>` (solo los beans), así que la clave `ENTREGA_NO_RECIBIDA` nunca entraba al mapa y `GestorEventosLogistica.manejarEntregaFallida` tiraba `IllegalArgumentException` sin que nada lo mostrara.
-
-### Qué se hizo
-
-El `@Component` que falta en `NotificacionEntregaFallida` ya se había agregado en un commit anterior de esta misma rama (`a789c93`, "Arregle errores en notificaciones"), antes de esta tanda de cambios sin commitear. Lo que se agregó en este diff es la defensa estructural que proponía el punto: `FabricaEstrategiasNotificacion` ahora recorre, al construirse, todos los valores de `TipoEventoNotificacion` y tira `IllegalStateException` si a alguno le falta la estrategia registrada como bean, en vez de esperar al primer evento en producción para fallar.
-
-### Cómo se verificó
-
-Revisado manualmente: `NotificacionEntregaFallida` tiene `@Component` en el archivo actual, y el nuevo chequeo de `FabricaEstrategiasNotificacion` recorre los seis valores de `TipoEventoNotificacion` contra el mapa de estrategias inyectadas.
-
----
-
-### 6. Punto 7 — Un bien sin `tipoBien` se convertía en `null` y reventaba la segmentación
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `dto/donaciones/BienResumenDTO.java`, `services/DonacionService.java`
-
-### Qué pasaba
-
-`BienResumenDTO.toDomain` devolvía `null` cuando `tipoBien` venía vacío, en vez de rechazar el item. `DonacionService.procesarFormulario` metía ese `null` en la lista de bienes sin filtrarlo, y llegaba intacto a `SegmentadorDonaciones.segmentar`, que explotaba con NPE (`POST /donaciones/formulario` → 500 en vez de 400).
-
-### Qué se hizo
-
-`BienResumenDTO.toDomain` ahora tira `IllegalArgumentException("El tipo de bien es obligatorio")` en vez de devolver `null`. `DonacionService` reemplazó el `.map(this::resolverBien)` suelto por un nuevo método privado `resolverBienes`, que itera con índice y re-lanza la excepción prefijada con `"Bien en la posición N: ..."`, para que el 400 resultante diga cuál ítem de la lista está mal. De paso se agregaron `@Positive` en `cantidad` y `@NotBlank` en `tipoBien` sobre el propio DTO (Bean Validation, comparte diff con el punto 22).
-
-### Cómo se verificó
-
-Revisado manualmente: el único `return null` de `toDomain` fue reemplazado por el `throw`, y `resolverBienes` quedó como el único punto de entrada para mapear `List<BienResumenDTO>` a `List<Bien>` tanto en `procesarFormulario` como en `actualizarDonacion`.
-
----
-
-### 7. Punto 8 — No había una sola transacción en el módulo
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `services/DonacionService.java`
-
-### Qué pasaba
-
-Ningún método de servicio tenía `@Transactional`: cada `jpaRepository.save()` commiteaba solo. `procesarFormulario` y `asignarPropuesta` encadenaban varias escrituras, y si una fallaba a mitad de camino, las anteriores ya habían quedado persistidas (bienes/formularios huérfanos, o una donación asignada sin propuesta para aprobar).
-
-### Qué se hizo
-
-Se agregó `@Transactional(rollbackFor = Exception.class)` a los seis métodos que proponía el punto: `procesarFormulario`, `actualizarDonacion`, `asignarPropuesta`, `ejecutarMatchmakingADemanda`, `cambiarEstado` y `eliminarDonacion`; y de paso a `marcarComoVencida`, que hace el mismo tipo de escritura aunque no estaba en la lista original.
-
-### Cómo se verificó
-
-Revisado manualmente que la anotación está en los seis métodos mencionados en la propuesta original más `marcarComoVencida`. No se pudo verificar en runtime que el rollback efectivamente revierte una escritura parcial.
-
----
-
-### 8. Punto 9 — Un fallo en una donación cortaba el lote de matchmaking entero
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `models/entities/AsignadorDonaciones/AsignadorDonaciones.java`
-
-### Qué pasaba
-
-`ejecutarMatchmakingBatch` recorría las donaciones con un `forEach` sin try/catch: la primera excepción abortaba el resto del lote. Y `registrarDonacionPendienteDeAprobacion` cambiaba el estado a `PENDIENTE_ASIGNACION` *antes* de guardar el `ResultadoMatchmaking`; si el guardado fallaba (resultado duplicado), la donación quedaba en ese estado sin resultado y el scheduler, que solo recoge `EN_DEPOSITO`, no la volvía a ver nunca.
-
-### Qué se hizo
-
-El `forEach` se cambió por un `for` con try/catch por donación (loguea con `System.err` y sigue con la siguiente). Y en `registrarDonacionPendienteDeAprobacion` se invirtió el orden: ahora primero se guarda el `ResultadoMatchmaking` y recién después se cambia el estado a `PENDIENTE_ASIGNACION`, así que si el guardado falla el estado no llega a cambiar.
-
-### Cómo se verificó
-
-Revisado manualmente el orden de las dos líneas (guardar resultado, después cambiar estado) y que el nuevo try/catch envuelve únicamente la llamada a `procesarMatchmaking` por elemento del lote.
-
----
-
-### 9. Punto 10 — `fechaEntrega` nunca se persistía
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `models/entities/Donaciones/Donacion.java`
-
-### Qué pasaba
-
-Ningún camino del código escribía `Donacion.fechaEntrega`: quedaba siempre `null`, y de ahí dependían `SubAtendidos.cantidadDonacionesUltimoTrimestre` y `NecesidadRecurrente.cantidadRecibidaEnPeriodo`, que filtran por `fechaEntrega != null`. El resultado era que esos dos algoritmos devolvían siempre 0, sin ninguna excepción que lo delatara.
-
-### Qué se hizo
-
-`Donacion.actualizarEstado` ahora setea `this.fechaEntrega = LocalDate.now()` la primera vez que el nuevo estado es `ENTREGADO` (si todavía no tenía fecha). Se centralizó ahí, no en los gestores, porque hay dos caminos a `ENTREGADO`: `GestorAsignaciones.cambiarEstado` (manual) y `GestorEventosLogistica.manejarEntregaConfirmada` (evento de logística), y los dos pasan por `actualizarEstado`.
-
-### Cómo se verificó
-
-Revisado manualmente que `actualizarEstado` es el único setter de `fechaEntrega` en la entidad y que ambos gestores llaman a `actualizarEstado(Estado.ENTREGADO, ...)` sin pasar por otro camino que lo esquive.
-
----
-
-### 10. Punto 11 — Guardar el estado antes de notificar dejaba el cambio persistido y respondía 404
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `models/gestores/GestorAsignaciones.java`
-
-### Qué pasaba
-
-`cambiarEstado` guardaba la donación y *después* llamaba a `procesarAccionesPostCambioEstado`, que desreferenciaba `donacion.getEntidad()` y `donacion.getSubcategoria()` sin guarda de nulidad. Si la donación todavía no tenía entidad asignada (el caso normal de una donación recién segmentada), explotaba con NPE, pero el cambio de estado ya había commiteado, y el controller devolvía 404.
-
-### Qué se hizo
-
-Se invirtió el orden: `procesarAccionesPostCambioEstado` se llama *antes* de `repositorioDonaciones.guardar(donacion)`. Y se agregaron guardas explícitas al principio de ese método: si la transición es a `ASIGNADO` y la donación no tiene `entidad` o no tiene `subcategoria`, tira `IllegalArgumentException` con un mensaje descriptivo en vez de dejar que la NPE salga más adentro.
-
-### Cómo se verificó
-
-Revisado manualmente el orden de las dos llamadas en `cambiarEstado` y que las dos guardas de nulidad están antes de cualquier acceso a `getPersonaJuridica()`/`getRazonSocial()`. La validación de transición de estado "legal" que también proponía el punto no se implementó; sigue pendiente.
-
----
-
-### 11. Punto 12 — `CascadeType.ALL` en las necesidades borraba de más al dar de baja una entidad
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `models/entities/EntidadBeneficiaria/EntidadBeneficiaria.java`
-
-### Qué pasaba
-
-`EntidadBeneficiaria.necesidades` tenía `cascade = CascadeType.ALL, orphanRemoval = true`. Borrar una entidad borraba en cascada todas sus necesidades, y esas necesidades estaban referenciadas por `Donacion.necesidad` (un `@ManyToOne` sin cascade): las donaciones quedaban apuntando a filas inexistentes.
-
-### Qué se hizo
-
-El cascade de `necesidades` se bajó a `{CascadeType.PERSIST, CascadeType.MERGE}` (sin `REMOVE` ni `orphanRemoval`). El borrado de necesidades queda a cargo explícitamente de `RepositorioNecesidades`, que es quien las tiene en su propio repositorio.
-
-### Cómo se verificó
-
-Revisado manualmente que la anotación ya no incluye `CascadeType.ALL` ni `orphanRemoval`. No se verificó en runtime (requeriría dar de baja una entidad con necesidades y donaciones asignadas contra una base real).
-
----
-
-### 12. Punto 13 — El PUT de donante cambiaba el `@Id` y duplicaba la Persona
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivo:** `models/repositories/repos/RepositorioPersonas.java`
-
-### Qué pasaba
-
-`modificarPersona` hacía `existente.setId(datosNuevos.getId())` antes de guardar. `datosNuevos` siempre viene de un objeto transiente recién construido (con un UUID nuevo generado en su propio constructor), así que esa línea le cambiaba el id a una entidad ya persistida. El `save()` posterior hacía un `merge()` que, al no encontrar fila con el id nuevo, insertaba una Persona duplicada en vez de actualizar la original.
-
-### Qué se hizo
-
-Se borró la línea `existente.setId(datosNuevos.getId())`. El id de una Persona ya no se reasigna en un update.
-
-### Cómo se verificó
-
-Revisado manualmente que la línea fue eliminada y que no queda ningún otro punto de `modificarPersona` que toque `existente.setId(...)`.
-
----
-
-### 13. Punto 14 — Las propuestas se numeraban desde 1 pero se leían desde 0
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `models/gestores/GestorMatchmaking.java`
-
-### Qué pasaba
-
-El ranking expuesto al front es 1-based (`extraerRanking`/`obtenerInterseccion` setean `posicion` entre 1 y N), pero `GestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion` indexaba la lista con `.get(posicion)` (0-based). Aprobar "la propuesta 1" de la pantalla terminaba asignando la segunda, y la última propuesta de la lista se rechazaba como "inválida" aunque fuera válida.
-
-### Qué se hizo
-
-La validación de rango se cambió a `posicion < 1 || posicion > size` (antes `posicion < 0 || posicion >= size`), y el acceso a la lista pasó de `.get(posicion)` a `.get(posicion - 1)`. El contrato quedó fijado como 1-based de punta a punta: así lo setean los algoritmos y así lo lee este método.
-
-### Cómo se verificó
-
-Revisado manualmente que el rango de validación y el índice usado en `.get()` son consistentes entre sí (1-based) y con `PropuestaAsignacionDTO.posicion`, que es lo que ve el front.
-
----
-
-### 14. Punto 15 — El score de compatibilidad medía contra el histórico, no contra el período
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/CompatibilidadSemantica.java`, `models/entities/Necesidades/Necesidad.java`, `models/entities/Necesidades/NecesidadRecurrente.java`
-
-### Qué pasaba
-
-`CompatibilidadSemantica.calcularScore` calculaba `cantidadFaltante` contra `necesidad.cantidadRecibida()` (histórico completo), pero `esCompatibleCon`/`estaSatisfecha()` decide la compatibilidad de una `NecesidadRecurrente` contra `cantidadRecibidaEnPeriodo()` (con ventana temporal). Una necesidad recurrente ya llenada en el pasado y vencida quedaba "compatible" (período en 0) pero con score `<= 0` (histórico ya cubierto), así que el filtro la descartaba para siempre. Además, `cantidadDonada == 0` producía una división `0.0/0` (`NaN`) que se colaba por el filtro `score <= 0` y rompía el orden del heap.
-
-### Qué se hizo
-
-Se agregó `Necesidad.cantidadFaltante()` (contra el histórico, comportamiento por defecto) y `NecesidadRecurrente` la sobrescribe contra `cantidadRecibidaEnPeriodo()`. `calcularScore` ahora llama a `necesidad.cantidadFaltante()` en vez de calcular la resta a mano, así que usa la misma ventana que decide la compatibilidad. Se agregó también una guarda explícita: si `cantidadFaltante <= 0` o `cantidadDonada <= 0`, el método devuelve `0` antes de llegar a la división, blindando el caso `NaN`.
-
-### Cómo se verificó
-
-Revisado manualmente que `calcularScore` ya no calcula la resta inline sino que delega en `cantidadFaltante()`, y que la guarda cubre los dos denominadores que podían dar 0/0. No se corrieron los algoritmos de matchmaking contra datos reales.
-
----
-
-### 15. Punto 16 — La lista de formularios del donante era `@Transient`: la inactividad nunca se avisaba
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `models/entities/donador/Donante.java`, `models/entities/Donaciones/Formulario/Formulario.java`
-
-### Qué pasaba
-
-`Donante.formularios` estaba anotado `@Transient`: nunca se cargaba desde la base, así que `DonanteService.revisarActividades` (el scheduler de inactividad) siempre veía la lista vacía y la notificación de "20 días sin donar" no se mandaba nunca. El dueño real de la relación (`Formulario.donante`) ya existía, pero el lado inverso no estaba mapeado.
-
-### Qué se hizo
-
-`Donante.formularios` pasó de `@Transient` a `@OneToMany(mappedBy = "donante")`, usando a `Formulario.donante` como dueño (ya tenía `@JoinColumn("donante_id")`), sin agregarle cascade propio. Y para evitar el NPE que el propio punto anticipaba (`revisarActividades` llamando `getFechaRealizacion()` sobre un valor nulo), el constructor de `Formulario` ahora defaultea `fechaRealizacion` a `LocalDate.now()` si viene `null`, en vez de dejarlo pasar.
-
-### Cómo se verificó
-
-Revisado manualmente que `Formulario.donante` sigue siendo el lado dueño (`@JoinColumn`) y que `Donante.formularios` solo agrega `mappedBy`, sin cascade propio. No se pudo levantar el contexto de Hibernate para confirmar el mapeo bidireccional contra el esquema real.
-
----
-
-### 16. Punto 17 — El ranking de sub-atendidos lo monopolizaba una sola entidad
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java`
-
-### Qué pasaba
-
-El desempate del `PriorityQueue` usaba una comparación estricta (`cantidadDonaciones < top10.peek().getScore()`): si la primera entidad evaluada tenía 0 donaciones, llenaba el top10 entero, y ninguna otra entidad con el mismo score (también 0) podía desplazarla, porque `0 < 0` es `false`. El resultado siempre eran las necesidades de la primera entidad que tocaba la iteración.
-
-### Qué se hizo
-
-La comparación pasó de `<` a `<=`, así que una entidad con el mismo score que el peor del top10 ahora sí puede entrar a competir por el lugar. Y se agregó un `thenComparing(p -> p.getNecesidad().getId())` al comparador del heap, para que el desempate sea determinista (por id de necesidad) y no dependa del orden en que llegan las entidades.
-
-### Cómo se verificó
-
-Revisado manualmente el comparador (`Comparator.comparingDouble(...).reversed().thenComparing(...)`) y el cambio de `<` a `<=` en la condición de reemplazo. No se ejecutó el algoritmo contra un set de entidades con scores empatados.
-
----
-
-### 17. Punto 18 — `cantidadObjetivo` sin validar cortaba el matchmaking con NullPointerException
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `dto/entidadBeneficiaria/NecesidadDTO.java`
-
-### Qué pasaba
-
-`NecesidadDTO.toDomain` pasaba `cantidadObjetivo` (un `Integer`, admite `null`) sin chequear nada a los constructores de `Necesidad`. El alta de una necesidad sin `cantidadObjetivo` devolvía 201 igual, y el NPE aparecía recién en el scheduler de asignación (`estaSatisfecha()` hace `int >= Integer`), cortando el lote entero (ver punto 9 de esta misma sección). `plazoEnDias` tenía el mismo problema con valores `0` o negativos.
-
-### Qué se hizo
-
-`toDomain` ahora valida al principio: tira `IllegalArgumentException` si `cantidadObjetivo` es `null` o `<= 0`, y si `plazoEnDias` viene no nulo pero `<= 0`. El 400 sale en el alta (`POST /entidades/{id}/necesidades`), antes de que la necesidad inválida llegue a la base.
-
-### Cómo se verificó
-
-Revisado manualmente que las dos validaciones están al principio del método, antes de construir cualquier `Necesidad`, y que lanzan `IllegalArgumentException` (mapeada a 400 por `GlobalExceptionHandler`, ver punto 20 de esta sección).
-
----
-
-### 18. Punto 19 — Borrar el medio de contacto predeterminado lo dejaba colgando
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `models/entities/Mensaje/MedioDeContacto/MediosDeContacto.java`
-
-### Qué pasaba
-
-`eliminarMedioDeContacto` solo hacía `listaMediosDeContacto.remove(medio)`. Con `orphanRemoval = true` en esa lista, Hibernate borraba la fila en el flush, pero `medioDeContactoPredeterminado` (que no es dueño de la relación) seguía apuntando a ese id: violación de FK o, en el mejor caso, un predeterminado que apunta a una fila inexistente.
-
-### Qué se hizo
-
-Antes de sacar el medio de la lista, si coincide con `medioDeContactoPredeterminado`, se promueve a predeterminado el primero de los que quedan (o se deja `null` si no queda ninguno). Se aplicó tanto en `eliminarMedioDeContacto` como en `eliminarMediosDeContacto` (la versión que borra varios a la vez).
-
-### Cómo se verificó
-
-Revisado manualmente que la promoción ocurre antes del `.remove()`/`.removeAll()` en los dos métodos, y que cubre el caso de lista vacía (`ifPresentOrElse` con el `else` seteando `null`).
-
----
-
-### 19. Punto 20 — Los eventos de logística no se aislaban dentro de una ruta
-
-**Estado:** mitigado (parcial)
-**Severidad:** media
-**Archivo:** `models/gestores/GestorEventosLogistica.java`
-
-### Qué pasaba
-
-`manejarInicioRuta` envolvía el `for` de items **entero** en un único try/catch: un solo item con un UUID malformado, o una donación sin entidad asignada (NPE), abortaba el procesamiento del resto de las donaciones de esa ruta.
-
-### Qué se hizo
-
-El try/catch se movió adentro del loop: ahora cada item de `payload.getItems()` se procesa en su propio try/catch, así que un item roto solo descarta ese item (con un log) y el resto de la ruta sigue. El parseo del payload (`objectMapper.readValue`) también se separó a su propio try/catch, antes de entrar al loop.
-
-**Lo que sigue sin resolver:** los otros tres manejadores que señalaba el punto (`manejarEntregaConfirmada`, `manejarEntregaFallida`, `manejarReingresoDeposito`) siguen llamando `UUID.fromString(evento.getReferenciaId())` sin ninguna protección propia, y la dead-letter queue que proponía la sección "Propuesta" no se implementó. Lo que evita que esto bloquee la cola para siempre es un mecanismo preexistente y no tocado en este diff: `EventosListener.recibirEvento` ya envuelve toda la llamada a `procesarEvento` en un try/catch de `RuntimeException` que loguea y descarta el evento en vez de dejar que la excepción se propague y el broker reintente indefinidamente. Ese comportamiento no formaba parte del planteo original del punto 20 ni de este batch de cambios.
-
-### Cómo se verificó
-
-Revisado manualmente que el try/catch de `manejarInicioRuta` quedó dentro del `for`, con su propio log por item, y que `EventosListener.recibirEvento` efectivamente atrapa `RuntimeException` alrededor de `procesarEvento`. No se verificó contra un broker real con un item de UUID inválido en el medio de una lista.
-
----
-
-### 20. Punto 21 — Los controllers respondían 404 ante cualquier `RuntimeException`
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `controllers/DonacionController.java`, `exceptions/GlobalExceptionHandler.java`, `services/DonacionService.java`, `models/gestores/GestorAsignaciones.java`
-
-### Qué pasaba
-
-`obtenerDonacion`, `actualizarDonacion`, `cambiarEstado` y `marcarComoVencida` atajaban cualquier `RuntimeException` (NPE incluido) y devolvían 404, escondiendo el diagnóstico real de los puntos 5, 7, 11 y 14 de este backlog.
-
-### Qué se hizo
-
-Se sacaron los cuatro bloques `try { ... } catch (RuntimeException e) { return ResponseEntity.notFound().build(); }` de `DonacionController`. A cambio, `GlobalExceptionHandler` ahora mapea por tipo: se agregaron `@ExceptionHandler` para `EntityNotFoundException` (404), `DataIntegrityViolationException` (409) y `MethodArgumentNotValidException` (400, con el detalle de cada campo que falló). Para que el 404 real siga funcionando, `DonacionService.obtenerPorId`/`actualizarDonacion` y `GestorAsignaciones.cambiarEstado` pasaron de tirar `RuntimeException`/`IllegalArgumentException` genérica a tirar `jakarta.persistence.EntityNotFoundException` cuando el recurso no existe.
-
-### Cómo se verificó
-
-Revisado manualmente que ninguno de los cuatro endpoints de `DonacionController` sigue envolviendo la llamada al service en un catch de `RuntimeException`, y que los tres `@ExceptionHandler` nuevos están registrados en `GlobalExceptionHandler` junto con el catch-all de `Exception` (que ahora loguea con `log.error` en vez de `printStackTrace()`).
-
----
-
-### 21. Punto 22 — No había Bean Validation: entraban cantidades negativas como `Bien.peso`
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `pom.xml`, `dto/personaDonante/FormularioRequestDTO.java`, `dto/donaciones/BienResumenDTO.java`, `controllers/DonacionController.java`
-
-### Qué pasaba
-
-Un `grep` de anotaciones de Bean Validation en `src/main` no devolvía nada útil: los DTOs de entrada no exigían `idDonante`, `fechaRealizacion`, `tipoBien`, ni que `cantidad` fuera positiva. Un `cantidad: -50` se guardaba tal cual en `Bien.peso` y envenenaba en silencio los cálculos de `CompatibilidadSemantica`/`Necesidad.cantidadRecibida()`.
-
-### Qué se hizo
-
-Se agregó la dependencia `spring-boot-starter-validation` al `pom.xml` (no estaba declarada, pese a que ya se usaba `jakarta.validation` suelto en otro punto). `FormularioRequestDTO` ganó `@NotNull` en `idDonante` y `@Valid` en la lista de `bienes` (para que las anotaciones de `BienResumenDTO` se evalúen en cascada). `BienResumenDTO` ganó `@Positive` en `cantidad` y `@NotBlank` en `tipoBien`. Y `DonacionController.crearDonacion` agregó `@Valid` al `@RequestBody`, que es lo que dispara la validación y, si falla, cae en el nuevo handler de `MethodArgumentNotValidException` (ver punto 20 de esta sección).
-
-### Cómo se verificó
-
-Revisado manualmente que la cadena `@Valid` está completa: controller → `FormularioRequestDTO` → `@Valid List<BienResumenDTO>` → anotaciones del DTO interno. Las validaciones de `Humana.edad` que también mencionaba este punto no se tocaron (siguen sin Bean Validation); las de `plazoEnDias`/`cantidadObjetivo` se resolvieron por otro lado (ver punto 17 de esta sección).
-
----
-
-### 22. Punto 23 — La segmentación no incluía la unidad de medida y sumaba kilos con litros
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java`
-
-### Qué pasaba
-
-`generarClaveSegmentacion` armaba la clave con subcategoría, vencimiento y usado/nuevo, pero no con `unidadUtilizada`. Un formulario con "10 kilos de arroz" y "5 litros de aceite" de la misma subcategoría caía en el mismo grupo, y `Donacion.sumaCantidadBienes()` los sumaba como si fueran la misma unidad.
-
-### Qué se hizo
-
-La clave ahora incluye la unidad: `bien.getSubcategoria().getNombre() + "-" + (unidadUtilizada != null ? unidadUtilizada.name() : "SIN_UNIDAD")`. Con eso, dos bienes de la misma subcategoría pero distinta unidad caen en segmentos (y por lo tanto Donaciones) distintos.
-
-### Cómo se verificó
-
-Revisado manualmente que la clave de segmentación concatena la unidad antes de los demás componentes (vencimiento/usado), y que el caso `unidadUtilizada == null` no rompe la concatenación (cae en el literal `"SIN_UNIDAD"`).
-
----
-
-### 23. Punto 24 — El PUT de donación dejaba los bienes anteriores huérfanos
-
-**Estado:** mitigado (la causa de fondo sigue sin resolverse)
-**Severidad:** baja
-**Archivo:** `services/DonacionService.java`
-
-### Qué pasaba
-
-`Donacion.bienes` es un `@OneToMany` unidireccional sin `orphanRemoval`. `actualizarDonacion` reemplazaba la colección entera con `existente.setBienes(...)`: los bienes que quedaban afuera de la lista nueva no se borraban, solo se desasociaban (`donacion_id = NULL`) y quedaban vivos como filas huérfanas en la tabla `bien`. Encima, el PUT no validaba el estado de la donación: se podía reescribir el contenido de una donación ya `ENTREGADA`.
-
-### Qué se hizo
-
-De las dos opciones que proponía el punto (`orphanRemoval = true` en `Donacion.bienes`, o un diff explícito de la lista en el servicio), **ninguna de las dos se implementó**; el propio comentario agregado en el diff lo deja explícito ("los bienes que la lista deja afuera no se borran"). Lo que sí se hizo fue la otra mitad de la propuesta: `actualizarDonacion` ahora rechaza con `IllegalArgumentException` cualquier intento de modificar los bienes de una donación que no esté en estado `EN_DEPOSITO`. Esto no borra las filas huérfanas que ya puedan existir ni evita que se sigan generando al editar una donación que todavía está en depósito, pero acota el daño: ya no se puede desincronizar el conteo de una donación `ASIGNADA`/`ENTREGADA` editándole los bienes por este endpoint.
-
-### Cómo se verificó
-
-Revisado manualmente que la guarda de estado está antes de `resolverBienes`/`setBienes`, y que `Donacion.bienes` sigue sin `orphanRemoval` (no se tocó la entidad): el problema de filas huérfanas al editar una donación en depósito queda abierto.
-
----
-
-### 24. Punto 25 — La importación CSV se tragaba los errores y no decía cuántos entraron
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `controllers/DonanteController.java`, `services/DonanteService.java`, `models/entities/lector/Lector.java`, `models/entities/lector/csv/LectorCSV.java`, `dto/personaDonante/ReporteImportacionDTO.java` (nuevo), `models/entities/lector/ResultadoLectura.java` (nuevo)
-
-### Qué pasaba
-
-`importarDonantes` corría dentro de un `CompletableFuture.runAsync` sobre el `ForkJoinPool.commonPool()`, con `catch (Exception ignored) {}` por cada donante y `catch (IOException ignored) {}` para el archivo completo. El endpoint devolvía siempre `202 "Importación en segundo plano iniciada."`, sin contador ni forma de saber después cuántos entraron o por qué fallaron los demás.
-
-### Qué se hizo
-
-`Lector<T>.importar` cambió su firma de `List<T>` a la nueva clase `ResultadoLectura<T>` (elementos, errores con número de línea, y total de filas), y `LectorCSV` acumula esos errores en vez de solo logearlos y perderlos. `DonanteService.importarDonantes` ahora genera un `UUID` de importación, lo guarda `EN_PROGRESO` en un `Map<UUID, ReporteImportacionDTO>` en memoria, y despacha el trabajo a un `ExecutorService` propio (`Executors.newFixedThreadPool(2)`) en vez del common pool. `DonanteController` expone `GET /personas/importar/{importId}` para consultar el reporte (`ReporteImportacionDTO`, nuevo), con el conteo de filas totales, exitosos, fallidos y hasta 50 mensajes de error.
-
-### Cómo se verificó
-
-Revisado manualmente la cadena completa: `LectorCSV.procesarYGuardarFila` agrega a `errores` en vez de solo logear; `ResultadoLectura` expone `getTotalFilas()/getErrores()/getElementos()`; `DonanteService.procesarImportacion` acumula también los fallos de `crearPersona` (no solo los de parseo CSV) en el mismo reporte. No se probó subiendo un CSV real contra el servicio levantado.
-
----
-
-### 25. Punto 26 — El PUT de necesidad ignoraba el id de entidad y casteaba a ciegas
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `controllers/EntidadBeneficiariaController.java`, `services/EntidadBeneficiariaService.java`, `models/repositories/repos/RepositorioNecesidades.java`
-
-### Qué pasaba
-
-`EntidadBeneficiariaService.actualizarNecesidad` recibía el `id` de la entidad del path pero nunca lo usaba: `PUT /entidades/{A}/necesidades/{necesidadDeB}` modificaba la necesidad de B igual, con 200. Y `RepositorioNecesidades.modificarNecesidad` chequeaba el tipo del objeto **nuevo** (`datosNuevos instanceof NecesidadRecurrente`) pero casteaba el **existente**: si el PUT cambiaba el tipo de la necesidad, el cast explícito tiraba `ClassCastException` (500).
-
-### Qué se hizo
-
-`actualizarNecesidad` ahora recibe `(UUID idEntidad, UUID idNecesidad, NecesidadDTO dto)`. Busca la entidad por `idEntidad`, y si la necesidad no está en `entidad.buscarNecesidadPorId(idNecesidad)`, tira `IllegalArgumentException` (la necesidad no pertenece a esa entidad). El controller (`EntidadBeneficiariaController.actualizarNecesidad`) se actualizó para pasar los dos ids. En `RepositorioNecesidades.modificarNecesidad` se agregó una validación explícita: si `existente.getClass()` no coincide con `datosNuevos.getClass()`, se rechaza el cambio de tipo con `IllegalArgumentException` (400) antes de llegar al cast; y el cast que queda ahora chequea el tipo de `existente` (con pattern-matching `instanceof NecesidadRecurrente existenteRecurrente`), no el de `datosNuevos`.
-
-### Cómo se verificó
-
-Revisado manualmente que `actualizarNecesidad` valida pertenencia antes de llamar a `modificarNecesidad`, y que la nueva guarda de tipo en `RepositorioNecesidades` está antes del cast que antes podía tirar `ClassCastException`.
-
----
-
-### 26. Punto 27 — La integración con logística va por broker, pero el contrato seguía dependiendo de DTOs duplicados a mano
-
-**Estado:** mitigado (la propuesta principal, un `common-lib` compartido, quedó fuera de alcance)
-**Severidad:** media
-**Archivo (nuevo):** `src/test/java/ar/edu/utn/frba/ddsi/donaciones/dto/logistica/entrega/EntregaDTOContractTest.java`
-
-### Qué pasaba
-
-El contrato de integración con logística son DTOs copiados a mano en los dos módulos (`EntregaDTO`, `BienDTO`, `DireccionDTO`), sin nada que avise si uno de los dos lados renombra o agrega un campo: el mensaje se publica, llega al broker, y el consumidor falla con `Failed to convert message`/`MessageConversionException`, sin decir cuál de los dos lados se desalineó. La propuesta completa (un `common-lib` compartido) requiere reconectar al build un módulo que hoy está desconectado (ver punto 4 de este backlog), y quedó fuera de alcance de esta tanda.
-
-### Qué se hizo
-
-Se implementó la **alternativa barata** que la propia propuesta dejaba planteada: un test de contrato (`EntregaDTOContractTest`) que serializa un `EntregaDTO` armado con los DTOs reales de `donaciones-service` (`BienDTO`, `DireccionDTO`) y verifica, sobre el JSON resultante, que los campos que logística espera (`donacionResumen.idsDonaciones`, `donacionResumen.bienes[].cantidad`/`unidadDeMedida`, `entidadBeneficiaria.calleUno`/`ciudad`/`provincia`/`pais`) existen y no son `null`. No lee el módulo de logística (no hay forma, sin el `common-lib`): fija la forma que **este lado** publica, para que un rename o un campo borrado de `donaciones-service` falle en este test en vez de en el primer incidente de integración.
-
-**Descubierto pero NO corregido (fuera de alcance):** al escribir este test se encontró que el `DireccionDTO` de `logisticas-service` (`logisticas-service/src/main/java/.../dto/entrega/DireccionDTO.java`) tiene un campo `idEntidad` (`UUID`, con constructor de 9 parámetros) sin equivalente en el `DireccionDTO` compartido de `donaciones-service` (`dto/DireccionDTO.java`, 8 campos, sin `idEntidad`). Hoy no rompe nada porque Jackson simplemente deja ese campo en `null` del lado de logística y nada lo exige todavía, pero es exactamente el tipo de desalineación silenciosa que describe este punto. No se modificó ningún archivo por esto: queda señalado para quien retome el punto 27 completo.
-
-### Cómo se verificó
-
-Revisado manualmente el JSON que produce `ObjectMapper.writeValueAsString(entrega)` contra los nombres de campo del lado de logística (inspeccionando los archivos de `logisticas-service` directamente, no ejecutando el otro servicio). El test en sí no se pudo correr (`mvn test`) en este entorno por no tener Maven instalado, así que sus aserciones no se ejecutaron, solo se revisaron por lectura.
-
----
-
-### 27. Punto 28 — `BienDTO` mezclaba el mensaje de integración con el modelo de logística
-
-**Estado:** corregido
-**Severidad:** baja
-**Archivo:** `dto/logistica/entrega/BienDTO.java`
-
-### Qué pasaba
-
-`BienDTO`, en el paquete `logistica.entrega` de `donaciones-service`, tenía siete campos: dos que `donaciones-service` efectivamente publica (`cantidad`, `unidadDeMedida`) y cinco del dominio de logística (`estado`, `fechaCambioEstado`, `fotoComprobante`, `entidadDestino`, `eventos`), completados solo por logística al procesar. Existía un constructor de 7 parámetros que `donaciones-service` nunca invocaba (siempre mandaba esos cinco en `null`), señal de que la clase servía para dos formas distintas.
-
-### Qué se hizo
-
-Se borraron los cinco campos de logística y el constructor de 7 parámetros (junto con los imports de `DireccionDTO`, `EventoLogisticaDTO` y `List` que solo existían para ese constructor). `BienDTO` quedó con los dos campos que `donaciones-service` realmente publica y un único constructor de 2 parámetros. El javadoc de la clase se reescribió para aclarar que logística mantiene su propio `BienDTO` con los campos adicionales, y que esta clase modela solo la mitad del mensaje que le corresponde a este servicio.
-
-### Cómo se verificó
-
-Revisado manualmente que no queda ningún caller en `donaciones-service` que invoque el constructor de 7 parámetros que se borró (el único uso de `BienDTO` en el flujo de integración construye el mensaje con cantidad/unidad). No se corrió el flujo de punta a punta contra logística.
-
----
-
-### 28. Punto 29 — `POST /donaciones/formulario` devolvía 400 sin decir por qué
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `exceptions/GlobalExceptionHandler.java`, `dto/personaDonante/FormularioRequestDTO.java`, `dto/donaciones/BienResumenDTO.java`, `controllers/DonacionController.java`
-
-### Qué pasaba
-
-`POST /donaciones/formulario` devolvía `400` con el cuerpo vacío y sin ninguna línea en el log del servidor. El propio punto señalaba como causa que `GlobalExceptionHandler` no logueaba nada en el handler de `IllegalArgumentException`, y que no había validación explícita del body con `@Valid`.
-
-### Qué se hizo
-
-No hubo un cambio dedicado a este endpoint por separado: quedó resuelto como consecuencia de los puntos 20 y 21 de esta sección, que tocan los mismos archivos. `GlobalExceptionHandler.manejarIllegalArgumentException` ahora hace `log.warn(..., ex)` antes de devolver el 400 (deja rastro en el log del servidor). El nuevo `@ExceptionHandler(MethodArgumentNotValidException.class)` devuelve en el cuerpo un mensaje por cada campo que falló la validación (`campo: mensaje`), en vez de un 400 mudo. Y `DonacionController.crearDonacion` junto con las anotaciones de `FormularioRequestDTO`/`BienResumenDTO` (punto 21 de esta sección) hacen que un body incompleto dispare esa validación en vez de llegar a una excepción más adentro sin diagnóstico.
-
-### Cómo se verificó
-
-Revisado manualmente que `manejarIllegalArgumentException` y el nuevo handler de `MethodArgumentNotValidException` logean antes de construir la respuesta, y que los dos devuelven el mensaje en el cuerpo (`ErrorResponseDTO`). La nota del planteo original de que "el `GlobalExceptionHandler` de este servicio está comentado entero" no corresponde al estado actual del archivo (está activo, con cinco `@ExceptionHandler`); probablemente describía un estado anterior del código. No se reprodujo el `POST` con un body incompleto contra un servicio levantado.
+Un bullet por arreglo; el número es el ID estable del punto original («sin ID» = arreglos de integración que no tenían punto propio). Los residuales que siguen abiertos quedan anotados en el bullet.
+
+- **33.** La importación CSV dejaba a los donantes sin medio predeterminado — el converter marca el primero si ninguno viene marcado.
+- **32.** La importación CSV ignoraba el casing de encabezados/mapeos — claves canónicas `trim().toLowerCase()`.
+- **31.** Logística registraba un solo bien por donación — el mensaje agrega cantidades por unidad con el id repetido.
+- **30.** El payload a incentivos no cumplía el contrato — se agregó `idDonacion` y `fechaEntrega` como `LocalDateTime`.
+- **29.** `POST /donaciones/formulario` devolvía 400 sin motivo — handler que loguea y devuelve el mensaje.
+- **28.** `BienDTO` mezclaba el mensaje con el modelo de logística — queda con `cantidad`/`unidadDeMedida`.
+- **27.** El contrato con logística dependía de DTOs a mano — `idEntidad` y tamaños alineados + test de contrato; los DTOs siguen duplicados a mano (documentado, no corregido).
+- **26.** El PUT de necesidad ignoraba el id de entidad y casteaba a ciegas — valida pertenencia y rechaza el cambio de tipo.
+- **25.** La importación CSV se tragaba los errores sin conteos — `ResultadoLectura` + `ReporteImportacionDTO` + `GET /personas/importar/{id}`.
+- **24.** El PUT de donación dejaba bienes huérfanos — mitigado: solo se editan bienes en `EN_DEPOSITO` (las filas huérfanas siguen).
+- **23.** La segmentación sumaba kilos con litros — la unidad de medida entró en la clave de segmentación.
+- **22.** No había Bean Validation — starter + `@NotNull/@Positive/@NotBlank` y handler de validación de body; `Humana.edad` sigue sin validar.
+- **21.** Los controllers devolvían 404 ante cualquier `RuntimeException` — handlers por tipo (400/404/409).
+- **20.** Los eventos de logística no se aislaban dentro de una ruta — try/catch por item; los otros tres manejadores y la DLQ siguen pendientes (ver punto 45).
+- **19.** Borrar el medio predeterminado lo dejaba colgando — se promueve otro antes de remover (por el camino de la API la comparación por identidad lo anula: ver punto 48).
+- **18.** `cantidadObjetivo`/`plazoEnDias` sin validar cortaban el matchmaking — se validan en `NecesidadDTO.toDomain`.
+- **17.** El ranking de sub-atendidos lo monopolizaba una entidad — desempate `<=` + orden determinista por id.
+- **16.** La lista de formularios era `@Transient` — `@OneToMany(mappedBy)` + default de fecha; el scheduler sigue roto (ver punto 44).
+- **15.** El score de compatibilidad medía contra el histórico — `cantidadFaltante()` con ventana del período + guarda de `NaN`.
+- **14.** Las propuestas se numeraban 1-based y se leían 0-based — contrato 1-based de punta a punta.
+- **13.** El PUT de donante cambiaba el `@Id` — se eliminó el `setId`.
+- **12.** `CascadeType.ALL` en las necesidades borraba de más — bajado a `{PERSIST, MERGE}`.
+- **11.** Guardar el estado antes de notificar dejaba el cambio persistido — acciones antes del `save` + guardas de nulidad.
+- **10.** `fechaEntrega` nunca se persistía — se setea al pasar a `ENTREGADO` en `actualizarEstado`.
+- **9.** Un fallo en una donación cortaba el lote de matchmaking — try/catch por donación y resultado guardado antes del cambio de estado.
+- **8.** No había transacciones — `@Transactional(rollbackFor)` en `DonacionService`; los demás services siguen afuera (ver punto 51).
+- **7.** Un bien sin `tipoBien` reventaba la segmentación — excepción con el índice del item.
+- **6.** Una estrategia de notificación no era bean — `@Component` + chequeo de la fábrica al arrancar contra el enum.
+- **5.** `PATCH /vencer` mandaba "VENCIDA" y el parser conoce "VENCIDO" — corregido el string (el parser sigue aceptando strings).
+- **Clientes (sin ID).** Apuntaban a la raíz de los servicios — rutas reales (`POST /api/perfiles`, `PATCH /api/perfiles/donacion/{id}`) y notificaciones migradas a Rabbit.
+- **Clientes (sin ID).** Se tragaban las excepciones de salida sin log — ahora loguean y relanzan.
+- **Rabbit (sin ID).** Dos bindings ataban al exchange equivocado y usaban comodines `.#` — cada servicio declara lo suyo con la clave exacta.
+- **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
