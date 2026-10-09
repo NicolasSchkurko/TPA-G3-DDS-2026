@@ -8,10 +8,10 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Plani
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -68,8 +68,10 @@ public class PlanificadorRutasService {
             camionesDb = repoCamiones.findAll();
             itemsDb = todosLosIdsItems.stream()
                     .map(id -> repoItemEntrega.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")))
+                            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada con el ID: " + id)))
                     .toList();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e; // Se relanzan para que el Controller responda HTTP 400/422 en lugar de 500
         } catch (Exception e) {
             throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
         }

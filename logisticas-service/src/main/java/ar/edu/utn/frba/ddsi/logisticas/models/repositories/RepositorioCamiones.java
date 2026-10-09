@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import org.springframework.data.jpa.repository.JpaRepository;

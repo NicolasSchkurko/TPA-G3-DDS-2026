@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -35,8 +35,8 @@ public class GestorPublicacionEventos {
     private final ProductorEventosLogistica productorEventos;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
-                                   ObjectMapper objectMapper,
-                                   ProductorEventosLogistica productorEventos) {
+                                    ObjectMapper objectMapper,
+                                    ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
         this.objectMapper = objectMapper;
         this.productorEventos = productorEventos;
@@ -59,8 +59,6 @@ public class GestorPublicacionEventos {
 
         PayloadInicioRutaDTO payload = new PayloadInicioRutaDTO(idsDonacion, ruta.getUrlSeguimiento());
 
-        // El inicio es de la ruta, no de un ítem: un solo evento con referenciaId = idRuta, y los ids
-        // de las donaciones viajan en el payload, que es lo que consume el notificador.
         EventoLogistica evento = new EventoLogistica(
                 "INICIO_RUTA", ruta.getIdRuta().toString(), LocalDateTime.now(), null
         );
@@ -73,21 +71,29 @@ public class GestorPublicacionEventos {
     }
 
     public ItemEntrega publicarEntregaConfirmada(ItemEntrega item, Ruta ruta, String foto) {
-        if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
-            item.setFotoComprobante(foto);
-            item.getEstado().cambiarEstado(item, EstadoEntrega.ENTREGADA);
-
-            EventoLogistica evento = new EventoLogistica(
-                    "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
-            );
-            evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
-
-            guardarEventoDeItem(item, evento);
+        if (item.getEstado() != EstadoEntrega.EN_CAMINO) {
+            throw new IllegalStateException("No se puede confirmar la entrega: la donación "
+                    + item.getIdDonacion() + " no está en camino (estado actual: " + item.getEstado() + ").");
         }
+
+        item.setFotoComprobante(foto);
+        item.getEstado().cambiarEstado(item, EstadoEntrega.ENTREGADA);
+
+        EventoLogistica evento = new EventoLogistica(
+                "ENTREGA_CONFIRMADA", item.getIdDonacion().toString(), LocalDateTime.now(), null
+        );
+        evento.setPayloadJson(serializar(payloadDatosEntrega(item, ruta)));
+
+        guardarEventoDeItem(item, evento);
         return item;
     }
 
     public ItemEntrega publicarEntregaFallida(ItemEntrega item, Ruta ruta, String justificacion) {
+        if (item.getEstado() != EstadoEntrega.EN_CAMINO) {
+            throw new IllegalStateException("No se puede registrar como fallida la entrega: la donación "
+                    + item.getIdDonacion() + " no está en camino (estado actual: " + item.getEstado() + ").");
+        }
+
         item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
 
         EventoLogistica evento = new EventoLogistica(
@@ -101,6 +107,11 @@ public class GestorPublicacionEventos {
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
+        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA) {
+            throw new IllegalStateException("Solo se puede reingresar a depósito una entrega en estado NO_RECIBIDA "
+                    + "(estado actual: " + item.getEstado() + ").");
+        }
+
         item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
 
         EventoLogistica evento = new EventoLogistica(
@@ -112,18 +123,12 @@ public class GestorPublicacionEventos {
         return item;
     }
 
-    /** Persiste el evento del ítem y agenda su publicación para el commit:
-     *  el FK la escribe setear {@code evento.setItem(item)} (no un {@code add} a la lista),
-     *  y el evento se guarda antes de publicar para que el consumidor no vea un registro inexistente. */
     private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
         evento.setItem(item);
         repoEventos.save(evento);
         publicarAlCommit(evento);
     }
 
-    /** Publica después del commit: publicar dentro de la transacción dejaría el mensaje afuera
-     *  ante un rollback, y donaciones-service notificaría una entrega que nunca ocurrió.
-     *  Sin transacción activa se publica al momento. */
     private void publicarAlCommit(EventoLogistica evento) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             productorEventos.publicar(evento);
@@ -138,7 +143,6 @@ public class GestorPublicacionEventos {
 
             @Override
             public void afterCompletion(int status) {
-                // Un rollback no publica nada: el afterCommit de arriba no corre.
                 if (status != STATUS_COMMITTED) {
                     log.warn("Transacción sin commit: el evento {} no se publica", evento.getTipoEvento());
                 }

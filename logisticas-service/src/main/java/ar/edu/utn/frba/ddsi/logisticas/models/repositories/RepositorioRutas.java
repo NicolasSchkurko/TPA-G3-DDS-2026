@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas;
+package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
+
     default Optional<Ruta> findByIdDonacion(UUID idDonacion){
         return this.findAll().stream()
                 .filter(ruta -> ruta.obtenerTodosLosItems().stream()
@@ -26,11 +27,12 @@ public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
                 .findFirst();
     }
 
-    default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
-        int posicion = this.findAll().indexOf(ruta);
-        if (posicion != -1) {
-            ruta.setEstado(nuevoEstado);
-            this.findAll().set(posicion, ruta);
-        }
+    default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
+        if (chofer == null || estado == null) return Optional.empty();
+        return this.findAll().stream()
+                .filter(ruta -> ruta.getCamionAsignado() != null &&
+                        chofer.equals(ruta.getCamionAsignado().getChofer()) &&
+                        estado.equals(ruta.getEstado()))
+                .findFirst();
     }
 }

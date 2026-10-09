@@ -53,12 +53,6 @@ public class DonacionListener {
                 // intentos ni se frena la cola.
                 log.warn("Donación descartada por datos inválidos: {}", errorDeNegocio.getMessage());
                 return;
-            } catch (DataIntegrityViolationException yaRegistrada) {
-                // La carrera benigna entre dos instancias: gana una y la otra recibe el error,
-                // que es justo el estado final buscado.
-                log.info("La donación ya fue registrada por otra instancia, mensaje descartado "
-                        + "sin ir a la cola de mensajes muertos");
-                return;
             } catch (RuntimeException error) {
                 ultimoFallo = error;
                 log.warn("Falló el procesamiento de una donación (intento {} de {}): {}",

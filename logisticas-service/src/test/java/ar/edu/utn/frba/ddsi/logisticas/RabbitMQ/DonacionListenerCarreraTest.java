@@ -46,10 +46,8 @@ class DonacionListenerCarreraTest {
         DireccionDTO direccion = new DireccionDTO(UUID.randomUUID(),
                 "Calle", "100", 100, 1, "A", "CABA", "Buenos Aires", "Argentina");
 
-        EntregaDTO dto = new EntregaDTO();
-        dto.setEntidadBeneficiaria(direccion);
-        dto.setDonacionResumen(new BienesDTO(List.of(UUID.randomUUID()),
-                List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null))));
+        EntregaDTO dto = new EntregaDTO(List.of(UUID.randomUUID()),
+                List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null)), direccion);
         return dto;
     }
 

@@ -5,8 +5,8 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -67,14 +67,20 @@ public class CamionService {
   /** Borra el camión: el 404 es para lo que dice (el recurso no estaba). */
   public void delete(String patente) {
     Optional<Camion> camion = repoCamiones.findById(patente);
-    if(camion.isEmpty()){
+    if(camion.isPresent()){
+      repoCamiones.deleteById(patente);
+    }
+    else {
       throw new IllegalArgumentException("Camión no encontrado");
     }
-    repoCamiones.deleteById(patente);
   }
 
   public String cambiarDisponibilidad(String patente, Map<String, Boolean> body){
-    boolean disponible = Boolean.TRUE.equals(body.get("disponible"));
+    if (body == null || !body.containsKey("disponible") || body.get("disponible") == null) {
+      throw new IllegalArgumentException("El campo 'disponible' es obligatorio.");
+    }
+
+    boolean disponible = body.get("disponible");
 
     Camion camion = repoCamiones.findById(patente)
             .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));

@@ -6,8 +6,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,38 +23,39 @@ public class PlanificadorDeRutasScheduler {
 
   private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutasScheduler.class);
 
-  /** Sin declararla, el cron usaría la zona de la JVM: en Docker, UTC. */
   static final String ZonaPlanificacion = "America/Argentina/Buenos_Aires";
-
-  /** Límite que impone el proveedor externo por lote. */
   private static final int TAMANO_LOTE_MAXIMO = 100;
 
   private final RepositorioItemEntrega repoItemEntrega;
   private final RepositorioCamiones repoCamiones;
   private final PlanificadorDeRutas planificadorDominio;
 
-    @Autowired
+  @Autowired
   public PlanificadorDeRutasScheduler(
-      ProveedorRutasExterno proveedorExterno,
-      RepositorioItemEntrega repoItemEntrega,
-      RepositorioCamiones repoCamiones) {
-      this.planificadorDominio = new PlanificadorDeRutas();
+          ProveedorRutasExterno proveedorExterno,
+          RepositorioItemEntrega repoItemEntrega,
+          RepositorioCamiones repoCamiones) {
+    this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
     this.repoItemEntrega = repoItemEntrega;
     this.repoCamiones = repoCamiones;
-    }
+  }
 
-  /** Planifica las rutas una vez por día, a las 2 de la mañana, hora Argentina. */
   @Scheduled(cron = "0 0 2 * * ?", zone = ZonaPlanificacion)
   public void iniciarPlanificacionAutomatica() {
     List<ItemEntrega> itemsPendientes;
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
+              .filter(item -> item.getParada() == null
+                      || item.getParada().getRuta() == null
+                      || item.getParada().getRuta().getEstado() == EstadoRuta.FINALIZADA)
+              .collect(Collectors.toList());
+
       camionesDisponibles = repoCamiones.findAll().stream()
-                                               .filter(Camion::getDisponible)
-                                               .collect(Collectors.toList());
+              .filter(Camion::getDisponible)
+              .collect(Collectors.toList());
 
     } catch (Exception e) {
       log.error("No se pudo leer las donaciones pendientes ni los camiones, no se planifica hoy", e);
@@ -68,6 +70,8 @@ public class PlanificadorDeRutasScheduler {
     for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
       List<ItemEntrega> lote = itemsPendientes.subList(
               inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
+
+      // Se pasa la lista de camiones disponibles; la aislación de estado la realiza el proveedor/simulador por lote
       planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
     }
   }

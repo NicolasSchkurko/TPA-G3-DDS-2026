@@ -4,10 +4,12 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class BienDTO {
     private Integer cantidad;
     private String unidadDeMedida;

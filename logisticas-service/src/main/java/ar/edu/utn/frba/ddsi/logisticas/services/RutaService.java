@@ -20,10 +20,10 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,53 +70,61 @@ public class RutaService {
   /** Inicia la ruta del chofer: la pone EN_CURSO y avisa por el broker. */
   @Transactional
   public void iniciarRuta(UUID idChofer) {
-    Ruta rutaActual = rutaDelChofer(idChofer);
+    Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.PROGRAMADA);
 
-    repoRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
+    // 1. Cambiamos el estado de la entidad y persistimos con save()
+    rutaActual.setEstado(EstadoRuta.EN_CURSO);
+    repoRutas.save(rutaActual);
+
+    // 2. Publicamos el evento y guardamos los ítems actualizados
     List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
-    for(Parada parada : paradas) {
-        parada.getItems().forEach(repoItemEntrega::saveAndFlush);
+    for (Parada parada : paradas) {
+      parada.getItems().forEach(repoItemEntrega::saveAndFlush);
     }
   }
 
-  /** La ruta planificada o en curso del chofer. */
-  private Ruta rutaDelChofer(UUID idChofer) {
-    Chofer chofer = repoChoferes.findById(idChofer)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    return repoRutas.findByChofer(chofer)
-            .orElseThrow(() -> new IllegalStateException("No se encontró la ruta correspondiente al chofer " + idChofer));
-  }
-
+  @Transactional
   public void terminarRuta(UUID idChofer) {
-    Ruta rutaActual = rutaDelChofer(idChofer);
+    Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.EN_CURSO);
 
-    repoRutas.actualizarEstado(rutaActual, EstadoRuta.FINALIZADA);
-    for(Parada parada : rutaActual.getParadas()){
-      for(ItemEntrega item : parada.getItems()){
+    // 1. Persistencia correcta del cambio de estado a la ruta
+    rutaActual.setEstado(EstadoRuta.FINALIZADA);
+    repoRutas.save(rutaActual);
+
+    // 2. Procesamos el estado de los ítems
+    for (Parada parada : rutaActual.getParadas()) {
+      for (ItemEntrega item : parada.getItems()) {
         if (item.getEstado() != EstadoEntrega.ENTREGADA) {
           gestorPublicacionEventos.publicarReingresoDeposito(item);
         } else {
-          Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
-          if(itemEncontrado.isPresent()){
+          // Si fue entregado y existe en la BD, se elimina correctamente
+          if (repoItemEntrega.existsById(item.getIdDonacion())) {
             repoItemEntrega.deleteById(item.getIdDonacion());
-            throw new IllegalArgumentException("Entrega no encontrada");
           }
         }
       }
     }
+
+    // 3. Liberar chofer
     Chofer chofer = rutaActual.getCamionAsignado().getChofer();
     chofer.disponible();
     repoChoferes.save(chofer);
+
+    // 4. Liberar y desvincular camión
     Camion camionDeRuta = rutaActual.getCamionAsignado();
     camionDeRuta.disponible();
+    camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
+    gestorCamiones.resetearCamion(camionDeRuta);
     repoCamiones.save(camionDeRuta);
+  }
 
-    Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
-    if (camion.isPresent()) {
-      camion.get().eliminarChofer();
-      gestorCamiones.resetearCamion(camion.get());
-      throw new IllegalArgumentException("Camión no encontrado");
-    }
+  /** La ruta del chofer filtrada por su estado actual. */
+  private Ruta rutaDelChoferPorEstado(UUID idChofer, EstadoRuta estado) {
+    Chofer chofer = repoChoferes.findById(idChofer)
+            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+    return repoRutas.findByChoferYEstado(chofer, estado)
+            .orElseThrow(() -> new IllegalStateException(
+                    "No se encontró una ruta en estado " + estado + " para el chofer " + idChofer));
   }
 
   private RutasDTO convertirARutasDTO(List<Ruta> rutas){

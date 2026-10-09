@@ -1,9 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.gestores;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -21,10 +20,10 @@ public class GestorCamiones {
                 .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
 
         camionExistente.setChofer(nuevoChofer);
-        camionExistente.setCapacidadVolumen(capacidadVolumen);
-        camionExistente.setAltura(altura);
-        camionExistente.setCapacidadCarga(capacidadCarga);
-        camionExistente.setDisponible(disponible);
+        if (capacidadVolumen != null) camionExistente.setCapacidadVolumen(capacidadVolumen);
+        if (altura != null) camionExistente.setAltura(altura);
+        if (capacidadCarga != null) camionExistente.setCapacidadCarga(capacidadCarga);
+        if (disponible != null) camionExistente.setDisponible(disponible);
 
         repoCamiones.save(camionExistente);
         return camionExistente;
@@ -34,7 +33,8 @@ public class GestorCamiones {
     public void resetearCamion(Camion camion){
         Optional<Camion> camionEncontrado = repoCamiones.findById(camion.getPatente());
         if(camionEncontrado.isPresent()){
-            camionEncontrado.get().setCiudadDestinoActual(null);
+            camionEncontrado.get().eliminarChofer();
+            camionEncontrado.get().disponible();
             camionEncontrado.get().resetearCargaOcupada();
             repoCamiones.save(camionEncontrado.get());
         }

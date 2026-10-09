@@ -40,10 +40,10 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
         log.debug("Asignación simulada: {}", jsonBody);
 
         HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(URL_CALLBACK_LOCAL))
-                                         .header("Content-Type", "application/json")
-                                         .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                                         .build();
+                .uri(URI.create(URL_CALLBACK_LOCAL))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
 
         httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       } catch (Exception e) {
@@ -55,17 +55,29 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
   private Map<String, List<UUID>> procesarAgrupacion(List<ItemEntrega> lote, List<Camion> camionesDisponibles) {
     Map<String, List<UUID>> asignacion = new HashMap<>();
 
-    for (Camion camion : camionesDisponibles) {
-      asignacion.put(camion.getPatente(), new ArrayList<>());
-      camion.resetearCargaOcupada();
-    }
+    // Creamos copias locales con los campos reales de Camion para evitar data races
+    List<Camion> camionesSimulados = camionesDisponibles.stream()
+            .map(c -> {
+              Camion copia = new Camion(
+                      c.getChofer(),
+                      c.getPatente(),
+                      c.getCapacidadVolumen(),
+                      c.getAltura(),
+                      c.getCapacidadCarga(),
+                      c.getDisponible()
+              );
+              copia.resetearCargaOcupada();
+              asignacion.put(copia.getPatente(), new ArrayList<>());
+              return copia;
+            })
+            .collect(Collectors.toList());
 
     Map<String, List<ItemEntrega>> itemsPorCiudad = lote.stream()
             .collect(Collectors.groupingBy(
                     item -> item.getEntidadDestino().getDireccionDestino().getCiudad().getNombre()));
 
     itemsPorCiudad.forEach((ciudad, items) ->
-            items.forEach(item -> asignar(item, ciudad, camionesDisponibles, asignacion)));
+            items.forEach(item -> asignar(item, ciudad, camionesSimulados, asignacion)));
 
     asignacion.entrySet().removeIf(e -> e.getValue().isEmpty());
     return asignacion;

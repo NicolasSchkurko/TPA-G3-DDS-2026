@@ -44,7 +44,7 @@ public class Parada {
     @OneToMany(mappedBy = "parada")
     private List<ItemEntrega> items = new ArrayList<>();
 
-    // Se crea siempre a partir de un primer item y su dirección
+    // Se crea siempre a partir de un primer itm y su dirección
     public Parada(ItemEntrega primerItem) {
         Entidad entidad = primerItem.getEntidadDestino();
         this.entidadDestino = entidad;
@@ -54,13 +54,5 @@ public class Parada {
 
     public void agregarItem(ItemEntrega item) {
         items.add(item);
-    }
-
-    /**
-     * La entidad a la que lleva el primer item de la parada, o {@code null} si no tiene ninguno:
-     * una parada sin items es un estado válido, y {@code getFirst()} sobre lista vacía revienta.
-     */
-    public Entidad getEntidadDestino() {
-        return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
     }
 }

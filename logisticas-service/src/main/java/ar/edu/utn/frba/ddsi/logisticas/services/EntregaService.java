@@ -10,8 +10,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -74,9 +74,16 @@ public class EntregaService {
    * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
    * los getters de la entidad y entraría en ciclo al serializar.
    */
-  public BienDTO findById(UUID id) {
-    return convertirABienDTO(repoItemEntrega.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Entrega no encontrada")));
+  public EntregaDTO findById(UUID id) {
+    Optional<ItemEntrega> item = repoItemEntrega.findById(id);
+    if (item.isEmpty()){
+      throw new IllegalArgumentException("Entrega no encontrada");
+    }
+    DireccionDTO direccionDTO = new DireccionDTO(item.get().getEntidadDestino().getIdEntidadBeneficiaria(), item.get().getEntidadDestino().getDireccionDestino().getCalle1(), item.get().getEntidadDestino().getDireccionDestino().getCalle2(), item.get().getEntidadDestino().getDireccionDestino().getAltura(), item.get().getEntidadDestino().getDireccionDestino().getPiso(), item.get().getEntidadDestino().getDireccionDestino().getDepartamento(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+    List<BienDTO> bienesDTO = new ArrayList<>();
+    bienesDTO.add(new BienDTO(item.get().getCantidad(), item.get().getUnidad().toString(), item.get().getEstado().toString(), item.get().getFechaCambioEstado(), item.get().getFotoComprobante(), direccionDTO, item.get().getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
+    EntregaDTO dto = new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
+    return dto;
   }
 
   /**
@@ -101,35 +108,42 @@ public class EntregaService {
  * clave es natural sin {@code @GeneratedValue} siempre va por {@code merge()} y reescribiría la
  * fila con {@code estado = PENDIENTE}.
  */
-public void procesarPeticion(EntregaDTO request) {
-    if (request == null) return;
+  public void procesarPeticion(EntregaDTO request) {
+    if (request == null) {
+      throw new IllegalArgumentException("La petición no puede ser nula");
+    }
 
     if (request.getDonacionResumen() == null) {
-      throw new IllegalArgumentException("La peticion no trae el resumen de la donacion");
+      throw new IllegalArgumentException("La petición no trae el resumen de la donación");
     }
     if (request.getEntidadBeneficiaria() == null) {
-      throw new IllegalArgumentException("La peticion no trae la entidad beneficiaria");
+      throw new IllegalArgumentException("La petición no trae la entidad beneficiaria");
     }
 
     List<BienDTO> bienes = request.getDonacionResumen().getBienes();
     List<UUID> idsDonaciones = request.getDonacionResumen().getIdsDonaciones();
 
-    if (bienes == null || idsDonaciones == null) return;
+    if (bienes == null) {
+      throw new IllegalArgumentException("La lista de bienes de la donación no puede ser nula");
+    }
+    if (idsDonaciones == null) {
+      throw new IllegalArgumentException("La lista de IDs de donaciones no puede ser nula");
+    }
 
     if (bienes.size() != idsDonaciones.size()) {
       throw new IllegalArgumentException("La cantidad de bienes (" + bienes.size()
               + ") no coincide con la cantidad de donaciones (" + idsDonaciones.size() + ")");
     }
 
-    // El catalogo va en su propia transaccion: que dos instancias lo escriban a la vez es normal y
+    // El catálogo va en su propia transacción: que dos instancias lo escriban a la vez es normal y
     // no puede arrastrar al trabajo real.
     Entidad entidadDestino = resolverEntidad(request.getEntidadBeneficiaria());
 
-    // Los items si van en una transaccion: o se registran todos los bienes del mensaje, o
-    // ninguno. Registrar la mitad dejaria donaciones partidas.
+    // Los ítems sí van en una transacción: o se registran todos los bienes del mensaje, o
+    // ninguno. Registrar la mitad dejaría donaciones partidas.
     int[] conteo = itemsEnUnaTransaccion(bienes, idsDonaciones, entidadDestino);
 
-    log.info("Peticion procesada: {} items registrados, {} repetidos omitidos", conteo[0],
+    log.info("Petición procesada: {} ítems registrados, {} repetidos omitidos", conteo[0],
             conteo[1]);
   }
 
@@ -139,30 +153,35 @@ public void procesarPeticion(EntregaDTO request) {
  * {@code idEntidad} viene del mensaje.
  */
   private Entidad resolverEntidad(DireccionDTO dto) {
-    Direccion direccion = this.convertirDireccionDTO(dto);
-    if (direccion == null) {
-      throw new IllegalArgumentException("La entidad beneficiaria no trae direccion");
+    if (dto == null) {
+      throw new IllegalArgumentException("La entidad beneficiaria no trae dirección");
+    }
+
+    UUID idEntidad = dto.getIdEntidad();
+    if (idEntidad == null) {
+      throw new IllegalArgumentException("El ID de la entidad beneficiaria no puede ser nulo");
     }
 
     return enSuPropiaTransaccion(() -> {
-      repoPaises.save(direccion.getCiudad().getProvincia().getPais());
-      repoProvincias.save(direccion.getCiudad().getProvincia());
-      repoCiudades.save(direccion.getCiudad());
-      repoDirecciones.save(direccion);
-
-      UUID idEntidad = dto.getIdEntidad();
-
+      // 1. Verificar primero si la entidad ya existe
       Optional<Entidad> yaExistente = repoEntidades.findById(idEntidad);
       if (yaExistente.isPresent()) {
         return yaExistente.get();
       }
 
+      // 2. Solo si no existe, construir y persistir el catálogo de dirección
+      Direccion direccion = this.convertirDireccionDTO(dto);
+
+      repoPaises.save(direccion.getCiudad().getProvincia().getPais());
+      repoProvincias.save(direccion.getCiudad().getProvincia());
+      repoCiudades.save(direccion.getCiudad());
+      repoDirecciones.save(direccion);
+
       try {
         return repoEntidades.saveAndFlush(new Entidad(idEntidad, direccion));
       } catch (DataIntegrityViolationException carrera) {
-        // Otra instancia la insertó entre el findById y el save: se relee la que quedó.
-        log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente",
-                idEntidad);
+        // Otra instancia la insertó concurrentemente entre el findById y el save
+        log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente", idEntidad);
         return repoEntidades.findById(idEntidad).orElseThrow(
                 () -> new IllegalStateException(
                         "La entidad " + idEntidad + " no se pudo resolver tras una carrera", carrera));

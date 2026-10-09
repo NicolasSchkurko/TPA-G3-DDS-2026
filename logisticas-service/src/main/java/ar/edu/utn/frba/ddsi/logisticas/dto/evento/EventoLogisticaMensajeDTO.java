@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.dto.evento;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -37,8 +38,7 @@ public class EventoLogisticaMensajeDTO implements Serializable {
     /** Payload del evento, ya serializado: el receptor no comparte modelo con logística. */
     private String payloadJson;
 
-    public static EventoLogisticaMensajeDTO desde(
-            ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica e) {
+    public static EventoLogisticaMensajeDTO desde(EventoLogistica e) {
         EventoLogisticaMensajeDTO dto = new EventoLogisticaMensajeDTO();
         dto.id = e.getId();
         dto.tipoEvento = e.getTipoEvento();

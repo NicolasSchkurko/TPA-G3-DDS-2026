@@ -13,8 +13,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEntidades;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioPaises;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioProvincias;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioUnidadesDeMedida;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -104,9 +104,8 @@ class EntregaServiceIdempotenciaTest {
         DireccionDTO direccion = new DireccionDTO(ID_ENTIDAD, "Av. Corrientes", "100", 100, 1,
                 "A", "CABA", "Buenos Aires", "Argentina");
 
-        EntregaDTO dto = new EntregaDTO();
-        dto.setEntidadBeneficiaria(direccion);
-        dto.setDonacionResumen(new BienesDTO(idsDonaciones, bienes));
+        EntregaDTO dto = new EntregaDTO(List.of(UUID.randomUUID()),
+                List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null)), direccion);
         return dto;
     }
 
