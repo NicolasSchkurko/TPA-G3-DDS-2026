@@ -13,9 +13,11 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | # | Punto | Por qué está acá |
 |---|---|---|
 | 1 | 3 | Terminar una ruta borra un ítem y después tira excepción: corta el recorrido y deja chofer y camión bloqueados |
-| 2 | 2 | Iniciar o terminar una ruta nunca persiste el estado: la operación responde OK y no pasa nada |
+| 2 | 2 | El estado de la ruta se persiste por efecto colateral de OSIV: con OSIV apagado, iniciar y terminar no guardan nada |
 | 3 | 4 | La condición del camión está invertida: el caso normal responde "Camión no encontrado" |
 | 6 | 26 | Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual |
+| 38 | 46 | Los lotes comparten la lista de camiones: un camión queda en dos rutas del mismo día y por encima de su capacidad |
+| 39 | 47 | Dos callbacks concurrentes eligen el mismo chofer: una persona en dos camiones y un 500 |
 | 8 | 27 | `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada |
 | 9 | 8 | Confirmar una entrega que no está en camino se ignora en silencio y responde 200 |
 | 10 | 9 | Reportar una entrega fallida no valida el estado previo: una entrega_ok se puede revertir |
@@ -23,6 +25,7 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 13 | 29 | Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta |
 | 14 | 30 | `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null |
 | 15 | 32 | Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ |
+| 40 | 48 | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
 | 20 | 35 | Cada mensaje inserta país, provincia, ciudad y dirección nuevos aunque la entidad ya exista |
 | 21 | 31 | El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio |
 | 23 | 34 | `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas |
@@ -33,9 +36,16 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 28 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
 | 29 | 38 | Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long` |
 | 31 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
+| 32 | 44 | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
+| 33 | 43 | El manejo de errores está repetido en cada controller: el mismo error da 404 en un método y 400 en otro |
+| 34 | 40 | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
+| 35 | 41 | Los repositorios conviven en dos esquemas distintos, sin un criterio que los separe |
+| 36 | 42 | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
+| 37 | 45 | El callback del proveedor externo está fijado a `localhost:8086`: si el puerto cambia o el proveedor es real, el resultado no vuelve |
+| 41 | 49 | Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems |
 ---
 
-## 2. Iniciar o terminar una ruta nunca persiste el estado
+## 2. El estado de la ruta se persiste por efecto colateral de OSIV
 
 **Estado:** abierto
 **Severidad:** alta
@@ -55,27 +65,41 @@ default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
 }
 ```
 
-Son tres fallas encimadas en tres líneas:
+Tiene tres defectos:
 
-1. `this.findAll()` devuelve una `List` **nueva** en cada llamada. El `indexOf` mide contra una
-   lista y el `set` escribe sobre otra distinta. El `set` no toca la lista que se indexó, así
-   que aunque el `if` entre, el efecto es tirar la lista a la basura.
-2. `indexOf` usa `equals`, y `Ruta` no overridea `equals`, así que compara identidad. La
-   `ruta` que le pasa `RutaService` viene de `findByChofer`, que a su vez la saca de **otro**
-   `findAll()`. Son instancias distintas, `indexOf` devuelve `-1` y el `if` nunca entra.
-3. No hay `save()`. La lista devuelta por `findAll()` de Spring Data es de entidades
-   **detached**: la transacción read-only que abrió el repositorio ya se cerró cuando el
-   método devolvió. Fuera de sesión, `ruta.setEstado(nuevoEstado)` muta un objeto Java que
-   JDBC nunca ve.
+1. `this.findAll()` devuelve una `List` **nueva** en cada llamada: el `indexOf` mide contra una
+   lista y el `set` escribe sobre otra. El `set` es tirar la lista a la basura.
+2. `indexOf` usa `equals`, y `Ruta` no lo overridea, así que compara identidad.
+3. No hay `save()` ni `@Transactional`.
 
-El resultado en `RutaService.iniciarRuta:86` y `terminarRuta:97`: el endpoint devuelve 200 con
-"Ruta iniciada correctamente", se publica el evento `INICIO_RUTA`, pero la fila de `ruta`
-sigue con `estado = 'PROGRAMADA'` para siempre. Tampoco hay ningún `@Transactional` en ningún
-servicio del módulo, así que la lectura-modificación-escritura ocurre en transacciones
-separadas por cada llamada a repositorio.
+**Verificado en vivo el 2026-10-09: el síntoma no se reproduce.** Con el servicio corriendo
+contra una base real, `PATCH /rutas/chofer/{id}/iniciar` dejó la fila en `EN_CURSO` y con
+`url_seguimiento` escrita, y `PATCH .../terminar` la dejó en `FINALIZADA`. Ninguna de las dos se
+quedó en `PROGRAMADA`.
 
-Lo mismo invalida `urlSeguimiento`: `GestorPublicacionEventos.publicarInicioRuta:44` lo setea
-sobre la misma entidad detached y nunca se guarda.
+El motivo es `spring.jpa.open-in-view`, que está **encendido por defecto** y Spring avisa al
+arrancar que conviene apagarlo. Con OSIV hay un `EntityManager` abierto durante todo el request,
+así que los dos `findAll()` comparten el persistence context y devuelven **las mismas
+instancias**: el `indexOf` encuentra la ruta y el `setEstado` corre sobre una entidad gestionada.
+El `UPDATE` sale cuando otra llamada a repositorio hace flush —el `save` del chofer o del camión
+que vienen después—, pero sale.
+
+El punto queda vivo igual, por dos razones:
+
+- **Depende de OSIV.** Apagarlo, que es lo que Spring recomienda, vuelve el síntoma real: las
+  entidades quedan detached, `indexOf` devuelve `-1` y el estado no se guarda nunca.
+- **Depende del orden.** El estado se escribe solo si después de la mutación hay otra llamada a
+  repositorio que haga flush. Hoy la hay en los dos caminos, pero es una casualidad del orden
+  del método, no una garantía.
+
+`iniciarRuta` tiene hoy `@Transactional` (lo agregó el arreglo del punto 28), así que ese camino
+ya no depende de OSIV. `terminarRuta` no lo tiene.
+
+La misma dependencia aparece en `terminarRuta`: los ítems no entregados se mutan a `PENDIENTE`
+con `publicarReingresoDeposito` y nadie los guarda. Lo único que los persiste es el flush que
+dispara el `save` del evento de ese método, que va en su propia transacción. Con OSIV apagado
+el evento de reingreso queda guardado pero el ítem sigue en `NO_RECIBIDA`: la bitácora y el
+estado se contradicen.
 
 ### Propuesta
 
@@ -911,812 +935,451 @@ entidad declara. Es una línea por archivo.
 
 ---
 
+## 40. Los gestores están por entidad y mezclan reglas con persistencia
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/gestores/GestorCamiones.java`, `models/gestores/GestorPublicacionEventos.java`, `services/CamionService.java`, `services/ChoferService.java`
+
+### Qué pasa
+
+`incentivos-service` nombra sus gestores por la regla de negocio que encapsulan y sin prefijo
+—`SecuenciaCategoria`, `SincronizacionPerfiles`, `ValidadorAdmin`—, y en `SecuenciaCategoria` el
+repositorio **entra por parámetro** en vez de inyectarse: es una política sin estado, no un
+servicio con dependencias.
+
+Logística hace lo contrario:
+
+- `GestorCamiones` está nombrado por la entidad, y adentro mezcla dos comportamientos: el
+  `actualizarCamion` que persiste, y un `resetearCamion` que está bajo un `// --- MAPPERS ---`
+  aunque también escribe en la base.
+- `GestorPublicacionEventos` sí está nombrado por comportamiento, pero conserva el prefijo.
+- `ChoferService` no tiene gestor: hace la regla y la persistencia él mismo.
+- `CamionService.cambiarDisponibilidad` persiste en el service, mientras que `update` delega en
+  el gestor. La misma capa hace las dos cosas según el método.
+
+No hay una capa donde buscar una regla de negocio: está repartida entre services y gestores sin
+un criterio que diga cuál va dónde.
+
+### Propuesta
+
+Nombrar los gestores por comportamiento y sin prefijo, y que cada uno encapsule **una** regla.
+`GestorCamiones` se parte según sus dos comportamientos (actualizar el camión y resetear su
+carga), con el estilo de `SecuenciaCategoria`: repositorio por parámetro cuando la regla no
+necesita estado, y javadoc que explique la regla y sus excepciones. La capa queda
+controller → service (orquesta y mapea a DTO) → gestor (regla) → repositorio.
+
+---
+
+## 41. Los repositorios conviven en dos esquemas distintos
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/repositories/` (12 archivos)
+
+### Qué pasa
+
+Los doce repositorios están repartidos con dos criterios a la vez:
+
+- Cinco en subpaquetes por entidad: `camiones/RepositorioCamiones`,
+  `choferes/RepositorioChoferes`, `items/RepositorioItemEntrega`, `rutas/RepositorioRutas`,
+  `eventos/RepositorioEventoLogistica`.
+- Siete sueltos en la raíz de `repositories/`: `RepositorioCiudades`, `RepositorioDirecciones`,
+  `RepositorioEntidades`, `RepositorioPaises`, `RepositorioParadas`, `RepositorioProvincias`,
+  `RepositorioUnidadesDeMedida`.
+
+Nada distingue a los primeros de los segundos: los doce son interfaces de Spring Data.
+`incentivos-service` usa un criterio explícito: los Spring Data en
+`models/repositories/SpringRepositories/`, y en la raíz de `repositories/` solo lo que no es
+Spring Data (su cola en memoria `RepositorioNotificacionesPendientes`).
+
+### Propuesta
+
+Mover los doce a `models/repositories/SpringRepositories/`. Si se prefieren los subpaquetes por
+entidad, el criterio tiene que aplicarse a los doce y no a cinco.
+
+---
+
+## 42. Paquetes de primer nivel y ubicación de clientes, scheduler y eventos
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `RabbitMQ/`, `Scheduler/`, `messaging/`, `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/`, `dto/`
+
+### Qué pasa
+
+Comparado con `incentivos-service`:
+
+| Aspecto | incentivos | logística |
+|---|---|---|
+| Comunicación saliente | `clients/` (`DonacionClient`, `N8nClient`, `NotificacionClient`) | `messaging/ProductorEventosLogistica` y el proveedor HTTP anidado en `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/` |
+| Comunicación entrante | no tiene listeners propios | `RabbitMQ/` como paquete de primer nivel y capitalizado |
+| Procesos internos | `models/ServiciosInternos/` y `.../scheduler/` | `Scheduler/` de primer nivel y capitalizado |
+| Eventos | `models/events/` con records | `models/entities/EventoLogistica` (entidad) |
+| DTOs | subpaquetes en PascalCase, filtros en `controllers/request/` | subpaquetes en minúscula (`camion`, `chofer`, `entrega`, `evento`, `rutas`) |
+
+El caso más visible es el proveedor externo: un cliente HTTP —`ProveedorRutasExterno`,
+`ProveedorRutasExternoHttp`, `ProveedorRutasExternoSimulado`— vive dentro de las entidades del
+dominio, entre `PlanificadorDeRutas` y `Reglas`.
+
+### Propuesta
+
+Unificar con el criterio de incentivos: `clients/` para lo que sale del servicio (el proveedor
+externo y el publicador de eventos), `config/` para el `RabbitMQConfig`, y los procesos internos
+bajo `models/ServiciosInternos/` con su `scheduler/`. Los DTO en PascalCase y los filtros de
+listado en `controllers/request/`.
+
+---
+
+## 43. El manejo de errores está repetido en cada controller
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** los 6 controllers de `controllers/`
+
+### Qué pasa
+
+No hay `exceptions/` ni `@ExceptionHandler`: cada controller atrapa lo que le interesa con
+`try/catch` y decide el código. Como la decisión está repetida, el **mismo error sale con
+códigos distintos según dónde se atrape**:
+
+- `IllegalArgumentException` es **404** en `CamionController`, en `ChoferController` y en los
+  DELETE de `EntregaController`; **400** en `EntregaController.actualizarEstadoEntrega` y en
+  `PlanificadorDeRutasController`; y dentro del propio `RutaController` es 404 en
+  `obtenerPorId`, `update` y `eliminarRuta`, pero 400 en `iniciarRuta` y `terminarRuta`.
+- `IllegalStateException` es **400** en `EntregaController` y **422** en
+  `PlanificadorDeRutasController`.
+
+Y hay un caso más, del otro lado: `EntregaController.crearItems` atrapa `Exception` y responde
+**400** con `e.getMessage()`, así que una caída de la base se le informa al cliente como un
+error de la petición, con el texto interno adentro.
+
+`incentivos-service` tiene `exceptions/` con excepciones tipadas (`InexistenteException`,
+`ConflictoException`, `DatosInvalidosException`, `PerfilExistenteException`,
+`CategoriaBaseInexistenteException`, `EnvioNotificacionException`) y un `GlobalExceptionHandler`
+que las mapea a códigos en un solo lugar. Los puntos 36 y 37 de este backlog son dos síntomas
+concretos de esta misma causa.
+
+### Propuesta
+
+Crear `exceptions/` con excepciones tipadas por significado (no encontrado, datos inválidos,
+conflicto) y un `GlobalExceptionHandler`, y sacar los `try/catch` de los controllers.
+
+---
+
+## 44. Los listados devuelven la tabla entera: falta paginación
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `controllers/CamionController.java`, `controllers/ChoferController.java`, `controllers/EntregaController.java`, `controllers/RutaController.java`
+
+### Qué pasa
+
+Los listados no paginan: devuelven todas las filas en una sola respuesta.
+
+| Endpoint | Devuelve | Repositorio |
+|---|---|---|
+| `GET /api/camiones` | `CamionesDTO` con todos | `findAll()` |
+| `GET /api/choferes` | `ChoferesDTO` con todos | `findAll()` |
+| `GET /api/entregas` | `BienesDTO` con todos | `findAll()` |
+| `GET /api/entregas/no-recibidas` | `BienesDTO` con todos | `findByEstado(...)` |
+| `GET /api/rutas` | `RutasDTO` con todas | `findAll()` |
+
+`incentivos-service` usa la convención de Spring Data en sus listados:
+
+```java
+@GetMapping
+public ResponseEntity<Page<CategoriaDTO>> obtenerCategorias(
+        @ParameterObject @ModelAttribute CategoriaFiltroRequest filtros,
+        @ParameterObject
+        @PageableDefault(page = 0, size = 10, sort = "posicionSecuencia", direction = Sort.Direction.ASC)
+        Pageable pageable) {
+    return ResponseEntity.ok(service.obtenerCategorias(filtros, pageable));
+}
+```
+
+con los filtros como records en `controllers/request/`.
+
+**`GET /api/eventos` no entra en esto**: es polling por cursor (`desdeId`), el consumidor
+avanza con el id que ya procesó y ya lo tiene acotado. Paginarlo rompería ese contrato.
+
+### Propuesta
+
+Pasar los cinco listados a `Page<T>` con `Pageable` y `@PageableDefault`, siguiendo la
+convención de incentivos, y agregar filtros en `controllers/request/` donde tenga sentido
+(por ejemplo `disponible` en camiones y `estado` en entregas).
+
+Ojo con el contrato: hoy devuelven envoltorios propios (`CamionesDTO`, `ChoferesDTO`,
+`RutasDTO`, y `BienesDTO` con dos listas paralelas, ids y bienes). Paginar cambia la forma de
+la respuesta, así que es un cambio de contrato para el front.
+
+---
+## 45. El callback del proveedor externo está fijado a `localhost:8086`
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:23`, `.../ProveedorRutasExternoHttp.java`, `config/LogisticaConfig.java`
+
+### Qué pasa
+
+El enunciado pide la planificación "utilizando una URL de callback para procesar los resultados".
+El callback existe (`POST /api/PlanificacionRutas/callback`) y el simulador le pega, pero la URL
+está escrita como constante:
+
+```java
+private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
+```
+
+Dos consecuencias:
+
+- **Ignora el puerto configurable.** El servicio escucha en `${SERVER_PORT:8086}`; la URL no. Si
+  corre en otro puerto, el callback pega en el vacío y el lote se pierde en silencio (el `send`
+  no tiene timeout ni revisa la respuesta: punto 31).
+- **No sirve para un proveedor externo real.** El simulador corre en el mismo proceso, así que
+  `localhost` le funciona. Un componente en otra máquina necesita la URL accesible del servicio,
+  y hoy nadie se la comunica: `ProveedorRutasExternoHttp` manda `donaciones` y `camiones` y
+  ninguna URL de callback. Además nadie lo instancia: `LogisticaConfig` cablea siempre el
+  simulador, así que tampoco hay forma de configurar el proveedor.
+
+### Propuesta
+
+Sacar la URL a una property (por ejemplo `logistica.callback-url`, con default
+`http://localhost:${server.port}` para el simulador) y, si se va a soportar un proveedor externo
+real, incluirla en el pedido o dejarla configurada del lado del proveedor. El proveedor debería
+elegirse por configuración en `LogisticaConfig`, no por una constante.
+
+---
+## 46. Los lotes comparten la lista de camiones: un camión queda en dos rutas del mismo día
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `Scheduler/PlanificadorDeRutasScheduler.java:59-63`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java:28-36`, `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:55-72`, `services/PlanificadorRutasService.java:77-93`
+
+### Qué pasa
+
+El scheduler parte los pendientes en lotes de 100 por el límite del proveedor, pero **pasa la
+misma lista de camiones a todos los lotes**:
+
+```java
+for (int i = 0; i < itemsPendientes.size(); i += 100) {
+  List<ItemEntrega> lote = itemsPendientes.subList(i, Math.min(i + 100, itemsPendientes.size()));
+  planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);   // la misma lista
+}
+```
+
+Cada lote viaja al proveedor por separado, y el simulador arranca con
+`camion.resetearCargaOcupada()` sobre esos mismos `Camion`: la carga del lote anterior se
+descarta y cada lote valida capacidad **solo contra sus propios ítems**. El callback, después,
+crea una `Ruta` por cada patente que venga en la asignación sin mirar si ese camión ya tiene una
+ruta para la misma fecha.
+
+Con más de 100 pendientes —el caso para el que existe el loteo— un mismo camión puede aparecer
+en dos asignaciones y termina con **dos rutas para el mismo día**, cada una validada por
+separado. La suma no la valida nadie: la ruta planificada puede superar la capacidad del camión.
+
+No hace falta que los lotes se solapen en el tiempo: la ocupación es estado en memoria y no se
+persiste (punto 17), así que ni el segundo lote ve lo que cargó el primero.
+
+### Cómo se dispara
+
+Cargar 101 pendientes o más y correr `POST /PlanificacionRutas/planificar-manual`: salen dos
+filas en `ruta` con la misma `patente_camion` y la misma `fecha_programada`, y la carga sumada
+de las dos puede superar `capacidad_carga_kg`.
+
+### Propuesta
+
+Lotear también los camiones: que cada camión viaje en un solo lote, o que el callback vuelva a
+consultar los disponibles descontando los que ya quedaron en rutas del día. Lo segundo cubre
+además el caso de dos instancias.
+
+---
+
+## 47. Dos callbacks concurrentes eligen el mismo chofer
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `services/PlanificadorRutasService.java:104-152`, `controllers/PlanificadorDeRutasController.java:56-62`
+
+### Qué pasa
+
+`asignarChoferes` lee los disponibles, elige uno al azar y guarda en pasos separados:
+
+```java
+List<Chofer> choferesDisponibles = new ArrayList<>(repoChoferes.findAll().stream()
+        .filter(Chofer::isDisponible).toList());          // 1. lee
+...
+Chofer choferElegido = choferesDisponibles.get(random.nextInt(choferesDisponibles.size()));
+camion.setChofer(choferElegido);
+camion.ocupado(); choferElegido.ocupado();
+repoCamiones.save(camion);          // 2. escribe el camion, commit propio
+repoChoferes.save(choferElegido);   // 3. escribe el chofer, commit propio
+```
+
+No hay transacción que envuelva el método ni lock sobre los choferes, y el callback es un
+endpoint HTTP: el proveedor puede tener dos pedidos en vuelo. Eso pasa de forma normal, porque
+**el scheduler manda un lote por cada 100 pendientes y las respuestas vuelven casi juntas** (el
+simulador duerme 2 s y postea), sin contar el requisito de "más de una instancia".
+
+Con dos callbacks concurrentes:
+
+1. Los dos leen la misma lista de disponibles.
+2. Los dos eligen el mismo chofer X.
+3. Los dos guardan su camión con `id_chofer = X`: esos `save` van en transacciones separadas y
+   commitean.
+4. El primer `save` del chofer sube la `version`; el segundo choca con el `@Version`, tira
+   `OptimisticLockingFailureException` y corta el método por la mitad.
+
+Queda un chofer asignado a **dos camiones** —o sea, dos rutas del mismo día con el mismo
+chofer— más un 500 en el callback, que descarta el resto de la asignación de ese lote.
+
+### Cómo se dispara
+
+Dos callbacks que lleguen juntos (más de 100 pendientes, o dos instancias de logística): el
+chofer que eligen ambos queda en dos rutas. Con una sola instancia y menos de 100 pendientes no
+se ve.
+
+### Propuesta
+
+Elegir el chofer y el camión dentro de una misma transacción, con el chofer tomado por lock (o
+un `UPDATE ... WHERE disponible = true` y quedarse con el que ganó), y que la asignación del
+lote sea atómica. La alternativa es no asignar el chofer en el callback sino al iniciar la
+ruta, que es donde importa.
+
+---
+
+## 48. Un fallo del broker al publicar después del commit deja el 500 y pierde la notificación
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java:176-195`, `messaging/ProductorEventosLogistica.java:43-52`
+
+### Qué pasa
+
+El arreglo del punto 28 movió la publicación a `afterCommit` para que un rollback no deje el
+evento afuera. El borde que quedó es el otro: `productorEventos.publicar(evento)` corre en el
+`afterCommit` de la sincronización, y si el broker no responde —caído, reiniciando, un corte de
+red— la excepción sale por el interceptor de la transacción, que **ya commiteó**.
+
+En un `PATCH /entregas/{id}/estado` con el broker fallando en ese instante:
+
+- La entrega queda `ENTREGADA` en la base: el commit pasó.
+- El controller cae en su `catch (Exception)` y devuelve **500 con el mensaje interno**.
+- El evento quedó persistido (`repoEventos.save` corre antes), pero **no salió al broker**:
+  `donaciones-service` no se entera y no hay notificación.
+
+El cliente ve un 500 y el sistema quedó con la operación aplicada. Un reintento —el reflejo
+normal ante un 500— no republica el evento: encuentra el ítem ya en `ENTREGADA` y
+`publicarEntregaConfirmada` no hace nada (punto 8). La notificación se recupera recién por el
+camino de polling (`GET /api/eventos`), si alguien lo consulta.
+
+### Cómo se dispara
+
+Bajar el broker, o cortarle la red al servicio, justo antes de un
+`PATCH /entregas/{id}/estado`: la respuesta es 500 y en el broker no hay mensaje.
+
+### Propuesta
+
+Atrapar la excepción dentro del `afterCommit` y loguearla, en vez de dejarla propagar: el evento
+ya está en la base y el polling lo cubre, así que el 500 solo agrega confusión. Con garantía de
+entrega, un outbox con reintentos.
+
+---
+
+## 49. Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/repositories/rutas/RepositorioRutas.java:14-19`, `services/EntregaService.java:262,271`
+
+### Qué pasa
+
+```java
+default Optional<Ruta> findByIdDonacion(UUID idDonacion){
+    return this.findAll().stream()
+            .filter(ruta -> ruta.obtenerTodosLosItems().stream()
+                    .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
+            .findFirst();
+}
+```
+
+`findAll()` trae **todas** las rutas de la historia y `obtenerTodosLosItems()` recorre las
+paradas y los ítems de cada una, que siendo colecciones lazy son consultas adicionales (N+1).
+El método se llama en los dos caminos del endpoint con el que las entidades confirman o
+rechazan una entrega (`EntregaService:262` y `:271`), así que el costo crece con el historial
+completo de ruteo y lo paga la operación más frecuente del servicio.
+
+Hoy, con pocos datos, no se nota: es deuda de escalabilidad, no un fallo funcional.
+
+### Propuesta
+
+Invertir la consulta: `ItemEntrega` ya tiene la FK a su parada (`item.getParada().getRuta()`), y
+`actualizarEstado` ya cargó el ítem, así que no hace falta buscar la ruta desde las rutas. La
+alternativa es una derived query que navegue `Ruta` → `paradas` → `items` por `idDonacion`.
+
+---
+
 ## Corregidos
 
-### 1. El módulo no tiene un solo test
-
-**Estado:** corregido el 2026-10-07 en `1e75220`
-**Severidad:** alta
-**Archivos:** `logisticas-service/src/test/`
-
-`logisticas-service/src/test` no existía: el módulo era el único del proyecto sin cobertura
-y justamente el que recibió un merge sin resolver. Con `1e75220` llegaron los primeros tests,
-y no son decorativos: `EntregaServiceIdempotenciaTest` tiene 8 tests que miden la idempotencia
-del registro de donaciones, y se verificó que tienen dientes (neutralizando la guarda a
-propósito, 3 de 8 fallaron). También hay tests que levantan el contexto, que es la red que
-falta contra un JPQL mal formado o una entidad fuera de la unidad de persistencia.
-
-Lo que queda —cobertura de dominio, de la API y de los planificadores— es una mejora
-continua, no el punto crítico que era: ya existe al menos una red que corre en cada build.
-
-### 15. Registrar una donación duplica la dirección N veces
-
-**Estado:** corregido el 2026-10-07 en `1e75220`
-**Severidad:** media
-**Archivos:** `.../services/EntregaService.java`
-
-El `for` de bienes construía la dirección adentro: con una donación de 3 bienes quedaban 3
-países, 3 provincias, 3 ciudades y 3 direcciones con el mismo contenido, y el `save` de
-`Entidad` (clave natural) terminaba apuntando a la última dirección, dejando las otras dos
-huérfanas.
-
-**Qué se resolvió:** el catálogo salió del `for`: ahora `procesarPeticion` resuelve la
-entidad una sola vez por mensaje, antes de registrar los items. Junto con el `@Version` de
-esas entidades, dos instancias que lleguen a la vez reciben `OptimisticLockingFailureException`
-en vez de pisarse. Hay test que lo mide.
-
-**Residual:** la duplicación **por mensaje** sigue abierta y quedó registrada como el
-punto 35: los `save` de país/provincia/ciudad corren antes de buscar si la entidad ya existe.
-
-### 16. `procesarPeticion` no valida el payload
-
-**Estado:** corregido el 2026-10-07 en `1e75220`
-**Severidad:** media
-**Archivos:** `.../services/EntregaService.java`, `.../RabbitMQ/DonacionListener.java`
-
-El método validaba `request` y nada más: `donacionResumen` null, `entidadBeneficiaria` null,
-listas de longitudes distintas o `null` revientaban con NPE/IndexOutOfBounds a mitad de la
-escritura, y la base quedaba a medias.
-
-**Qué se resolvió:** validaciones arriba, antes de tocar la base: resumen no nulo, entidad no
-nula, `bienes`/`idsDonaciones` no nulos y de la misma longitud, unidad no nula y soportada, y
-dirección no nula en `resolverEntidad`. Todas lanzan `IllegalArgumentException`, que el
-controller traduce en 400 y el listener descarta con warning sin gastar reintentos.
-
-### 19. La validación de la justificación de una entrega fallida está invertida
-
-**Estado:** cerrado el 2026-10-07 como **falso positivo** (verificado contra el código actual)
-**Severidad:** crítica (declarada)
-**Archivo:** `.../services/EntregaService.java:334-336`
-
-El punto sostenía que `comprobarExistencia` devuelve `true` cuando el texto **sí** está
-escrito, con lo cual el `case "NO_RECIBIDA"` rechazaría las justificadas y aceptaría las que
-faltan. Verificado contra el código, la premisa es falsa:
-
-```java
-private boolean comprobarExistencia(String elemento){
-    return (elemento == null || elemento.trim().isEmpty());
-}
-```
-
-Devuelve `true` cuando el texto **falta**, o sea que
-`if (comprobarExistencia(request.getJustificacion())) throw "Se requiere justificar..."` lanza
-exactamente cuando no hay justificación, que es lo que dice el mensaje. El caso `ENTREGADA`
-(línea 298, foto) usa el mismo patrón con el mismo sentido y también es correcto.
-
-El helper tiene un nombre engañoso —comprobarExistencia devuelve true cuando **no** existe—,
-pero la lógica de los dos call-sites es la correcta y no se tocó ningún código. Comportamiento
-ya correcto desde `cb8910a`.
-
----
-
-### El módulo se commiteó con marcadores de conflicto de merge sin resolver
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivo:** `.../gestores/GestorPublicacionEventos.java`
-
-Traía los marcadores `<<<<<<< HEAD`, `=======` y `>>>>>>>` de dos ramas distintas en el mismo
-archivo, y así quedó commiteado: el módulo entero no compilaba.
-
-**Qué se resolvió:** se conservó la versión de `GestorPublicacionEventos` y se descartó la de
-`GestorEventos`, porque `EntregaService` y `RutaService` consumen la primera. Los dos métodos de
-la otra (`buscarEventos` y `guardarEvento`) no los usa nadie en el módulo.
-
-### `RepositorioCamiones` y `RepositorioChoferes` duplicados en dos paquetes
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivos:** `.../repositories/RepositorioCamiones.java`, `.../repositories/RepositorioChoferes.java`
-
-El merge dejó los mismos repositorios en el paquete plano y en subpaquete. Los consumidores
-importaban el del paquete plano, pero usaban métodos que **solo existen en la versión de
-subpaquete** (`findByChofer`, `actualizarEstado`, `findByEstado`, `findByIdDonacion`): el módulo
-no compilaba.
-
-**Qué se resolvió:** se consolidó hacia los subpaquetes, que son superconjunto, y se borraron los
-duplicados del paquete plano. Además, borrar los duplicados evita que Spring Data registre dos
-beans con el mismo nombre.
-
-### Cinco `DataSourceConfig` apuntaban a cinco bases distintas
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `.../config/CamionesDataSourceConfig.java`, `ChoferesDataSourceConfig.java`,
-`EventosDataSourceConfig.java`, `ItemsDataSourceConfig.java`, `RutasDataSourceConfig.java`
-
-Cada uno creaba su propio `DataSource`, `EntityManagerFactory` y `TransactionManager`, apuntando
-a una base distinta (`camiones`, `choferes`, `eventos`, `items`, `rutas`) con **credenciales
-hardcodeadas** que ignoraban `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`.
-
-**Por qué no podía funcionar:** el modelo es una base por agregado, pero los agregados se
-referencian entre sí. `Ruta` referencia `Camion` y `Parada`; `ItemEntrega` referencia `Parada`,
-`UnidadDeMedida`, `Entidad` y `EventoLogistica`; `Camion` referencia `Chofer`. Al arrancar se
-moría con `AnnotationException: Association 'Camion.chofer' targets an unknown entity`, porque
-`Chofer` no estaba en la unidad de persistencia de `Camion`.
-
-**Qué se resolvió:** se borraron los cinco. Un solo `DataSource` sobre la base `logisticas`, con
-las entidades y los repositorios donde ya estaban. Las 12 tablas se crean ahí.
-
-**Efecto secundario:** las credenciales dejaron de estar hardcodeadas, así que el servicio
-ahora arranca dentro de Docker con las variables de entorno.
-
-### El binding de `solicitudEventosQueue` usaba el exchange equivocado
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `.../config/RabbitMQConfig.java`
-
-Ataba la cola al `donaciones.exchange` en vez de al `logisticas.exchange`. Funcionaba solo
-porque `donaciones-service` declara el mismo binding contra el exchange correcto y el broker
-acumula las dos declaraciones: levantando logística sola, las solicitudes de eventos quedaban
-sin ruta.
-
-**Qué se resolvió:** el binding usa el exchange de integración, que es al que publica
-`LogisticaPollingScheduler`. (Tanto ese binding como el `LogisticaPollingScheduler` se eliminaron
-después, cuando se quitó el sondeo: ver la última entrada de `Corregidos`.)
-
-### `SolicitudEventosListener` hacía request/response por cola
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `.../RabbitMQ/SolicitudEventosListener.java`
-
-Publicaba la respuesta en el exchange para que volviera a la cola del que preguntó. Eso convierte
-el broker en un request/response: necesita dos colas y dos bindings por consumidor, y se rompe
-entero si el que preguntó se cae antes de leer la respuesta.
-
-**Qué se cambió:** el listener deja de publicar la respuesta. La trazabilidad queda disponible
-por HTTP en `GET /api/eventos`, que es lo que pide el enunciado al describir el despliegue de
-logística como accesible por sus URIs. El polling quedó como red de contención, pero se eliminó
-después: sin respuesta no recuperaba nada (ver la última entrada de `Corregidos`).
-
-### `DonacionListener` se tragaba todos los errores
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `.../RabbitMQ/DonacionListener.java`
-
-El `catch (Exception)` con `System.err.println` descartaba el mensaje sin dejar rastro: una donación
-se perdía sin registrar por qué.
-
-**Qué se cambió:** los errores de negocio (`IllegalArgumentException`) no se relanzan, porque van
-a fallar igual en cada reintento y bloquearían la cola compartida de la que salen las N
-instancias de logística. Los demás se relanzan a propósito, para que la dead letter queue los
-reciba.
-
-# Corregidos
-
-Estos cuatro son una sola cosa mirada desde cuatro ángulos: **qué hace falta para que N
-instancias de logística puedan compartir la cola y la base**, que es lo que pide el enunciado
-cuando dice *"más de 1 servicio de logística disponible"*. Se corrigieron juntos, y los tests
-que los cubren son los primeros que tiene este módulo.
-
-La regla de fondo, que no es obvia: **lo único que garantiza contra la duplicación es la
-idempotencia; la base compartida evita que las instancias divergan; y el `@Version` convierte
-un pisado silencioso en un error visible.** Con las tres, el sistema tolera N instancias sin
-duplicar entregas ni perder estado.
-
----
-
-### 21. Una redelivery reseteaba el ítem a `PENDIENTE`: no había idempotencia
-
-**Estado:** corregido
-**Severidad:** crítica
-**Archivos:** `.../services/EntregaService.java`, `.../RabbitMQ/DonacionListener.java`
-
-#### Qué pasaba
-
-`procesarPeticion` no tenía ninguna guarda de idempotencia. Peor todavía: una redelivery **no
-fallaba**.
-
-El detalle está en la clave primaria. `ItemEntrega` declara:
-
-```java
-@Id
-@Column(name = "id_donacion", nullable = false, updatable = false)
-private UUID idDonacion;
-```
-
-`idDonacion` viene del mensaje y **no tiene `@GeneratedValue`**. Con id no nulo, el `isNew` de
-Spring Data da `false` siempre y `save()` va **siempre por `merge()`**: hace `SELECT` y, si la
-fila existe, hace `UPDATE`.
-
-Ese `UPDATE` reescribía la fila con lo del constructor, que pone:
-
-```java
-this.estado = EstadoEntrega.PENDIENTE;
-this.fechaCambioEstado = LocalDateTime.now();
-```
-
-O sea que si un ítem ya estaba entregado y el mensaje se reprocesaba, volvía a `PENDIENTE` y
-perdía la foto del comprobante. Sin error, sin log, sin rastro. Es peor que una duplicación,
-porque una duplicación se ve.
-
-#### Qué se hizo
-
-**1. Guarda de idempotencia explícita**, antes de construir nada:
-
-```java
-if (repoItemEntrega.existsById(idDonacion)) {
-    repetidos++;
-    log.info("La donación {} ya estaba registrada, el mensaje se repite y se omite", idDonacion);
-    continue;
-}
-```
-
-Es `continue` y no `return` a propósito: una donación puede traer bienes ya registrados **junto
-con** bienes nuevos, y con un `return` se perderían los nuevos. Hay un test para eso.
-
-**2. `DataIntegrityViolationException` como resultado benigno en el listener.** La guarda cubre
-el caso secuencial, pero queda una ventana: dos instancias leen el mismo `idDonacion` antes de
-que ninguna lo escriba, las dos pasan el `existsById` y las dos intentan insertar. Gana una; la
-otra recibe la violación de clave primaria, **que es el estado final que se buscaba**.
-
-Si se relanzara, el mensaje iría a la dead letter queue como si fuera un fallo y además frenaría
-la cola compartida de la que salen las N instancias. Se registra y se sigue.
-
-**3. El estado solo lo cambia el operador, nunca el registro.** Es la separación que vuelve
-inofensiva una repetición por construcción, y no por accidente.
-
-#### Cómo se verificó
-
-Tests nuevos en `EntregaServiceIdempotenciaTest`. Lo relevante es que **tienen dientes**: se
-neutralizó la guarda a propósito (`if (false && existsById(...))`) y 3 de los 8 tests
-fallaron, justamente los tres que miden la idempotencia:
-
-```
-EntregaServiceIdempotenciaTest.noVuelveAGuardarSiYaExiste        FAIL
-EntregaServiceIdempotenciaTest.noTocaElEstadoDeUnItemYaEntregado  FAIL
-EntregaServiceIdempotenciaTest.registraSoloLosBienesNuevos        FAIL
-Tests run: 8, Failures: 3
-```
-
-Restaurada la guarda, los 8 vuelven a pasar.
-
----
-
-### 22. Ninguna entidad tenía `@Version`: dos instancias escribiendo a la vez se pisaban
-
-**Estado:** corregido
-**Severidad:** alta
-**Archivos:** las 12 entidades de `logisticas-service`
-
-#### Qué pasaba
-
-Búsqueda de `@Version` en el módulo: **cero resultados**. `procesarPeticion` era un patrón
-leer-modificar-escribir sin protección, y además estaba **dentro del `for` de bienes**, con lo
-que escribía `Pais → Provincia → Ciudad → Direccion → Entidad` una vez por bien.
-
-Dos donaciones para la misma entidad, atendidas por dos instancias: las dos leen las mismas
-filas, las dos escriben, y la segunda pisa a la primera con los valores que leyó **antes** del
-UPDATE de la otra. Sin excepción, sin log.
-
-#### Qué se hizo
-
-**1. `@Version` en las 12 entidades**, no solo en `ItemEntrega`. En `ItemEntrega` es
-especialmente importante porque su clave natural hacía que el `merge()` fuera el camino normal
-y no la excepción.
-
-**2. El catálogo se resuelve una vez por mensaje y no por bien.** Esto es el arreglo de la
-carrera **y de paso el del punto 15**: una donación con tres bienes escribía la misma dirección
-tres veces. Ahora se resuelve una vez, y el `@Version` hace que la segunda instancia que llegue
-reciba `OptimisticLockingFailureException` en vez de sobrescribir. Hay un test que lo mide.
-
-**3. `@Transactional` en `procesarPeticion` y en `actualizarEstado`.** Lo segundo es por una
-razón distinta del primero: `actualizarEstado` publica el evento de trazabilidad y después
-guarda el ítem. Sin transacción, si el `save` fallaba el evento ya había salido del servicio y
-`donaciones-service` se enteraba de una entrega que en la base nunca ocurrió.
-
-**4. Validaciones de payload**, para que un mensaje incompleto se rechace **antes** de escribir
-en lugar de dejar la donación a medias. Es también el punto 16.
-
----
-
-### 23. Con N consumidores no hay orden: se midió y el particionado quedó apagado
-
-**Estado:** corregido. El reparto por hash está implementado pero **desactivado a propósito**
-**Severidad:** media
-**Archivo:** `.../config/RabbitMQConfig.java`, `.../RabbitMQ/DonacionListener.java`,
-`application.properties`
-
-#### Qué se investigó
-
-Competing consumers significa que el broker reparte los mensajes de a uno entre las instancias,
-**en cualquier orden y sin sincronización entre ellas**. Dos mensajes del mismo `idDonacion`
-pueden ser atendidos por dos instancias al mismo tiempo, y el que se atiende segundo no tiene
-por qué ser el que se mandó segundo. Con una máquina de estados
-`PENDIENTE → EN_CAMINO → ENTREGADA` eso permite **retroceder el estado**.
-
-Con un solo consumidor el orden se respeta, porque RabbitMQ le entrega los mensajes en el orden
-en que los publica. **El orden no se pierde al usar el broker: se pierde al agregar el segundo
-consumidor.** Por eso el problema nunca se habría detectado.
-
-#### Se implementó el particionado, y después se midió
-
-Primero se hizo completo: exchange `x-consistent-hash` sobre el encabezado `x-id-donacion`, N
-colas de shard, y cada instancia atendiendo un subconjunto **disjunto** con
-`LOGISTICA_SHARDS_ASIGNADAS`. Verificado: 5 mensajes de la misma donación caían 5/5 en la misma
-cola, y dos instancias repartían 20 mensajes 7/13.
-
-Después se probó **qué pasa si se cae una instancia**, y el resultado dio vuelta la decisión:
-
-```
-con la instancia B bajada (la de los shards 2 y 3):
-  queue.0   msgs=0   cons=1
-  queue.1   msgs=0   cons=1
-  queue.2   msgs=4   cons=0    <- nadie la lee
-  queue.3   msgs=11  cons=0    <- nadie la lee
-```
-
-De 20 mensajes, la instancia sana procesó **5** y los otros **15 quedaron parados**, aunque
-estaba viva y con capacidad de sobra. El particionado **no se traba nunca**, pero tampoco
-sobrevive: cada caída deja su mitad del trabajo detenida.
-
-#### La decisión: una sola cola, y por qué
-
-**Se volvió a la cola compartida.** El motivo es que el análisis original acertaba: hoy ningún
-mensaje que llegue a logística transporta una transición de estado.
-
-| Routing key | Listener | Qué hace |
-|---|---|---|
-| `donaciones.creada` | `DonacionListener` | **Registra** ítems en `PENDIENTE` |
-
-El registro quedó idempotente por construcción (punto 21). Las transiciones de estado entran por
-otro camino: el `PATCH` contra `actualizarEstado`, que es la acción del operador sobre **una**
-donación, y por lo tanto no compite con nadie.
-
-O sea que el orden que el particionado compraba **no se necesita hoy**, y lo que cuesta es real:
-disponibilidad. Se prefirió no pagar algo que no hace falta.
-
-Medido con la cola compartida y dos instancias:
-
-```
-12 mensajes con las dos vivas  ->  A: 6, B: 6
-se mata la instancia B
-15 mensajes con una sola viva ->  A: 15
-cola: 0 mensajes   DLQ: 0   27 de 27 en la base
-```
-
-Con una instancia caída, **la otra sigue consumiendo sin frenarse**. Eso es lo que se buscaba.
-
-#### Qué quedó del particionado
-
-El mecanismo sigue implementado y documentado en `application.properties`, **apagado por
-defecto**. Se activa con `LOGISTICA_SHARDS_ASIGNADAS=0,1` repartido de forma disjunta.
-
-El exchange sigue siendo `x-consistent-hash` en los dos modos: con un solo binding manda todo a
-la cola única, y con cuatro los reparte. Así `donaciones-service` **no necesita saber en qué
-modo está logística**: publica al mismo exchange con el mismo encabezado siempre.
-
-#### Lo que resuelve el orden cuando aparezca un mensaje con estado
-
-Una guarda que consulta la base **no sirve**, y conviene dejarse claro por qué. Si llega "la
-donación está ENTREGADA" antes que "la donación pasó a EN_CAMINO", la guarda ve `PENDIENTE` y no
-tiene nada que hacer: rechazarlo pierde el mensaje, aceptarlo deja el estado saltado. La guarda
-dice **qué estado hay**, no arregla que el orden se haya roto.
-
-Lo que sí cubre el caso real es **reintentar con espera**, y eso quedó en `DonacionListener`:
-
-```
-logistica.reintentos=3
-logistica.espera-reintento-ms=2000
-```
-
-Un fallo transitorio (la base tardó, se cortó la conexión) se reintenta y al segundo intento
-suele salir. Si tras los tres intentos sigue fallando, ahí sí va a la dead letter. Los errores de
-negocio y la carrera de clave primaria **no** se reintentan: fallan igual todas las veces, y
-reintentarlos solo frenaría la cola compartida.
-
-Cuando aparezca un mensaje con transiciones de estado, la frontera es esta: o se prende
-`LOGISTICA_SHARDS_ASIGNADAS` y se acepta el costo de disponibilidad, o el reintento con espera da
-suficiente cobertura y la cola compartida sigue conviene.
-
----
-
-### 24. El compose no se podía escalar
-
-**Estado:** corregido
-**Severidad:** media
-**Archivo:** `docker-compose.yml`
-
-#### Qué pasaba
-
-El propio compose recomendaba en un comentario:
-
-```
-# servicio con `docker compose up --scale logisticas-service=2`.
-```
-
-**Y no funcionaba.** Dos cosas lo bloqueaban:
-
-```yaml
-container_name: logisticas-service   # no se pueden crear N contenedores con el mismo nombre
-ports:
-  - "8086:8086"                      # el puerto del host no se puede reservar dos veces
-```
-
-El `SERVER_PORT` tampoco llegaba a logística, porque su `application.properties` leía
-`${PORT:8086}` en vez de `${SERVER_PORT:8086}`. No se notaba porque el default coincidía con lo
-que pasa el compose, pero en cuanto hicieran falta dos instancias en el mismo host —que es
-justo este punto— el puerto se ignoraba y las dos pelaban por el 8086.
-
-#### Qué se hizo
-
-1. **`container_name` fuera de los cuatro servicios de dominio.** Se deja solo en `mysql` y
-   `rabbitmq`, que no se escalan y cuyo nombre estable evita depender de la red de Docker para
-   llegar a ellos.
-2. **El puerto de logística se publica efímero** (`- "8086"`, sin número de host), para que
-   Docker asigne uno distinto por instancia. Para descubrir cuál le tocó:
-   `docker compose port logisticas-service 8086`. El `SERVER_PORT` interno sigue siendo 8086
-   para todas, porque dentro de la red de Docker cada contenedor tiene su propio espacio de
-   puertos.
-3. **`logisticas-service` lee `SERVER_PORT`**, igual que los otros tres.
-
-`docker compose config` valida el archivo después del cambio.
-
-#### El costo, dicho explícitamente
-
-Quitar el puerto fijo tiene un precio para desarrollo: `docker compose up` a secas deja de dar
-`localhost:8086` fijo. Está anotado en el propio compose que se puede volver a `"8086:8086"`
-cuando se levanta de a una sola instancia.
-
-La alternativa era un puerto fijo **o** la opción de escalar, y no pueden convivir. Se eligió
-escalar, porque es lo que pide el enunciado.
-
----
-### 5. Los tres DELETE devuelven 404 despues de borrar bien
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** alta
-**Archivos:** `services/EntregaService.java`, `services/CamionService.java`, `services/ChoferService.java`
-
-#### Que pasaba
-
-```java
-Optional<X> x = repo.findById(id);
-if(x.isPresent()){
-  repo.deleteById(id);
-  throw new IllegalArgumentException("... no encontrado");
-}
-```
-
-La excepcion se lanzaba cuando el recurso SI existia: el DELETE borraba bien y el controller
-devolvia 404. Y cuando no existia, no se entraba al if y devolvia 204 en silencio. Los dos
-casos al reves.
-
-#### Que se cambio
-
-Se invirtio la condicion: el 404 queda para cuando el recurso no estaba, y el 204 para cuando se
-borro. Se mantuvo el contrato que los tres controllers ya documentan en el Swagger, en vez de
-dejar el 404 sin uso.
-
-#### Como se verifico
-
-`DeleteDevuelve204Test`, seis casos: los tres servicios por existentey por inexistente. Los seis
-fallan contra el codigo viejo: los de "existe" por el `throw`, los de "no existe" porque el
-viejo no tiraba nada. El test ademas verifica que `deleteById` NO se llame cuando el recurso no
-esta.
-
-### 6. La relacion item-evento apunta al id equivocado
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** alta
-**Archivos:** `models/entities/ItemEntrega/ItemEntrega.java`, `models/entities/EventoLogistica/EventoLogistica.java`
-
-#### Que pasaba
-
-`@OneToMany(mappedBy = "id", ...)` apuntaba a la clave primaria del propio evento
-(`id_evento`, `GenerationType.IDENTITY`), no a un atributo que referencie al item. Hibernate
-armaba una relacion inventada, con la FK en `item_entrega.id_evento` siempre en NULL: la lista
-salia siempre vacia y la trazabilidad del Swagger de `GET /entregas` no existia.
-
-#### Que se cambio
-
-Se agrego `@ManyToOne @JoinColumn(name="id_donacion") ItemEntrega item` en `EventoLogistica`
-—el lado dueno— y se puso `mappedBy = "item"` en el lado muchos. El cascade y el `orphanRemoval`
-**se conservaron**: sin ellos, la FK nueva hace imposible borrar un item con historial, porque
-MySQL rechaza el DELETE de un padre con hijos. Borrar una entrega borra su historia, que es
-coherente con que el item es el registro de esa entrega.
-
-#### Como se verifico
-
-`GestorPublicacionEventosTest`: se afirma por reflexion que `mappedBy` es `"item"` y que del
-lado dueno hay un `@ManyToOne` con `@JoinColumn(name="id_donacion")`, y que el cascade sigue
-(`contains(CascadeType.ALL)` y `orphanRemoval`). Contra el codigo viejo el primer test falla
-con `but was: "id"`.
-
-**Lo que no se pudo verificar sin una base real:** que el `cascade REMOVE` efectivamente borre
-los hijos en `DELETE /entregas/{id}`. El modulo no tiene base embebida en el build offline. Si
-al probar contra MySQL ese endpoint diera 500 por FK, el arreglo es borrar los eventos antes
-que el item.
-
-### 11. El mismo evento se mete en la lista de todos los items
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java`
-
-#### Que pasaba
-
-Una sola instancia de `EventoLogistica` se agregaba a la lista `eventos` de todos los items de
-la ruta. Con la relacion ya siendo `mappedBy="item"` eso no tiene a que FK asignarle una
-instancia compartida, y con `orphanRemoval` desvincularlo de un item lo borraba aunque siguiera
-en los demas.
-
-#### Que se cambio
-
-El `INICIO_RUTA` es un hecho de la ruta, no de cada item: su `referenciaId` ya lo dice, porque
-es el `idRuta`, y los ids de las donaciones viajan en el payload. Se creo **un solo** evento,
-con `item = null`, y las listas de los items dejaron de tocarse a mano. Para los eventos que si
-son de una entrega, el lado dueno se setea y se guarda con su propio repositorio.
-
-Se descarto la alternativa de un evento por item: multiplicaba por N las filas que devuelve el
-polling, con el mismo payload y el mismo `referenciaId`, y un consumidor por HTTP habria
-recibido N notificaciones del mismo inicio de ruta.
-
-#### Como se verifico
-
-`GestorPublicacionEventosTest` afirma que `repoEventos.save` se llama **una** vez, que las listas
-de los items quedan vacias y que el evento guardado tiene `getItem() == null` y la referencia de
-la ruta. Contra el codigo viejo fallaba.
-
-### 12. El polling de eventos reenvia el ultimo evento y explota con `desdeId` null
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `services/EventoLogisticaService.java`, `RabbitMQ/SolicitudEventosListener.java`, `controllers/EventoLogisticaController.java`
-
-#### Que pasaba
-
-`obtenerEventosNuevos` pasaba `desdeId - 1`, o sea `id >= desdeId`: el evento con
-`id == desdeId` es el ultimo que el cliente ya proceso y se lo volvia a mandar. Ademas
-`desdeId - 1` sobre un `Long` null desempaquetaba y lanzaba NullPointerException.
-
-#### Que se cambio
-
-Se pasa `desdeId` tal cual, y un null se trata como 0 —que es "mandame todo", la lectura util de
-un poll recien arrancado—, sin desempaquetar. La proteccion quedo en el service, que es donde
-esta el unboxing, asi que cualquier llamador queda cubierto y no depende de que cada listener se
-acuerde de filtrar.
-
-En el listener de sondeo se mantuvo la salida temprana con `desdeId` ausente: sin cursor no hay
-desde donde consultar, y atenderlo con `id > 0` traia la tabla entera para tirar el resultado a
-la basura, porque el metodo es `void`.
-
-#### Como se verifico
-
-`EventoLogisticaServiceTest` afirma que se consulta con el id **exacto** (y que nunca se
-pide `desdeId - 1`), que un null no revienta y se traduce a 0, y que el listener no consulta
-nada sin cursor. Los siete fallan contra el codigo viejo, uno de ellos con el NPE exacto:
-`Cannot invoke "java.lang.Long.longValue()" because "desdeId" is null`.
-
-### 13. `findByIdGreaterThanOrderByIdAsc` no ordena
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `models/repositories/eventos/RepositorioEventoLogistica.java`
-
-#### Que pasaba
-
-Era un `default` method con `findAll()` y un `stream().filter(...)`: traia la tabla entera a
-memoria para descartar casi todo, y el orden dependia de lo que MySQL tuviera ganas de
-devolver. El comentario que lo acompanaba no garantizaba nada.
-
-#### Que se cambio
-
-Ahora es una derived query de verdad, que Spring Data traduce a `WHERE id > ?1 ORDER BY id
-ASC`. El filtro y el orden los resuelve la base, que es lo unico que puede garantizarlo.
-
-#### Como se verifico
-
-`EventoLogisticaServiceTest` afirma por reflexion que el metodo **no** es `default`. Sin
-base embebida no se puede comprobar el SQL generado, asi que se verifica la declaracion y el
-criterio (el id exacto que se le pasa), no la consulta.
-
-### 14. `GET /entregas/{id}` devuelve la entidad cruda
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `services/EntregaService.java`, `models/entities/ItemEntrega/ItemEntrega.java`
-
-#### Que pasaba
-
-`findById` devolvia el `ItemEntrega` de JPA y el controller lo serializaba tal cual. Jackson
-sigue los getters y entra en ciclo —`item.parada` → `parada.ruta` → `ruta.paradas` →
-`parada.items` → `item.parada`— hasta reventar al construir el JSON. Y ademas exponia
-`id_parada` e `id_unidad_medida` en un endpoint que el Swagger declara como `BienDTO`.
-
-#### Que se cambio
-
-`findById` devuelve `BienDTO` usando el mismo `convertirABienDTO` que ya usan `findAll` y
-`obtenerEntregasNoRecibidas`: la inconsistencia entre los tres era el indicio de que faltaba
-esa linea. Y se puso `@JsonIgnore` en `ItemEntrega.parada` como red, para que un mapping
-equivocado a futuro no sea una denegacion de servicio.
-
-#### Como se verifico
-
-`EntregaServiceFindByIdDevuelveDtoTest` arma el ciclo completo (parada → ruta → sus paradas de
-vuelta al item) y afirma que el JSON no trae `parada` ni `id_parada`, y que el controller
-responde 200 con un `BienDTO`. Contra el codigo viejo, cinco de los seis fallan y el volcado
-muestra el ciclo real: `Parada["ruta"]->Ruta["paradas"]->ArrayList[0]->Parada["ruta"]->...`
-
-### 25. Un mensaje malformado se reencola para siempre
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** alta
-**Archivos:** `RabbitMQ/DonacionListener.java`, `src/main/resources/application.properties`
-
-#### Que pasaba
-
-Agotados los 3 intentos, el listener hacia `throw ultimoFallo` y el log decia "va a la cola de
-mensajes muertos". No era asi: sin `default-requeue-rejected=false`, rige el default de Spring
-AMQP, que es reencolar. El mensaje volvia a su posicion original en la cola compartida y
-volvia a entrar, tres intentos mas, para siempre. Un solo payload malformado frenaba a todas
-las instancias y la DLQ recibia cero mensajes, porque el dead letter solo se activa con un
-rechazo **sin** requeue.
-
-#### Que se cambio
-
-Dos capas. La explicita: el listener tira `AmqpRejectAndDontRequeueException` con el fallo
-original como causa, que es la senal que Spring AMQP respeta siempre. Y la de config:
-`spring.rabbitmq.listener.simple.default-requeue-rejected=false`, que cubre tambien los fallos
-que nunca llegan al listener (un mensaje que no se puede convertir a `EntregaDTO`).
-
-Se eligio la exception en vez de solo la property para no cambiarle el comportamiento al otro
-listener del servicio a ciegas.
-
-#### Como se verifico
-
-`DonacionListenerCarreraTest`: se afirma el tipo de la excepcion y que la causa se conserva.
-Dos tests existentes afirmaban `IllegalStateException` —el contrato viejo, que era el bug— y se
-actualizaron. `ConfiguracionArranqueTest` afirma la property.
-
-**Efecto colateral:** `default-requeue-rejected` es global al servicio, asi que un fallo
-transitorio de la base en cualquier listener va a la DLQ de integracion en vez de reencolar. Se
-eligio eso: reencolar para siempre un mensaje que falla igual trava la cola de la misma manera.
-(El sondeo que se mencionaba aca se elimino despues; ver la ultima entrada de `Corregidos`.)
-
-### 28. Publica el evento antes del commit
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java`, `services/RutaService.java`
-
-#### Que pasaba
-
-`productorEventos.publicar(evento)` se llamaba **dentro** de la transaccion. Si un `save`
-posterior fallaba —por ejemplo un `OptimisticLockingFailureException` cuando dos operadores
-confirman la misma entrega casi al mismo tiempo— la base hacia rollback pero el mensaje ya
-habia salido: `donaciones-service` notificaba una entrega que en logistica nunca ocurrio. En
-`iniciarRuta` pasaba lo mismo: se publicaba y recien despues se persistian los items con el
-estado `EN_CAMINO` que se les habia puesto en memoria.
-
-#### Que se cambio
-
-La publication se registra con `TransactionSynchronizationManager` y se manda en `afterCommit`,
-que es exactamente la garantia que faltaba: un rollback no despacha `afterCommit`. Sin
-transaccion activa se publica en el momento, que es el unico jeito de no perder el evento cuando
-no hay commit al que esperar.
-
-Y `RutaService.iniciarRuta` ahora es `@Transactional`, que es lo que hace que esa garantia
-aplique tambien ahi: antes no habia commit al que agendarse.
-
-#### Como se verifico
-
-`GestorPublicacionEventosTest`: con transaccion abierta el evento **no** se publica hasta el
-commit, un rollback no publica nada, y sin transaccion se publica igual. Se despachan a mano las
-sincronizaciones que despacha Spring, sin levantar un contexto.
-
-**Lo que quedo fuera:** `terminarRuta` sigue sin ser transaccional, y a proposito: tiene `throw`
-deliberados de bugs que todavia no se arreglaron, y volverla transaccional haria rollback de
-cosas no relacionadas. Sus eventos de reingreso se publican en el momento, como antes.
-
-**Efecto colateral no pedido:** con `@Transactional`, `findByChofer` y `actualizarEstado` ven la
-misma instancia gestionada de la ruta, asi que `indexOf` ahora la encuentra y `iniciarRuta` si
-persiste el estado `EN_CURSO`, que antes no se guardaba. Es una mejora, pero cambia el
-comportamiento del punto 2.
-
-### 33. Credenciales de la base hardcodeadas
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `src/main/resources/application.properties`, `docker-compose.yml` (raiz del repo),
-`.env` / `.env.example` de cada modulo
-
-#### Que pasaba
-
-`spring.datasource.password=${DB_PASSWORD:<la clave de la base>}`: la credencial real estaba como
-**default** del placeholder. Cualquier arranque sin las variables —un `java -jar` a secas, un
-deploy que se olvido de definirlas— conectaba en claro y sin avisar. Y el `docker-compose.yml` la
-repetia en el archivo, quedando commiteada en el historial de git.
-
-#### Que se cambio
-
-`application.properties` quedo sin default: si falta la variable, el servicio no levanta, que es
-lo correcto. No hizo falta tocar `.gitignore`: el del repo ya cubria `.env`.
-
-**Actualizacion posterior:** el `.env` general de la raiz se reemplazo por **un `.env` por
-modulo** (`<servicio>/.env`, con su `<servicio>/.env.example`), y `docker-compose.yml` los carga
-con `env_file`. Ya no se usa `${DB_USERNAME:?...}` ni hay `.env` en la raiz.
-
-#### Como se verifico
-
-`ConfiguracionArranqueTest` afirma que las dos properties no tienen default y que la clave no
-aparece en `application.properties`. Contra el codigo viejo falla con
-`but was: "${DB_USERNAME:valentin}"`.
-
-**Lo que quedo a medias:** los bloques de `donaciones-service` y `notificaciones-service` en el
-compose siguen con usuario y clave en claro. `donaciones-service` usa la MISMA clave que se acaba
-de sacar. El punto 33 solo nombraba el bloque de logisticas, asi que no se toco, pero el
-`grep` de la credencial sigue dando y queda anotado en el propio compose.
-
-**Y lo que no se puede arreglar desde el codigo:** la clave ya esta en el historial de git.
-Sacar la linea no la borra de ahi. Hay que rotarla en MySQL.
-
-### 39. El cron de planificacion corre a las 02:00 UTC
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** baja
-**Archivos:** `Scheduler/PlanificadorDeRutasScheduler.java`
-
-#### Que pasaba
-
-`@Scheduled(cron = "0 0 2 * * ?")` no declara `zone`, asi que Spring usa la zona de la JVM. La
-imagen final (`eclipse-temurin:21-jre`) no define `TZ`, el compose tampoco le pasa ninguna, y el
-`DB_URL` hasta fuerza `serverTimezone=UTC`: en Docker la planificacion ocurre a las 02:00 UTC,
-que son las 23:00 de Argentina. Fuera de Docker depende del host.
-
-#### Que se cambio
-
-`zone = "America/Argentina/Buenos_Aires"` explicito: deja de depender de la imagen y del host.
-
-#### Como se verifico
-
-`ConfiguracionArranqueTest` lee la anotacion por reflexion y afirma que declara la zona y que el
-cron sigue siendo `"0 0 2 * * ?"`. Contra el codigo viejo falla con `zone() == ""`.
-
-**Sin verificar:** la observacion con la hora del contenedor real. El pendiente estaba marcado
-como sospechado por eso, y corregir la zona lo hace deterministico igual.
-
-### 40. El sondeo de trazabilidad por cola era un no-op
-
-**Estado:** corregido el 2026-10-07, sin commit
-**Severidad:** media
-**Archivos:** `RabbitMQ/SolicitudEventosListener.java` (eliminado),
-`dto/evento/SolicitudEventosDTO.java` (eliminado), `config/RabbitMQConfig.java`,
-`donaciones-service/.../models/sheduler/LogisticaPollingScheduler.java` (eliminado en donaciones),
-`donaciones-service/.../config/RabbitMQConfig.java`
-
-#### Que pasaba
-
-El camino real de eventos es el push: `GestorPublicacionEventos` persiste el `EventoLogistica` y lo
-publica despues del commit a `logistica.eventos.exchange`, y donaciones lo consume en
-`EventosListener`. El polling era una "red de contencion" que no contenia nada:
-
-- `SolicitudEventosListener` leia los eventos y **solo logueaba**; nunca publicaba la respuesta, y
-  `LogisticaPollingScheduler` publicaba con `convertAndSend` (sin esperar respuesta). No habia
-  camino de vuelta a donaciones.
-- El cursor `ultimoIdProcesado` del scheduler nunca avanzaba: cada 5 minutos preguntaba desde 0.
-- `GET /api/eventos` estaba disponible pero donaciones no lo llamaba.
-
-O sea: no era un fallback imperfecto, era un no-op. Lo unico observable era un log cada 5 minutos.
-
-#### Que se cambio
-
-Se elimino la cadena completa: `LogisticaPollingScheduler`, `SolicitudEventosListener`, la cola
-`logistica.sondeo.queue`, el exchange `logistica.exchange`, la routing key
-`logistica.solicitud.eventos` y los DTO `SolicitudEventosDTO` / `EventoLogisticaResponseDTO` del
-lado de donaciones. La consulta de trazabilidad queda por HTTP en `GET /api/eventos`
-(`EventoLogisticaController` + `EventoLogisticaService`), que es lo que el enunciado pide al
-describir logistica accesible por sus URIs.
-
-El push ya es at-least-once (cola durable): el polling no agregaba cobertura, porque el unico caso
-que podria cubrir —un evento publicado a un exchange sin ruta— requiere una respuesta real y
-deduplicacion persistente, justo el request/response que se habia quitado a proposito.
-
-#### Como se verifico
-
-`EventoLogisticaServiceTest` (antes `EventoLogisticaServicePollingTest`) cubre la lectura por id:
-off-by-one, null, orden y la derived query. Se quitaron los dos tests del listener, que ya no
-existe. Los dos modulos compilan (`mvn test-compile`) y el test corre 6/6 en verde.
+Un bullet por fix. El número es el ID del punto que estaba abierto; los bullets sin número
+nunca fueron un punto abierto. Fechas: 1, 15 y 16 salieron en `1e75220` (2026-10-07); 5, 6,
+11–14, 25, 28, 33, 39 y el sondeo se corrigieron el 2026-10-07 sin commit; los sin número no
+tienen fecha registrada. Los 21 a 24 salieron juntos: son lo que hace falta para que N instancias
+compartan la cola y la base.
+
+- **1** — El módulo no tenía un solo test → llegaron los primeros, con los casos de N instancias.
+- **5** — Los tres `DELETE` borraban y después tiraban "no encontrado", así que devolvían 404
+  tras un borrado exitoso → se invirtió el chequeo: 404 solo cuando el recurso no estaba.
+- **6** — `ItemEntrega.eventos` usaba `mappedBy="id"`, que apunta a la PK del evento → FK real
+  (`@ManyToOne item`, `mappedBy="item"`); el cascade se conservó para poder borrar un ítem con
+  historial.
+- **11** — Una misma instancia de evento se metía en la lista de todos los ítems de la ruta →
+  un solo `INICIO_RUTA` por ruta, sin ítem, y sin tocar las listas a mano.
+- **12** — El polling pedía `id > desdeId - 1` (reenviaba el último evento ya procesado) y
+  reventaba con `desdeId` null → se pasa el id tal cual y null vale 0.
+- **13** — `findByIdGreaterThanOrderByIdAsc` era un `default` con `findAll()` y sin `ORDER BY` →
+  derived query real.
+- **14** — `GET /entregas/{id}` devolvía la entidad JPA (ciclo de Jackson y esquema interno) →
+  devuelve `BienDTO`, y `ItemEntrega.parada` quedó con `@JsonIgnore` como red.
+- **15** — Una donación con N bienes creaba N direcciones y las huérfanas quedaban colgando →
+  el catálogo se resuelve una vez por mensaje.
+- **16** — `procesarPeticion` validaba solo `request` y el resto reventaba a mitad de la
+  escritura → validaciones antes de tocar la base.
+- **19** — La validación de la justificación de una entrega fallida → **corregido**: el punto
+  describía una inversión que no existía. Verificado contra el código, `comprobarExistencia`
+  devuelve `true` cuando el texto falta, así que los dos call-sites ya hacían lo correcto y no
+  hubo cambios (estaba bien desde `cb8910a`).
+- **21** — Una redelivery reseteaba el ítem a `PENDIENTE`: no había idempotencia → guarda
+  `existsById` antes de registrar, `DataIntegrityViolationException` como carrera benigna, y el
+  estado solo lo cambia el operador.
+- **22** — Ninguna entidad tenía `@Version` y dos instancias se pisaban en silencio → `@Version`
+  en las 12 entidades.
+- **23** — Con N consumidores no hay orden entre mensajes → el reparto por hash quedó
+  implementado y **apagado a propósito**: la cola compartida da disponibilidad y hoy ningún
+  mensaje lleva transición de estado.
+- **24** — El compose no se podía escalar (`container_name` fijo y `8086:8086`) → se quitó el
+  nombre fijo, el puerto se publica efímero y logística lee `SERVER_PORT`.
+- **25** — Un mensaje que agotaba los reintentos se reencolaba para siempre y trababa la cola →
+  `AmqpRejectAndDontRequeueException` más `default-requeue-rejected=false`, que es lo que activa
+  la DLQ.
+- **28** — El evento se publicaba dentro de la transacción y un rollback lo dejaba afuera → se
+  publica en `afterCommit`, y `iniciarRuta` pasó a ser `@Transactional`.
+- **33** — La credencial de la base estaba como default en el código y en claro en el compose →
+  un `.env` por módulo, sin defaults en `application.properties`.
+- **39** — El cron corría a las 02:00 UTC (23:00 de Argentina) → `zone` explícita en
+  `@Scheduled`.
+- Marcadores de merge sin resolver en `GestorPublicacionEventos`: el módulo no compilaba → quedó
+  la versión que consumen los services.
+- `RepositorioCamiones` y `RepositorioChoferes` duplicados en dos paquetes → se consolidaron en
+  los subpaquetes y se borraron los del paquete plano.
+- Cinco `DataSourceConfig` apuntaban a cinco bases distintas con credenciales hardcodeadas → se
+  borraron: un solo `DataSource` sobre `logisticas`.
+- El binding de la cola de sondeo apuntaba al exchange equivocado → corregido y después
+  eliminado junto con el sondeo.
+- `SolicitudEventosListener` hacía request/response por cola → dejó de responder por el broker, y
+  después se eliminó.
+- `DonacionListener` se tragaba todos los errores → los de negocio se descartan con warning y el
+  resto se relanza para que vaya a la DLQ.
+- El sondeo de trazabilidad por cola era un no-op: nadie publicaba la respuesta y el cursor nunca
+  avanzaba → se eliminó la cadena completa y la trazabilidad queda por `GET /api/eventos`.
+  (Venía numerado 40, que ya es el punto abierto de gestores: quedó sin número, como los otros
+  fixes que nunca fueron un punto abierto.)
