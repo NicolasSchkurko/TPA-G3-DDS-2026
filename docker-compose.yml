@@ -32,29 +32,30 @@ services:
       timeout: 5s
       retries: 12
 
-  rabbitmq:
-    build: ./docker/rabbitmq
-    container_name: tpa-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"   # consola web de administración
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    # El exchange consistent-hash que usa logistica para repartir entre instancias es un
-    # plugin, no parte del core, y viene apagado: sin el, logistica no arranca con
-    # PRECONDITION_FAILED - unknown exchange type 'x-consistent-hash'.
-    #
-    # Se habilita en el Dockerfile de este servicio y NO con
-    # RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: la imagen trae /etc/rabbitmq/enabled_plugins y ese
-    # archivo pisa la variable, asi que setearla no habilita nada. Ahi esta el detalle.
-    volumes:
-      - rabbit-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
+  # RabbitMQ local DESHABILITADO: los servicios usan el broker de Railway (RABBITMQ_* en cada
+  # `<servicio>/.env`). Para volver a local: descomentar este bloque y volver a poner los
+  # RABBITMQ_* (rabbitmq / 5672 / guest) en el `environment:` de cada servicio.
+  #
+  # Ojo: el exchange consistent-hash que usa logistica es un plugin y hay que habilitarlo en el
+  # broker (en este bloque lo hace el Dockerfile de ./docker/rabbitmq). En Railway tambien:
+  # `rabbitmq-plugins enable rabbitmq_consistent_hash_exchange`.
+  #
+  # rabbitmq:
+  #   build: ./docker/rabbitmq
+  #   container_name: tpa-rabbitmq
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"   # consola web de administración
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: guest
+  #     RABBITMQ_DEFAULT_PASS: guest
+  #   volumes:
+  #     - rabbit-data:/var/lib/rabbitmq
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 12
 
   n8n:
     image: n8nio/n8n:latest
@@ -96,17 +97,10 @@ services:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      # Rabbit es el canal de entrada: sin esto, dentro del contenedor el servicio busca
-      # localhost y no encuentra al broker.
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
+      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
       N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
     depends_on:
       mysql:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       n8n:
         condition: service_started
@@ -126,10 +120,7 @@ services:
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       N8N_URL: http://host.docker.internal:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
+      # Rabbit: lo define incentivos-service/.env (Railway).
     depends_on:
       mysql:
         condition: service_healthy
@@ -154,14 +145,9 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
+      # Rabbit: lo define donaciones-service/.env (Railway).
     depends_on:
       mysql:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
 
   # Compite por la cola compartida `logistica.integracion.queue`: para cumplir el
@@ -204,18 +190,9 @@ services:
       - "8086"
     environment:
       SERVER_PORT: 8086
-      DB_URL: jdbc:mysql://mysql:3306/logisticas?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      # DB_URL y Rabbit salen de logisticas-service/.env (ambos en Railway).
 
 volumes:
   mysql-data:
-  rabbit-data:
+  # rabbit-data:   # deshabilitado junto con el servicio rabbitmq (se usa Railway)
   n8n-data:
