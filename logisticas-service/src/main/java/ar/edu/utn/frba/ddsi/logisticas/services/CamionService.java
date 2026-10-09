@@ -74,7 +74,11 @@ public class CamionService {
   }
 
   public String cambiarDisponibilidad(String patente, Map<String, Boolean> body){
-    boolean disponible = Boolean.TRUE.equals(body.get("disponible"));
+    if (body == null || !body.containsKey("disponible") || body.get("disponible") == null) {
+      throw new IllegalArgumentException("El campo 'disponible' es obligatorio.");
+    }
+
+    boolean disponible = body.get("disponible");
 
     Camion camion = repoCamiones.findById(patente)
             .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));

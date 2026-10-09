@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,8 +55,12 @@ public class Ruta {
     }
 
     public void agregarEntrega(ItemEntrega item) {
+        if (item == null || item.getEntidadDestino() == null) {
+            throw new IllegalArgumentException("El ítem de entrega y su entidad destino no pueden ser nulos.");
+        }
+
         paradas.stream()
-                .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
+                .filter(p -> Objects.equals(p.getEntidadDestino(), item.getEntidadDestino()))
                 .findFirst()
                 .ifPresentOrElse(
                         parada -> parada.agregarItem(item),
@@ -69,8 +74,8 @@ public class Ruta {
 
     public List<ItemEntrega> obtenerTodosLosItems() {
         return paradas.stream()
-                      .flatMap(p -> p.getItems().stream())
-                      .collect(Collectors.toList());
+                .flatMap(p -> p.getItems().stream())
+                .collect(Collectors.toList());
     }
 
     public Double pesoTotalCargadoKg() {

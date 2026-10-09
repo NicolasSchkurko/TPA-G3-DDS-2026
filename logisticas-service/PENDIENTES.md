@@ -12,411 +12,9 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 3 | Terminar una ruta borra un ítem y después tira excepción: corta el recorrido y deja chofer y camión bloqueados |
-| 2 | 2 | Iniciar o terminar una ruta nunca persiste el estado: la operación responde OK y no pasa nada |
-| 3 | 4 | La condición del camión está invertida: el caso normal responde "Camión no encontrado" |
-| 6 | 26 | Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual |
-| 8 | 27 | `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada |
-| 9 | 8 | Confirmar una entrega que no está en camino se ignora en silencio y responde 200 |
-| 10 | 9 | Reportar una entrega fallida no valida el estado previo: una entrega_ok se puede revertir |
-| 11 | 10 | El reingreso a depósito no valida nada y su comentario cita un método que no existe |
-| 13 | 29 | Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta |
-| 14 | 30 | `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null |
-| 15 | 32 | Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ |
-| 20 | 35 | Cada mensaje inserta país, provincia, ciudad y dirección nuevos aunque la entidad ya exista |
-| 21 | 31 | El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio |
-| 23 | 34 | `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas |
-| 24 | 17 | El planificador resetea la carga de los camiones y nunca la persiste |
-| 25 | 7 | El getter de Parada ignora su propio campo: la columna persistida no se usa y depende de la lista |
-| 26 | 18 | `return null` en el catch del planificador manual: el error se pierde |
-| 27 | 36 | El callback devuelve 500 con internals para payloads que su contrato documenta como 400 |
-| 28 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 29 | 38 | Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long` |
-| 31 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
----
-
-## 2. Iniciar o terminar una ruta nunca persiste el estado
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `models/repositories/rutas/RepositorioRutas.java:29`, `services/RutaService.java:86`, `services/RutaService.java:97`
-
-### Qué pasa
-
-`RepositorioRutas.actualizarEstado` no actualiza nada:
-
-```java
-default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
-    int posicion = this.findAll().indexOf(ruta);
-    if (posicion != -1) {
-        ruta.setEstado(nuevoEstado);
-        this.findAll().set(posicion, ruta);
-    }
-}
-```
-
-Son tres fallas encimadas en tres líneas:
-
-1. `this.findAll()` devuelve una `List` **nueva** en cada llamada. El `indexOf` mide contra una
-   lista y el `set` escribe sobre otra distinta. El `set` no toca la lista que se indexó, así
-   que aunque el `if` entre, el efecto es tirar la lista a la basura.
-2. `indexOf` usa `equals`, y `Ruta` no overridea `equals`, así que compara identidad. La
-   `ruta` que le pasa `RutaService` viene de `findByChofer`, que a su vez la saca de **otro**
-   `findAll()`. Son instancias distintas, `indexOf` devuelve `-1` y el `if` nunca entra.
-3. No hay `save()`. La lista devuelta por `findAll()` de Spring Data es de entidades
-   **detached**: la transacción read-only que abrió el repositorio ya se cerró cuando el
-   método devolvió. Fuera de sesión, `ruta.setEstado(nuevoEstado)` muta un objeto Java que
-   JDBC nunca ve.
-
-El resultado en `RutaService.iniciarRuta:86` y `terminarRuta:97`: el endpoint devuelve 200 con
-"Ruta iniciada correctamente", se publica el evento `INICIO_RUTA`, pero la fila de `ruta`
-sigue con `estado = 'PROGRAMADA'` para siempre. Tampoco hay ningún `@Transactional` en ningún
-servicio del módulo, así que la lectura-modificación-escritura ocurre en transacciones
-separadas por cada llamada a repositorio.
-
-Lo mismo invalida `urlSeguimiento`: `GestorPublicacionEventos.publicarInicioRuta:44` lo setea
-sobre la misma entidad detached y nunca se guarda.
-
-### Propuesta
-
-Borrar el `default` y dejar que el servicio haga `repoRutas.saveAndFlush(ruta)` sobre la
-entidad que ya tiene en mano, o `save(ruta.getIdRuta(), ruta)`. Si se quiere conservar el
-encapsulamiento, que el `default` use `findById` en vez de `findAll`, yJpa se encarga del
-merge. En cualquiera de los dos casos hay que agregar `@Transactional` a los métodos de
-`RutaService` que tocan más de un repositorio.
-
----
-
-## 3. Terminar una ruta borra un ítem y después tira excepción
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `services/RutaService.java:103-107`
-
-### Qué pasa
-
-```java
-} else {
-  Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
-  if(itemEncontrado.isPresent()){
-    repoItemEntrega.deleteById(item.getIdDonacion());
-    throw new IllegalArgumentException("Entrega no encontrada");
-  }
-}
-```
-
-El `throw` está adentro del `if (isPresent())`: es decir, se lanza **cuando el ítem
-existía**, que es el caso para el que se escribió el `else`. La intención era claramente
-`if (itemEncontrado.isEmpty()) throw`.
-
-Consecuencias, todas en el mismo request:
-
-- El ítem se borra igual, y después se tira la excepción: se pierde el resultado del borrado.
-- La excepción corta el `for` de las paradas. Si la ruta tenía cinco ítems entregados, se borra
-  el primero y los otros cuatro nunca se procesan.
-- Nunca se llega a `chofer.disponible()`, `camionDeRuta.disponible()` ni al reseteo de carga
-  (líneas 111-123). El chofer y el camión quedan bloqueados para siempre.
-- `RutaController.terminarRuta:99` la traduce a un 400 con el mensaje "Entrega no encontrada",
-  que además es falso: la entrega se encontró, se eliminó, y lo que faltó fue terminar el
-  recorrido.
-
-### Propuesta
-
-Sacar el `throw` de adentro del `if` y dejar el borrado como está. Si de verdad se quiere
-avisar cuando algo no está, tiene que ser con `isEmpty()`, y una excepción de negocio no
-debería usarse para el flujo normal. El borrado de ítems entregados, además, merece una
-decisión explícita: hoy destruye la fila que `ItemEntrega.eventos` usa como bitácora.
-
----
-
-## 4. La condición del camión está invertida
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `services/RutaService.java:118-123`
-
-### Qué pasa
-
-```java
-Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
-if (camion.isPresent()) {
-    camion.get().eliminarChofer();
-    gestorCamiones.resetearCamion(camion.get());
-    throw new IllegalArgumentException("Camión no encontrado");
-}
-```
-
-Mismo patrón que el punto 3, y el mismo error de fondo: `isPresent()` donde debía ser
-`isEmpty()`. El flujo normal —el chofer tiene camión, que es exactamente lo que se pidió— cae
-dentro del `if`, ejecuta el reseteo correcto y después tira "Camión no encontrado".
-
-Peor todavía: el `else` implícito no hace nada. Si de verdad no hay camión, `terminarRuta`
-responde 200 diciendo "Ruta finalizada correctamente" sin haber avisado nada.
-
-Lo que salva parcialmente a este punto es que la excepción del punto 3 cortaba el método antes
-de llegar acá. Arreglando el 3 sin tocar el 4, la excepción pasa a ser la que aparece siempre.
-
-### Propuesta
-
-Invertir a `if (camion.isEmpty())` y sacar el `throw` del camino feliz. Si la ausencia de
-camión es un error de negocio, ahí va el `throw`, con un mensaje que describa lo que realmente
-faltó.
-
----
-
-## 7. El getter de Parada ignora su propio campo
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `models/entities/Parada/Parada.java:50-52`, `models/entities/Parada/Parada.java:83-84`, `models/entities/Ruta/Ruta.java:69`
-
-### Qué pasa
-
-```java
-@ManyToOne
-@JoinColumn(name = "id_entidad_beneficiaria", referencedColumnName = "id_entidad_beneficiaria", nullable = false)
-private Entidad entidadDestino; //quedo raro porque hay un metodo que te da la entidad pero creo que es necesario pala la DB
-
-public Entidad getEntidadDestino() {
-    return items.isEmpty() ? null : items.getFirst().getEntidadDestino();
-}
-```
-
-El getter escrito a mano **pisa** el que genera Lombok con `@Getter` a nivel de clase. O sea:
-la columna `id_entidad_beneficiaria` de `parada` se persiste y se lee, y después se tira a la
-basura: el getter devuelve la entidad del **primer ítem**, no la de la parada, y `null` cuando
-no hay ítems.
-
-**Por qué bajó de severidad:** el `NoSuchElementException` del `getFirst()` sobre lista vacía
-(que reventaba `GET /rutas` con 500) está cubierto en el árbol de trabajo, y bien: el guard
-`items.isEmpty() ? null : ...` más el `convertirADireccionDTO` tolerante a `null` de
-`RutaService:163-164` son correctos. **Pero están sin commitear** — en el último commit la
-parada vacía sigue tirando 500, así que el punto cierra recién cuando eso se commitee.
-
-Lo que queda abierto son dos cosas:
-
-- **La columna sigue muerta.** El `@ManyToOne` de la línea 50-52 persiste un destino que
-  nadie lee nunca: todo lo que importa sale de `items`. O se usa el campo, o se borra.
-- **El `null` nuevo viaja hasta `Ruta.agregarEntrega:69`:**
-
-  ```java
-  .filter(p -> p.getEntidadDestino().equals(item.getEntidadDestino()))
-  ```
-
-  Si alguna parada de la ruta quedó sin ítems (el javadoc del propio getter admite que pasa:
-  "la entrega se elimino, o la ruta se planifico y todavia no se le asigno nada"), ese
-  `equals` sobre `null` es un `NullPointerException` en plena planificación.
-
-### Cómo se dispara
-
-1. Con el último commit (sin los guards): `GET /api/rutas` con una parada sin ítems → 500.
-2. Con el árbol de trabajo: una ruta que ya tiene una parada sin ítems a la que se le
-   planifica otra entrega → `NullPointerException` en `Ruta.java:69`.
-
-### Propuesta
-
-Commitear los guards que ya están escritos. Y atacar la raíz: borrar el getter manual y
-dejar que Lombok genere el del campo (que es lo que el mapeo JPA persiste), o si el destino
-se deriva del ítem, sacar el `@ManyToOne`. Si se mantiene el getter derivado, el filtro de
-`agregarEntrega` tiene que tolerar `null` (`Objects::equals`).
-
----
-
-## 8. Confirmar una entrega que no está en camino se ignora en silencio
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java:72`, `services/EntregaService.java:137-139`
-
-### Qué pasa
-
-`publicarEntregaConfirmada` envuelve todo su cuerpo en una guarda:
-
-```java
-if (item.getEstado() == EstadoEntrega.EN_CAMINO) {
-    item.setFotoComprobante(foto);
-    ...
-}
-return item;
-```
-
-Si el ítem no está `EN_CAMINO` —porque la ruta nunca se inició, o porque el ítem volvió a
-`PENDIENTE` por el punto 10— el método devuelve el ítem sin tocarlo. No lanza, no avisa.
-
-`EntregaService.actualizarEstado:137` no se entera: guarda lo que le devuelven y sigue. El
-controller responde **200 con "Estado de la entrega actualizado correctamente a: ENTREGADA"**.
-La foto no se guarda, el estado no cambia, no se emite evento, y el receptor de la entidad
-cree que confirmó la entrega.
-
-Es peor que un error visible: es un falso éxito.
-
-### Propuesta
-
-Que la guarda no se lleve el `return`. Si el estado no es `EN_CAMINO`, tirar una excepción de
-negocio que diga que la entrega no está en camino. `publicarEntregaFallida` (punto 9) tiene el
-problema inverso y se arregla en la misma línea de estilo.
-
----
-
-## 9. Reportar una entrega fallida no valida el estado previo
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/gestores/GestorPublicacionEventos.java:87-88`
-
-### Qué pasa
-
-```java
-public ItemEntrega publicarEntregaFallida(ItemEntrega item, Ruta ruta, String justificacion) {
-    item.getEstado().cambiarEstado(item, EstadoEntrega.NO_RECIBIDA);
-```
-
-No hay guarda de ningún tipo. El método transiciona desde el estado que sea.
-
-Como `EntregaService.actualizarEstado:142` expone `case "NO_RECIBIDA":` sin chequear el estado
-actual, un `PATCH /entregas/{id}/estado` con `"NO_RECIBIDA"` sobre un ítem que ya estaba
-`ENTREGADA` lo revierte: queda `NO_RECIBIDA`, con su foto de comprobante cargada y con los
-eventos `ENTREGA_CONFIRMADA` y `ENTREGA_FALLIDA` en la bitácora del mismo ítem.
-
-La asimetría con `publicarEntregaConfirmada` es la señal: uno valida el estado de partida y el
-otro no. En un dominio donde las transiciones importan, esa asimetría casi siempre es un
-olvido y no una decisión.
-
-### Propuesta
-
-Agregar la guarda que falta. Lo razonable es que la transición válida sea desde `EN_CAMINO`, y
-que cualquier otro estado de partida tire excepción de negocio en vez de mutar en silencio.
-
----
-
-## 10. El reingreso a depósito no valida nada
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:151-155`, `models/gestores/GestorPublicacionEventos.java:101-102`
-
-### Qué pasa
-
-```java
-case "PENDIENTE":
-    // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
-    // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-    repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarReingresoDeposito(item));
-    break;
-```
-
-El comentario promete una validación en dos lugares donde no hay nada:
-
-1. `reingresarADeposito()` **no existe**. No está en `GestorPublicacionEventos`, no está en
-   ningún service del módulo. El comentario quedó del merge.
-2. `publicarReingresoDeposito` (líneas 101-102) es exactamente igual de permisivo que el
-   punto 9: `cambiarEstado(item, PENDIENTE)` y nada más.
-
-O sea que un `PATCH /entregas/{id}/estado` con `"PENDIENTE"` sobre **cualquier** ítem lo manda
-a `PENDIENTE`. También sirve para deshacer una `ENTREGA_CONFIRMADA`, incluso con foto.
-
-Y el efecto no es inocuo: al volver a `PENDIENTE` el ítem vuelve a entrar en
-`findByEstado(EstadoEntrega.PENDIENTE)`, que es la query que alimenta el planificador nightly
-(`PlanificadorDeRutasScheduler:44`). Un endpoint sin validar puede generar rutas duplicadas a
-las 2 AM.
-
-### Propuesta
-
-Implementar la validación que el comentario describe: solo desde `NO_RECIBIDA`, y el `case`
-debería pedir el estado explícitamente. Si el método que el comentario menciona iba a existir,
-crearlo; si no, borrar la referencia para que el próximo que lea no busque algo que no está.
-
----
-
-## 17. El planificador resetea la carga de los camiones y nunca la persiste
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:63`, `ProveedorRutasExternoSimulado.java:77`, `PlanificadorDeRutasScheduler.java:62`
-
-### Qué pasa
-
-`procesarAgrupacion` muta los `Camion` que recibió:
-
-```java
-for (Camion c : camionesDisponibles) {
-    asignacion.put(c.getPatente(), new ArrayList<>());
-    c.resetearCargaOcupada();
-}
-...
-c.cargar(item, ciudad);
-```
-
-`resetearCargaOcupada` pone `pesoOcupado`, `volumenOcupado` y `ciudadDestinoActual` en cero;
-`cargar` los vuelve a acumular. Pero:
-
-1. **Nunca se guarda.** No hay `repoCamiones.save()` en ninguna parte de la clase: no tiene
-   repositorio inyectado. Las columnas `peso_ocupado_kg` y `volumen_ocupado_m3` quedan siempre
-   en 0.
-2. **Las entidades están detached.** `PlanificadorDeRutasScheduler:45` las saca de
-   `repoCamiones.findAll()`, cuya transacción ya se cerró, y después las muta desde un
-   `CompletableFuture.runAsync` (línea 28), o sea en otro hilo. Mutar entidades JPA fuera de
-   sesión es una escritura que no existe.
-
-El efecto es que `Camion.puedeCargar(ItemEntrega)` (líneas 76-79) siempre calcula contra 0, y
-`Camion.estaVacio()` siempre da `true`. Por eso la rama 2 de la línea 88 (`c.estaVacio()`)
-gana siempre y la rama 1 de la línea 77 es **código muerto**: `ciudadDestinoActual` se acaba
-de resetear a `null` en la línea 63, así que `ciudad.equals(c.getCiudadDestinoActual())`
-nunca puede dar true. La agrupación por ciudad, que es el objetivo del algoritmo, no está
-implementada.
-
-Y `PlanificadorDeRutasScheduler:62` pasa la **misma** lista `camionesDisponibles` a cada uno
-de los lotes del `for` (línea 60). Cada lote dispara su propio `runAsync` asíncrono, así que N
-hilos resetean y cargan los mismos objetos `Camion` a la vez, sin sincronización. Con dos
-lotes de 100, la carga acumulada es una intercalación no determinista de los dos.
-
-### Propuesta
-
-Decidir qué representa el estado de carga y persistirlo: si es parte del modelo, guardar los
-camiones al final de la asignación, dentro de una transacción, en el hilo que la hace. Si
-`ciudadDestinoActual` es estado en memoria de una sola pasada, que el planificador deje de
-compartir las instancias entre lotes y use `subList` de una copia por hilo. Y sacar la rama 1
-muerta o arreglar el reseteo para que no la mate.
-
----
-
-## 18. `return null` en el catch del planificador manual
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `controllers/PlanificadorDeRutasController.java:88-101`
-
-### Qué pasa
-
-```java
-@PostMapping("/planificar-manual")
-public ResponseEntity<String> forzarPlanificacionManual() {
-    try {
-        planificadorScheduler.iniciarPlanificacionAutomatica();
-        return ResponseEntity.ok("Proceso de planificación disparado. Aguardando respuesta del proveedor externo...");
-    } catch (Exception e) {
-        System.err.println("=================================");
-        ...
-        return null;
-    }
-}
-```
-
-El único `catch` del método devuelve `null` en vez de una `ResponseEntity`. Spring recibe un
-`null` de un handler de request, tira `IllegalStateException` al intentar escribir la
-respuesta, y el cliente recibe un 500 genérico sin cuerpo. Los siete `println` que lo anteceden
-explican el error real en el log del servidor, que es justo donde el que depura no está
-mirando.
-
-`iniciarPlanificacionAutomatica` ya traga sus excepciones de base de datos (líneas 49-52), así
-que este camino solo se toma por fallos del proveedor externo o por estado corrupto del plan.
-
-### Propuesta
-
-Devolver `ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " +
-e.getMessage())`, como ya hace `PlanificadorDeRutasController:74` en el otro endpoint del mismo
-controller. Y bajar los `println` a `log.error` con la excepción completa.
-
+| 1 | 34 | `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas |
+| 2 | 37 | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 3 | 20 | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 ---
 
 ## 20. Verificado: logística no invoca a `donaciones-service` ni a `incentivos`, y no habla con notificaciones
@@ -487,248 +85,6 @@ La verificación de que la separación es real ya está arriba, en la tabla: cer
 llamadas, cero dependencias.
 
 ---
-## 26. Replanificar crea rutas duplicadas para los mismos ítems, cada noche y en cada manual
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `Scheduler/PlanificadorDeRutasScheduler.java:36,44`, `controllers/PlanificadorDeRutasController.java:88-91`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java:45-90`, `services/PlanificadorRutasService.java:80-97`
-
-### Qué pasa
-
-El cron de las 02:00 (y `POST /PlanificacionRutas/planificar-manual`, que llama al mismo
-método) busca `repoItemEntrega.findByEstado(PENDIENTE)` y manda esos items al proveedor. El
-callback construye `new Ruta(camion)` por cada asignación y la guarda **sin consultar si esos
-items ya tienen una ruta** (`PlanificadorDeRutas:63`, `PlanificadorRutasService:83-97`).
-
-El estado del ítem no cambia al crear la ruta: pasa a `EN_CAMINO` recién cuando el chofer la
-inicia (`publicarInicioRuta`). Mientras la ruta siga `PROGRAMADA` y sin iniciar, sus items
-siguen siendo `PENDIENTE`, y a la noche siguiente el cron los vuelve a planificar: otra
-`Ruta` nueva con los mismos ítems y las mismas paradas. Cada noche suma una ruta más para las
-mismas donaciones —el mismo ítem termina en dos camiones distintos—, y cada ejecución del
-endpoint manual hace lo mismo. Las rutas anteriores quedan colgando en `PROGRAMADA` para
-siempre, con chofer y camión tomados por `asignarChoferes`.
-
-### Cómo se dispara
-
-Crear una ruta por callback sin iniciarla y correr `POST /PlanificacionRutas/planificar-manual`
-(o esperar al cron): aparece una segunda fila en `ruta` que contiene los mismos `idDonacion`
-que la primera.
-
-### Propuesta
-
-Antes de mandar al proveedor, filtrar los items que ya pertenezcan a una ruta que no esté
-`FINALIZADA`, o darles un estado `PLANIFICADO` al crear la ruta para que no vuelvan a entrar
-en `findByEstado(PENDIENTE)`. La segunda opción además mata el síntoma de "el mismo ítem en
-dos camiones".
-
----
-
-## 27. `findByChofer` devuelve una ruta histórica: iniciar/terminar opera sobre la ruta equivocada
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `models/repositories/rutas/RepositorioRutas.java:21-27`, `services/RutaService.java:82-91,93-97`
-
-### Qué pasa
-
-```java
-default Optional<Ruta> findByChofer(Chofer chofer){
-    if (chofer == null) return Optional.empty();
-    return this.findAll().stream()
-            .filter(ruta -> ruta.getCamionAsignado() != null &&
-                    chofer.equals(ruta.getCamionAsignado().getChofer()))
-            .findFirst();
-}
-```
-
-`findAll().stream()...findFirst()` devuelve la **primera** fila de la tabla (orden de
-inserción) cuyo camión tenga ese chofer: no filtra por estado ni ordena, o sea que devuelve
-la ruta más vieja.
-
-Los dos únicos llamadores son `iniciarRuta` y `terminarRuta` (`RutaService:83,94`), que
-interpretan el resultado como "la ruta del chofer". Con más de una ruta en la historia del
-chofer —que es el caso normal—:
-
-- `PATCH /rutas/chofer/{id}/iniciar` marca `EN_CURSO` una ruta **ya finalizada** y publica
-  `INICIO_RUTA` con sus paradas viejas; la ruta recién planificada sigue `PROGRAMADA`.
-- `PATCH /rutas/chofer/{id}/terminar` pone `FINALIZADA` sobre la ruta vieja, libera un chofer
-  y un camión que quizá están en otra ruta, y hace el barrido de items sobre las paradas
-  equivocadas.
-
-### Cómo se dispara
-
-Un chofer con una ruta `FINALIZADA` histórica y una `PROGRAMADA` recién creada →
-`PATCH /rutas/chofer/{id}/iniciar` → la que pasa a `EN_CURSO` es la vieja (se ve con
-`GET /rutas`).
-
-### Propuesta
-
-Filtrar por estado (`PROGRAMADA` para iniciar, `EN_CURSO` para terminar) o, mejor, recibir el
-`idRuta` en el endpoint: el chofer no identifica una ruta.
-
----
-
-## 29. Un PATCH/PUT sin el campo `disponible` aplica lo contrario: ocupa en silencio o revienta
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/CamionService.java:75-90`, `services/ChoferService.java:48-52,66-72`, `dto/chofer/ChoferDTO.java:13`, `models/gestores/GestorCamiones.java:19-31`
-
-### Qué pasa
-
-Las tres vías que actualizan disponibilidad tratan "campo ausente" como "poner en ocupado":
-
-- **`PATCH /camiones/{patente}/estado`**: `body.get("disponible")` devuelve `null` si el
-  campo no viene → el `else` de la línea 83 ejecuta `camion.ocupado()` y responde
-  **200 "Camión marcado como ocupado"**. La semántica de un PATCH es "no tocar lo que no se
-  envía"; acá un body `{}` ocupa el camión.
-- **`PATCH /choferes/{id}/estado`**: mismo patrón en `ChoferService:66-72`.
-- **`PUT /choferes/{id}`**: `ChoferDTO.disponible` es primitiva `boolean` (línea 13), así
-  que un JSON sin el campo se deserializa en `false` y la línea 52 hace
-  `choferExistente.setDisponible(false)` → 200, chofer ocupado.
-- **`PUT /camiones/{patente}`**: `CamionDTO.disponible` es `Boolean`, el `null` llega a
-  `GestorCamiones.actualizarCamion:27` que hace `setDisponible(null)` sobre una columna
-  `nullable = false` → `DataIntegrityViolationException`, que el controller no atrapa (solo
-  catchea `IllegalArgumentException`) → **500**.
-
-### Cómo se dispara
-
-```bash
-curl -X PATCH http://localhost:8086/api/camiones/ABC123/estado \
-  -H "Content-Type: application/json" -d '{}'
-# 200 "Camión marcado como ocupado" — sin haber pedido nada
-
-curl -X PUT http://localhost:8086/api/choferes/<id> \
-  -H "Content-Type: application/json" -d '{"nombre":"Juan"}'
-# 200, y el chofer quedó disponible=false
-```
-
-### Propuesta
-
-Distinguir "campo ausente" de "campo en false": en el PATCH, verificar
-`body.containsKey("disponible")` y no tocar nada si no viene; en el PUT, usar `Boolean` en
-`ChoferDTO` y no pisar el valor cuando es `null`.
-
----
-
-## 30. `POST /entregas` responde 201 sin registrar nada cuando `bienes` o `idsDonaciones` vienen null
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:119,131`, `controllers/EntregaController.java:62-72`
-
-### Qué pasa
-
-`procesarPeticion` tiene dos salidas silenciosas:
-
-```java
-if (request == null) return;                                  // línea 119
-if (bienes == null || idsDonaciones == null) return;          // línea 131
-```
-
-Un `return` sin registrar nada y sin lanzar excepción hace que `EntregaController.crearItems`
-responda **201 "Petición procesada exitosamente"**. La donación no se persiste, no se loguea,
-no se descarta con warning: no pasó nada y el caller queda creyendo que sí.
-
-Cuando el mismo endpoint lo invoca RabbitMQ (el flujo normal), el `return` además cuenta como
-éxito: el mensaje se hace *ack* y se pierde para siempre — no hay reintentos ni DLQ porque
-nadie falló.
-
-### Cómo se dispara
-
-```bash
-curl -X POST http://localhost:8086/api/entregas -H "Content-Type: application/json" \
-  -d '{"donacionResumen":{"idsDonaciones":null},"entidadBeneficiaria":{...}}'
-# 201 "Petición procesada exitosamente mediante el proveedor: PROPIO"
-# SELECT COUNT(*) FROM item_entrega -> sin cambios
-```
-
-### Propuesta
-
-Reemplazar los `return` por `throw new IllegalArgumentException(...)`, igual que las demás
-validaciones del método: el controller lo traduce en 400 y el listener lo descarta con
-warning sin gastar reintentos, que es el comportamiento que ya existe para el resto de los
-payloads inválidos.
-
----
-
-## 31. El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../ProveedorRutasExternoSimulado.java:22,40-47`
-
-### Qué pasa
-
-Dos fallas en la misma llamada:
-
-1. **Sin timeout.** `HttpClient.newHttpClient()` (línea 22) no define `connectTimeout` y el
-   `HttpRequest` no define `.timeout()`. Si el callback no acepta la conexión o la respuesta
-   nunca llega, `httpClient.send(...)` (línea 46) puede bloquear el hilo del
-   `CompletableFuture.runAsync(...)` indefinidamente.
-2. **El status se ignora.** `send(...)` devuelve la respuesta y el resultado se descarta. Si
-   el callback responde 400 o 500 —payload que el propio controller rechaza—, el simulador
-   no lo ve: no reintenta, no loguea, no avisa. El lote de rutas se planificó y nunca llegó,
-   y los items quedan `PENDIENTE` sin que nadie se entere.
-
-Todo el manejo de errores es un `System.err.println` dentro de una tarea asíncrona sin
-supervisión: un fallo del lote no afecta al scheduler, que ya respondió 200.
-
-### Cómo se dispara
-
-Bajar el endpoint del callback (o poner cualquier cosa en el 8086 que responda 500) y
-disparar `POST /PlanificacionRutas/planificar-manual`: el scheduler responde "Proceso de
-planificación disparado", la simulación imprime su banner de error (o queda colgada si es
-timeout) y ningún lote queda registrado.
-
-### Propuesta
-
-`HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))` y
-`HttpRequest.newBuilder().timeout(Duration.ofSeconds(10))`; chequear
-`respuesta.statusCode() != 200` y, ante cualquier fallo, reintentar o al menos dejar el lote
-registrado en un log con nivel ERROR.
-
----
-
-## 32. Toda violación de integridad se trata como carrera benigna: la donación se pierde sin DLQ
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `RabbitMQ/DonacionListener.java:66-73`
-
-### Qué pasa
-
-```java
-} catch (DataIntegrityViolationException yaRegistrada) {
-    log.info("La donación ya fue registrada por otra instancia, mensaje descartado ...");
-    return;
-}
-```
-
-El `catch` asume que **toda** `DataIntegrityViolationException` es la carrera de clave
-primaria entre dos instancias —y en ese caso descartar es correcto—, pero la misma excepción
-la levantan el resto de las violaciones: dato fuera de rango, columna excedida, `NOT NULL`
-violado, clave foránea rota. Esos casos **no** significan "ya registrada": significan "este
-mensaje tiene datos inválidos", y acá se tragan igual. `return` (ack), un log a nivel `info`
-con un mensaje que dice lo contrario de lo que pasó, y la donación se pierde sin DLQ ni registro
-útil.
-
-Es el espejo del punto 25: ahí un fallo que **debería** ir a la DLQ se reencola para siempre;
-acá uno que **debería** ir a la DLQ se descarta como éxito.
-
-### Cómo se dispara
-
-Mandar un mensaje cuyo dato reviente una restricción de la base dentro de
-`itemsEnUnaTransaccion` (por ejemplo una `cantidad` que la columna DECIMAL no admite): el
-log muestra "La donación ya fue registrada por otra instancia" y el mensaje se acepta.
-
-### Propuesta
-
-Acotar el `catch` al caso que se quiere (clave primaria duplicada, que ya está cubierta por
-la guarda de idempotencia `existsById`), y dejar que cualquier otra violación siga el camino
-de reintento y termine en la DLQ con el error original visible.
-
----
 
 ## 34. `UnidadDeMedida` persiste constantes estáticas: cada reinicio duplica las filas
 
@@ -768,80 +124,6 @@ Mejor todavía: cargar el catálogo una sola vez al inicializar y que el servici
 
 ---
 
-## 35. Cada mensaje inserta país, provincia, ciudad y dirección nuevos aunque la entidad ya exista
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `services/EntregaService.java:173-204`
-
-### Qué pasa
-
-Es el residual del punto 15: la duplicación **por bien** se corrigió (`1e75220` movió el
-catálogo fuera del `for`), pero dentro de `resolverEntidad` los `save` del catálogo siguen
-corriendo **antes** de mirar si la entidad ya existe:
-
-```java
-repoPaises.save(direccion.getCiudad().getProvincia().getPais());   // 180
-repoProvincias.save(direccion.getCiudad().getProvincia());         // 181
-repoCiudades.save(direccion.getCiudad());                          // 182
-repoDirecciones.save(direccion);                                   // 183
-...
-Optional<Entidad> yaExistente = repoEntidades.findById(idEntidad); // 187
-if (yaExistente.isPresent()) return yaExistente.get();
-```
-
-`convertirDireccionDTO` construye objetos nuevos en cada mensaje (no hay ninguna búsqueda por
-nombre), así que los cuatro `save` insertan filas nuevas **cada vez**, incluso cuando a la
-línea 187 se devuelve la entidad existente: la dirección recién insertada queda huérfana.
-`Pais`, `Provincia` y `Ciudad` usan `GenerationType.IDENTITY` y no tienen constraint único,
-así que nadie protesta y la tabla `ciudad` crece lineal con la cantidad de mensajes.
-
-### Cómo se dispara
-
-Mandar dos mensajes para la misma entidad beneficiaria → `SELECT COUNT(*) FROM ciudad` sube
-en 2, y la `Entidad` sigue apuntando a su primera dirección (la segunda queda sin usar).
-
-### Propuesta
-
-Buscar primero la entidad (línea 187) y solo construir el catálogo si no existe; o resolver
-país/provincia/ciudad por `findByNombre` antes de cada `save`, que es lo que decía la
-propuesta original del punto 15.
-
----
-
-## 36. El callback devuelve 500 con internals para payloads que su contrato documenta como 400
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `controllers/PlanificadorDeRutasController.java:64-75`, `services/PlanificadorRutasService.java:69-77`
-
-### Qué pasa
-
-El `@ApiResponses` del endpoint documenta **400** para "JSON malformado o IDs inexistentes".
-El JSON malformado efectivamente devuelve 400 (lo envuelve en `IllegalArgumentException`,
-líneas 54-58), pero los IDs inexistentes no: `procesarCallbackRutas` busca los items dentro
-de un `try` cuyo `catch (Exception e)` (línea 75) envuelve **todo** —incluida la propia
-`IllegalArgumentException("Entrega no encontrada")` de la línea 73— en un
-`RuntimeException("Falla en la base de datos al recuperar información para el ruteo")`. Ese
-`RuntimeException` no es `IllegalArgumentException`, así que en el controller cae en el
-`catch (Exception)` → **500**, y el body filtra lo interno:
-`"Error interno del servidor: Faila en la base de datos al recuperar información para el
-ruteo"`.
-
-Además, el 500 de la última línea del controller concatena `e.getMessage()` en la respuesta:
-información interna del servicio hacia el cliente.
-
-### Cómo se dispara
-
-Callback con un `idDonacion` que no existe en la base → 500 en vez del 400 documentado.
-
-### Propuesta
-
-No envolver las `IllegalArgumentException` de negocio en el `catch` de BD (o relanzarlas tal
-cuál), y dejar de concatenar `e.getMessage()` en la respuesta del 500.
-
----
-
 ## 37. El CRUD de camiones/choferes devuelve 500 para errores de validación
 
 **Estado:** abierto
@@ -875,39 +157,6 @@ curl -X POST http://localhost:8086/api/camiones -H "Content-Type: application/js
 `@Valid` con anotaciones en los DTO, y un `@ControllerAdvice` que traduzca
 `DataIntegrityViolationException` en 409/400 con un mensaje entendible, en lugar de que cada
 controlador decida con su propio `try`.
-
----
-
-## 38. Los repositorios de país/provincia/ciudad declaran ID `UUID` y la entidad tiene `Long`
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `models/repositories/RepositorioPaises.java:10`, `RepositorioProvincias.java:10`, `RepositorioCiudades.java:10` vs. `models/entities/Direccion/Pais.java:18`, `Provincia.java:17`, `Ciudad.java:17`
-
-### Qué pasa
-
-```java
-public interface RepositorioPaises extends JpaRepository<Pais, UUID> { }
-// pero en la entidad:
-private Long idPais;   // @GeneratedValue(strategy = IDENTITY)
-```
-
-El tipo de id del repositorio (`UUID`) no coincide con el tipo real de la clave (`Long`) en
-los tres. Hoy no se nota porque a esos repos **solo se les llama `save`**
-(`EntregaService:180-182`) y `save` no depende del tipo de id. Pero cualquier `findById(...)`,
-`existsById(...)` o `deleteById(...)` con el tipo declarado revientaría al bindear un `UUID`
-contra una columna `BIGINT`. Es deuda latente: compila, arranca, y falla recién en el primer
-uso.
-
-### Cómo se dispara
-
-Agregar en cualquier punto `repoPaises.findById(algunUUID)` y ejecutarlo: excepción de
-bindeo de Hibernate en lugar de un `Optional` vacío.
-
-### Propuesta
-
-Cambiar los tres a `JpaRepository<Pais, Long>` (y `Provincia`, `Ciudad`), que es lo que la
-entidad declara. Es una línea por archivo.
 
 ---
 
@@ -1720,3 +969,208 @@ deduplicacion persistente, justo el request/response que se habia quitado a prop
 `EventoLogisticaServiceTest` (antes `EventoLogisticaServicePollingTest`) cubre la lectura por id:
 off-by-one, null, orden y la derived query. Se quitaron los dos tests del listener, que ya no
 existe. Los dos modulos compilan (`mvn test-compile`) y el test corre 6/6 en verde.
+
+### 2. Iniciar o terminar una ruta nunca persiste el estado y aborta transacciones
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `models/repositories/rutas/RepositorioRutas.java`, `services/RutaService.java`
+
+`RepositorioRutas.actualizarEstado` operaba de forma imperativa mediante un `indexOf` sobre copias *detached* de listas devueltas por `findAll()`, perdiendo las referencias en memoria. Además, el flujo de `terminarRuta` lanzaba excepciones `IllegalArgumentException` infundadas tras operaciones de `deleteById` y búsquedas de camión exitosas, provocando el *rollback* completo de la transacción.
+
+**Qué se resolvió:**
+1. Se eliminó el método `default actualizarEstado` del repositorio y se delegó la persistencia de los cambios de estado (`EN_CURSO`, `FINALIZADA`) directamente a `RutaService` mediante la anotación `@Transactional` y `repoRutas.save()`.
+2. Se reestructuró `terminarRuta`: se eliminaron los lanzamientos erróneos de excepciones en el borrado de entregas entregadas y en la desvinculación del camión, permitiendo la correcta liberación del chofer y el reseteo del vehículo.
+3. Se garantizó el contexto transaccional atómico en todo el servicio para evitar modificaciones fuera de sesión.
+
+**Residual:** si un chofer intenta finalizar una ruta sin haber procesado la totalidad de las entregas pendientes, los ítems restantes reingresan al depósito mediante evento de dominio, pero la validación de consistencia depende de la correcta respuesta sincrónica del `GestorPublicacionEventos`.
+
+### 3. Terminar una ruta borra un ítem y lanza una excepción errónea
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `services/RutaService.java`
+
+Al procesar una entrega con estado `ENTREGADA`, el bloque `else` ejecutaba `deleteById` si la entidad estaba presente (`isPresent()`), pero inmediatamente lanzaba una excepción `IllegalArgumentException("Entrega no encontrada")`. Esto interrumpía el bucle de procesamiento de paradas, impedía la liberación del chofer y del camión, y provocaba el *rollback* de la transacción.
+
+**Qué se resolvió:** Se eliminó la excepción del flujo normal de ejecución y se simplificó la condición de borrado utilizando `existsById()`. El procesamiento de entregas ahora continúa de forma fluida a lo largo de todas las paradas sin abortar ni bloquear al personal/vehículo.
+
+**Residual:** Si se requiere auditar el historial de entregas borradas, se deberá implementar una tabla de auditoría o marcado lógico (*soft delete*), ya que la eliminación física destruye el registro sobre el cual operaba la bitácora de eventos de `ItemEntrega`.
+
+### 4. La condición de búsqueda del camión al finalizar la ruta estaba invertida
+
+**Estado:** corregido el 2026-10-08 en `[PONER_TU_COMMIT_ID]`
+**Severidad:** alta
+**Archivos:** `services/RutaService.java`
+
+Al momento de desvincular el vehículo al terminar un recorrido, el método `terminarRuta` ejecutaba `repoCamiones.findByChofer_IdChofer(idChofer)`. La condición evaluaba `camion.isPresent()`, por lo que en el camino feliz (cuando el camión existía) se reseteaba el vehículo pero se lanzaba inmediatamente una excepción `IllegalArgumentException("Camión no encontrado")`, abortando la transacción por rollback.
+
+**Qué se resolvió:** Se simplificó la navegación entre agregados. En lugar de ejecutar una consulta redundante en el repositorio de camiones con condicionales invertidos, se obtiene el camión directamente a través de la relación de dominio `rutaActual.getCamionAsignado()`. Sobre dicha instancia se gestiona la disponibilidad, la desvinculación del chofer y el reseteo del vehículo de forma atómica.
+
+**Residual:** Ninguno. La asociación entre la ruta y su camión asignado es requerida por el modelo de datos antes de pasar a estado `EN_CURSO`.
+
+### 7. Inconsistencia en el getter de Parada y posible NullPointerException en Ruta.agregarEntrega
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** baja / media
+**Archivos:** `models/entities/Parada/Parada.java`, `models/entities/Ruta/Ruta.java`
+
+Se detectó que `Parada.java` sobrescribía manualmente el getter de `entidadDestino` derivándolo del primer ítem de la parada, ignorando el atributo `@ManyToOne` mapeado con JPA. Ante una parada sin ítems, el getter retornaba `null`, lo que provocaba un `NullPointerException` en `Ruta.agregarEntrega` al ejecutar `p.getEntidadDestino().equals(...)`.
+
+**Qué se resolvió:**
+1. Se removió el getter manual en `Parada.java` para mantener la coherencia del mapeo `@ManyToOne` administrado por Lombok.
+2. Se actualizó `Ruta.agregarEntrega` para comparar las entidades de destino de forma segura utilizando `Objects.equals(...)` y validando la entrada de ítems nulos.
+
+### 8. Confirmación o fallo de entregas fuera del estado EN_CAMINO ignorados en silencio
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java`, `services/EntregaService.java`
+
+`publicarEntregaConfirmada` envolvía la lógica de cambio de estado y publicación de eventos en una guarda `if (item.getEstado() == EstadoEntrega.EN_CAMINO)`. Si el ítem se encontraba en otro estado (`PENDIENTE`, `NO_RECIBIDA`, etc.), la función no realizaba ninguna acción pero retornaba el ítem intacto. El servicio respondía un HTTP 200 OK indicando éxito falso al cliente.
+
+**Qué se resolvió:**
+1. Se removió la guarda pasiva en `publicarEntregaConfirmada` reemplazándola por una validación explícita que arroja `IllegalStateException` si la donación no está en estado `EN_CAMINO`.
+2. Se aplicó la misma guarda explícita en `publicarEntregaFallida` para mantener coherencia en las transiciones de estado del dominio.
+
+### 9. Reportar una entrega fallida no valida el estado previo
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `models/gestores/GestorPublicacionEventos.java`
+
+`publicarEntregaFallida` permitía transicionar hacia `NO_RECIBIDA` sin verificar el estado actual del ítem. Esto posibilitaba que donaciones previamente marcadas como `ENTREGADA` o `PENDIENTE` cambiaran a `NO_RECIBIDA`, dejando inconsistencias en la bitácora de eventos y en los atributos del ítem (como conservar la foto de comprobante).
+
+**Qué se resolvió:**
+Se incorporó la validación explícita en `publicarEntregaFallida` para verificar que el ítem se encuentre en estado `EN_CAMINO` antes de transicionar a `NO_RECIBIDA`, lanzando un `IllegalStateException` en caso contrario.
+
+### 10. Reingreso a depósito no validaba el estado previo
+
+**Estado:** corregido el 2026-10-08
+**Severidad:** media
+**Archivos:** `services/EntregaService.java`, `models/gestores/GestorPublicacionEventos.java`
+
+`publicarReingresoDeposito` permitía cambiar el estado de cualquier ítem a `PENDIENTE` sin validar si venía de `NO_RECIBIDA`. Un comentario en `EntregaService` asumía erróneamente que una función inexistente (`reingresarADeposito()`) realizaba esta comprobación. Permitir que cualquier entrega pase a `PENDIENTE` hacía que fuera recalculada por el planificador nocturno de rutas (`PlanificadorDeRutasScheduler`), generando rutas duplicadas o inconsistentes.
+
+**Qué se resolvió:**
+1. Se agregó la validación explícita en `publicarReingresoDeposito` dentro de `GestorPublicacionEventos` para permitir el reingreso únicamente si la entrega se encuentra en estado `NO_RECIBIDA` (de lo contrario lanza `IllegalStateException`).
+2. Se eliminó la referencia al método inexistente en los comentarios de `EntregaService`.
+
+### 18. Retorno de null en el bloque catch de /planificar-manual
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** baja  
+**Archivos:** `controllers/PlanificadorDeRutasController.java`
+
+El endpoint `@PostMapping("/planificar-manual")` devolvía `null` en caso de capturar una excepción durante el disparo de la planificación. Esto hacía que Spring MVC fallara al intentar renderizar la respuesta, enviando un error 500 genérico e inexpresivo al cliente HTTP mientras los detalles del error quedaban ocultos o mal estructurados en los logs.
+
+**Qué se resolvió:**
+Se modificó el bloque `catch` para retornar un `ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)` con un mensaje claro con la causa del error en el cuerpo de la respuesta, registrando además el stacktrace completo a través de SLF4J (`log.error`).
+
+### 26. Planificación reiterada genera rutas duplicadas para los mismos ítems
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** alta  
+**Archivos:** `services/PlanificadorDeRutasScheduler.java`, `models/entities/Ruta.java`
+
+Debido a que el estado del `ItemEntrega` se mantenía como `PENDIENTE` desde la asignación inicial de la ruta hasta la salida efectiva del chofer (`EN_CAMINO`), las ejecuciones subsiguientes del scheduler (o invocaciones al endpoint `/planificar-manual`) volvían a incluir los mismos ítems en la planificación. Como resultado, el sistema creaba múltiples objetos `Ruta` duplicados conteniendo las mismas donaciones y consumiendo camiones y choferes de forma redundante.
+
+**Qué se resolvió:**
+Se aplicó un filtro en `PlanificadorDeRutasScheduler` sobre los ítems recuperados en estado `PENDIENTE` para asegurar que solo se envíen al proveedor externo aquellos ítems que no tengan una parada asignada a una ruta cuyo estado sea distinto de `FINALIZADA` (ignora rutas en estado `PROGRAMADA` o `EN_CURSO`).
+
+### 27. findByChofer devolvía rutas históricas finalizadas en iniciar y terminar ruta
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** alta  
+**Archivos:** `models/repositories/rutas/RepositorioRutas.java`, `services/RutaService.java`
+
+El método `findByChofer` realizaba un `.findFirst()` sobre la colección completa de rutas sin filtrar por estado. Cuando un chofer poseía rutas finalizadas históricas en la base de datos, las operaciones `iniciarRuta` y `terminarRuta` tomaban siempre la primera ruta histórica (la más antigua), provocando re-transiciones de estado sobre rutas cerradas, publicación de eventos con paradas desactualizadas y desvinculaciones indebidas de camiones.
+
+**Qué se resolvió:**
+1. Se implementó el método `findByChoferYEstado` en `RepositorioRutas` para requerir explícitamente el estado objetivo de la ruta.
+2. En `RutaService`, `iniciarRuta` ahora consulta por rutas en estado `PROGRAMADA`, mientras que `terminarRuta` consulta por rutas en estado `EN_CURSO`. Si no existe una ruta válida en dicho estado, el servicio arroja una excepción explícita (`IllegalStateException`).
+
+### 29. Omisión del atributo de disponibilidad resulta en alteración indebida de estado o excepciones HTTP 500
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `services/CamionService.java`, `services/ChoferService.java`, `dto/chofer/ChoferDTO.java`, `models/gestores/GestorCamiones.java`
+
+Al omitir el campo `"disponible"` en peticiones de actualización (`PATCH` o `PUT`), la ausencia del valor era evaluada como `false` o asignada como `null`. Esto provocaba que recursos previamente disponibles pasaran a estar ocupados sin solicitud explícita del cliente o que se intentara persistir un valor `null` en columnas no anulables de JPA, desencadenando excepciones `DataIntegrityViolationException` (HTTP 500).
+
+**Qué se resolvió:**
+1. Se modificó el tipo de dato del atributo `disponible` en `ChoferDTO` de primitivo `boolean` a `Boolean` wrapper para permitir detectar el envío nulo/ausente.
+2. En los métodos `cambiarDisponibilidad` de `CamionService` y `ChoferService`, se agregó la verificación explícita de presencia del campo `body.containsKey("disponible")`, lanzando un `IllegalArgumentException` en su ausencia.
+3. Se ajustaron los métodos de actualización en `ChoferService` y `GestorCamiones` para preservar el estado actual de la entidad cuando el atributo `disponible` no sea provisto.
+
+### 30. Salida silenciosa en POST /entregas ante payloads nulos o incompletos
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `services/EntregaService.java`
+
+Al invocar la creación/procesamiento de entregas con atributos estructurales nulos (`request`, `bienes` o `idsDonaciones`), el servicio retornaba inmediatamente de manera silenciosa (`return;`). Esto ocasionaba que el controlador respondiera un HTTP 201 Created infundado y que los consumidores de mensajería (RabbitMQ) confirmaran (`ack`) y descartaran mensajes corruptos sin posibilidad de reintento ni registro en DLQ.
+
+**Qué se resolvió:**
+Se reemplazaron todas las salidas silenciosas en `EntregaService.procesarPeticion` por lanzamientos explícitos de `IllegalArgumentException`. Con este cambio:
+- Las llamadas HTTP reciben una respuesta HTTP 400 Bad Request con la descripción del error de validación.
+- Los consumidores de mensajería gestionan la excepción adecuadamente según las políticas del listener para mensajes inválidos.
+
+### 32. Captura genérica de DataIntegrityViolationException descarta mensajes corruptos sin enviar a la DLQ
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `RabbitMQ/DonacionListener.java`
+
+`DonacionListener` capturaba de forma amplia cualquier `DataIntegrityViolationException`, asumiendo que se debía a duplicados por carreras entre instancias al insertar claves primarias. Esto provocaba que violaciones reales del esquema de la base de datos (restricciones de clave foránea, columnas con longitud excedida o valores nulos no permitidos) fueran absorbidas silenciosamente con un `return`, notificadas falsamente en los logs y descartadas sin derivación a la DLQ.
+
+**Qué se resolvió:**
+Se eliminó el bloque `catch (DataIntegrityViolationException)` en `DonacionListener`. Ahora, las violaciones inesperadas del esquema de base de datos son procesadas en el flujo de reintentos estándar y, de persistir la falla, son rechazadas y enviadas a la Dead Letter Queue (`AmqpRejectAndDontRequeueException`) para su inspección y posterior reprocesamiento.
+
+### 35. Persistencia redundante e incondicional de catálogo geográfico en `resolverEntidad`
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `services/EntregaService.java`
+
+En `EntregaService.resolverEntidad`, la jerarquía de País, Provincia, Ciudad y Dirección se persistía antes de consultar si la `Entidad` ya se encontraba registrada en el sistema. Para mensajes posteriores dirigidos a una misma entidad beneficiaria, los objetos geográficos eran insertados como registros nuevos antes de que el método retornara la entidad existente, acumulando registros huérfanos y duplicados en las tablas geográficas.
+
+**Qué se resolvió:**
+Se reordenó el flujo en `resolverEntidad` para ejecutar primero la búsqueda de la `Entidad` mediante `repoEntidades.findById(idEntidad)`. La construcción y guardado de País, Provincia, Ciudad y Dirección ahora solo ocurren si la entidad no existía previamente en la base de datos.
+
+### 36. Respuesta HTTP 500 con fugas de información interna al enviar IDs inexistentes en callback de rutas
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** baja  
+**Archivos:** `controllers/PlanificadorDeRutasController.java`, `services/PlanificadorRutasService.java`
+
+Al procesar un callback de ruteo con IDs inexistentes en la base de datos, `PlanificadorRutasService` capturaba `IllegalArgumentException` y la envolvía dentro de un `RuntimeException` genérico. Esto impedía que el controlador retornara el HTTP 400 (`BAD_REQUEST`) documentado en OpenAPI, derivando en un HTTP 500 que además concatenaba el mensaje interno de la excepción en la respuesta HTTP.
+
+**Qué se resolvió:**
+1. Se ajustó la captura de excepciones en `PlanificadorRutasService.procesarCallbackRutas` para relanzar directamente las instancias de `IllegalArgumentException` e `IllegalStateException`.
+2. Se eliminó la concatenación de `e.getMessage()` en la respuesta HTTP 500 de `PlanificadorDeRutasController` para prevenir la filtración de detalles del servidor.
+
+### 38. Mismatch de tipo de ID (UUID vs Long) en repositorios del catálogo geográfico
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** baja  
+**Archivos:** `RepositorioPaises.java`, `RepositorioProvincias.java`, `RepositorioCiudades.java`
+
+Las interfaces `RepositorioPaises`, `RepositorioProvincias` y `RepositorioCiudades` heredaban de `JpaRepository` especificando `UUID` como tipo de clave primaria, mientras que las entidades `Pais`, `Provincia` y `Ciudad` definían su ID como `Long` (`GenerationType.IDENTITY`). Aunque el método `.save()` funcionaba al no validar explícitamente la clave en la firma, invocaciones como `findById`, `existsById` o `deleteById` provocaban errores de mapeo e incompatibilidad de tipos en Hibernate al intentar realizar el binding entre `UUID` y un campo numérico (`BIGINT`).
+
+**Qué se resolvió:**
+Se corrigieron los parámetros genéricos de `JpaRepository` en `RepositorioPaises`, `RepositorioProvincias` y `RepositorioCiudades` para utilizar `Long` como el tipo de ID correspondiente a la entidad.
+
+### 17. Intercalación no determinista y pérdida de asignación por ciudad en el calculador simulado de rutas
+
+**Estado:** corregido el 2026-10-08  
+**Severidad:** media  
+**Archivos:** `ProveedorRutasExternoSimulado.java`, `PlanificadorDeRutasScheduler.java`
+
+Al procesar los lotes de ruteo, el simulador mutaba directamente las instancias compartidas de `Camion` en hilos asíncronos paralelos (`runAsync`), provocando condiciones de carrera (*race conditions*). Además, el reseteo del estado del camión al inicio del procesamiento destruía el campo `ciudadDestinoActual`, haciendo que la búsqueda de camiones con ruta asignada a la misma ciudad fallara siempre (código muerto) y asignara camiones de forma subóptima.
+
+**Qué se resolvió:**
+1. Se aisló el estado de simulación instanciando una estructura efímera/copia de `Camion` por cada lote y por cada hilo de planificación.
+2. Se mantuvo la actualización de `ciudadDestinoActual` durante la iteración de asignación del simulador, permitiendo la correcta agrupación por ciudad.
+3. Se garantizó que la persistencia definitiva de asignaciones se realice únicamente al recibir el callback correspondiente (`procesarCallbackRutas`).
+

@@ -48,8 +48,14 @@ public class ChoferService {
   public ChoferDTO update(UUID id, ChoferDTO dto) {
     Chofer choferExistente = repoChoferes.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    choferExistente.setNombre(dto.getNombre());
-    choferExistente.setDisponible(dto.isDisponible());
+
+    if (dto.getNombre() != null) {
+      choferExistente.setNombre(dto.getNombre());
+    }
+    if (dto.getDisponible() != null) {
+      choferExistente.setDisponible(dto.getDisponible());
+    }
+
     repoChoferes.save(choferExistente);
     return convertirAChoferDTO(choferExistente);
   }
@@ -64,7 +70,11 @@ public class ChoferService {
   }
 
   public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
-    boolean disponible = Boolean.TRUE.equals(body.get("disponible"));
+    if (body == null || !body.containsKey("disponible") || body.get("disponible") == null) {
+      throw new IllegalArgumentException("El campo 'disponible' es obligatorio.");
+    }
+
+    boolean disponible = body.get("disponible");
 
     Chofer chofer = repoChoferes.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
@@ -90,6 +100,7 @@ public class ChoferService {
 
   private Chofer convertirChoferDTO(ChoferDTO dto){
     if (dto == null) return null;
-    return new Chofer(UUID.randomUUID(), dto.getNombre(), dto.isDisponible());
+    boolean esDisponible = dto.getDisponible() != null ? dto.getDisponible() : true;
+    return new Chofer(UUID.randomUUID(), dto.getNombre(), esDisponible);
   }
 }
