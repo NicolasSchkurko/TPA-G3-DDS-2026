@@ -5,9 +5,12 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,24 +18,37 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/donaciones")
+@RequestMapping("/api/donaciones")
 @Tag(name = "Servicio de donaciones", description = "Endpoints para operaciones CRUD de Donaciones")
 public class DonacionController {
 
   private final DonacionService donacionService;
+  private final RabbitTemplate rabbitTemplate;
 
-  public DonacionController(DonacionService donacionService) {
+  public DonacionController(DonacionService donacionService, RabbitTemplate rabbitTemplate) {
     this.donacionService = donacionService;
+    this.rabbitTemplate = rabbitTemplate;
   }
 
   @Operation(summary = "Crear una Donación")
   @PostMapping("/formulario")
-  public ResponseEntity<List<DonacionDTO>> crearDonacion(@RequestBody FormularioRequestDTO request) {
-    List<DonacionDTO> donaciones = donacionService.procesarFormulario(request);
-    if (donaciones == null) {
-      return ResponseEntity.notFound().build();
-    }
-    return ResponseEntity.ok(donaciones);
+  public ResponseEntity<List<DonacionDTO>> crearDonacion(@Valid @RequestBody FormularioRequestDTO request) {
+    // procesarFormulario ya no devuelve null: tira IllegalArgumentException (-> 400 vía
+    // GlobalExceptionHandler) si no encuentra al donante.
+    return ResponseEntity.ok(donacionService.procesarFormulario(request));
+  }
+
+  @Operation(summary = "Ver formularios registrados (para poder liberar un Donante antes de borrarlo)")
+  @GetMapping("/formularios")
+  public ResponseEntity<List<FormularioResumenDTO>> obtenerFormularios() {
+    return ResponseEntity.ok(donacionService.obtenerFormularios());
+  }
+
+  @Operation(summary = "Eliminar un formulario. Formulario.donante_id es FK no nula sin cascade REMOVE: hay que borrar los formularios de un Donante antes de poder borrar al Donante (si no, 409).")
+  @DeleteMapping("/formularios/{id}")
+  public ResponseEntity<Void> eliminarFormulario(@PathVariable UUID id) {
+    donacionService.eliminarFormulario(id);
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(summary = "Ver donaciones")
@@ -44,21 +60,15 @@ public class DonacionController {
   @Operation(summary = "Ver donación por id")
   @GetMapping("/{id}")
   public ResponseEntity<DonacionDTO> obtenerDonacion(@PathVariable UUID id) {
-    try {
-      return ResponseEntity.ok(donacionService.obtenerPorId(id));
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.notFound().build();
-    }
+    // Sin catch: GlobalExceptionHandler mapea EntityNotFoundException -> 404 por tipo,
+    // en vez de que cualquier RuntimeException (NPE incluido) se lea como "no existe".
+    return ResponseEntity.ok(donacionService.obtenerPorId(id));
   }
 
   @Operation(summary = "Actualizar donación")
   @PutMapping("/{id}")
-  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @RequestBody DonacionDTO dto) {
-    try {
-      return ResponseEntity.ok(donacionService.actualizarDonacion(id, dto));
-    } catch (RuntimeException e) {
-      return ResponseEntity.notFound().build();
-    }
+  public ResponseEntity<DonacionDTO> actualizarDonacion(@PathVariable UUID id, @Valid @RequestBody DonacionDTO dto) {
+    return ResponseEntity.ok(donacionService.actualizarDonacion(id, dto));
   }
 
   @Operation(summary = "Eliminar donación")
@@ -71,25 +81,17 @@ public class DonacionController {
   @Operation(summary = "Cambiar estado de una donación")
   @PatchMapping("/{id}/estado")
   public ResponseEntity<DonacionDTO> cambiarEstado(@PathVariable UUID id, @RequestBody CambioEstadoDTO cambioEstadoDTO) {
-    try {
-      return ResponseEntity.ok(donacionService.cambiarEstado(
-          id,
-          cambioEstadoDTO.getNuevoEstado(),
-          cambioEstadoDTO.getJustificacion()
-      ));
-    } catch (RuntimeException e) {
-      return ResponseEntity.notFound().build();
-    }
+    return ResponseEntity.ok(donacionService.cambiarEstado(
+        id,
+        cambioEstadoDTO.getNuevoEstado(),
+        cambioEstadoDTO.getJustificacion()
+    ));
   }
 
   @Operation(summary = "Marcar donación como vencida (Solo Admins)")
   @PatchMapping("/{id}/vencer")
   public ResponseEntity<DonacionDTO> marcarComoVencida(@PathVariable UUID id) {
-    try {
-      return ResponseEntity.ok(donacionService.marcarComoVencida(id));
-    } catch (RuntimeException e) {
-      return ResponseEntity.notFound().build();
-    }
+    return ResponseEntity.ok(donacionService.marcarComoVencida(id));
   }
 
   @Operation(summary = "Ver resultados de matchmaking pendientes")

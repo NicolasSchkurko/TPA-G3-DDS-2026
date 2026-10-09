@@ -27,6 +27,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!--
+            Bean Validation. Sin esto las anotaciones @NotBlank del DTO no se procesan: el
+            modulo recibia el body tal cual y un campo faltante reventaba recien en el INSERT,
+            con un 500 de MySQL en vez de un 400 (puntos 8 y 14 de PENDIENTES.md).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
         
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -51,10 +61,17 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+            RabbitMQ. Sin esto no compilan RabbitConfig, ProductorNotificaciones y
+            ConsumidorNotificaciones: el merge trajo las tres clases pero no la dependencia,
+            y quedo todo el modulo sin compilar. Trae spring-rabbit y spring-amqp con el
+            auto-registro de RabbitTemplate, las colas declaradas y el @RabbitListener.
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-jpa</artifactId>

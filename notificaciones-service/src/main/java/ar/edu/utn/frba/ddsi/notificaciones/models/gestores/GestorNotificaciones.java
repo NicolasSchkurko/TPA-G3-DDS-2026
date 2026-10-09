@@ -6,77 +6,101 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeE
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Optional;
 import java.util.UUID;
 
+/** Guarda las solicitudes de notificación y las publica para que el consumidor las despache. */
 @Service
 public class GestorNotificaciones {
+
+    private static final Logger log = LoggerFactory.getLogger(GestorNotificaciones.class);
+
     private final RepositorioNotificaciones repositorioNotificaciones;
     private final MedioDeEnvioFactory factory;
     private final ProductorNotificaciones productorNotificaciones;
 
-    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones, MedioDeEnvioFactory factory, ProductorNotificaciones productorNotificaciones) {
+    public GestorNotificaciones(RepositorioNotificaciones repositorioNotificaciones,
+                               MedioDeEnvioFactory factory,
+                               ProductorNotificaciones productorNotificaciones) {
         this.repositorioNotificaciones = repositorioNotificaciones;
         this.factory = factory;
         this.productorNotificaciones = productorNotificaciones;
     }
 
-    public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
+    @Transactional
+    public void enviarSolicitudDeNotificacion(String tipoMedioDeContacto,
+                                              String direccionDeContacto,
+                                              String asunto,
+                                              String cuerpo) {
+        Notificacion notificacion =
+                crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
 
-        Notificacion notificacion = crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
-        notificacion.marcarPendiente();
-        repositorioNotificaciones.guardar(notificacion);
-        productorNotificaciones.enviar(notificacion);
-        repositorioNotificaciones.save(notificacion);
-        cola.add(notificacion);
+        log.info("[GESTOR] Notificación {} guardada como {} (medio='{}', destino='{}')",
+                notificacion.getId(), notificacion.getEstado(), tipoMedioDeContacto, direccionDeContacto);
 
-    }
-
-    // Crea una Notificacion a partir de una SolicitudNotificacion y la guarda en el repositorio
-    public Notificacion crearNotificacion(String tipoMedioDeContacto, String direccionDeContacto, String asunto, String cuerpo) {
-
-        Mensaje mensaje = new Mensaje(asunto, cuerpo);
-        Notificacion notificacion = new Notificacion(direccionDeContacto, tipoMedioDeContacto, mensaje);
-        Notificacion notificacion = new Notificacion(direccionDeContacto, mensaje);
-        repositorioNotificaciones.save(notificacion);
-
-        return notificacion;
-    }
-
-    @Scheduled(fixedDelay = 2000)
-    public void procesarCola() {
-        Notificacion notificacion = cola.poll();
-        if (notificacion != null) {
-            try {
-                enviarNotificacion(notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto(), notificacion); // no enceuntro el coso de medio de contacto
-                notificacion.marcarEnviada();
-            } catch (Exception e) {
-                notificacion.marcarFallida();
-                cola.add(notificacion);
+        // En afterCommit: antes del commit el consumidor no ve la fila, y si el broker falla el
+        // commit ya hecho deja la notificación PENDIENTE para reintentar.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("[GESTOR] Transacción confirmada: publicando el aviso de la notificación {}",
+                        notificacion.getId());
+                productorNotificaciones.enviar(notificacion);
             }
-            repositorioNotificaciones.save(notificacion);
-        }
+        });
     }
 
-    // Por ahora solo envia al medio predeterminado
-    public void enviarNotificacion(String tipoMedioContacto, String direccionContacto, Notificacion notificacion) {
+    public Notificacion crearNotificacion(String tipoMedioDeContacto,
+                                          String direccionDeContacto,
+                                          String asunto,
+                                          String cuerpo) {
+        Notificacion notificacion = new Notificacion(
+                direccionDeContacto,
+                tipoMedioDeContacto,
+                new Mensaje(asunto, cuerpo)
+        );
+
+        return repositorioNotificaciones.save(notificacion);
+    }
+
+    public void enviarNotificacion(String tipoMedioDeContacto,
+                                   String direccionContacto,
+                                   Notificacion notificacion) {
+        log.info("[GESTOR] Despachando notificación {} por el medio '{}' a '{}'",
+                notificacion.getId(), tipoMedioDeContacto, direccionContacto);
 
         try {
-            MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioContacto);
-            medioDeContacto.enviarNotificacion(notificacion);
-            notificacion.marcarEnviada();
-
-        } catch (IllegalArgumentException ex) {
-
-            notificacion.marcarFallida();
-
-            if (ex.getMessage() != null) {
-                throw new IllegalArgumentException("Ocurrió un problema inesperado al enviar la notificación: " + ex.getMessage(), ex);
+            // La dirección del mensaje gana; los medios leen la de la entidad.
+            if (direccionContacto != null && !direccionContacto.isBlank()) {
+                notificacion.setDireccionDeContacto(direccionContacto);
             }
-            throw new IllegalArgumentException("Ocurrio un problema inesperado al enviar la notificacion", ex);
+
+            MedioDeEnvio medioDeContacto = factory.mapearAMedioEnvio(tipoMedioDeContacto);
+            medioDeContacto.enviarNotificacion(notificacion);
+
+            log.info("[GESTOR] El medio '{}' resolvió el envío de la notificación {}",
+                    tipoMedioDeContacto, notificacion.getId());
+        } catch (RuntimeException excepcion) {
+            notificacion.marcarFallida();
+            log.error("[GESTOR] Falló el despacho de la notificación {} por el medio '{}': {}",
+                    notificacion.getId(), tipoMedioDeContacto, excepcion.getMessage(), excepcion);
+            throw new IllegalArgumentException(mensajeDeEnvioFallido(excepcion), excepcion);
         }
+    }
+
+    private static String mensajeDeEnvioFallido(RuntimeException excepcion) {
+        String detalle = excepcion.getMessage();
+
+        return detalle == null
+                ? "Ocurrió un problema inesperado al enviar la notificación"
+                : "Ocurrió un problema inesperado al enviar la notificación: " + detalle;
     }
 
     public Optional<Notificacion> obtenerNotificacionPorId(UUID id) {

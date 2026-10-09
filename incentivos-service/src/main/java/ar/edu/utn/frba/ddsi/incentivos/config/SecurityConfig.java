@@ -2,31 +2,23 @@ package ar.edu.utn.frba.ddsi.incentivos.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Reglas de acceso del servicio: todo abierto, igual que los otros módulos. La autorización de
+ * admin se valida contra {@code donaciones-service} con el header {@code Admin-Id}.
+ */
 @Configuration
-@EnableMethodSecurity
 public class SecurityConfig {
 
+    /** Deja pasar todo. CSRF desactivado: no hay estado de sesión ni cookies. */
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            PerfilAuthenticationFilter perfilAuthenticationFilter) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/perfiles").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/error").permitAll()
-                        .anyRequest().authenticated())
-                .addFilterBefore(perfilAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
         return http.build();
     }

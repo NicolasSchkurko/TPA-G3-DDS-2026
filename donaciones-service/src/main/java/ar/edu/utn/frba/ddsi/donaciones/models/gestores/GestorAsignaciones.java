@@ -5,10 +5,14 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
+import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
@@ -19,19 +23,81 @@ public class GestorAsignaciones {
     private NotificacionesClient notificacionesClient;
     private RepositorioDonaciones repositorioDonaciones;
     private RepositorioNecesidades repositorioNecesidades;
+    private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
 
     public GestorAsignaciones(NotificacionesClient notificacionesClient,
                               RepositorioDonaciones repositorioDonaciones,
-                              RepositorioNecesidades repositorioNecesidades) {
+                              RepositorioNecesidades repositorioNecesidades,
+                              FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion) {
         this.notificacionesClient = notificacionesClient;
         this.repositorioDonaciones = repositorioDonaciones;
         this.repositorioNecesidades = repositorioNecesidades;
+        this.fabricaEstrategiasNotificacion = fabricaEstrategiasNotificacion;
     }
 
     public void asignarPropuesta(Donacion donacion, PropuestaAsignacion  propuesta) {
         asignarEntidad(donacion.getId(), propuesta.getEntidad());
         agregarDonacionANecesidad(propuesta.getNecesidad().getId(), donacion);
         notificarAsignacion(donacion);
+    }
+
+    public Donacion cambiarEstado(UUID id, String nuevoEstado, String justificacion) {
+        Donacion donacion = repositorioDonaciones.obtenerPorId(id)
+                .orElseThrow(() -> new EntityNotFoundException("Donación no encontrada con ID: " + id));
+
+        Estado estado = parseEstado(nuevoEstado);
+
+        donacion.actualizarEstado(estado, justificacion);
+
+        // Las acciones posteriores van ANTES de guardar: si fallan (por ejemplo porque la
+        // donación todavía no tiene entidad asignada), el estado nuevo no debe quedar
+        // persistido. Antes el guardar pasaba primero y una falla acá dejaba el cambio de
+        // estado ya commiteado mientras el controller, al atrapar la excepción como
+        // RuntimeException, respondía 404 (como si la donación no existiera).
+        procesarAccionesPostCambioEstado(donacion, estado, nuevoEstado);
+
+        repositorioDonaciones.guardar(donacion);
+
+        return donacion;
+    }
+
+    private Estado parseEstado(String nuevoEstado) {
+        if (nuevoEstado == null) {
+            throw new IllegalArgumentException("El nuevo estado no puede ser nulo");
+        }
+
+        switch (nuevoEstado.trim().toUpperCase()) {
+            case "EN_DEPOSITO":
+                return Estado.EN_DEPOSITO;
+            case "PENDIENTE_ASIGNACION":
+                return Estado.PENDIENTE_ASIGNACION;
+            case "ENTREGADO":
+                return Estado.ENTREGADO;
+            case "VENCIDO":
+                return Estado.VENCIDO;
+            case "ASIGNADO":
+                return Estado.ASIGNADO;
+            default:
+                throw new IllegalArgumentException("Estado desconocido: " + nuevoEstado);
+        }
+    }
+
+    private void procesarAccionesPostCambioEstado(Donacion donacion, Estado estado, String nuevoEstado) {
+        boolean esAsignado = "ASIGNADO".equalsIgnoreCase(nuevoEstado) || estado == Estado.ASIGNADO;
+        if (!esAsignado) return;
+
+        if (donacion.getEntidad() == null) {
+            throw new IllegalArgumentException(
+                    "No se puede marcar la donación " + donacion.getId() + " como ASIGNADO: todavía no tiene una entidad beneficiaria asignada.");
+        }
+        if (donacion.getSubcategoria() == null) {
+            throw new IllegalArgumentException(
+                    "No se puede marcar la donación " + donacion.getId() + " como ASIGNADO: no tiene subcategoría.");
+        }
+
+        // A incentivos se le reporta recién al ENTREGAR (GestorEventosLogistica), no al asignar:
+        // sus reglas de misión cuentan donaciones "ENTREGADA", y una asignación todavía no lo es.
+        fabricaEstrategiasNotificacion.ejecutar(TipoEventoNotificacion.DONACION_ASIGNADA, donacion);
     }
 
     private void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {

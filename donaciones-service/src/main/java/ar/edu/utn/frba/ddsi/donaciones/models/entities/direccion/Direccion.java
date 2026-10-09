@@ -28,7 +28,7 @@ public class Direccion {
   private String departamento;
 
   @ManyToOne
-  @JoinColumn(name = "ciudad_id")
+  @JoinColumn(name = "ciudad_id", referencedColumnName = "id")
   private Ciudad ciudad;
 
   /**
@@ -86,7 +86,7 @@ public class Direccion {
     );
   }
 
-  // Esto es si o si con consulta a api (openmaps u otro) no se puede hacer ahora
+  // Pendiente: requeriría integración con una API externa de geolocalización.
   public String getLatitud() {
     return "INSERTAR CONTENIDO A DEVOLVER";
   }
@@ -94,7 +94,7 @@ public class Direccion {
     return "INSERTAR CONTENIDO A DEVOLVER";
   }
 
-  // No existe el condicional que define si esta o no habilitado
+  // No hay todavía una condición de negocio que lo decida.
   public boolean estaHabilitadaEnvio() {
     return true;
   }

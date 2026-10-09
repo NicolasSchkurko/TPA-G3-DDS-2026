@@ -1,32 +1,54 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.UUID;
 
 @Entity
 @Getter
 @Setter
+@NoArgsConstructor
+@Table(name = "camion")
 public class Camion {
-    @Column(name = "id_chofer")
-    private UUID idChofer;
+    @ManyToOne
+    @JoinColumn(name = "id_chofer", referencedColumnName = "id_chofer")
+    private Chofer chofer;
+
     @Id
+    @Column(name = "patente", length = 20, nullable = false)
     private String patente;
+
+    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    @Column(name = "capacidad_volumen_m3", nullable = false)
     private Double capacidadVolumen;
+
+    @Column(name = "altura_m", nullable = false)
     private Double altura;
+
+    @Column(name = "capacidad_carga_kg", nullable = false)
     private Double capacidadCarga;
+
+    @Column(name = "disponible", nullable = false)
     private Boolean disponible;
+
+    @Column(name = "peso_ocupado_kg")
     private Double pesoOcupado;
+
+    @Column(name = "volumen_ocupado_m3")
     private Double volumenOcupado;
+
+    @Column(name = "ciudad_destino_actual")
     private String ciudadDestinoActual;
 
-    public Camion(UUID idChofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.idChofer = idChofer;
+    public Camion(Chofer chofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+        this.chofer = chofer;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -38,7 +60,7 @@ public class Camion {
     }
 
     public Camion(String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-        this.idChofer = null;
+        this.chofer = null;
         this.patente = patente;
         this.capacidadVolumen = capacidadVolumen;
         this.altura = altura;
@@ -49,13 +71,10 @@ public class Camion {
         this.ciudadDestinoActual = null;
     }
 
-    // Atributos de estado para la planificación (transitorios)
-
     public boolean puedeCargar(Double pesoKg, Double volumenM3) {
         return pesoKg <= capacidadCarga && volumenM3 <= capacidadVolumen;
     }
 
-    // Lógica expresiva para el planificador
     public boolean puedeCargar(ItemEntrega item) {
         return puedeCargar(this.pesoOcupado + item.getPesoEstimadoKg(),
                            this.volumenOcupado + item.getVolumenEstimadoM3());
@@ -86,6 +105,6 @@ public class Camion {
     }
 
     public void eliminarChofer() {
-        this.idChofer = null;
+        this.chofer = null;
     }
 }

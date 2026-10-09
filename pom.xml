@@ -7,14 +7,14 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-  <name>ddsi-tp-template</name>
-  <url>https://github.com/dds-utn</url>
-  <modules>
+    <name>ddsi-tp-template</name>
+    <url>https://github.com/dds-utn</url>
+    <modules>
         <module>donaciones-service</module>
         <module>incentivos-service</module>
         <module>notificaciones-service</module>
         <module>logisticas-service</module>
-  </modules>
+    </modules>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -72,10 +72,28 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.5.0</version>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+
+        <!--
+            Spring Security NO esta en las dependencias comunes del padre, a proposito.
+
+            Estaba declarado aca, asi que lo heredaban los cuatro modulos, y solo
+            incentivos-service tiene su propia configuracion de seguridad (SecurityConfig, que
+            deja abierto unicamente el perfil publico por punto 8 del enunciado). En los otros
+            tres no hay ninguna clase de seguridad, asi que Spring Boot aplicaba la suya por
+            defecto: generaba una password aleatoria al arrancar y devolvia 401 a toda
+            peticion sin credenciales.
+
+            El dano concreto estaba en notificaciones-service: POST /notificaciones devolvia
+            401, con lo que ningun servicio de dominio podia publicar ningun aviso. Se comprobo
+            levantando el servicio: la ruta real devolvia 401 y la tabla 'notificaciones'
+            quedaba en 0 filas. Como era el unico modulo con integracion entrante de otros
+            servicios, era el unico donde el 401 se notaba.
+
+            Incentivos lo declara por su cuenta en su pom. Un modulo que necesita
+            autenticacion la agrega y define su politica; heredarla sin querer hace que un
+            servicio sin integracion quede protegido por accidente, que es peor que no
+            protegerlo, porque el sintoma se lee como "el otro servicio esta caido".
+        -->
     </dependencies>
 
     <build>

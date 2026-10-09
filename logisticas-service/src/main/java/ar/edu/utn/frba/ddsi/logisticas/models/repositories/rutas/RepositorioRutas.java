@@ -3,61 +3,34 @@ package ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public class RepositorioRutas {
-    private final List<Ruta> rutas = new ArrayList<>();
-
-    public List<Ruta> findAll() {
-        return new ArrayList<>(rutas);
-    }
-
-    public Optional<Ruta> findById(UUID id) {
-        return rutas.stream()
-                    .filter(r -> r.getIdRuta().equals(id))
-                    .findFirst();
-    }
-
-    public Optional<Ruta> findByIdDonacion(UUID idDonacion) {
-        return rutas.stream()
+public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
+    default Optional<Ruta> findByIdDonacion(UUID idDonacion){
+        return this.findAll().stream()
                 .filter(ruta -> ruta.obtenerTodosLosItems().stream()
                         .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
                 .findFirst();
     }
 
-    public Optional<Ruta> findByChofer(Chofer chofer) {
+    default Optional<Ruta> findByChofer(Chofer chofer){
         if (chofer == null) return Optional.empty();
-        return rutas.stream()
-                    .filter(ruta -> ruta.getCamionAsignado() != null &&
+        return this.findAll().stream()
+                .filter(ruta -> ruta.getCamionAsignado() != null &&
                         chofer.equals(ruta.getCamionAsignado().getChofer()))
-                    .findFirst();
+                .findFirst();
     }
 
-    public Ruta save(Ruta ruta) {
-        int posicion = rutas.indexOf(ruta);
-        if (posicion != -1) {
-            rutas.set(posicion, ruta);
-        } else {
-            rutas.add(ruta);
-        }
-        return ruta;
-    }
-
-    public void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
-        int posicion = rutas.indexOf(ruta);
+    default void actualizarEstado(Ruta ruta, EstadoRuta nuevoEstado){
+        int posicion = this.findAll().indexOf(ruta);
         if (posicion != -1) {
             ruta.setEstado(nuevoEstado);
-            rutas.set(posicion, ruta);
+            this.findAll().set(posicion, ruta);
         }
-    }
-
-    public void deleteById(UUID id) {
-        rutas.removeIf(r -> r.getIdRuta().equals(id));
     }
 }

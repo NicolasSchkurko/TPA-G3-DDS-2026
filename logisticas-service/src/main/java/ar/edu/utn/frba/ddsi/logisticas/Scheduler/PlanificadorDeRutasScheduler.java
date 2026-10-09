@@ -1,12 +1,15 @@
 package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,47 +20,54 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificadorDeRutasScheduler {
 
-  private final GestorItemEntrega gestorItemEntrega;
-  private final GestorCamiones gestorCamiones;
+  private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutasScheduler.class);
+
+  /** Sin declararla, el cron usaría la zona de la JVM: en Docker, UTC. */
+  static final String ZonaPlanificacion = "America/Argentina/Buenos_Aires";
+
+  /** Límite que impone el proveedor externo por lote. */
+  private static final int TAMANO_LOTE_MAXIMO = 100;
+
+  private final RepositorioItemEntrega repoItemEntrega;
+  private final RepositorioCamiones repoCamiones;
   private final PlanificadorDeRutas planificadorDominio;
 
     @Autowired
   public PlanificadorDeRutasScheduler(
       ProveedorRutasExterno proveedorExterno,
-      GestorItemEntrega gestorItemEntrega,
-      GestorCamiones gestorCamiones) {
+      RepositorioItemEntrega repoItemEntrega,
+      RepositorioCamiones repoCamiones) {
       this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
-    this.gestorItemEntrega = gestorItemEntrega;
-    this.gestorCamiones = gestorCamiones;
+    this.repoItemEntrega = repoItemEntrega;
+    this.repoCamiones = repoCamiones;
     }
 
-  @Scheduled(cron = "0 0 2 * * ?")
+  /** Planifica las rutas una vez por día, a las 2 de la mañana, hora Argentina. */
+  @Scheduled(cron = "0 0 2 * * ?", zone = ZonaPlanificacion)
   public void iniciarPlanificacionAutomatica() {
-    System.out.println("Iniciando proceso automático de planificación de rutas...");
-
     List<ItemEntrega> itemsPendientes;
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = gestorItemEntrega.buscarPendientes();
-      camionesDisponibles = gestorCamiones.listarCamiones().stream()
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      camionesDisponibles = repoCamiones.findAll().stream()
                                                .filter(Camion::getDisponible)
                                                .collect(Collectors.toList());
 
     } catch (Exception e) {
-      System.err.println("Error de lectura en la base de datos: " + e.getMessage());
+      log.error("No se pudo leer las donaciones pendientes ni los camiones, no se planifica hoy", e);
       return;
     }
 
     if (itemsPendientes.isEmpty()) {
-      System.out.println("No hay donaciones pendientes para planificar hoy.");
+      log.info("No hay donaciones pendientes para planificar hoy");
       return;
     }
 
-    // FIX ENTREGA 3: Restricción del proveedor externo a lotes de 100 como máximo
-    for (int i = 0; i < itemsPendientes.size(); i += 100) {
-      List<ItemEntrega> lote = itemsPendientes.subList(i, Math.min(i + 100, itemsPendientes.size()));
+    for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
+      List<ItemEntrega> lote = itemsPendientes.subList(
+              inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
       planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
     }
   }

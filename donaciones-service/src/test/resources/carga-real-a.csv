@@ -1,0 +1,500 @@
+TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono
+HUMANA,DNI,28456905,Ana Navarro,ananavarro3658@yahoo.com,+54 11 5181-9600
+HUMANA,DNI,11780798,Benjamín Castro,benjamíncastro8929@yahoo.com,+54 11 4379-4026
+HUMANA,DNI,32588477,Sofía García,sofíagarcía1520@gmail.com,+54 11 4155-9407
+HUMANA,DNI,15288191,Sebastián Torres,sebastiántorres5926@empresa.com,+54 11 5103-4131
+HUMANA,DNI,34483473,Agustina Álvarez,agustinaálvarez6066@outlook.com,+54 11 4341-9283
+HUMANA,DNI,47376264,Julieta Romero,julietaromero5314@yahoo.com,+54 11 5305-6413
+JURIDICA,CUIT,30-52235350-3,Santa Fe Industrial Fundación,santafeindustrial8180@yahoo.com,+54 11 4724-2388
+HUMANA,DNI,49160231,Lucía Acosta,lucíaacosta5931@contacto.ar,+54 11 5287-1012
+HUMANA,DNI,38330675,Bruno Ramírez,brunoramírez6305@gmail.com,+54 11 4978-4801
+HUMANA,DNI,27906335,Gonzalo Sosa,gonzalososa1828@donaciones.org,+54 11 4627-0482
+HUMANA,DNI,30028290,Lucas Figueroa,lucasfigueroa2505@yahoo.com,+54 11 4288-0957
+HUMANA,DNI,30636923,Sebastián Suárez,sebastiánsuárez950@yahoo.com,+54 11 5911-7182
+HUMANA,DNI,21081482,Franco Molina,francomolina8646@empresa.com,+54 11 4383-4657
+JURIDICA,CUIT,30-43273328-5,Litoral Construcciones S.A.,litoralconstrucciones1050@yahoo.com,+54 11 4098-3930
+HUMANA,DNI,25364023,Micaela Gómez,micaelagómez515@gmail.com,+54 11 4183-4738
+HUMANA,DNI,48322053,Sebastián Medina,sebastiánmedina3982@servicios.com.ar,+54 11 4631-1656
+HUMANA,DNI,13635366,Ignacio Navarro,ignacionavarro994@gmail.com,+54 11 4513-3387
+HUMANA,DNI,41046444,Mateo Romero,mateoromero1236@yahoo.com,+54 11 4810-8013
+HUMANA,DNI,24344338,Franco Herrera,francoherrera961@contacto.ar,+54 11 5606-4746
+HUMANA,DNI,47296980,Pablo Cabrera,pablocabrera2537@servicios.com.ar,+54 11 5430-9805
+HUMANA,DNI,43745717,Lucía Herrera,lucíaherrera932@outlook.com,+54 11 5219-1361
+JURIDICA,CUIT,30-87701200-6,Santa Fe Industrial S.R.L.,santafeindustrial1344@mail.com,+54 11 4998-5435
+HUMANA,DNI,30132463,Julieta López,julietalópez5181@servicios.com.ar,+54 11 5079-9118
+HUMANA,DNI,33421586,Camila López,camilalópez4003@gmail.com,+54 11 4427-8498
+HUMANA,DNI,30090967,Milagros Molina,milagrosmolina2201@gmail.com,+54 11 4118-2449
+HUMANA,DNI,27715659,Martina García,martinagarcía4115@servicios.com.ar,+54 11 5164-0052
+HUMANA,DNI,39651079,Camila Martínez,camilamartínez9190@contacto.ar,+54 11 5112-8059
+HUMANA,DNI,12807087,Nicolás López,nicoláslópez5975@empresa.com,+54 11 5533-1586
+JURIDICA,CUIT,30-31810617-3,PampaTech S.R.L.,pampatech6756@outlook.com,+54 11 5256-3421
+HUMANA,DNI,41587472,Juan Figueroa,juanfigueroa3270@yahoo.com,+54 11 4543-3036
+HUMANA,DNI,28731761,Ignacio Rodríguez,ignaciorodríguez8347@donaciones.org,+54 11 4850-1429
+JURIDICA,CUIT,30-24549543-5,BioSalud S.A.,biosalud5664@contacto.ar,+54 11 4698-1693
+HUMANA,DNI,10113499,Florencia Acosta,florenciaacosta5968@yahoo.com,+54 11 4159-5148
+HUMANA,DNI,37004632,Nicolás Vargas,nicolásvargas9084@empresa.com,+54 11 5366-2994
+HUMANA,DNI,30392702,Milagros Pérez,milagrospérez3444@empresa.com,+54 11 4995-7773
+HUMANA,DNI,21387796,Bruno Medina,brunomedina4650@gmail.com,+54 11 4134-3320
+HUMANA,DNI,14887419,Franco Ruiz,francoruiz6791@servicios.com.ar,+54 11 5676-3201
+JURIDICA,CUIT,30-79519112-3,Mate & Co S.R.L.,mateandco823@servicios.com.ar,+54 11 5172-7889
+HUMANA,DNI,39700599,Natalia Medina,nataliamedina8977@contacto.ar,+54 11 4277-4348
+HUMANA,DNI,39519350,Benjamín Romero,benjamínromero4682@gmail.com,+54 11 5455-8122
+HUMANA,DNI,24358134,Florencia López,florencialópez6798@gmail.com,+54 11 4587-6036
+HUMANA,DNI,11310767,Natalia Silva,nataliasilva7815@contacto.ar,+54 11 5546-6889
+JURIDICA,CUIT,30-46632757-9,Fuego Austral S.R.L.,fuegoaustral7957@contacto.ar,+54 11 5656-2729
+HUMANA,DNI,49721251,Sebastián Torres,sebastiántorres1376@mail.com,+54 11 4272-0465
+HUMANA,DNI,35442729,Martina Vargas,martinavargas6907@empresa.com,+54 11 4170-8053
+HUMANA,DNI,12701677,Natalia Álvarez,nataliaálvarez4052@mail.com,+54 11 5092-3271
+HUMANA,DNI,27196223,Valentina Ríos,valentinaríos2750@donaciones.org,+54 11 5241-9049
+HUMANA,DNI,23309686,Julieta Torres,julietatorres9701@gmail.com,+54 11 5149-1905
+HUMANA,DNI,14627608,Federico Suárez,federicosuárez208@donaciones.org,+54 11 4716-5726
+HUMANA,DNI,28124922,Carolina Álvarez,carolinaálvarez7617@servicios.com.ar,+54 11 4945-3147
+HUMANA,DNI,35433541,Agustina Silva,agustinasilva471@donaciones.org,+54 11 4527-3545
+HUMANA,DNI,28540070,Diego Aguirre,diegoaguirre8465@mail.com,+54 11 5136-7837
+HUMANA,DNI,11157175,Franco Ríos,francoríos4821@gmail.com,+54 11 5634-9578
+HUMANA,DNI,46935945,Nicolás Navarro,nicolásnavarro5765@donaciones.org,+54 11 4444-3135
+HUMANA,DNI,22425195,Gonzalo Sosa,gonzalososa3546@yahoo.com,+54 11 4498-9413
+HUMANA,DNI,30284834,Tomás Martínez,tomásmartínez8752@mail.com,+54 11 5400-8427
+HUMANA,DNI,29081689,Ana Silva,anasilva7844@servicios.com.ar,+54 11 4520-4711
+HUMANA,DNI,13597644,María Silva,maríasilva2445@outlook.com,+54 11 4131-8699
+JURIDICA,CUIT,30-61053474-7,Mate & Co Asociación Civil,mateandco7254@servicios.com.ar,+54 11 4964-9909
+JURIDICA,CUIT,30-93955206-1,Río de la Plata S.R.L.,ríodelaplata4336@yahoo.com,+54 11 5232-8120
+HUMANA,DNI,41535292,Florencia Ruiz,florenciaruiz535@empresa.com,+54 11 5447-1349
+HUMANA,DNI,38530593,Sebastián García,sebastiángarcía8923@gmail.com,+54 11 5242-1024
+HUMANA,DNI,29368328,Milagros Silva,milagrossilva2038@servicios.com.ar,+54 11 4464-8877
+HUMANA,DNI,38992952,Juan Medina,juanmedina9892@donaciones.org,+54 11 4013-9904
+HUMANA,DNI,21756850,Natalia Sosa,nataliasosa8503@servicios.com.ar,+54 11 4429-6717
+HUMANA,DNI,17019579,Martina Vargas,martinavargas5404@outlook.com,+54 11 4746-8071
+HUMANA,DNI,37123728,Martina Fernández,martinafernández8890@mail.com,+54 11 4603-8597
+HUMANA,DNI,23660562,Natalia Gómez,nataliagómez8999@empresa.com,+54 11 5477-1093
+JURIDICA,CUIT,30-11835355-9,Nordelta Trading Asociación Civil,nordeltatrading1528@contacto.ar,+54 11 5171-2748
+JURIDICA,CUIT,30-73380266-5,Buenos Aires Labs Cooperativa,buenosaireslabs7484@yahoo.com,+54 11 5639-8214
+JURIDICA,CUIT,30-78147397-5,Buenos Aires Labs S.A.S.,buenosaireslabs43@empresa.com,+54 11 4499-7278
+HUMANA,DNI,46468974,Martina Molina,martinamolina7461@contacto.ar,+54 11 4339-6360
+HUMANA,DNI,35583989,Franco Aguirre,francoaguirre2493@contacto.ar,+54 11 4028-9517
+HUMANA,DNI,11029959,Sebastián Ríos,sebastiánríos6718@outlook.com,+54 11 5174-5961
+JURIDICA,CUIT,30-52501540-4,Capital Servicios Cooperativa,capitalservicios8865@servicios.com.ar,+54 11 5913-4316
+JURIDICA,CUIT,30-32329103-5,Río de la Plata Cooperativa,ríodelaplata475@empresa.com,+54 11 5504-5562
+HUMANA,DNI,22083413,Nicolás Silva,nicolássilva2869@outlook.com,+54 11 5969-3792
+HUMANA,DNI,40841254,Micaela Romero,micaelaromero154@empresa.com,+54 11 4482-1759
+HUMANA,DNI,26783807,Nicolás Aguirre,nicolásaguirre4950@servicios.com.ar,+54 11 5671-3695
+HUMANA,DNI,11472341,Florencia Díaz,florenciadíaz4498@contacto.ar,+54 11 5909-7439
+JURIDICA,CUIT,30-35519083-4,Mate & Co Fundación,mateandco2241@empresa.com,+54 11 5047-0952
+HUMANA,DNI,37883940,Joaquín Vargas,joaquínvargas3290@outlook.com,+54 11 5858-8424
+JURIDICA,CUIT,30-55461591-7,Fuego Austral S.A.S.,fuegoaustral7674@gmail.com,+54 11 5236-8516
+HUMANA,DNI,40520173,Gonzalo Fernández,gonzalofernández4296@donaciones.org,+54 11 4513-7098
+HUMANA,DNI,14242423,Diego Sánchez,diegosánchez4952@servicios.com.ar,+54 11 4120-0471
+HUMANA,DNI,19104260,Noelia Molina,noeliamolina7433@contacto.ar,+54 11 4869-2617
+HUMANA,DNI,34865844,Camila Gómez,camilagómez7265@yahoo.com,+54 11 4351-5850
+HUMANA,DNI,40515566,Valentina Fernández,valentinafernández3476@gmail.com,+54 11 5053-2931
+JURIDICA,CUIT,30-88703005-3,Capital Servicios S.R.L.,capitalservicios3818@yahoo.com,+54 11 4290-4228
+HUMANA,DNI,11730076,Mateo Fernández,mateofernández244@outlook.com,+54 11 4395-0240
+HUMANA,DNI,17626875,Nicolás Castro,nicoláscastro7803@gmail.com,+54 11 4589-1783
+JURIDICA,CUIT,30-98436473-9,Soluciones Andinas Fundación,solucionesandinas7505@empresa.com,+54 11 5076-6177
+HUMANA,DNI,19954514,María Vargas,maríavargas2068@gmail.com,+54 11 4998-5698
+HUMANA,DNI,38870188,Carolina Ruiz,carolinaruiz1875@gmail.com,+54 11 5673-6576
+HUMANA,DNI,38639647,Lucas Vargas,lucasvargas4177@donaciones.org,+54 11 4271-1116
+HUMANA,DNI,18731900,Pablo Suárez,pablosuárez9609@mail.com,+54 11 4165-6049
+HUMANA,DNI,44051879,Lucas Silva,lucassilva2536@yahoo.com,+54 11 4315-8514
+HUMANA,DNI,47645770,Bruno Acosta,brunoacosta9978@mail.com,+54 11 4024-4550
+HUMANA,DNI,36896182,Sofía Silva,sofíasilva2325@gmail.com,+54 11 5183-6675
+HUMANA,DNI,31768967,Joaquín Navarro,joaquínnavarro862@gmail.com,+54 11 5290-1476
+HUMANA,DNI,28331916,Agustina Acosta,agustinaacosta8395@yahoo.com,+54 11 5561-4978
+HUMANA,DNI,36525677,Juan Sánchez,juansánchez126@mail.com,+54 11 5432-4451
+HUMANA,DNI,21790678,Pablo Acosta,pabloacosta6230@outlook.com,+54 11 5885-1606
+HUMANA,DNI,31009143,Sebastián Rodríguez,sebastiánrodríguez9395@contacto.ar,+54 11 4641-6052
+JURIDICA,CUIT,30-58567046-0,Neuquén Minería Cooperativa,neuquénminería7156@gmail.com,+54 11 5369-6816
+JURIDICA,CUIT,30-54703713-4,Andes Energy S.R.L.,andesenergy1252@outlook.com,+54 11 5883-5523
+HUMANA,DNI,21643322,Camila García,camilagarcía1235@outlook.com,+54 11 5779-9799
+HUMANA,DNI,20130579,Micaela Vargas,micaelavargas1119@servicios.com.ar,+54 11 4744-9058
+HUMANA,DNI,12523779,Agustina Ríos,agustinaríos6042@mail.com,+54 11 4119-9867
+HUMANA,DNI,12752987,Bruno Navarro,brunonavarro9367@servicios.com.ar,+54 11 5597-8207
+HUMANA,DNI,33047718,Noelia Paz,noeliapaz8267@gmail.com,+54 11 5037-7889
+HUMANA,DNI,28984666,Tomás Vega,tomásvega6698@contacto.ar,+54 11 4905-1518
+HUMANA,DNI,20091383,Joaquín Romero,joaquínromero1336@donaciones.org,+54 11 5546-2914
+HUMANA,DNI,32043688,Micaela Cabrera,micaelacabrera8625@outlook.com,+54 11 5685-0542
+JURIDICA,CUIT,30-35770506-8,Andes Energy Cooperativa,andesenergy2254@yahoo.com,+54 11 5141-8880
+HUMANA,DNI,18794552,Noelia Sosa,noeliasosa2528@contacto.ar,+54 11 5292-7065
+HUMANA,DNI,29121189,Benjamín Ríos,benjamínríos3834@servicios.com.ar,+54 11 5473-5977
+JURIDICA,CUIT,30-80794454-8,Rosario Agro Asociación Civil,rosarioagro2656@contacto.ar,+54 11 5924-0758
+JURIDICA,CUIT,30-48260510-5,Plataforma Federal S.A.,plataformafederal2627@gmail.com,+54 11 4782-6137
+JURIDICA,CUIT,30-17148018-9,Arcos Plateados Cooperativa,arcosplateados8225@contacto.ar,+54 11 4361-5305
+JURIDICA,CUIT,30-28468304-4,Andes Energy S.R.L.,andesenergy4701@mail.com,+54 11 4277-9010
+HUMANA,DNI,46829629,Milagros López,milagroslópez1822@contacto.ar,+54 11 4341-0369
+HUMANA,DNI,43542971,Lucas Paz,lucaspaz8444@mail.com,+54 11 5246-0953
+HUMANA,DNI,15745455,Mateo Ramírez,mateoramírez1109@donaciones.org,+54 11 5670-6540
+HUMANA,DNI,26181686,María Suárez,maríasuárez9534@gmail.com,+54 11 4205-8527
+JURIDICA,CUIT,30-34464938-9,Fuego Austral Fundación,fuegoaustral1034@outlook.com,+54 11 4043-0305
+JURIDICA,CUIT,30-82884346-6,Plataforma Federal Cooperativa,plataformafederal4151@servicios.com.ar,+54 11 5345-0541
+JURIDICA,CUIT,30-69020451-3,Buenos Aires Labs Cooperativa,buenosaireslabs5555@contacto.ar,+54 11 5775-8416
+HUMANA,DNI,22110229,Diego Paz,diegopaz5263@empresa.com,+54 11 5154-4796
+HUMANA,DNI,40006363,Agustina Suárez,agustinasuárez5777@mail.com,+54 11 4401-6582
+JURIDICA,CUIT,30-68810561-3,PampaTech Asociación Civil,pampatech2069@mail.com,+54 11 5355-6909
+HUMANA,DNI,34965395,Agustina Suárez,agustinasuárez1260@servicios.com.ar,+54 11 5856-5431
+HUMANA,DNI,44745297,Mateo Herrera,mateoherrera9203@contacto.ar,+54 11 5447-3947
+HUMANA,DNI,14969548,Sofía Figueroa,sofíafigueroa2829@servicios.com.ar,+54 11 4155-1884
+JURIDICA,CUIT,30-95590648-5,Aconcagua Logistics Fundación,aconcagualogistics5923@outlook.com,+54 11 5132-3705
+HUMANA,DNI,47020399,Tomás Ríos,tomásríos1413@outlook.com,+54 11 5467-8669
+HUMANA,DNI,14977130,Martina Álvarez,martinaálvarez7633@servicios.com.ar,+54 11 4289-2268
+JURIDICA,CUIT,30-79538491-6,Soluciones Andinas S.A.,solucionesandinas4983@outlook.com,+54 11 5253-5841
+HUMANA,DNI,28418097,Micaela Molina,micaelamolina4962@outlook.com,+54 11 5829-9229
+JURIDICA,CUIT,30-85647532-4,Neuquén Minería S.A.S.,neuquénminería465@mail.com,+54 11 5094-3969
+HUMANA,DNI,46613085,Franco Medina,francomedina4950@empresa.com,+54 11 4364-7102
+HUMANA,DNI,23691752,Franco Ríos,francoríos9940@donaciones.org,+54 11 5555-6258
+HUMANA,DNI,41304444,Martina Sánchez,martinasánchez4383@gmail.com,+54 11 4321-0469
+HUMANA,DNI,20717262,Ignacio Medina,ignaciomedina9465@donaciones.org,+54 11 4327-8774
+HUMANA,DNI,43919803,María Torres,maríatorres3945@servicios.com.ar,+54 11 5950-0479
+JURIDICA,CUIT,30-82033413-9,Fuego Austral S.A.S.,fuegoaustral1762@mail.com,+54 11 4245-6506
+HUMANA,DNI,34328558,Gonzalo García,gonzalogarcía1205@empresa.com,+54 11 4878-4991
+HUMANA,DNI,35044916,Lucas Torres,lucastorres9140@donaciones.org,+54 11 4239-8680
+HUMANA,DNI,32349983,Sofía Aguirre,sofíaaguirre8509@servicios.com.ar,+54 11 4298-2595
+HUMANA,DNI,30081276,Diego Navarro,diegonavarro8312@donaciones.org,+54 11 4947-0551
+JURIDICA,CUIT,30-94457912-1,Santa Fe Industrial S.A.S.,santafeindustrial9780@mail.com,+54 11 4499-3097
+HUMANA,DNI,35514141,Micaela Navarro,micaelanavarro3969@outlook.com,+54 11 5913-0756
+HUMANA,DNI,37539961,Florencia García,florenciagarcía1021@servicios.com.ar,+54 11 5838-5786
+HUMANA,DNI,45777551,Mateo Ríos,mateoríos8951@donaciones.org,+54 11 4497-3348
+HUMANA,DNI,29394739,Joaquín Sosa,joaquínsosa8012@yahoo.com,+54 11 4758-4419
+HUMANA,DNI,36476624,Julieta Medina,julietamedina2400@donaciones.org,+54 11 4041-5747
+HUMANA,DNI,28195408,Milagros Molina,milagrosmolina2250@empresa.com,+54 11 5993-3083
+HUMANA,DNI,37736185,Juan Fernández,juanfernández7740@donaciones.org,+54 11 5208-2677
+HUMANA,DNI,31553199,Natalia Díaz,nataliadíaz970@empresa.com,+54 11 5938-0262
+JURIDICA,CUIT,30-76489301-4,Soluciones Andinas Cooperativa,solucionesandinas4743@outlook.com,+54 11 5049-9154
+HUMANA,DNI,45186421,Micaela Molina,micaelamolina2199@servicios.com.ar,+54 11 4431-5274
+JURIDICA,CUIT,30-55246430-9,Arcos Plateados Fundación,arcosplateados9303@empresa.com,+54 11 5296-6851
+HUMANA,DNI,19436303,Lucas Martínez,lucasmartínez5302@servicios.com.ar,+54 11 5046-3745
+HUMANA,DNI,10767439,Pablo Silva,pablosilva5891@empresa.com,+54 11 5017-4268
+JURIDICA,CUIT,30-25759274-6,Nordelta Trading Fundación,nordeltatrading6022@empresa.com,+54 11 5327-2795
+HUMANA,DNI,41596737,Gonzalo Vega,gonzalovega4055@yahoo.com,+54 11 5878-5191
+HUMANA,DNI,43922662,Gonzalo Medina,gonzalomedina9384@yahoo.com,+54 11 5258-7139
+HUMANA,DNI,39895837,Noelia Castro,noeliacastro7430@mail.com,+54 11 5867-9087
+HUMANA,DNI,11460990,Joaquín Navarro,joaquínnavarro4170@contacto.ar,+54 11 5391-0651
+HUMANA,DNI,14631796,Juan Vega,juanvega520@servicios.com.ar,+54 11 4622-6567
+JURIDICA,CUIT,30-20770971-5,Rosario Agro Cooperativa,rosarioagro5698@outlook.com,+54 11 5286-8230
+JURIDICA,CUIT,30-83074216-2,Nordelta Trading Cooperativa,nordeltatrading8716@contacto.ar,+54 11 4337-5243
+JURIDICA,CUIT,30-98610233-3,Río de la Plata S.A.,ríodelaplata257@contacto.ar,+54 11 5311-9079
+HUMANA,DNI,26423830,Ignacio Gómez,ignaciogómez6591@mail.com,+54 11 4383-0284
+HUMANA,DNI,48662110,Sebastián Navarro,sebastiánnavarro9462@donaciones.org,+54 11 4342-8364
+HUMANA,DNI,21752989,Gonzalo Silva,gonzalosilva9108@contacto.ar,+54 11 4056-8566
+HUMANA,DNI,46099754,Julieta Martínez,julietamartínez3949@servicios.com.ar,+54 11 5427-0866
+HUMANA,DNI,26297959,Sofía Torres,sofíatorres3332@empresa.com,+54 11 4175-1830
+HUMANA,DNI,12653991,Federico Ruiz,federicoruiz3083@gmail.com,+54 11 5735-4033
+JURIDICA,CUIT,30-74279671-6,Río de la Plata Fundación,ríodelaplata9903@yahoo.com,+54 11 5638-5467
+HUMANA,DNI,27553103,Tomás Díaz,tomásdíaz8402@donaciones.org,+54 11 4717-5355
+HUMANA,DNI,24849453,Lucía Figueroa,lucíafigueroa266@outlook.com,+54 11 4899-6423
+HUMANA,DNI,26490662,Julieta Silva,julietasilva9022@servicios.com.ar,+54 11 4477-7252
+HUMANA,DNI,22351236,Gonzalo Herrera,gonzaloherrera8585@mail.com,+54 11 5100-6231
+JURIDICA,CUIT,30-77878323-8,Arcos Plateados S.R.L.,arcosplateados6115@servicios.com.ar,+54 11 5997-7008
+HUMANA,DNI,45528616,Ana Pérez,anapérez8778@empresa.com,+54 11 4086-2118
+HUMANA,DNI,45329863,Valentina Ruiz,valentinaruiz5808@empresa.com,+54 11 4615-6793
+JURIDICA,CUIT,30-20820219-3,Mate & Co S.A.S.,mateandco1532@mail.com,+54 11 4668-7002
+HUMANA,DNI,32231194,Ignacio Acosta,ignacioacosta8654@gmail.com,+54 11 5339-7401
+HUMANA,DNI,46442173,Camila Medina,camilamedina2939@mail.com,+54 11 4039-2614
+HUMANA,DNI,36115857,Benjamín Silva,benjamínsilva6289@donaciones.org,+54 11 5185-0163
+JURIDICA,CUIT,30-92391596-2,Andes Energy Asociación Civil,andesenergy5348@contacto.ar,+54 11 5477-3586
+HUMANA,DNI,35506248,Federico Silva,federicosilva4840@gmail.com,+54 11 5114-2626
+HUMANA,DNI,10348645,Lucas Rodríguez,lucasrodríguez7287@empresa.com,+54 11 4412-1267
+HUMANA,DNI,16931871,Carolina Acosta,carolinaacosta1469@mail.com,+54 11 4819-9560
+HUMANA,DNI,15684088,Julieta Sosa,julietasosa9371@yahoo.com,+54 11 5622-4447
+HUMANA,DNI,28519487,Mateo Acosta,mateoacosta4912@contacto.ar,+54 11 4154-3799
+HUMANA,DNI,30445252,Lucas López,lucaslópez6484@mail.com,+54 11 4965-7569
+HUMANA,DNI,23478915,Martina Ruiz,martinaruiz5148@servicios.com.ar,+54 11 5654-7935
+HUMANA,DNI,36369430,Milagros Cabrera,milagroscabrera1866@donaciones.org,+54 11 5982-8073
+HUMANA,DNI,14641159,Joaquín Paz,joaquínpaz8181@contacto.ar,+54 11 5434-2661
+HUMANA,DNI,49073734,Diego Herrera,diegoherrera8756@contacto.ar,+54 11 4805-8911
+JURIDICA,CUIT,30-96838849-1,Córdoba Textil S.R.L.,córdobatextil9228@mail.com,+54 11 4561-0143
+HUMANA,DNI,48957923,Carolina Molina,carolinamolina7304@yahoo.com,+54 11 4679-8250
+HUMANA,DNI,15761618,Joaquín Acosta,joaquínacosta2322@gmail.com,+54 11 4457-3875
+HUMANA,DNI,40363217,Agustina Navarro,agustinanavarro1101@donaciones.org,+54 11 4010-5123
+HUMANA,DNI,32212339,Gonzalo Martínez,gonzalomartínez7571@contacto.ar,+54 11 5622-6609
+JURIDICA,CUIT,30-67653606-6,Litoral Construcciones Asociación Civil,litoralconstrucciones73@contacto.ar,+54 11 5341-9182
+HUMANA,DNI,17647388,Valentina Ríos,valentinaríos8020@empresa.com,+54 11 4969-6915
+HUMANA,DNI,21578125,Agustina Ruiz,agustinaruiz9670@empresa.com,+54 11 5251-3412
+HUMANA,DNI,36069328,Sofía Castro,sofíacastro9772@contacto.ar,+54 11 5966-2782
+HUMANA,DNI,19415141,Franco Díaz,francodíaz5155@outlook.com,+54 11 4905-0723
+JURIDICA,CUIT,30-97653539-8,Capital Servicios Asociación Civil,capitalservicios6704@servicios.com.ar,+54 11 4677-2190
+JURIDICA,CUIT,30-14388260-4,Mate & Co S.A.S.,mateandco3684@empresa.com,+54 11 4279-7881
+HUMANA,DNI,46447238,Camila Sosa,camilasosa8881@donaciones.org,+54 11 5783-6134
+JURIDICA,CUIT,30-45274462-3,Soluciones Andinas Cooperativa,solucionesandinas1426@donaciones.org,+54 11 4133-9596
+HUMANA,DNI,23866010,Sofía Cabrera,sofíacabrera973@yahoo.com,+54 11 4849-8254
+HUMANA,DNI,44521805,Camila Figueroa,camilafigueroa2222@gmail.com,+54 11 4042-2325
+JURIDICA,CUIT,30-29081953-5,Rosario Agro Cooperativa,rosarioagro6787@empresa.com,+54 11 4711-6845
+HUMANA,DNI,49054375,Franco Vargas,francovargas1527@mail.com,+54 11 4518-6363
+HUMANA,DNI,29031609,Martina Paz,martinapaz8968@donaciones.org,+54 11 5975-0017
+HUMANA,DNI,20602094,Sebastián Figueroa,sebastiánfigueroa7480@servicios.com.ar,+54 11 5632-4241
+HUMANA,DNI,34954012,Camila Rodríguez,camilarodríguez849@outlook.com,+54 11 4436-1103
+HUMANA,DNI,25179411,Sofía Silva,sofíasilva153@servicios.com.ar,+54 11 5516-2713
+HUMANA,DNI,16873771,Pablo Cabrera,pablocabrera5134@gmail.com,+54 11 4426-2218
+HUMANA,DNI,21013675,Diego Álvarez,diegoálvarez5754@servicios.com.ar,+54 11 5269-7311
+HUMANA,DNI,35771945,Lucas Silva,lucassilva7036@donaciones.org,+54 11 4234-1389
+HUMANA,DNI,11800155,Diego Díaz,diegodíaz3367@empresa.com,+54 11 5640-3761
+HUMANA,DNI,14765534,Micaela Ruiz,micaelaruiz5917@mail.com,+54 11 4269-6582
+JURIDICA,CUIT,30-88834594-5,Patagonia Foods S.A.,patagoniafoods226@gmail.com,+54 11 4300-6848
+JURIDICA,CUIT,30-63992760-8,Buenos Aires Labs Fundación,buenosaireslabs8792@gmail.com,+54 11 5414-1832
+HUMANA,DNI,14436908,Julieta Silva,julietasilva7168@empresa.com,+54 11 5031-6179
+HUMANA,DNI,21787397,Joaquín Ramírez,joaquínramírez208@gmail.com,+54 11 5027-5884
+HUMANA,DNI,28036479,Sofía Navarro,sofíanavarro481@gmail.com,+54 11 4648-1491
+HUMANA,DNI,13720455,Carolina Suárez,carolinasuárez9288@servicios.com.ar,+54 11 5524-1913
+JURIDICA,CUIT,30-11649277-2,Arcos Plateados S.A.,arcosplateados754@yahoo.com,+54 11 4562-2086
+HUMANA,DNI,31470483,Benjamín Acosta,benjamínacosta1277@empresa.com,+54 11 4180-2380
+JURIDICA,CUIT,30-47890586-2,Patagonia Foods Cooperativa,patagoniafoods5363@empresa.com,+54 11 5870-5349
+JURIDICA,CUIT,30-72267186-0,Neuquén Minería S.R.L.,neuquénminería9695@donaciones.org,+54 11 4383-2060
+HUMANA,DNI,10643897,Tomás Álvarez,tomásálvarez24@donaciones.org,+54 11 4413-8367
+JURIDICA,CUIT,30-47557512-8,PampaTech Fundación,pampatech720@gmail.com,+54 11 5865-7191
+HUMANA,DNI,36464467,Micaela Paz,micaelapaz9698@gmail.com,+54 11 5623-4456
+JURIDICA,CUIT,30-70768130-2,Andes Energy S.A.S.,andesenergy3828@empresa.com,+54 11 5329-1212
+HUMANA,DNI,18102505,Martina Acosta,martinaacosta3402@donaciones.org,+54 11 4474-1124
+JURIDICA,CUIT,30-38859601-1,Neuquén Minería S.A.,neuquénminería2431@donaciones.org,+54 11 5356-8044
+JURIDICA,CUIT,30-64276605-4,Aconcagua Logistics S.A.,aconcagualogistics9109@servicios.com.ar,+54 11 5171-2100
+JURIDICA,CUIT,30-36592965-9,Mate & Co S.R.L.,mateandco6099@contacto.ar,+54 11 5994-1013
+JURIDICA,CUIT,30-22345163-9,Litoral Construcciones S.R.L.,litoralconstrucciones2008@donaciones.org,+54 11 5702-9667
+HUMANA,DNI,21596895,Federico Acosta,federicoacosta3518@donaciones.org,+54 11 5447-2099
+HUMANA,DNI,43480049,Micaela Díaz,micaeladíaz9023@contacto.ar,+54 11 4014-6263
+HUMANA,DNI,26720022,Bruno Castro,brunocastro6267@mail.com,+54 11 4787-5985
+HUMANA,DNI,31399511,Mateo Pérez,mateopérez481@yahoo.com,+54 11 4078-5932
+HUMANA,DNI,27886324,Federico Sánchez,federicosánchez3595@mail.com,+54 11 4522-3955
+JURIDICA,CUIT,30-57201978-7,Arcos Plateados Fundación,arcosplateados9226@outlook.com,+54 11 5784-2701
+HUMANA,DNI,11337344,Diego Sánchez,diegosánchez12@servicios.com.ar,+54 11 4932-5250
+HUMANA,DNI,19506149,Lucía Aguirre,lucíaaguirre8623@gmail.com,+54 11 4156-9154
+HUMANA,DNI,39317740,Mateo Navarro,mateonavarro5199@servicios.com.ar,+54 11 5895-3926
+HUMANA,DNI,18546204,Florencia Díaz,florenciadíaz30@outlook.com,+54 11 4902-9593
+HUMANA,DNI,43298415,Lucas Vega,lucasvega5426@outlook.com,+54 11 5355-2157
+HUMANA,DNI,14549630,Valentina Sánchez,valentinasánchez4206@donaciones.org,+54 11 5006-7626
+HUMANA,DNI,46643048,Julieta Suárez,julietasuárez1662@contacto.ar,+54 11 4932-7104
+HUMANA,DNI,14979504,Camila Fernández,camilafernández2788@donaciones.org,+54 11 4218-1599
+JURIDICA,CUIT,30-97729428-9,Arcos Plateados Cooperativa,arcosplateados9951@outlook.com,+54 11 4201-5336
+HUMANA,DNI,46247204,Pablo Vega,pablovega4613@empresa.com,+54 11 4310-6987
+HUMANA,DNI,38696150,Tomás Pérez,tomáspérez4826@gmail.com,+54 11 4310-3241
+HUMANA,DNI,36673582,Lucas Díaz,lucasdíaz8014@servicios.com.ar,+54 11 4186-2565
+HUMANA,DNI,39510480,Juan Romero,juanromero4316@servicios.com.ar,+54 11 5490-2115
+JURIDICA,CUIT,30-40536245-3,Buenos Aires Labs Asociación Civil,buenosaireslabs6343@mail.com,+54 11 4879-3741
+HUMANA,DNI,12330589,Ignacio Aguirre,ignacioaguirre1971@outlook.com,+54 11 4223-3206
+HUMANA,DNI,23550573,Federico Acosta,federicoacosta9750@outlook.com,+54 11 4511-6868
+HUMANA,DNI,40746407,Camila Castro,camilacastro9627@mail.com,+54 11 4162-2999
+JURIDICA,CUIT,30-85522135-3,Río de la Plata S.A.,ríodelaplata4688@gmail.com,+54 11 4646-7997
+HUMANA,DNI,19653789,Camila Torres,camilatorres636@contacto.ar,+54 11 4530-7450
+HUMANA,DNI,30867454,Bruno Díaz,brunodíaz8055@empresa.com,+54 11 5324-7546
+HUMANA,DNI,39643099,María García,maríagarcía6672@yahoo.com,+54 11 4850-8214
+JURIDICA,CUIT,30-80368504-1,Rosario Agro S.R.L.,rosarioagro2847@mail.com,+54 11 5303-0705
+JURIDICA,CUIT,30-72306347-3,BioSalud S.A.S.,biosalud2030@contacto.ar,+54 11 5357-9727
+HUMANA,DNI,20973212,Tomás Suárez,tomássuárez1481@empresa.com,+54 11 4060-2933
+HUMANA,DNI,28057893,Federico García,federicogarcía8410@contacto.ar,+54 11 5072-2903
+HUMANA,DNI,28480342,Bruno Díaz,brunodíaz6169@contacto.ar,+54 11 4743-7489
+HUMANA,DNI,44327104,Lucas Pérez,lucaspérez9199@donaciones.org,+54 11 4417-1545
+JURIDICA,CUIT,30-97438349-3,BioSalud Fundación,biosalud3087@empresa.com,+54 11 5830-9652
+JURIDICA,CUIT,30-44819604-2,Fuego Austral S.A.S.,fuegoaustral6629@contacto.ar,+54 11 4099-3538
+HUMANA,DNI,34058335,Franco Vega,francovega2786@empresa.com,+54 11 5417-2482
+JURIDICA,CUIT,30-21985619-5,Andes Energy Fundación,andesenergy5821@yahoo.com,+54 11 5465-5494
+HUMANA,DNI,13602199,Lucas Herrera,lucasherrera7737@gmail.com,+54 11 5816-8460
+JURIDICA,CUIT,30-36883353-9,PampaTech S.R.L.,pampatech6705@donaciones.org,+54 11 4252-1752
+HUMANA,DNI,40336778,Juan Pérez,juanpérez3431@empresa.com,+54 11 5927-1296
+HUMANA,DNI,42037790,Julieta Acosta,julietaacosta77@contacto.ar,+54 11 5835-0583
+HUMANA,DNI,26698237,Ana Álvarez,anaálvarez5642@yahoo.com,+54 11 4216-8942
+HUMANA,DNI,29517122,Juan Díaz,juandíaz8525@servicios.com.ar,+54 11 4625-7532
+JURIDICA,CUIT,30-40657783-6,Rosario Agro S.A.,rosarioagro2150@yahoo.com,+54 11 5098-2150
+HUMANA,DNI,45885353,Micaela Romero,micaelaromero9731@mail.com,+54 11 5100-1676
+HUMANA,DNI,20276185,Camila Herrera,camilaherrera153@yahoo.com,+54 11 4618-4992
+HUMANA,DNI,44331873,Noelia Fernández,noeliafernández4632@gmail.com,+54 11 5173-9348
+JURIDICA,CUIT,30-64996550-8,Córdoba Textil Fundación,córdobatextil2628@empresa.com,+54 11 5873-7530
+HUMANA,DNI,17410893,María Vega,maríavega2444@servicios.com.ar,+54 11 5811-4374
+HUMANA,DNI,21724039,Juan Fernández,juanfernández4761@mail.com,+54 11 4561-1002
+HUMANA,DNI,33993257,Mateo Vargas,mateovargas4396@servicios.com.ar,+54 11 5552-1667
+HUMANA,DNI,42094479,Julieta Aguirre,julietaaguirre2733@contacto.ar,+54 11 5202-1697
+JURIDICA,CUIT,30-92050405-8,Litoral Construcciones S.R.L.,litoralconstrucciones5876@contacto.ar,+54 11 5277-1670
+HUMANA,DNI,10829479,Micaela Vargas,micaelavargas5543@yahoo.com,+54 11 5637-5628
+JURIDICA,CUIT,30-11562947-2,Neuquén Minería S.A.,neuquénminería8284@outlook.com,+54 11 4721-7535
+JURIDICA,CUIT,30-39891163-2,Soluciones Andinas Asociación Civil,solucionesandinas6608@contacto.ar,+54 11 5177-9717
+HUMANA,DNI,11192466,Lucas Herrera,lucasherrera6610@gmail.com,+54 11 4088-0199
+HUMANA,DNI,47737500,Noelia Castro,noeliacastro7475@yahoo.com,+54 11 4503-7589
+HUMANA,DNI,34380284,Florencia Ramírez,florenciaramírez1869@servicios.com.ar,+54 11 5305-5488
+HUMANA,DNI,21016280,Lucas Gómez,lucasgómez2302@servicios.com.ar,+54 11 4149-3316
+HUMANA,DNI,22789524,Milagros Cabrera,milagroscabrera1766@donaciones.org,+54 11 4091-7798
+HUMANA,DNI,45592148,Franco Pérez,francopérez9065@mail.com,+54 11 4978-2922
+HUMANA,DNI,31598569,Federico Ruiz,federicoruiz6860@contacto.ar,+54 11 5465-4722
+HUMANA,DNI,44379510,Florencia Medina,florenciamedina8976@empresa.com,+54 11 4833-3945
+JURIDICA,CUIT,30-97253117-7,PampaTech Fundación,pampatech8256@outlook.com,+54 11 4158-7996
+HUMANA,DNI,45829610,Noelia Paz,noeliapaz6921@empresa.com,+54 11 5810-6200
+HUMANA,DNI,20800191,Natalia Cabrera,nataliacabrera4106@empresa.com,+54 11 5043-8057
+HUMANA,DNI,47707462,Ignacio Ramírez,ignacioramírez9196@yahoo.com,+54 11 4384-0666
+JURIDICA,CUIT,30-17221208-1,Andes Energy Asociación Civil,andesenergy4118@mail.com,+54 11 5973-5989
+HUMANA,DNI,29741932,Pablo García,pablogarcía2907@servicios.com.ar,+54 11 5228-1606
+HUMANA,DNI,20799752,Camila López,camilalópez93@empresa.com,+54 11 4720-2590
+JURIDICA,CUIT,30-50420315-4,Neuquén Minería Fundación,neuquénminería9383@servicios.com.ar,+54 11 4158-3281
+JURIDICA,CUIT,30-82890984-9,Aconcagua Logistics Cooperativa,aconcagualogistics1507@contacto.ar,+54 11 4335-5543
+JURIDICA,CUIT,30-73734252-9,Neuquén Minería Asociación Civil,neuquénminería1880@mail.com,+54 11 4739-9305
+HUMANA,DNI,35895695,Bruno Fernández,brunofernández8852@empresa.com,+54 11 4085-8877
+HUMANA,DNI,22919287,Noelia Álvarez,noeliaálvarez8420@donaciones.org,+54 11 5128-8013
+HUMANA,DNI,38468214,Natalia García,nataliagarcía3369@gmail.com,+54 11 4120-7501
+HUMANA,DNI,26905259,Mateo Cabrera,mateocabrera9421@gmail.com,+54 11 5466-7665
+HUMANA,DNI,45892127,Federico Fernández,federicofernández1037@mail.com,+54 11 5158-1449
+HUMANA,DNI,39371949,Natalia Vega,nataliavega6474@contacto.ar,+54 11 5728-3268
+HUMANA,DNI,30002233,Micaela López,micaelalópez183@donaciones.org,+54 11 5100-9968
+HUMANA,DNI,24096410,María Díaz,maríadíaz3470@donaciones.org,+54 11 4822-2394
+HUMANA,DNI,48070364,Mateo Ramírez,mateoramírez8993@mail.com,+54 11 4814-1413
+JURIDICA,CUIT,30-57934299-0,Fuego Austral S.A.S.,fuegoaustral3843@outlook.com,+54 11 5491-3577
+HUMANA,DNI,49202980,Federico Díaz,federicodíaz9267@outlook.com,+54 11 4562-0533
+JURIDICA,CUIT,30-58249394-0,Buenos Aires Labs S.A.S.,buenosaireslabs5433@outlook.com,+54 11 4775-4781
+HUMANA,DNI,28831816,Diego Rodríguez,diegorodríguez8825@outlook.com,+54 11 5411-0809
+HUMANA,DNI,24278127,Natalia Silva,nataliasilva9038@mail.com,+54 11 4887-2563
+JURIDICA,CUIT,30-49057246-1,Santa Fe Industrial Fundación,santafeindustrial7614@outlook.com,+54 11 5658-0392
+JURIDICA,CUIT,30-31370471-4,PampaTech Cooperativa,pampatech9280@outlook.com,+54 11 5750-3731
+HUMANA,DNI,23876373,Benjamín Gómez,benjamíngómez6359@donaciones.org,+54 11 4700-5184
+JURIDICA,CUIT,30-83061428-8,BioSalud Asociación Civil,biosalud6172@outlook.com,+54 11 4591-8463
+HUMANA,DNI,33154727,Tomás Paz,tomáspaz7899@servicios.com.ar,+54 11 5827-2318
+HUMANA,DNI,22543027,Valentina López,valentinalópez5935@outlook.com,+54 11 5365-1777
+HUMANA,DNI,37574979,Mateo Álvarez,mateoálvarez3993@mail.com,+54 11 5299-2280
+JURIDICA,CUIT,30-32325960-3,PampaTech S.A.,pampatech2950@empresa.com,+54 11 4990-4137
+HUMANA,DNI,42324219,Franco Figueroa,francofigueroa3595@outlook.com,+54 11 4929-2984
+HUMANA,DNI,40431866,Federico Vargas,federicovargas3766@gmail.com,+54 11 4621-0388
+HUMANA,DNI,16462488,Milagros López,milagroslópez7797@outlook.com,+54 11 5881-1729
+HUMANA,DNI,38957261,Ana Medina,anamedina6069@contacto.ar,+54 11 5863-7659
+JURIDICA,CUIT,30-67108220-2,Santa Fe Industrial S.A.,santafeindustrial4171@outlook.com,+54 11 4314-9864
+HUMANA,DNI,10477417,Florencia Navarro,florencianavarro8516@gmail.com,+54 11 5635-6512
+HUMANA,DNI,27535740,Lucía Romero,lucíaromero9252@contacto.ar,+54 11 4946-3688
+HUMANA,DNI,47239470,Tomás Molina,tomásmolina4158@servicios.com.ar,+54 11 4956-2137
+JURIDICA,CUIT,30-38784084-9,Aconcagua Logistics S.A.,aconcagualogistics5545@contacto.ar,+54 11 5260-1279
+HUMANA,DNI,24882749,María Romero,maríaromero1312@donaciones.org,+54 11 5669-8490
+JURIDICA,CUIT,30-76353000-7,Aconcagua Logistics Fundación,aconcagualogistics176@servicios.com.ar,+54 11 5843-0988
+HUMANA,DNI,12420021,Diego Martínez,diegomartínez3920@donaciones.org,+54 11 5214-6566
+HUMANA,DNI,14604820,Carolina Pérez,carolinapérez9005@gmail.com,+54 11 4895-5439
+JURIDICA,CUIT,30-87162674-6,Litoral Construcciones Cooperativa,litoralconstrucciones4278@mail.com,+54 11 5681-8184
+HUMANA,DNI,44446086,Lucas Cabrera,lucascabrera8814@empresa.com,+54 11 4769-7357
+HUMANA,DNI,11835474,Noelia Silva,noeliasilva1905@servicios.com.ar,+54 11 4163-3565
+HUMANA,DNI,27673098,Ana Aguirre,anaaguirre4707@yahoo.com,+54 11 5651-8275
+HUMANA,DNI,28057370,Noelia Silva,noeliasilva3116@outlook.com,+54 11 4333-4333
+JURIDICA,CUIT,30-30937370-3,Neuquén Minería S.A.S.,neuquénminería1965@gmail.com,+54 11 5790-8075
+HUMANA,DNI,48555342,Franco Medina,francomedina8042@empresa.com,+54 11 5846-3920
+HUMANA,DNI,46290322,Nicolás Herrera,nicolásherrera8233@mail.com,+54 11 4627-1875
+HUMANA,DNI,24143353,Ana Ramírez,anaramírez9520@contacto.ar,+54 11 5559-4284
+HUMANA,DNI,33024813,Franco Ruiz,francoruiz3014@donaciones.org,+54 11 4636-5564
+HUMANA,DNI,48647506,Lucía López,lucíalópez1637@yahoo.com,+54 11 4386-6322
+HUMANA,DNI,38287773,Ana Martínez,anamartínez2204@servicios.com.ar,+54 11 4744-8906
+HUMANA,DNI,24459767,Mateo Gómez,mateogómez7808@empresa.com,+54 11 5754-5588
+JURIDICA,CUIT,30-12662253-4,BioSalud S.A.S.,biosalud1987@contacto.ar,+54 11 4939-9824
+HUMANA,DNI,42715151,Federico Castro,federicocastro1285@servicios.com.ar,+54 11 4947-2256
+HUMANA,DNI,14787820,Lucía Torres,lucíatorres2655@gmail.com,+54 11 4355-4496
+HUMANA,DNI,34371579,Agustina Sosa,agustinasosa6783@servicios.com.ar,+54 11 5202-3413
+HUMANA,DNI,14281035,Lucas Fernández,lucasfernández8986@servicios.com.ar,+54 11 5068-1149
+HUMANA,DNI,36162136,Micaela Vega,micaelavega3758@empresa.com,+54 11 5472-2820
+HUMANA,DNI,31823890,Tomás Figueroa,tomásfigueroa7655@servicios.com.ar,+54 11 4872-8299
+HUMANA,DNI,47848358,Pablo Álvarez,pabloálvarez8577@contacto.ar,+54 11 4578-3174
+HUMANA,DNI,30372433,Camila López,camilalópez2@mail.com,+54 11 5547-8077
+HUMANA,DNI,29657703,Natalia Acosta,nataliaacosta119@yahoo.com,+54 11 4368-6632
+JURIDICA,CUIT,30-39607414-8,Rosario Agro Cooperativa,rosarioagro1298@empresa.com,+54 11 4389-4484
+HUMANA,DNI,22241138,Ignacio Rodríguez,ignaciorodríguez4745@outlook.com,+54 11 5797-4973
+HUMANA,DNI,45901279,Sofía Gómez,sofíagómez3047@mail.com,+54 11 5442-7031
+HUMANA,DNI,32945383,Franco García,francogarcía5105@contacto.ar,+54 11 4570-5120
+HUMANA,DNI,46452994,Julieta Rodríguez,julietarodríguez2976@servicios.com.ar,+54 11 5460-1367
+HUMANA,DNI,40926088,Juan García,juangarcía8539@gmail.com,+54 11 5764-5208
+HUMANA,DNI,30053006,Camila Herrera,camilaherrera5906@yahoo.com,+54 11 5313-6502
+JURIDICA,CUIT,30-63124490-0,Santa Fe Industrial S.A.,santafeindustrial147@yahoo.com,+54 11 5979-2513
+HUMANA,DNI,32711122,María Ramírez,maríaramírez980@mail.com,+54 11 4281-2735
+JURIDICA,CUIT,30-35899364-4,Córdoba Textil Cooperativa,córdobatextil6190@mail.com,+54 11 4240-7784
+HUMANA,DNI,48030709,Franco García,francogarcía8907@outlook.com,+54 11 4574-9821
+HUMANA,DNI,27673070,Agustina Díaz,agustinadíaz7440@donaciones.org,+54 11 5862-0959
+HUMANA,DNI,46168759,Pablo Rodríguez,pablorodríguez3111@contacto.ar,+54 11 4829-4565
+HUMANA,DNI,14474808,Carolina Ramírez,carolinaramírez2127@mail.com,+54 11 5031-7310
+HUMANA,DNI,42877279,Milagros Torres,milagrostorres805@empresa.com,+54 11 4391-0371
+HUMANA,DNI,34221337,Micaela Gómez,micaelagómez6047@contacto.ar,+54 11 5948-0141
+JURIDICA,CUIT,30-23586205-7,Plataforma Federal S.A.,plataformafederal8711@yahoo.com,+54 11 4338-3928
+JURIDICA,CUIT,30-24161873-7,Buenos Aires Labs Fundación,buenosaireslabs7516@donaciones.org,+54 11 4122-8685
+HUMANA,DNI,39730043,Gonzalo Ruiz,gonzaloruiz5164@donaciones.org,+54 11 4566-5939
+HUMANA,DNI,46925894,Julieta Sosa,julietasosa5899@empresa.com,+54 11 4760-0490
+HUMANA,DNI,10440826,Noelia Díaz,noeliadíaz3636@empresa.com,+54 11 5504-8889
+JURIDICA,CUIT,30-15064880-3,PampaTech S.A.,pampatech5828@servicios.com.ar,+54 11 5245-9334
+JURIDICA,CUIT,30-63660012-8,Patagonia Foods Asociación Civil,patagoniafoods1265@yahoo.com,+54 11 4727-9194
+HUMANA,DNI,35605126,Bruno Silva,brunosilva917@gmail.com,+54 11 4566-1390
+HUMANA,DNI,13632465,Micaela Torres,micaelatorres8592@empresa.com,+54 11 5589-2583
+HUMANA,DNI,36365911,Federico Navarro,federiconavarro9751@servicios.com.ar,+54 11 5364-6225
+HUMANA,DNI,13309211,Lucía Navarro,lucíanavarro4302@contacto.ar,+54 11 5686-2278
+HUMANA,DNI,48341353,Julieta Álvarez,julietaálvarez9195@yahoo.com,+54 11 5314-6591
+HUMANA,DNI,34512696,Nicolás Acosta,nicolásacosta3121@donaciones.org,+54 11 4590-4259
+JURIDICA,CUIT,30-29571424-3,Litoral Construcciones Asociación Civil,litoralconstrucciones736@servicios.com.ar,+54 11 5352-1103
+JURIDICA,CUIT,30-11843251-3,PampaTech S.A.S.,pampatech1824@donaciones.org,+54 11 4770-5383
+HUMANA,DNI,27358244,Carolina Sosa,carolinasosa2316@servicios.com.ar,+54 11 5698-0420
+HUMANA,DNI,28205390,Bruno Aguirre,brunoaguirre7618@mail.com,+54 11 5164-5104
+JURIDICA,CUIT,30-61096850-9,Rosario Agro S.R.L.,rosarioagro5169@gmail.com,+54 11 4981-2387
+HUMANA,DNI,12667738,Florencia Pérez,florenciapérez8674@yahoo.com,+54 11 4576-2055
+HUMANA,DNI,43638416,Joaquín Sánchez,joaquínsánchez1016@empresa.com,+54 11 4608-4325
+JURIDICA,CUIT,30-61298971-7,PampaTech S.A.,pampatech6838@yahoo.com,+54 11 5926-4957
+HUMANA,DNI,19299713,Valentina Álvarez,valentinaálvarez2263@yahoo.com,+54 11 4826-2925
+HUMANA,DNI,17944836,Gonzalo Navarro,gonzalonavarro5204@outlook.com,+54 11 5056-6474
+HUMANA,DNI,18827894,Valentina Fernández,valentinafernández430@outlook.com,+54 11 4999-3933
+HUMANA,DNI,41984233,Tomás Rodríguez,tomásrodríguez8231@outlook.com,+54 11 4526-7722
+HUMANA,DNI,11007589,Juan Acosta,juanacosta6768@empresa.com,+54 11 5331-2797
+HUMANA,DNI,26561383,Ignacio Ríos,ignacioríos6634@contacto.ar,+54 11 5965-6999
+HUMANA,DNI,12584494,Micaela Medina,micaelamedina7400@gmail.com,+54 11 4038-8608
+HUMANA,DNI,13308161,Natalia Álvarez,nataliaálvarez4771@yahoo.com,+54 11 4644-7264
+HUMANA,DNI,44693245,Juan Aguirre,juanaguirre7596@outlook.com,+54 11 4181-2982
+HUMANA,DNI,11671823,Martina Ríos,martinaríos7434@outlook.com,+54 11 5714-5211
+HUMANA,DNI,34356718,Agustina Álvarez,agustinaálvarez8583@gmail.com,+54 11 4892-6860
+JURIDICA,CUIT,30-98520663-1,Andes Energy Asociación Civil,andesenergy2657@outlook.com,+54 11 5206-4474
+HUMANA,DNI,18829582,Lucas Medina,lucasmedina58@yahoo.com,+54 11 4077-7809
+JURIDICA,CUIT,30-89035763-2,Mate & Co S.R.L.,mateandco7435@servicios.com.ar,+54 11 4719-9038
+HUMANA,DNI,23934323,Micaela Molina,micaelamolina3029@mail.com,+54 11 5050-2099
+HUMANA,DNI,13290439,Sebastián Rodríguez,sebastiánrodríguez6832@gmail.com,+54 11 5249-9982
+JURIDICA,CUIT,30-14810369-7,Santa Fe Industrial S.A.S.,santafeindustrial4904@gmail.com,+54 11 4561-6814
+HUMANA,DNI,28415916,Lucas Aguirre,lucasaguirre8636@donaciones.org,+54 11 4833-9019
+JURIDICA,CUIT,30-74916146-5,Plataforma Federal S.A.,plataformafederal6997@empresa.com,+54 11 4489-9529
+HUMANA,DNI,43402840,Carolina Navarro,carolinanavarro2948@servicios.com.ar,+54 11 5430-1071
+JURIDICA,CUIT,30-65650977-1,Sur Digital Asociación Civil,surdigital746@contacto.ar,+54 11 4583-0344
+JURIDICA,CUIT,30-78006730-2,Nordelta Trading S.A.S.,nordeltatrading101@donaciones.org,+54 11 5556-9902
+HUMANA,DNI,42152411,Milagros Vargas,milagrosvargas583@servicios.com.ar,+54 11 5727-8576
+JURIDICA,CUIT,30-50177237-9,Soluciones Andinas Asociación Civil,solucionesandinas9097@donaciones.org,+54 11 5395-5124
+JURIDICA,CUIT,30-94088862-6,Andes Energy Cooperativa,andesenergy9355@outlook.com,+54 11 4291-4504
+HUMANA,DNI,25947901,Franco Medina,francomedina7405@donaciones.org,+54 11 4384-2150
+JURIDICA,CUIT,30-77913458-6,Patagonia Foods Cooperativa,patagoniafoods7908@mail.com,+54 11 5357-8452
+JURIDICA,CUIT,30-27812995-7,Río de la Plata Asociación Civil,ríodelaplata599@yahoo.com,+54 11 4681-0409
+JURIDICA,CUIT,30-16192775-5,Andes Energy Cooperativa,andesenergy8530@gmail.com,+54 11 4094-3533
+HUMANA,DNI,39602768,Gonzalo Vargas,gonzalovargas4468@gmail.com,+54 11 5241-0988
+HUMANA,DNI,46867305,Gonzalo Suárez,gonzalosuárez4441@donaciones.org,+54 11 5493-2149
+JURIDICA,CUIT,30-16808353-6,Capital Servicios Cooperativa,capitalservicios476@outlook.com,+54 11 4016-0166
+HUMANA,DNI,49779196,Diego Medina,diegomedina5827@servicios.com.ar,+54 11 4538-1792
+HUMANA,DNI,41425464,Bruno Vega,brunovega7465@gmail.com,+54 11 4773-3294
+JURIDICA,CUIT,30-99279031-4,Rosario Agro S.R.L.,rosarioagro5321@donaciones.org,+54 11 4701-7157
+HUMANA,DNI,33395186,Mateo Díaz,mateodíaz8323@outlook.com,+54 11 5615-8148
+HUMANA,DNI,26010516,Lucía Acosta,lucíaacosta8978@yahoo.com,+54 11 5761-5396
+JURIDICA,CUIT,30-55929418-3,Buenos Aires Labs Asociación Civil,buenosaireslabs2836@yahoo.com,+54 11 5971-9975
+HUMANA,DNI,21822837,Milagros Ríos,milagrosríos6649@empresa.com,+54 11 5919-6570
+HUMANA,DNI,48974673,Milagros López,milagroslópez2404@mail.com,+54 11 5784-6997
+HUMANA,DNI,31246513,Federico Medina,federicomedina9344@empresa.com,+54 11 4651-9098
+HUMANA,DNI,29742398,Sofía Figueroa,sofíafigueroa6050@mail.com,+54 11 5085-1403
+HUMANA,DNI,31349162,Lucía Torres,lucíatorres6653@contacto.ar,+54 11 4683-2723
+HUMANA,DNI,34178510,Milagros Vega,milagrosvega2528@contacto.ar,+54 11 4220-1027
+HUMANA,DNI,19208696,Sofía Rodríguez,sofíarodríguez7472@contacto.ar,+54 11 4927-8687
+HUMANA,DNI,38505956,Benjamín Martínez,benjamínmartínez9469@mail.com,+54 11 4384-6895
+HUMANA,DNI,42431575,Juan Silva,juansilva1855@donaciones.org,+54 11 4128-4781
+HUMANA,DNI,26457194,Diego Rodríguez,diegorodríguez1280@servicios.com.ar,+54 11 4905-8077
+HUMANA,DNI,32247527,Franco Silva,francosilva5783@contacto.ar,+54 11 4420-9494
+HUMANA,DNI,21346715,Franco Silva,francosilva4781@mail.com,+54 11 5471-2814
+HUMANA,DNI,28469507,Diego Romero,diegoromero233@empresa.com,+54 11 5929-2752
+HUMANA,DNI,42542330,Florencia Sánchez,florenciasánchez8641@outlook.com,+54 11 5512-9276
+JURIDICA,CUIT,30-69080631-9,Mate & Co Fundación,mateandco3455@outlook.com,+54 11 4041-0276
+HUMANA,DNI,45736868,Franco Navarro,franconavarro6223@yahoo.com,+54 11 4742-8604
+JURIDICA,CUIT,30-52371009-1,Litoral Construcciones Cooperativa,litoralconstrucciones1596@mail.com,+54 11 4694-5441
+HUMANA,DNI,40944473,Lucía Torres,lucíatorres9646@yahoo.com,+54 11 5852-5800
+JURIDICA,CUIT,30-23112905-3,Arcos Plateados Cooperativa,arcosplateados7307@gmail.com,+54 11 4344-3009
+HUMANA,DNI,24550860,Diego Ramírez,diegoramírez1966@gmail.com,+54 11 5926-9212
+HUMANA,DNI,15081092,Agustina Ramírez,agustinaramírez4529@servicios.com.ar,+54 11 4542-1406
+HUMANA,DNI,27761357,Juan Romero,juanromero7219@outlook.com,+54 11 5739-6271
+HUMANA,DNI,24655669,Natalia Acosta,nataliaacosta7235@gmail.com,+54 11 4101-1947
+HUMANA,DNI,10058226,Franco López,francolópez6398@mail.com,+54 11 4256-9087
+HUMANA,DNI,14704310,Julieta Figueroa,julietafigueroa55@yahoo.com,+54 11 4719-8554
+HUMANA,DNI,16084557,Micaela Álvarez,micaelaálvarez8760@donaciones.org,+54 11 4174-3280
+JURIDICA,CUIT,30-62358969-9,Sur Digital S.A.S.,surdigital5887@gmail.com,+54 11 4173-2030
+JURIDICA,CUIT,30-75663681-9,Santa Fe Industrial S.R.L.,santafeindustrial1033@contacto.ar,+54 11 4787-0050
+HUMANA,DNI,37213171,Pablo Gómez,pablogómez3469@gmail.com,+54 11 4829-3102
+HUMANA,DNI,13073699,Ana Herrera,anaherrera2139@yahoo.com,+54 11 5204-1792
+JURIDICA,CUIT,30-25324937-0,Patagonia Foods S.A.,patagoniafoods9749@servicios.com.ar,+54 11 5136-5651
+JURIDICA,CUIT,30-28432040-5,Santa Fe Industrial Asociación Civil,santafeindustrial3494@donaciones.org,+54 11 5925-1142
+JURIDICA,CUIT,30-59650807-9,Aconcagua Logistics Fundación,aconcagualogistics7188@outlook.com,+54 11 5902-1962
+HUMANA,DNI,10426113,Franco Rodríguez,francorodríguez2940@mail.com,+54 11 5946-7232
+HUMANA,DNI,37650954,Carolina Ríos,carolinaríos2860@yahoo.com,+54 11 5927-9145
+HUMANA,DNI,22878383,Gonzalo Sánchez,gonzalosánchez8687@gmail.com,+54 11 5958-8373
+HUMANA,DNI,20013811,Valentina Fernández,valentinafernández8152@servicios.com.ar,+54 11 5200-5436
+HUMANA,DNI,40410222,Diego Cabrera,diegocabrera1711@mail.com,+54 11 5822-0781
+HUMANA,DNI,39851424,Benjamín Navarro,benjamínnavarro6866@donaciones.org,+54 11 5531-5313
+JURIDICA,CUIT,30-39616854-1,Sur Digital Cooperativa,surdigital7717@gmail.com,+54 11 4062-3972
+HUMANA,DNI,23029516,Sofía Ríos,sofíaríos4419@donaciones.org,+54 11 5520-9042
+HUMANA,DNI,38066526,Agustina Ríos,agustinaríos5630@outlook.com,+54 11 5492-9298
+JURIDICA,CUIT,30-80030620-1,Patagonia Foods Cooperativa,patagoniafoods3547@servicios.com.ar,+54 11 4740-6335
+HUMANA,DNI,49713121,Benjamín Medina,benjamínmedina9400@outlook.com,+54 11 5600-7806

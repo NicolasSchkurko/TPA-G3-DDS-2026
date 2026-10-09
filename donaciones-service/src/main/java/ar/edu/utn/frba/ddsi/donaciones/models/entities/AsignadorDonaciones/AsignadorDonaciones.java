@@ -7,9 +7,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
 
 
 import java.util.*;
@@ -27,13 +27,13 @@ public class AsignadorDonaciones {
     private final List<AlgoritmoAsignacion> algoritmos;
     private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private GestorMatchmaking gestorMatchmaking;
-    private GestorDonaciones gestorDonaciones;
+    private GestorAsignaciones gestorAsignaciones;
 
-    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorDonaciones gestorDonaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
         this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
-        this.gestorDonaciones = gestorDonaciones;
+        this.gestorAsignaciones = gestorAsignaciones;
         algoritmos.add(new CompatibilidadSemantica());
         algoritmos.add(new SubAtendidos());
     }
@@ -46,7 +46,15 @@ public class AsignadorDonaciones {
         if (todasLasDonaciones == null || todasLasEntidades == null) {
             return;
         }
-        todasLasDonaciones.forEach(donacion -> procesarMatchmaking(donacion, todasLasEntidades));
+        // Aislado por donación: si una falla (p.ej. un resultado de matchmaking duplicado), el
+        // resto del lote tiene que seguir procesándose en vez de abortar el batch entero.
+        for (Donacion donacion : todasLasDonaciones) {
+            try {
+                procesarMatchmaking(donacion, todasLasEntidades);
+            } catch (Exception e) {
+                System.err.println("Error al procesar matchmaking para la donación " + donacion.getId() + ": " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -76,7 +84,15 @@ public class AsignadorDonaciones {
             resultadoFinal = todasLasPropuestas;
         }
 
-        // 4. Procesar resultado final
+        // 4. Si ninguna entidad tiene una necesidad compatible, no hay nada para aprobar:
+        // la donación se queda en su estado actual (EN_DEPOSITO) en lugar de pasar a
+        // PENDIENTE_ASIGNACION con un ResultadoMatchmaking sin propuestas.
+        if (resultadoFinal == null || resultadoFinal.isEmpty()) {
+            System.out.println("Sin propuestas para la donación " + donacion.getId() + ": se mantiene en EN_DEPOSITO.");
+            return;
+        }
+
+        // 5. Procesar resultado final
         registrarDonacionPendienteDeAprobacion(donacion, resultadoFinal, huboCoincidenciaTotal);
     }
 
@@ -158,9 +174,12 @@ public class AsignadorDonaciones {
             List<PropuestaAsignacion> resultadoFinal,
             boolean huboCoincidenciaTotal) {
         System.out.println("propuestas:" + resultadoFinal);
-        //donacion.setEstado(Estado.PENDIENTE_ASIGNACION);
-        gestorDonaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
 
+        // Guardar el resultado PRIMERO: si ya existe uno para esta donación (guardar() tira
+        // IllegalArgumentException), el estado no debe cambiar a PENDIENTE_ASIGNACION. Con el
+        // orden inverso, una donación podía quedar en PENDIENTE_ASIGNACION sin
+        // ResultadoMatchmaking y, como buscarDonacionesSinAsignar() sólo trae EN_DEPOSITO, el
+        // scheduler nunca la volvía a recoger.
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
                 donacion,
                 resultadoFinal,
@@ -168,5 +187,7 @@ public class AsignadorDonaciones {
         );
 
         repositorioDeResultadosMatchmaking.guardar(resultado);
+
+        gestorAsignaciones.cambiarEstado(donacion.getId(), "PENDIENTE_ASIGNACION", "Añadida a un resultadoMatchmaking");
     }
 }

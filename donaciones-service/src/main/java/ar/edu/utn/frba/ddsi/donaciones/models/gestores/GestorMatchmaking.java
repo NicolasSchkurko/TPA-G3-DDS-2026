@@ -1,15 +1,10 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDeResultadosMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -20,43 +15,27 @@ public class GestorMatchmaking {
         this.repositorioDeResultadosMatchmaking=repositorioDeResultadosMatchmaking;
     }
 
-    /*
-    public Donacion asignarPropuesta(UUID donacionId, Integer posicion) {
-        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
-                        "No hay resultado de matchmaking para la donación " + donacionId
-                )
-        );
-
-        if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
-            throw new IllegalArgumentException("Posición de propuesta inválida");
-        }
-
-        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
-
-        Donacion donacion = resultado.getDonacion();
-
-        if (donacion.getEstado() != Estado.PENDIENTE_ASIGNACION) {
-            throw new IllegalStateException("La donación ya está asignada");
-        }
-
-        repositorioDeResultadosMatchmaking.eliminarResultado(resultado);
-
-        return donacion;
-    }
-    */
-
-
+    /**
+     * Devuelve la propuesta que el operador eligio por su posicion, tal como la devolvio
+     * {@code GET /donaciones/pendientes}.
+     */
     public PropuestaAsignacion obtenerPropuestaSeleccionadaParaDonacion(UUID donacionId, Integer posicion){
-        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking.findByDonacionId(donacionId).orElseThrow(() -> new IllegalArgumentException(
-                        "No hay resultado de matchmaking para la donación " + donacionId
-                )
-        );
+        ResultadoMatchmaking resultado = repositorioDeResultadosMatchmaking
+                .findByDonacionId(donacionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No hay resultado de matchmaking para la donacion " + donacionId
+                ));
 
-        if (posicion == null || posicion < 0 || posicion >= resultado.getPropuestasOrdenadas().size()) {
+        // posicion es 1-based: así la setean AlgoritmoAsignacion.extraerRanking y
+        // AsignadorDonaciones.obtenerInterseccion, y así la expone PropuestaAsignacionDTO al
+        // front. Indexar con get(posicion) desfasaba en uno: "la propuesta número 1" de la
+        // pantalla terminaba asignando la segunda de la lista.
+        int size = resultado.getPropuestasOrdenadas().size();
+        if (posicion == null || posicion < 1 || posicion > size) {
             throw new IllegalArgumentException("Posición de propuesta inválida");
         }
 
-        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion);
+        PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion - 1);
         return  propuesta;
     }
 }

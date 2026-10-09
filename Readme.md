@@ -13,7 +13,7 @@ Integrantes:
 
 # ddsi-tp-template
 
-Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arquitectura de servicios con Spring Boot y una biblioteca compartida, usando un reactor de Maven multi-módulo.
+Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arquitectura de servicios con Spring Boot, usando un reactor de Maven multi-módulo.
 
 ---
 
@@ -30,12 +30,15 @@ Plantilla base para el trabajo práctico de DDSI (UTN FRBA). Implementa una arqu
 ```
 ddsi-tp-template/
 ├── pom.xml                    # POM padre: versiones y dependencyManagement
-├── common-lib/                # Librería compartida (JAR), importada por los servicios
-├── donaciones-service/        # Servicio de donaciones — puerto 8080
-└── notificaciones-service/    # Servicio de notificaciones — puerto 8081
+├── common-lib/                # (obsoleto, ver PENDIENTES.md de cada servicio)
+├── donaciones-service/        # Servicio de donaciones — puerto 8084
+├── incentivos-service/         # Servicio de gamificación — puerto 8082
+├── notificaciones-service/    # Servicio de notificaciones — puerto 8083
+└── logisticas-service/        # Servicio de logística — puerto 8086
 ```
 
-Cada servicio es una aplicación Spring Boot independiente que declara `common-lib` como dependencia local del reactor.
+> `common-lib/` ya no participa del build (no está en `<modules>` del POM padre ni lo
+> referencia ningún servicio). Ver la sección de pendientes de cada módulo.
 
 ---
 
@@ -44,12 +47,23 @@ Cada servicio es una aplicación Spring Boot independiente que declara `common-l
 | Tecnología          | Versión       |
 |---------------------|---------------|
 | Java                | 21            |
-| Spring Boot         | 4.0.5         |
+| Spring Boot         | 3.2.5         |
 | Spring Cloud BOM    | 2025.1.1      |
-| Lombok              | 1.18.34       |
+| Lombok              | 1.18.38       |
 | Maven               | 3.9+          |
 
 El BOM de Spring Cloud está declarado en el POM padre para que los módulos puedan incorporar dependencias de Spring Cloud sin especificar versión explícita.
+
+---
+
+## Puertos
+
+| Servicio              | Puerto |
+|-----------------------|--------|
+| `incentivos-service`  | 8082   |
+| `notificaciones-service` | 8083 |
+| `donaciones-service`  | 8084   |
+| `logisticas-service`  | 8086   |
 
 ---
 
@@ -63,55 +77,108 @@ Todos los comandos se ejecutan desde la **raíz del proyecto**.
 mvn clean install
 ```
 
-Esto construye `common-lib` primero y luego los servicios que dependen de ella.
-
 ### Ejecutar un servicio
 
 ```bash
-# Servicio de donaciones (puerto 8080)
-mvn spring-boot:run -pl donaciones-service
-
-# Servicio de notificaciones (puerto 8081)
-mvn spring-boot:run -pl notificaciones-service
+mvn spring-boot:run -pl incentivos-service
 ```
 
-Maven resuelve `common-lib` directamente desde el reactor, por lo que no hace falta instalarla por separado si se ejecuta desde la raíz.
+Maven resuelve las dependencias entre módulos directamente desde el reactor.
 
----
-
-## Construcción de imágenes Docker
-
-Este proyecto utiliza una arquitectura multi-módulo de Maven. Los microservicios dependen del `pom.xml` padre y de `common-lib`, por lo que **el contexto de construcción de Docker siempre debe ser la raíz del proyecto**. Si se limita el contexto a la carpeta del microservicio, Maven fallará al no encontrar el POM padre ni las dependencias comunes.
-
-### Construcción manual (CLI)
-
-Posicionarse en la carpeta raíz del proyecto y pasar el Dockerfile con `-f`, dejando `.` como contexto:
+### Tests
 
 ```bash
-# donaciones-service (expone el puerto 8080)
-docker build -t donaciones-img -f donaciones-service/Dockerfile .
-
-# notificaciones-service (expone el puerto 8081)
-docker build -t notificaciones-img -f notificaciones-service/Dockerfile .
-```
-
-### Ejecutar los contenedores
-
-```bash
-docker run -p 8080:8080 donaciones-img
-docker run -p 8081:8081 notificaciones-img
-```
-
-### Nota sobre `ARG SERVICE_NAME`
-
-Cada Dockerfile define un `ARG SERVICE_NAME` cuyo valor por defecto ya coincide con el nombre del servicio (p. ej. `donaciones-service`). Solo es necesario sobreescribirlo si se reutiliza un Dockerfile genérico para construir un servicio diferente:
-
-```bash
-docker build --build-arg SERVICE_NAME=otro-service -f otro-service/Dockerfile .
+mvn test -pl incentivos-service
 ```
 
 ---
 
-## Estado del proyecto
+## Docker Compose
 
-Los servicios son aplicaciones Spring Boot mínimas, listas para extender con controladores, repositorios y lógica de negocio. `common-lib` contiene el código compartido entre servicios.
+Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto
+del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5679`
+y conserva su configuración en un volumen:
+
+```bash
+docker compose up --build
+```
+
+Para ejecutar en segundo plano:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+Puertos disponibles desde la máquina local:
+
+| Componente | Puerto |
+|------------|--------|
+| Incentivos | 8082 |
+| Notificaciones | 8083 |
+| Donaciones | 8084 |
+| Logísticas | 8086 |
+| RabbitMQ AMQP | 5672 |
+| Panel de RabbitMQ | 15672 |
+| n8n | 5679 |
+| MySQL Incentivos | 3309 |
+| MySQL Notificaciones | 3310 |
+| MySQL Donaciones | 3311 |
+| MySQL Logísticas | 3312 |
+
+Los contenedores se comunican usando los nombres de servicio de Compose y el puerto
+interno del contenedor. Los volúmenes mantienen los datos al recrear contenedores; no
+usar `docker compose down -v` salvo que se quiera borrar también esos datos.
+
+n8n arranca sin workflows. Para que se procesen publicaciones, hay que configurar y activar
+los webhooks `incentivos` y `notificaciones`; los servicios ya apuntan a
+`http://n8n:5678/webhook/<ruta>` dentro de Compose.
+
+RabbitMQ está incluido en la infraestructura y configurado para Donaciones y Logísticas.
+La comunicación de notificaciones por cola requiere además publicadores y consumidores
+RabbitMQ en el código de los servicios; configurar el broker en Compose por sí solo no
+la implementa.
+
+---
+
+## Requisito pendiente: visibilidad configurable de insignias
+
+> Estado: **no implementado** en `incentivos-service`.
+
+El enunciado pide que las insignias obtenidas puedan visualizarse en el perfil de la
+persona donante *"siempre que la persona usuaria las configure como visibles"*. O sea,
+la visibilidad tiene que ser **una decisión de la persona donante**, no un dato que el
+servicio asuma.
+
+Hoy no hay forma de configurarla:
+
+- `InsigniaObtenida` (`models/entities/Perfil/InsigniaObtenida.java`) solo tiene
+  `perfil`, `insignia` y `fechaObtencion`. **No existe el campo de visibilidad.**
+- En consecuencia, `GET /api/perfiles/{idUsuario}/insignias` devuelve **todas** las
+  insignias otorgadas, sin filtro.
+- No hay endpoint para cambiar ese estado.
+
+### Qué hay que hacer
+
+1. Agregar `Boolean visible` a `InsigniaObtenida`, con `true` por defecto en el
+   constructor para no cambiar el comportamiento de las insignias ya emitidas.
+2. Exponer un endpoint de toggle, por ejemplo
+   `PUT /api/perfiles/{idUsuario}/insignias/{idInsignia}/visibilidad`.
+3. Filtrar por `visible` en el listado de insignias y en el DTO que se expone
+   públicamente, dejando las insignias ocultas fuera de la respuesta pero **sin** borrar
+   el registro (sigue contando para el ranking y para el historial).
+4. Solo la persona dueña del perfil debería poder cambiar la visibilidad.
+
+---
+
+## Documentación por servicio
+
+Cada microservicio tiene su Swagger en `/api-docs`.
+
+Los cuatro mantienen un `PENDIENTES.md` propio con los problemas técnicos conocidos que
+quedaron abiertos. Los IDs nunca se renumeran, así que hay huecos: cada punto dice su
+severidad, los archivos afectados y una propuesta concreta. Lo que ya se corrigió queda en la
+sección `# Corregidos` de cada archivo, con el motivo por el que se cambió.
+
+Los tres comandos de arranque y el compose están en [docker-compose.yml](docker-compose.yml),
+que incluye MySQL y RabbitMQ: la integración entre servicios va por el broker, no por HTTP.

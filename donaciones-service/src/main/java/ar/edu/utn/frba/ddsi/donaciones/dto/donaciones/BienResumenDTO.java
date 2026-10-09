@@ -1,6 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,10 +15,19 @@ public class BienResumenDTO {
   private String descripcion;
   private String subcategoria;
   private String categoria;
+
+  // El peso del Bien: sin validación entraba -50 y arrastraba los conteos y scores (punto 22).
+  @NotNull(message = "El bien requiere una cantidad")
+  @Positive(message = "La cantidad del bien debe ser positiva")
   private Integer cantidad;
+
   private String unidadDeMedida;
   private String urlFoto;
+
+  // Si falta, toDomain() devuelve null y el null llega a la segmentación (punto 7).
+  @NotBlank(message = "El bien requiere su tipo (CON_ESTADO o PERECEDERO)")
   private String tipoBien;
+
   private Boolean usado;
   private LocalDate fechaVencimiento;
 
@@ -31,7 +43,7 @@ public class BienResumenDTO {
     return toDomain(subcatTransitoria);
   }
 
-  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía GestorNecesidades) en vez de
+  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía RepositorioSubcategoriasDeBienes) en vez de
   // construir CategoriaBien/SubcategoriaBien "al vuelo": eso rompía merge() por no estar
   // cascadeadas (son catálogo compartido, igual que Necesidad.subcategoria). Usar esta variante
   // siempre que el Bien resultante se vaya a persistir vía JPA.
@@ -45,7 +57,9 @@ public class BienResumenDTO {
       };
     }
 
-    if (tipoBien == null) return null;
+    if (tipoBien == null) {
+      throw new IllegalArgumentException("El tipo de bien es obligatorio");
+    }
     return switch (tipoBien.toUpperCase()) {
       case "CON_ESTADO", "CONESTADO" -> new BienConEstado(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, usado != null ? usado : false);
       case "PERECEDERO" -> new BienPerecedero(descripcion, subcat, urlFoto, cantidad != null ? cantidad : 0, um, fechaVencimiento != null ? fechaVencimiento : LocalDate.now().plusMonths(1));

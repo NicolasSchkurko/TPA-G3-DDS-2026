@@ -4,20 +4,24 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorEventos;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.eventos.RepositorioEventoLogistica;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
 public class EventoLogisticaService {
-  private final GestorEventos gestorEventos;
+  private final RepositorioEventoLogistica repoEventos;
 
-  public EventoLogisticaService(GestorEventos gestorEventos){
-    this.gestorEventos = gestorEventos;
+  public EventoLogisticaService(RepositorioEventoLogistica repoEventos){
+    this.repoEventos = repoEventos;
   }
 
+  /** @param desdeId ultimo id que el cliente ya procesa; {@code null} o 0 significan "desde el
+    *  principio". Se pasa tal cual porque el repositorio ya devuelve {@code id > :id}: restarle
+    *  uno convertiria el "estrictamente mayor" en un "mayor o igual" que reenvia el ultimo evento. */
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
-    return new EventoLogisticaResponseDTO(convertirEventosADTO(gestorEventos.buscarEventos(desdeId - 1)));
+    long desde = desdeId == null ? 0L : desdeId;
+    return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc(desde)));
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

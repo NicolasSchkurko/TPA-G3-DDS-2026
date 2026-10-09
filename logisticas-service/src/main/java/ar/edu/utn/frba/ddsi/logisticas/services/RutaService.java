@@ -10,6 +10,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutasDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
@@ -19,94 +20,102 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.camiones.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.choferes.RepositorioChoferes;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.items.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.rutas.RepositorioRutas;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class RutaService {
-  private final GestorRutas gestorRutas;
-  private final GestorChoferes gestorChoferes;
-  private final GestorItemEntrega gestorItemEntrega;
+  private final RepositorioRutas repoRutas;
+  private final RepositorioChoferes repoChoferes;
+  private final RepositorioItemEntrega repoItemEntrega;
   private final GestorCamiones gestorCamiones;
-  private final GestorEventos gestorEventos;
+  private final RepositorioCamiones repoCamiones;
   private final GestorPublicacionEventos gestorPublicacionEventos;
 
-  public RutaService(GestorRutas gestorRutas,
-                     GestorChoferes gestorChoferes,
-                     GestorItemEntrega gestorItemEntrega,
+  public RutaService(RepositorioRutas repoRutas,
+                     RepositorioChoferes repoChoferes,
+                     RepositorioItemEntrega repoItemEntrega,
                      GestorCamiones gestorCamiones,
-                     GestorEventos gestorEventos, GestorPublicacionEventos gestorPublicacionEventos) {
-    this.gestorRutas = gestorRutas;
-    this.gestorChoferes = gestorChoferes;
-    this.gestorItemEntrega = gestorItemEntrega;
+                     RepositorioCamiones repoCamiones,
+                     GestorPublicacionEventos gestorPublicacionEventos) {
+    this.repoRutas = repoRutas;
+    this.repoChoferes = repoChoferes;
+    this.repoItemEntrega = repoItemEntrega;
     this.gestorCamiones = gestorCamiones;
-    this.gestorEventos = gestorEventos;
+    this.repoCamiones = repoCamiones;
     this.gestorPublicacionEventos = gestorPublicacionEventos;
   }
 
   // --- MÉTODOS CRUD ---
   public RutasDTO findAll() {
-      return convertirARutasDTO(gestorRutas.listarRutas());
+      return convertirARutasDTO(repoRutas.findAll());
   }
 
   public RutaDTO findById(UUID idRuta) {
-    return convertirARutaDTO(gestorRutas.buscarRuta(idRuta));
+    return convertirARutaDTO(repoRutas.findById(idRuta)
+            .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrado")));
   }
-
-  /*
-  public Ruta create(Ruta ruta) {
-      return gestorRutas.guardarRuta(ruta);
-    }
-
-  public Ruta update(UUID id, Ruta rutaActualizada) {
-    return gestorRutas.actualizarRuta(id, rutaActualizada);
-  }
-
-  public void delete(UUID idRuta) {
-    gestorRutas.eliminarRuta(idRuta);
-  }
-   */
 
   // --- MÉTODOS DE NEGOCIO ---
 
+  /** Inicia la ruta del chofer: la pone EN_CURSO y avisa por el broker. */
+  @Transactional
   public void iniciarRuta(UUID idChofer) {
-    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
-    gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.EN_CURSO);
+    Ruta rutaActual = rutaDelChofer(idChofer);
+
+    repoRutas.actualizarEstado(rutaActual, EstadoRuta.EN_CURSO);
     List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
     for(Parada parada : paradas) {
-        parada.getItems().forEach(gestorItemEntrega::guardarItem);
+        parada.getItems().forEach(repoItemEntrega::saveAndFlush);
     }
   }
 
-  public void terminarRuta(UUID idChofer) {
-    Ruta rutaActual = gestorRutas.buscarRutaPorChofer(gestorChoferes.buscarChofer(idChofer));
+  /** La ruta planificada o en curso del chofer. */
+  private Ruta rutaDelChofer(UUID idChofer) {
+    Chofer chofer = repoChoferes.findById(idChofer)
+            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+    return repoRutas.findByChofer(chofer)
+            .orElseThrow(() -> new IllegalStateException("No se encontró la ruta correspondiente al chofer " + idChofer));
+  }
 
-    if (rutaActual != null) {
-      gestorRutas.actualizarRutaEstado(rutaActual, EstadoRuta.FINALIZADA);
-      for(Parada parada : rutaActual.getParadas()){
-        for(ItemEntrega item : parada.getItems()){
-          if (item.getEstado() != EstadoEntrega.ENTREGADA) {
-            gestorPublicacionEventos.publicarReingresoDeposito(item);
-          } else {
-            gestorItemEntrega.eliminarItem(item.getIdDonacion());
+  public void terminarRuta(UUID idChofer) {
+    Ruta rutaActual = rutaDelChofer(idChofer);
+
+    repoRutas.actualizarEstado(rutaActual, EstadoRuta.FINALIZADA);
+    for(Parada parada : rutaActual.getParadas()){
+      for(ItemEntrega item : parada.getItems()){
+        if (item.getEstado() != EstadoEntrega.ENTREGADA) {
+          gestorPublicacionEventos.publicarReingresoDeposito(item);
+        } else {
+          Optional<ItemEntrega> itemEncontrado = repoItemEntrega.findById(item.getIdDonacion());
+          if(itemEncontrado.isPresent()){
+            repoItemEntrega.deleteById(item.getIdDonacion());
+            throw new IllegalArgumentException("Entrega no encontrada");
           }
         }
       }
-      Chofer chofer = rutaActual.getCamionAsignado().getChofer();
-      chofer.disponible();
-      gestorChoferes.guardarChofer(chofer);
-      Camion camion = rutaActual.getCamionAsignado();
-      camion.disponible();
-      gestorCamiones.guardarCamion(camion);
     }
+    Chofer chofer = rutaActual.getCamionAsignado().getChofer();
+    chofer.disponible();
+    repoChoferes.save(chofer);
+    Camion camionDeRuta = rutaActual.getCamionAsignado();
+    camionDeRuta.disponible();
+    repoCamiones.save(camionDeRuta);
 
-    Camion camion = gestorCamiones.buscarCamionPorIdChofer(idChofer);
-    if (camion != null) {
-      camion.eliminarChofer();
-      gestorCamiones.resetearCamion(camion);
+    Optional<Camion> camion = repoCamiones.findByChofer_IdChofer(idChofer);
+    if (camion.isPresent()) {
+      camion.get().eliminarChofer();
+      gestorCamiones.resetearCamion(camion.get());
+      throw new IllegalArgumentException("Camión no encontrado");
     }
   }
 
@@ -115,7 +124,14 @@ public class RutaService {
   }
 
   private RutaDTO convertirARutaDTO(Ruta ruta){
-    return new RutaDTO(ruta.getIdRuta(), convertirADTO(ruta.getCamionAsignado()), ruta.getFechaProgramada(), ruta.getEstado().toString(), ruta.getUrlSeguimiento(), convertirAParadasDTO(ruta.getParadas()));
+    return new RutaDTO(
+            ruta.getIdRuta(),
+            convertirADTO(ruta.getCamionAsignado()),
+            ruta.getFechaProgramada(),
+            ruta.getEstado().toString(),
+            ruta.getUrlSeguimiento(),
+            convertirAParadasDTO(ruta.getParadas())
+    );
   }
 
   private CamionDTO convertirADTO(Camion camion){
@@ -137,20 +153,44 @@ public class RutaService {
   }
 
   private ParadaDTO convertirAParadaDTO(Parada parada){
-    return new ParadaDTO(convertirADireccionDTO(parada.getEntidadDestino()), new BienesDTO(obtenerIdDonaciones(parada.getItems()), convertirItemsADTO(parada.getItems())));
+    return new ParadaDTO(convertirADireccionDTO(parada.getEntidadDestino()),
+            new BienesDTO(obtenerIdDonaciones(parada.getItems()), convertirItemsADTO(parada.getItems())));
   }
 
+  /**
+   * Convierte la entidad a DTO, tolerando que no haya: una parada sin items devuelve {@code null}
+   * desde {@code getEntidadDestino()}, y sin este guardia la conversion tiraba NullPointerException.
+   */
   private DireccionDTO convertirADireccionDTO(Entidad entidad){
-    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+    if (entidad == null) return null;
+    Direccion direccion = entidad.getDireccionDestino();
+    return new DireccionDTO(
+            entidad.getIdEntidadBeneficiaria(),
+            direccion.getCalle1(),
+            direccion.getCalle2(),
+            direccion.getAltura(),
+            direccion.getPiso(),
+            direccion.getDepartamento(),
+            direccion.getCiudad().getNombre(),
+            direccion.getCiudad().getProvincia().getNombre(),
+            direccion.getCiudad().getProvincia().getPais().getNombre()
+    );
   }
 
   private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
     return items.stream().map(this::convertirABienDTO).toList();
   }
 
-  //TODO Arreglar eventos
   private BienDTO convertirABienDTO(ItemEntrega item){
-    return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
+    return new BienDTO(
+            item.getCantidad(),
+            item.getUnidad().getNombre(),
+            item.getEstado().toString(),
+            item.getFechaCambioEstado(),
+            item.getFotoComprobante(),
+            convertirADireccionDTO(item.getEntidadDestino()),
+            convertirEventosADTO(item.getEventos())
+    );
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

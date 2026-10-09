@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/rutas")
+@RequestMapping("/api/rutas")
 @Tag(name = "Rutas", description = "API para el control CRUD y el ciclo de vida de las Rutas de reparto")
 public class RutaController {
 
@@ -21,8 +21,6 @@ public class RutaController {
   public RutaController(RutaService rutaService) {
     this.rutaService = rutaService;
   }
-
-  // --- CRUD ---
 
   @Operation(summary = "Listar todas las rutas generadas")
   @GetMapping
@@ -68,8 +66,6 @@ public class RutaController {
     }
   }
   */
-
-  // --- OPERACIONES DE NEGOCIO ---
 
   @Operation(summary = "El chofer informa el inicio de su ruta",
       description = "Cambia el estado de la ruta a EN_CURSO y transiciona los ítems a EN_TRASLADO. Notifica vía eventos.")

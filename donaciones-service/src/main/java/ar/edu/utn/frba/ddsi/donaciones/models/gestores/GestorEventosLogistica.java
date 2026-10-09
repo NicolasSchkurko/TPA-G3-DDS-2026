@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
+import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
@@ -12,7 +14,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -24,13 +26,16 @@ import org.springframework.stereotype.Service;
 public class GestorEventosLogistica {
   private final RepositorioDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
+  private final IncentivosClient incentivosClient;
   private final ObjectMapper objectMapper;
 
   public GestorEventosLogistica(RepositorioDonaciones repositorioDonaciones,
                                 FabricaEstrategiasNotificacion fabricaEstrategias,
+                                IncentivosClient incentivosClient,
                                 ObjectMapper objectMapper) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.fabricaEstrategias = fabricaEstrategias;
+    this.incentivosClient = incentivosClient;
     this.objectMapper = objectMapper;
   }
 
@@ -54,21 +59,30 @@ public class GestorEventosLogistica {
   }
 
   private void manejarInicioRuta(EventoLogisticaDTO evento) {
+    if (evento.getPayloadJson() == null || evento.getPayloadJson().isEmpty()) {
+      System.err.println("Evento INICIO_RUTA " + evento.getId() + " sin payload, se ignora.");
+      return;
+    }
+
+    PayloadInicioRutaDTO payload;
     try {
-      if (evento.getPayloadJson() == null || evento.getPayloadJson().isEmpty()) {
-        System.err.println("Evento INICIO_RUTA " + evento.getId() + " sin payload, se ignora.");
-        return;
-      }
+      payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+    } catch (Exception e) {
+      System.err.println("Error parseando payload de la ruta " + evento.getId() + ": " + e.getMessage());
+      return;
+    }
 
-      PayloadInicioRutaDTO payload = objectMapper.readValue(evento.getPayloadJson(), PayloadInicioRutaDTO.class);
+    if (payload.getItems() == null) {
+      return;
+    }
 
-      if (payload.getItems() == null) {
-        return;
-      }
+    EstrategiaNotificacion estrategiaViaje = fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.DONACION_EN_VIAJE);
 
-      EstrategiaNotificacion estrategiaViaje = fabricaEstrategias.obtenerEstrategia(TipoEventoNotificacion.DONACION_EN_VIAJE);
-
-      for (String idTexto : payload.getItems()) {
+    // Try/catch DENTRO del loop: antes envolvía todo el for, así que un solo item con un UUID
+    // malformado o una donación sin entidad/donante asignado (NPE al armar la notificación)
+    // abortaba el procesamiento del resto de los items de ESTE evento INICIO_RUTA.
+    for (String idTexto : payload.getItems()) {
+      try {
         UUID idDonacion = UUID.fromString(idTexto);
         repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
           donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
@@ -79,9 +93,9 @@ public class GestorEventosLogistica {
               donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
           ));
         });
+      } catch (Exception e) {
+        System.err.println("Error procesando item '" + idTexto + "' de la ruta " + evento.getId() + ": " + e.getMessage());
       }
-    } catch (Exception e) {
-      System.err.println("Error parseando items de la ruta: " + e.getMessage());
     }
   }
 
@@ -90,6 +104,12 @@ public class GestorEventosLogistica {
     repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
       donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
       repositorioDonaciones.guardar(donacion);
+
+      // Recién ahora la donación está ENTREGADA: es el momento en el que incentivos cuenta el
+      // impacto (sus reglas de misión exigen estado "ENTREGADA", no "ASIGNADO"). El id va como
+      // clave de idempotencia: un reintento del evento no duplica el impacto.
+      incentivosClient.notificarImpactoDonacion(
+          donacion.getDonante().getId(), IncentivosDonacionDTO.desde(donacion));
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
 

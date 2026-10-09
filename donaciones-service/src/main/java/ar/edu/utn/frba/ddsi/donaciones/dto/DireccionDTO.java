@@ -7,9 +7,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 public class DireccionDTO {
+    /**
+     * Id de la EntidadBeneficiaria dueña de esta dirección. Es lo que logística usa para
+     * resolver la entidad destino del item de entrega (su EntregaService.resolverEntidad hace
+     * findById(idEntidad)); si sale en null, su DonacionListener descarta el mensaje (punto 27).
+     */
+    private UUID idEntidad;
     private String calleUno;
     private String calleDos;
     private Integer altura;
@@ -26,7 +34,7 @@ public class DireccionDTO {
         return new Direccion(this.calleUno, this.calleDos, this.altura, this.piso, this.departamento, c);
     }
 
-    // Variante que recibe una Ciudad ya persistida/managed (resuelta vía GestorDirecciones,
+    // Variante que recibe una Ciudad ya persistida/managed (resuelta vía RepositorioCiudades,
     // buscar-o-crear) en lugar de construir la cadena Pais/Provincia/Ciudad "al vuelo", que
     // rompía merge() por no estar cascadeada (ver Ciudad/Provincia/Pais sin cascade en Direccion).
     public Direccion toDomain(Ciudad ciudad) {
