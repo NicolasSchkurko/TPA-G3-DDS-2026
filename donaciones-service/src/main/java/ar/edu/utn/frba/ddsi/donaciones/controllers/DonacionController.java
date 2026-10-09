@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +36,19 @@ public class DonacionController {
     // procesarFormulario ya no devuelve null: tira IllegalArgumentException (-> 400 vía
     // GlobalExceptionHandler) si no encuentra al donante.
     return ResponseEntity.ok(donacionService.procesarFormulario(request));
+  }
+
+  @Operation(summary = "Ver formularios registrados (para poder liberar un Donante antes de borrarlo)")
+  @GetMapping("/formularios")
+  public ResponseEntity<List<FormularioResumenDTO>> obtenerFormularios() {
+    return ResponseEntity.ok(donacionService.obtenerFormularios());
+  }
+
+  @Operation(summary = "Eliminar un formulario. Formulario.donante_id es FK no nula sin cascade REMOVE: hay que borrar los formularios de un Donante antes de poder borrar al Donante (si no, 409).")
+  @DeleteMapping("/formularios/{id}")
+  public ResponseEntity<Void> eliminarFormulario(@PathVariable UUID id) {
+    donacionService.eliminarFormulario(id);
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(summary = "Ver donaciones")

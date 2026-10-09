@@ -1,0 +1,466 @@
+{
+  "info": {
+    "name": "servicio donaciones",
+    "description": "Endpoints mas importantes de donaciones-service, verificados contra los controllers (AdminController, DonanteController, EntidadBeneficiariaController, DonacionController).\n\nLa coleccion tiene dos carpetas, pensadas para usos distintos:\n\n1. 'Flujo completo': un unico flujo de punta a punta -- crea un admin, un donante y una entidad (con una necesidad), registra una donacion de ese donante, corre el matchmaking, la asigna a la entidad, verifica que aparezca en 'donaciones asignadas' de esa entidad, y al final BORRA todo lo que creo (donacion -> necesidad -> entidad -> donante -> admin, en ese orden por las FK). Como se autolimpia, correrlo muchas veces no va dejando basura ni entidades 'repetidas': antes el cuit de la entidad venia fijo ('20-12345678-9') y el borrado de entidad/donante estaba en una carpeta aparte que si no se corria dejaba la entidad vieja dando vueltas -- por eso cada corrida 'parecia' crear siempre la misma entidad. Ahora el cuit es random y el flujo se borra a si mismo.\n\n2. 'Limpieza total (todas las entidades)': una escoba aparte, independiente de las variables que vaya dejando 'Flujo completo', para barrer TODO lo que haya quedado de corridas viejas (antes de este fix, o de pruebas manuales sueltas desde la app). Lista cada recurso y borra uno por uno con pm.sendRequest, en orden seguro para las FK: donaciones -> entidades (y sus necesidades) -> donantes -> admins. Pensada para correrse sola, de vez en cuando, no como parte del flujo de prueba normal.\n\nOjo con 'Cambiar estado de donacion' (si se usa suelta, fuera del flujo): GestorAsignaciones.parseEstado() solo acepta EN_DEPOSITO, PENDIENTE_ASIGNACION, ASIGNADO, ENTREGADO y VENCIDO como string valido, aunque el enum Estado tambien tiene EN_TRASLADO -- mandar ese valor tira 400.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8084", "description": "Puerto real de donaciones-service" },
+    { "key": "adminId", "value": "" },
+    { "key": "donanteId", "value": "" },
+    { "key": "donanteNombre", "value": "" },
+    { "key": "entidadId", "value": "" },
+    { "key": "necesidadId", "value": "" },
+    { "key": "donacionId", "value": "" },
+    { "key": "posicionPropuesta", "value": "1", "description": "Default 1; el paso 'Ver resultados de matchmaking pendientes' lo recalcula buscando la propuesta real de la entidad del flujo." }
+  ],
+  "item": [
+    {
+      "name": "Flujo completo",
+      "description": "Correr en orden (de arriba hacia abajo), con el Collection Runner o request por request. Crea todo lo que necesita y lo borra al final, asi se puede repetir sin acumular datos de prueba.",
+      "item": [
+        {
+          "name": "01 - Crear administrador",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreAMostrar\": \"Admin Postman\",\n  \"nombre\": \"{{$randomFirstName}}\",\n  \"apellido\": \"{{$randomLastName}}\",\n  \"edad\": 35,\n  \"numeroDeDocumento\": {{$randomInt}},\n  \"genero\": \"OTRO\",\n  \"medioDeContacto\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"{{$randomEmail}}\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admins", "host": ["{{baseUrl}}"], "path": ["api", "admins"] },
+            "description": "AdminDTO.toDomain() tira IllegalArgumentException (-> 400) si medioDeContacto viene null."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('crea el administrador', function () { pm.response.to.have.status(201); });",
+            "if (pm.response.code === 201) { pm.collectionVariables.set('adminId', pm.response.json().id); }"
+          ] } }]
+        },
+        {
+          "name": "02 - Crear donante",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoPersona\": \"HUMANA\",\n  \"nombre\": \"{{$randomFirstName}}\",\n  \"apellido\": \"{{$randomLastName}}\",\n  \"edad\": 28,\n  \"numeroDeDocumento\": {{$randomInt}},\n  \"genero\": \"OTRO\",\n  \"direccion\": {\n    \"calleUno\": \"{{$randomStreetName}}\",\n    \"altura\": 123,\n    \"piso\": 1,\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  },\n  \"mediosDeContacto\": [\n    { \"tipo\": \"EMAIL\", \"valor\": \"{{$randomEmail}}\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/personas", "host": ["{{baseUrl}}"], "path": ["api", "personas"] },
+            "description": "resolverMedioPredeterminado() usa el primer medio de la lista si no se manda medioPredeterminado, asi que con un EMAIL alcanza para que GestorAsignaciones pueda notificar mas adelante. OJO: Direccion.piso es 'int' primitivo pero DireccionDTO.piso es 'Integer' -- si no se manda piso, el unboxing nulo tira NPE (500) en toDomain(). Por eso siempre se manda un valor, aunque conceptualmente deberia ser opcional (bug de backend, fuera de alcance de este archivo)."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('crea el donante', function () { pm.response.to.have.status(201); });",
+            "if (pm.response.code === 201) {",
+            "    const body = pm.response.json();",
+            "    pm.collectionVariables.set('donanteId', body.id);",
+            "    pm.collectionVariables.set('donanteNombre', body.nombre);",
+            "}"
+          ] } }]
+        },
+        {
+          "name": "03 - Crear entidad beneficiaria",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razonSocial\": \"{{$randomCompanyName}}\",\n  \"rubro\": \"Comedor comunitario\",\n  \"tipoJuridico\": \"ONG\",\n  \"cuit\": \"30-{{$randomInt}}-{{$randomInt}}\",\n  \"telefono\": \"{{$randomPhoneNumber}}\",\n  \"direccion\": {\n    \"calleUno\": \"{{$randomStreetName}}\",\n    \"altura\": 789,\n    \"piso\": 1,\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/entidades", "host": ["{{baseUrl}}"], "path": ["api", "entidades"] },
+            "description": "registrarEntidad() no busca por cuit, siempre crea una fila nueva: antes el cuit estaba fijo en '20-12345678-9', por lo que a simple vista cada corrida 'parecia' la misma entidad. Ahora es random para que cada corrida se vea claramente distinta. OJO: igual que en 'Crear donante', hay que mandar 'piso' siempre porque Direccion.piso es un int primitivo y el unboxing de un piso null tira NPE (500)."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('crea la entidad', function () { pm.response.to.have.status(201); });",
+            "if (pm.response.code === 201) { pm.collectionVariables.set('entidadId', pm.response.json().id); }"
+          ] } }]
+        },
+        {
+          "name": "04 - Agregar necesidad a la entidad",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoNecesidad\": \"RECURRENTE\",\n  \"descripcion\": \"Ropa de abrigo\",\n  \"cantidadObjetivo\": 10,\n  \"nombreSubcategoria\": \"Ropa\",\n  \"nombreCategoria\": \"Indumentaria\",\n  \"plazoEnDias\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}/necesidades",
+              "host": ["{{baseUrl}}"], "path": ["api", "entidades", "{{entidadId}}", "necesidades"]
+            },
+            "description": "La subcategoria/categoria tienen que coincidir EXACTO con las del bien donado (Necesidad.esCompatibleCon compara nombre de subcategoria) para que el matchmaking la encuentre compatible."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('agrega la necesidad', function () { pm.response.to.have.status(201); });",
+            "if (pm.response.code === 201) { pm.collectionVariables.set('necesidadId', pm.response.json().id); }"
+          ] } }]
+        },
+        {
+          "name": "05 - Registrar donacion del donante",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDonante\": \"{{donanteId}}\",\n  \"fechaRealizacion\": \"2026-10-08\",\n  \"bienes\": [\n    {\n      \"descripcion\": \"Abrigo de invierno\",\n      \"subcategoria\": \"Ropa\",\n      \"categoria\": \"Indumentaria\",\n      \"cantidad\": 5,\n      \"unidadDeMedida\": \"KILOGRAMOS\",\n      \"tipoBien\": \"CON_ESTADO\",\n      \"usado\": false\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/donaciones/formulario", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "formulario"] },
+            "description": "Usa el {{donanteId}} del paso 02. El bien es 'Ropa'/'Indumentaria' a proposito, para matchear con la necesidad creada en el paso 04. Devuelve una lista de DonacionDTO, no un objeto suelto."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('crea la donacion', function () { pm.response.to.have.status(200); });",
+            "if (pm.response.code === 200) {",
+            "    const body = pm.response.json();",
+            "    if (Array.isArray(body) && body.length > 0) { pm.collectionVariables.set('donacionId', body[0].id); }",
+            "}"
+          ] } }]
+        },
+        {
+          "name": "06 - Ejecutar matchmaking a demanda",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/donaciones/matchmaking/ejecutar", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "matchmaking", "ejecutar"] },
+            "description": "AsignadorDonaciones.ejecutarMatchmakingBatch() recorre todas las donaciones EN_DEPOSITO contra todas las necesidades no satisfechas y genera un ResultadoMatchmaking por cada donacion con alguna propuesta."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('ejecuta el matchmaking', function () { pm.response.to.have.status(200); });"
+          ] } }]
+        },
+        {
+          "name": "07 - Ver resultados de matchmaking pendientes",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/donaciones/pendientes", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "pendientes"] },
+            "description": "Busca dentro de la lista el resultado que corresponde a la donacion del paso 05, y dentro de sus propuestasOrdenadas la que apunta a la entidad del paso 03, para guardar su 'posicion' real (no asumir que siempre es 1)."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('devuelve los resultados de matchmaking pendientes', function () { pm.response.to.have.status(200); });",
+            "",
+            "const resultados = pm.response.json();",
+            "const donacionId = pm.collectionVariables.get('donacionId');",
+            "const entidadId = pm.collectionVariables.get('entidadId');",
+            "",
+            "const resultado = Array.isArray(resultados)",
+            "    ? resultados.find(function (r) { return r.donacion && r.donacion.id === donacionId; })",
+            "    : undefined;",
+            "",
+            "pm.test('la donacion creada tiene un resultado de matchmaking pendiente', function () {",
+            "    pm.expect(resultado).to.not.be.undefined;",
+            "});",
+            "",
+            "if (resultado) {",
+            "    const propuestas = resultado.propuestasOrdenadas || [];",
+            "    const propuesta = propuestas.find(function (p) { return p.entidad && p.entidad.id === entidadId; }) || propuestas[0];",
+            "",
+            "    pm.test('hay al menos una propuesta de asignacion', function () {",
+            "        pm.expect(propuesta).to.not.be.undefined;",
+            "    });",
+            "",
+            "    if (propuesta) {",
+            "        pm.collectionVariables.set('posicionPropuesta', propuesta.posicion);",
+            "    }",
+            "}"
+          ] } }]
+        },
+        {
+          "name": "08 - Asignar la propuesta a la entidad",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donacionId\": \"{{donacionId}}\",\n  \"posicionPropuesta\": {{posicionPropuesta}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/donaciones/asignar", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "asignar"] },
+            "description": "posicionPropuesta es 1-indexada (DonacionService.asignarPropuesta hace propuestasOrdenadas.get(posicion - 1)) y queda resuelta por el paso 07. Esto dispara notificaciones e incentivos y publica la entrega a logistica."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('asigna la propuesta', function () { pm.response.to.have.status(200); });"
+          ] } }]
+        },
+        {
+          "name": "09 - Mostrar donaciones asignadas a la entidad",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}/donaciones",
+              "host": ["{{baseUrl}}"], "path": ["api", "entidades", "{{entidadId}}", "donaciones"]
+            },
+            "description": "EntidadBeneficiaria.verDonaciones() recorre las necesidades de la entidad y junta las donaciones de cada una -- por eso el paso 04 (crear la necesidad) es necesario antes de asignar, sin eso esta lista quedaria vacia."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('devuelve las donaciones asignadas a la entidad', function () { pm.response.to.have.status(200); });",
+            "",
+            "const donaciones = pm.response.json();",
+            "const donacionId = pm.collectionVariables.get('donacionId');",
+            "const donacion = Array.isArray(donaciones) ? donaciones.find(function (d) { return d.id === donacionId; }) : undefined;",
+            "",
+            "pm.test('la donacion del flujo aparece asignada a la entidad', function () {",
+            "    pm.expect(donacion).to.not.be.undefined;",
+            "});",
+            "",
+            "if (donacion) {",
+            "    pm.test('la donacion quedo en estado ASIGNADO', function () {",
+            "        pm.expect(donacion.estado).to.eql('ASIGNADO');",
+            "    });",
+            "}"
+          ] } }]
+        },
+        {
+          "name": "10 - Borrar donacion creada",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones/{{donacionId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "{{donacionId}}"]
+            },
+            "description": "Primer borrado de la limpieza del flujo: la donacion tiene que irse antes que la entidad/donante que referencia."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('elimina la donacion', function () { pm.response.to.have.status(204); });"
+          ] } }]
+        },
+        {
+          "name": "11 - Borrar formulario del donante",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/donaciones/formularios", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "formularios"] },
+            "description": "Formulario.donante_id es FK no nula sin cascade REMOVE (a proposito, ver comentario en Formulario.java): el paso 05 ('Registrar donacion del donante') crea una fila de formulario ademas de la Donacion, y esa fila nunca se borra sola. Si no se borra antes, el paso 14 ('Borrar donante creado') falla con 409. Antes no existia ningun endpoint para listar/borrar formularios -- se agrego GET/DELETE /api/donaciones/formularios(/:id) en el backend para poder hacer esta limpieza."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de formularios', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const donanteId = pm.collectionVariables.get('donanteId');",
+            "const formularios = pm.response.json();",
+            "const propios = Array.isArray(formularios) ? formularios.filter(function (f) { return f.donanteId === donanteId; }) : [];",
+            "",
+            "propios.forEach(function (formulario) {",
+            "    pm.sendRequest({",
+            "        url: baseUrl + '/api/donaciones/formularios/' + formulario.id,",
+            "        method: 'DELETE'",
+            "    }, function (err, res) {",
+            "        console.log('formulario ' + formulario.id + ' -> ' + (res ? res.code : err));",
+            "    });",
+            "});",
+            "",
+            "pm.test('dispara el borrado de ' + propios.length + ' formulario(s) del donante', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "12 - Borrar necesidad creada",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}/necesidades/{{necesidadId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "entidades", "{{entidadId}}", "necesidades", "{{necesidadId}}"]
+            },
+            "description": "EntidadBeneficiaria.necesidades no tiene CascadeType.REMOVE/orphanRemoval, asi que hay que borrar la necesidad a mano antes de borrar la entidad."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('elimina la necesidad', function () { pm.response.to.have.status(204); });"
+          ] } }]
+        },
+        {
+          "name": "13 - Borrar entidad creada",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "entidades", "{{entidadId}}"]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('elimina la entidad', function () { pm.response.to.have.status(204); });"
+          ] } }]
+        },
+        {
+          "name": "14 - Borrar donante creado",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/personas/{{donanteId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "personas", "{{donanteId}}"]
+            },
+            "description": "Si el paso 11 no borro el formulario del donante (por ejemplo, porque se corrio este request suelto sin pasar por el paso 11), esto va a fallar con 409 por la FK formulario.donante_id."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('elimina el donante', function () { pm.response.to.have.status(204); });"
+          ] } }]
+        },
+        {
+          "name": "15 - Borrar administrador creado",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/admins/{{adminId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "admins", "{{adminId}}"]
+            },
+            "description": "Ultimo paso: con esto el flujo no deja nada vivo, y se puede volver a correr de punta a punta sin acumular 'siempre la misma entidad'."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('elimina el administrador', function () { pm.response.to.have.status(204); });"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "Limpieza total (todas las entidades)",
+      "description": "Escoba independiente del 'Flujo completo': no usa sus variables, sino que lista cada recurso con GET y borra TODO lo que encuentra con pm.sendRequest. Pensada para correrse sola cuando quedaron datos de pruebas viejas (manuales, de corridas interrumpidas, o de antes de este fix). Correr las 5 en orden (de arriba hacia abajo) porque las donaciones y los formularios referencian donante/entidad por FK.",
+      "item": [
+        {
+          "name": "01 - Limpiar todas las donaciones",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/donaciones", "host": ["{{baseUrl}}"], "path": ["api", "donaciones"] },
+            "description": "Primero las donaciones: referencian donante y entidad, asi que tienen que borrarse antes que esos dos."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de donaciones', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const donaciones = pm.response.json();",
+            "",
+            "if (Array.isArray(donaciones)) {",
+            "    donaciones.forEach(function (donacion) {",
+            "        pm.sendRequest({",
+            "            url: baseUrl + '/api/donaciones/' + donacion.id,",
+            "            method: 'DELETE'",
+            "        }, function (err, res) {",
+            "            console.log('donacion ' + donacion.id + ' -> ' + (res ? res.code : err));",
+            "        });",
+            "    });",
+            "}",
+            "",
+            "pm.test('dispara el borrado de ' + donaciones.length + ' donacion(es)', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "02 - Limpiar todos los formularios",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/donaciones/formularios", "host": ["{{baseUrl}}"], "path": ["api", "donaciones", "formularios"] },
+            "description": "Formulario.donante_id es FK no nula sin cascade REMOVE (ver comentario en Formulario.java): mientras quede algun formulario, el donante correspondiente no se puede borrar (409). Se limpia aca, antes de 'Limpiar todos los donantes'."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de formularios', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const formularios = pm.response.json();",
+            "",
+            "if (Array.isArray(formularios)) {",
+            "    formularios.forEach(function (formulario) {",
+            "        pm.sendRequest({",
+            "            url: baseUrl + '/api/donaciones/formularios/' + formulario.id,",
+            "            method: 'DELETE'",
+            "        }, function (err, res) {",
+            "            console.log('formulario ' + formulario.id + ' -> ' + (res ? res.code : err));",
+            "        });",
+            "    });",
+            "}",
+            "",
+            "pm.test('dispara el borrado de ' + formularios.length + ' formulario(s)', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "03 - Limpiar todas las entidades (y sus necesidades)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/entidades", "host": ["{{baseUrl}}"], "path": ["api", "entidades"] },
+            "description": "EntidadBeneficiaria.necesidades no tiene cascade REMOVE/orphanRemoval, asi que antes de borrar cada entidad hay que borrar a mano todas sus necesidades (se usa un contador para esperar que terminen todas antes de borrar la entidad)."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de entidades', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const entidades = pm.response.json();",
+            "",
+            "if (Array.isArray(entidades)) {",
+            "    entidades.forEach(function (entidad) {",
+            "        const necesidades = entidad.necesidades || [];",
+            "        let pendientes = necesidades.length;",
+            "",
+            "        function eliminarEntidad() {",
+            "            pm.sendRequest({",
+            "                url: baseUrl + '/api/entidades/' + entidad.id,",
+            "                method: 'DELETE'",
+            "            }, function (err, res) {",
+            "                console.log('entidad ' + entidad.id + ' -> ' + (res ? res.code : err));",
+            "            });",
+            "        }",
+            "",
+            "        if (pendientes === 0) {",
+            "            eliminarEntidad();",
+            "        } else {",
+            "            necesidades.forEach(function (necesidad) {",
+            "                pm.sendRequest({",
+            "                    url: baseUrl + '/api/entidades/' + entidad.id + '/necesidades/' + necesidad.id,",
+            "                    method: 'DELETE'",
+            "                }, function (err, res) {",
+            "                    pendientes--;",
+            "                    if (pendientes === 0) { eliminarEntidad(); }",
+            "                });",
+            "            });",
+            "        }",
+            "    });",
+            "}",
+            "",
+            "pm.test('dispara el borrado de ' + entidades.length + ' entidad(es)', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "04 - Limpiar todos los donantes",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/personas", "host": ["{{baseUrl}}"], "path": ["api", "personas"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de donantes', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const donantes = pm.response.json();",
+            "",
+            "if (Array.isArray(donantes)) {",
+            "    donantes.forEach(function (donante) {",
+            "        pm.sendRequest({",
+            "            url: baseUrl + '/api/personas/' + donante.id,",
+            "            method: 'DELETE'",
+            "        }, function (err, res) {",
+            "            console.log('donante ' + donante.id + ' -> ' + (res ? res.code : err));",
+            "        });",
+            "    });",
+            "}",
+            "",
+            "pm.test('dispara el borrado de ' + donantes.length + ' donante(s)', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "05 - Limpiar todos los administradores",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/admins", "host": ["{{baseUrl}}"], "path": ["api", "admins"] },
+            "description": "Los admins no tienen FK desde donaciones/entidades, pero se dejan al final por prolijidad."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('obtiene la lista de administradores', function () { pm.response.to.have.status(200); });",
+            "",
+            "const baseUrl = pm.collectionVariables.get('baseUrl');",
+            "const admins = pm.response.json();",
+            "",
+            "if (Array.isArray(admins)) {",
+            "    admins.forEach(function (admin) {",
+            "        pm.sendRequest({",
+            "            url: baseUrl + '/api/admins/' + admin.id,",
+            "            method: 'DELETE'",
+            "        }, function (err, res) {",
+            "            console.log('admin ' + admin.id + ' -> ' + (res ? res.code : err));",
+            "        });",
+            "    });",
+            "}",
+            "",
+            "pm.test('dispara el borrado de ' + admins.length + ' administrador(es)', function () { pm.expect(true).to.be.true; });"
+          ] } }]
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.messaging.ProductorLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
@@ -94,6 +95,18 @@ public class DonacionService {
     repositorioDonantes.agregarFormularioADonante(donante.getId(), formularioGenerado);
 
     return donacionesProcesadas.stream().map(DonacionDTO::from).collect(Collectors.toList());
+  }
+
+  // Ver FormularioResumenDTO: antes no había forma de listar/borrar Formularios vía API, lo que
+  // dejaba a cualquier Donante que hubiera donado imposible de borrar (409 por FK donante_id).
+  public List<FormularioResumenDTO> obtenerFormularios() {
+    return repositorioFormularios.obtenerTodos().stream()
+                           .map(FormularioResumenDTO::from).collect(Collectors.toList());
+  }
+
+  @Transactional(rollbackFor = Exception.class)
+  public void eliminarFormulario(UUID id) {
+    repositorioFormularios.eliminarPorId(id);
   }
 
   @Transactional(rollbackFor = Exception.class)
