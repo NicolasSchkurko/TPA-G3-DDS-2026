@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,6 +23,11 @@ import java.util.stream.Collectors;
  * <p>Consume un evento por mensaje (una lista desalinearía el contrato con el productor),
  * el cursor es de este listener (quien consume sabe hasta dónde llegó) y un evento repetido
  * no se vuelve a notificar (el broker puede redeliverar).
+ *
+ * <p>El procesamiento corre dentro de una transacción: en este hilo no hay OSIV, así que sin
+ * ella las donaciones llegan detached y el primer acceso a una colección lazy
+ * ({@code historialEstados}, {@code bienes}, {@code subcategoria}) revienta con
+ * {@code LazyInitializationException}.
  */
 @Component
 public class EventosListener {
@@ -43,6 +49,7 @@ public class EventosListener {
     }
 
     @RabbitListener(queues = RabbitMQConfig.COLA_EVENTOS)
+    @Transactional
     public void recibirEvento(EventoLogisticaDTO evento) {
         if (evento == null || evento.getId() == null) {
             log.warn("LLEGA un evento sin id, se descarta");

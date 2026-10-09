@@ -57,23 +57,23 @@ services:
   #     timeout: 5s
   #     retries: 12
 
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: tpa-n8n
-    ports:
-      - "5679:5678"
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5679/
-      WEBHOOK_URL: http://localhost:5679/
-      N8N_SECURE_COOKIE: "false"
-      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
-      TZ: America/Argentina/Buenos_Aires
-    volumes:
-      - n8n-data:/home/node/.n8n
-    restart: unless-stopped
+    #n8n:
+    # image: n8nio/n8n:latest
+    #  container_name: tpa-n8n
+        # ports:
+      #    - "5679:5678"
+      #   environment:
+      #  N8N_HOST: localhost
+      #  N8N_PORT: 5678
+      #  N8N_PROTOCOL: http
+      # N8N_EDITOR_BASE_URL: http://localhost:5679/
+      # WEBHOOK_URL: http://localhost:5679/
+      # N8N_SECURE_COOKIE: "false"
+      # GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      #TZ: America/Argentina/Buenos_Aires
+        # volumes:
+    #   - n8n-data:/home/node/.n8n
+    # restart: unless-stopped
 
   # --- Servicios de dominio ---
   #
@@ -98,12 +98,9 @@ services:
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
-      N8N_URL: http://host.docker.internal:5678/webhook/notificaciones
     depends_on:
       mysql:
         condition: service_healthy
-      n8n:
-        condition: service_started
 
   incentivos-service:
     build:
@@ -118,15 +115,12 @@ services:
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
-      N8N_URL: http://host.docker.internal:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       # Rabbit: lo define incentivos-service/.env (Railway).
     depends_on:
       mysql:
         condition: service_healthy
       notificaciones-service:
-        condition: service_started
-      n8n:
         condition: service_started
 
   # Es el broker de integración del enunciado: publica las donaciones asignadas para

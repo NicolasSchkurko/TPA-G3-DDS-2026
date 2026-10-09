@@ -1,8 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
-import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
@@ -25,18 +23,15 @@ public class GestorAsignaciones {
     private NotificacionesClient notificacionesClient;
     private RepositorioDonaciones repositorioDonaciones;
     private RepositorioNecesidades repositorioNecesidades;
-    private IncentivosClient incentivosClient;
     private FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion;
 
     public GestorAsignaciones(NotificacionesClient notificacionesClient,
                               RepositorioDonaciones repositorioDonaciones,
                               RepositorioNecesidades repositorioNecesidades,
-                              IncentivosClient incentivosClient,
                               FabricaEstrategiasNotificacion fabricaEstrategiasNotificacion) {
         this.notificacionesClient = notificacionesClient;
         this.repositorioDonaciones = repositorioDonaciones;
         this.repositorioNecesidades = repositorioNecesidades;
-        this.incentivosClient = incentivosClient;
         this.fabricaEstrategiasNotificacion = fabricaEstrategiasNotificacion;
     }
 
@@ -100,18 +95,8 @@ public class GestorAsignaciones {
                     "No se puede marcar la donación " + donacion.getId() + " como ASIGNADO: no tiene subcategoría.");
         }
 
-        IncentivosDonacionDTO dto = new IncentivosDonacionDTO();
-        // Incentivos exige el id (su clave de idempotencia) y la fecha como LocalDateTime.
-        dto.setIdDonacion(donacion.getId());
-        dto.setFechaEntrega(donacion.getFechaEntrega() != null ? donacion.getFechaEntrega().atStartOfDay() : null);
-        dto.setCantidadBienes(donacion.sumaCantidadBienes());
-        dto.setSubCategoria(donacion.getSubcategoria().getNombre());
-        dto.setCategoria(donacion.getSubcategoria().getCategoria().getNombre());
-        dto.setEntidadBeneficiaria(donacion.getEntidad().getPersonaJuridica().getRazonSocial());
-        dto.setEstado(nuevoEstado);
-
-        incentivosClient.notificarDonacionAsignada(donacion.getDonante().getId(), dto);
-
+        // A incentivos se le reporta recién al ENTREGAR (GestorEventosLogistica), no al asignar:
+        // sus reglas de misión cuentan donaciones "ENTREGADA", y una asignación todavía no lo es.
         fabricaEstrategiasNotificacion.ejecutar(TipoEventoNotificacion.DONACION_ASIGNADA, donacion);
     }
 

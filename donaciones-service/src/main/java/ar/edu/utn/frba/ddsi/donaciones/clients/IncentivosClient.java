@@ -81,15 +81,15 @@ public class IncentivosClient {
         }
     }
 
-    /** Avanza el perfil del donante: {@code PATCH /api/perfiles/donacion/{idUsuario}}. */
-    public void notificarDonacionAsignada(UUID idUsuario, IncentivosDonacionDTO dto) {
+    /** Reporta el impacto de una donación ENTREGADA: {@code PATCH /api/perfiles/donacion/{idUsuario}}. */
+    public void notificarImpactoDonacion(UUID idUsuario, IncentivosDonacionDTO dto) {
         String url = url(RUTA_DONACION + "/" + idUsuario);
 
         try {
             restTemplate.exchange(url, HttpMethod.PATCH, new HttpEntity<>(dto), Void.class);
-            log.debug("Donación notificada a incentivos para {}", idUsuario);
+            log.debug("Impacto de donación notificado a incentivos para {}", idUsuario);
         } catch (Exception e) {
-            log.error("No se pudo notificar la donación de {} en {}: {}",
+            log.error("No se pudo notificar el impacto de la donación de {} en {}: {}",
                     idUsuario, url, e.getMessage());
             throw e;
         }
