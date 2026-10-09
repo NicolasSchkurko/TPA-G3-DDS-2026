@@ -210,4 +210,24 @@ public class PerfilController {
         perfilService.eliminarPerfil(idUsuario, idAdmin);
         return ResponseEntity.ok().build();
     }
+
+    @Operation(
+        summary = "Eliminar perfil por baja de donante (uso interno)",
+        description = "Lo invoca donaciones-service cuando se elimina un donante, para que el "
+            + "perfil gamificado (y su historial de impacto de donaciones) no quede húerfano. "
+            + "No pide Admin-Id: la baja ya la autorizó donaciones-service, esto es la "
+            + "consecuencia automática, no una acción de administrador nueva. Idempotente: si el "
+            + "donante nunca llegó a tener perfil, no hace nada y responde 200 igual."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200",
+            description = "Perfil (y su historial de donaciones) eliminado, o no existía")
+    })
+    @DeleteMapping("/interno/{idUsuario}")
+    public ResponseEntity<Void> eliminarPerfilPorBajaDeDonante(
+        @Parameter(description = "UUID del donante dado de baja")
+        @PathVariable UUID idUsuario) {
+        perfilService.eliminarPerfilPorBajaDeDonante(idUsuario);
+        return ResponseEntity.ok().build();
+    }
 }

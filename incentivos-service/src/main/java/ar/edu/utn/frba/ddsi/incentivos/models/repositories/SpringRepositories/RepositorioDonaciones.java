@@ -26,6 +26,15 @@ public interface RepositorioDonaciones
             UUID idMision
     );
 
+    /**
+     * {@code ImpactoDonacion} no tiene relación JPA hacia {@code Perfil} (es un {@code UUID}
+     * suelto, no un {@code @ManyToOne}): no hay FK en la base que bloquee el borrado de un
+     * perfil, así que sin este método las filas de historial quedaban húerfanas en silencio
+     * en vez de frenar el borrado con un 409. Se llama explícitamente antes de borrar el
+     * perfil.
+     */
+    void deleteByIdUsuario(UUID idUsuario);
+
     @Query("""
             SELECT new ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ResumenMetricaDTO(
                    :idUsuario, COUNT(d), COALESCE(SUM(d.cantidadBienes), 0L),

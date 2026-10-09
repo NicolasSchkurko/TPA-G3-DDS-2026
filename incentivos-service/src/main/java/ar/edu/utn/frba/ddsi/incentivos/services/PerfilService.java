@@ -460,6 +460,31 @@ public class PerfilService {
         if (!repositorioPerfiles.existsById(idUsuario)) {
             throw new InexistenteException();
         }
+        borrarPerfilYHistorial(idUsuario);
+    }
+
+    /**
+     * Variante sin autenticación para el borrado en cascada que dispara donaciones-service al
+     * eliminar un donante: la baja ya la autorizó donaciones-service, así que exigir
+     * {@code Admin-Id} acá solo duplicaría (mal) esa validación. Idempotente -- si el donante
+     * nunca llegó a donar no hay perfil, y eso no es un error -- para que donaciones-service no
+     * tenga que distinguir "ya no tenía perfil" de "se borró bien".
+     */
+    @Transactional
+    public void eliminarPerfilPorBajaDeDonante(UUID idUsuario) {
+        if (!repositorioPerfiles.existsById(idUsuario)) {
+            return;
+        }
+        borrarPerfilYHistorial(idUsuario);
+    }
+
+    /**
+     * {@code ImpactoDonacion} no tiene relación JPA hacia {@code Perfil} (ver comentario en
+     * {@code RepositorioDonaciones.deleteByIdUsuario}): sin este borrado explícito el historial
+     * de donaciones del usuario sobrevivía en silencio a la baja del perfil.
+     */
+    private void borrarPerfilYHistorial(UUID idUsuario) {
+        repositorioDonaciones.deleteByIdUsuario(idUsuario);
         repositorioPerfiles.deleteById(idUsuario);
     }
 }

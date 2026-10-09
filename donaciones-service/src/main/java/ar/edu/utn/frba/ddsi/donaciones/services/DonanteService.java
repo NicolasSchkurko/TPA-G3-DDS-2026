@@ -123,7 +123,14 @@ public class DonanteService {
     return PersonaDonanteDTO.from(repositorioDonantes.modificarDonante(id, datosNuevos));
   }
 
+  /**
+   * Se avisa primero a incentivos (mismo orden que {@link #crearPersona}: allá también se
+   * llama a incentivos antes de persistir el lado local) para no dejar un perfil húerfano si
+   * incentivos está caído -- si la llamada falla, la excepción se propaga y el donante no se
+   * borra, en vez de quedar borrado acá y vivo del otro lado.
+   */
   public void eliminarPersona(UUID id) {
+    incentivosClient.eliminarPerfil(id);
     repositorioDonantes.eliminarPorId(id);
     System.out.println("Donante dado de baja (si existía).");
   }

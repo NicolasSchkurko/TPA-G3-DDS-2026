@@ -38,6 +38,13 @@ public class IncentivosClient {
     /** Sufijo del alta en lote (hasta 500 perfiles por llamada). */
     private static final String RUTA_PERFILES_LOTE = "/api/perfiles/lote";
 
+    /**
+     * Sufijo del borrado en cascada por baja de donante, con el id del usuario como path
+     * variable. Es la variante sin {@code Admin-Id} de {@code DELETE /api/perfiles/{idUsuario}}:
+     * la baja ya la autorizó donaciones-service antes de llegar acá.
+     */
+    private static final String RUTA_PERFIL_INTERNO = "/api/perfiles/interno";
+
     private final RestTemplate restTemplate;
 
     @Value("${servicio.incentivos.url}")
@@ -91,6 +98,24 @@ public class IncentivosClient {
         } catch (Exception e) {
             log.error("No se pudo notificar la donación de {} en {}: {}",
                     idUsuario, url, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Borra en incentivos el perfil del donante (y su historial de impacto de donaciones):
+     * {@code DELETE /api/perfiles/interno/{idUsuario}}. Lo llama {@code DonanteService} al dar
+     * de baja a un donante, para que no quede un perfil húerfano del otro lado. Idempotente del
+     * lado de incentivos, así que no hay que distinguir "no tenía perfil" de "se borró bien".
+     */
+    public void eliminarPerfil(UUID idUsuario) {
+        String url = url(RUTA_PERFIL_INTERNO + "/" + idUsuario);
+
+        try {
+            restTemplate.delete(url);
+            log.debug("Perfil eliminado en incentivos para {}", idUsuario);
+        } catch (Exception e) {
+            log.error("No se pudo eliminar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
             throw e;
         }
     }
