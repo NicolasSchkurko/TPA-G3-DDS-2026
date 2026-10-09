@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
+import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadEntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.PayloadInicioRutaDTO;
@@ -24,13 +26,16 @@ import org.springframework.stereotype.Service;
 public class GestorEventosLogistica {
   private final RepositorioDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
+  private final IncentivosClient incentivosClient;
   private final ObjectMapper objectMapper;
 
   public GestorEventosLogistica(RepositorioDonaciones repositorioDonaciones,
                                 FabricaEstrategiasNotificacion fabricaEstrategias,
+                                IncentivosClient incentivosClient,
                                 ObjectMapper objectMapper) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.fabricaEstrategias = fabricaEstrategias;
+    this.incentivosClient = incentivosClient;
     this.objectMapper = objectMapper;
   }
 
@@ -99,6 +104,12 @@ public class GestorEventosLogistica {
     repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
       donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
       repositorioDonaciones.guardar(donacion);
+
+      // Recién ahora la donación está ENTREGADA: es el momento en el que incentivos cuenta el
+      // impacto (sus reglas de misión exigen estado "ENTREGADA", no "ASIGNADO"). El id va como
+      // clave de idempotencia: un reintento del evento no duplica el impacto.
+      incentivosClient.notificarImpactoDonacion(
+          donacion.getDonante().getId(), IncentivosDonacionDTO.desde(donacion));
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
 

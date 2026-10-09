@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
@@ -17,6 +18,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.Seg
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
@@ -176,6 +178,7 @@ public class ContratoIncentivosTest {
 
         Donante donante = mock(Donante.class);
         when(donante.getId()).thenReturn(UUID.randomUUID());
+        when(donante.getPersona()).thenReturn(mock(ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona.class));
         donacion.setDonante(donante);
 
         return donacion;
@@ -220,26 +223,29 @@ public class ContratoIncentivosTest {
     }
 
     @Test
-    @DisplayName("El payload de la asignación incluye idDonacion y fechaEntrega en formato fecha-hora")
-    void payloadDeAsignacion_cumpleContratoDeIncentivos() throws Exception {
+    @DisplayName("El impacto se reporta al ENTREGAR, con el contrato y el vocabulario de incentivos")
+    void impactoDeEntrega_cumpleContratoDeIncentivos() throws Exception {
         Donacion donacion = donacionAsignable(LocalDate.of(2026, 10, 7));
 
         RepositorioDonaciones repositorioDonaciones = mock(RepositorioDonaciones.class);
         when(repositorioDonaciones.obtenerPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
         IncentivosClient incentivosClient = mock(IncentivosClient.class);
-        GestorAsignaciones gestor = new GestorAsignaciones(
-                mock(NotificacionesClient.class),
+        GestorEventosLogistica gestor = new GestorEventosLogistica(
                 repositorioDonaciones,
-                mock(RepositorioNecesidades.class),
+                mock(FabricaEstrategiasNotificacion.class),
                 incentivosClient,
-                mock(FabricaEstrategiasNotificacion.class)
+                new com.fasterxml.jackson.databind.ObjectMapper()
         );
 
-        gestor.cambiarEstado(donacion.getId(), "ASIGNADO", "test de contrato");
+        EventoLogisticaDTO entregaConfirmada = new EventoLogisticaDTO();
+        entregaConfirmada.setId(1L);
+        entregaConfirmada.setTipoEvento("ENTREGA_CONFIRMADA");
+        entregaConfirmada.setReferenciaId(donacion.getId().toString());
+        gestor.procesarEvento(entregaConfirmada, List.of());
 
         ArgumentCaptor<IncentivosDonacionDTO> captor = ArgumentCaptor.forClass(IncentivosDonacionDTO.class);
-        verify(incentivosClient, times(1)).notificarDonacionAsignada(eq(donacion.getDonante().getId()), captor.capture());
+        verify(incentivosClient, times(1)).notificarImpactoDonacion(eq(donacion.getDonante().getId()), captor.capture());
 
         // El JSON que saldría por HTTP tiene que satisfacer el contrato del receptor.
         String json = mapper.writeValueAsString(captor.getValue());
@@ -249,6 +255,8 @@ public class ContratoIncentivosTest {
                 "incentivos exige idDonacion: es su clave de idempotencia");
         assertEquals(LocalDateTime.of(2026, 10, 7, 0, 0), recibido.getFechaEntrega(),
                 "incentivos espera LocalDateTime, no LocalDate");
+        assertEquals("ENTREGADA", recibido.getEstado(),
+                "las reglas de misión de incentivos están configuradas contra 'ENTREGADA', no 'ENTREGADO'");
 
         Set<ConstraintViolation<ImpactoDonacionMirror>> violations = validator.validate(recibido);
         assertTrue(violations.isEmpty(), () -> "violaciones de contrato: " + violations);

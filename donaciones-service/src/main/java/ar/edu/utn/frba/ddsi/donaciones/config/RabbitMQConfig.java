@@ -76,13 +76,15 @@ public class RabbitMQConfig {
         return QueueBuilder.durable(COLA_EVENTOS).build();
     }
 
-    /** Con {@code RK_EVENTO + ".#"} y no la clave exacta: acá se quiere toda la jerarquía de
-     *  tipos de evento, no una clave en particular. */
+    /** Clave exacta de la publicación de logística: publica todos los tipos con la misma RK
+     *  ({@code "logistica.evento"}) y el tipo viaja en el cuerpo. Con {@code ".#"} el binding
+     *  no matchearía: en un topic exchange el comodín exige al menos un nivel más (el mismo
+     *  error que ya mordió con notificaciones). */
     @Bean
     public Binding bindingEventos(Queue colaEventos, TopicExchange exchangeEventos) {
         return BindingBuilder.bind(colaEventos)
                 .to(exchangeEventos)
-                .with(RK_EVENTO + ".#");
+                .with(RK_EVENTO);
     }
 
     /** Serializa a JSON. Sin este bean el listener recibe el body crudo y falla con
