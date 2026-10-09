@@ -12,11 +12,12 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Por qué está acá |
 |---|---|---|
-| 1 | 1 | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
-| 2 | 10 | Decidir si el ranking cuenta insignias o misiones, como pide el enunciado |
-| 3 | 23 | Quedan decisiones de identidad y ampliar la cobertura de persistencia JPA |
-| 4 | 37 | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 5 | 6 | Vigilancia: mantener las lecturas de relaciones lazy dentro de transacciones |
+| 1 | 39 | Un perfil queda huérfano si la baja del donante en donaciones no llega |
+| 2 | 1 | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
+| 3 | 10 | Decidir si el ranking cuenta insignias o misiones, como pide el enunciado |
+| 4 | 23 | Quedan decisiones de identidad y ampliar la cobertura de persistencia JPA |
+| 5 | 37 | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 6 | 6 | Vigilancia: mantener las lecturas de relaciones lazy dentro de transacciones |
 
 Los puntos 1 y 10 requieren decisiones del equipo: el primero necesita acordar una identidad
 compartida entre servicios; el segundo conserva, por ahora, la decisión documentada de contar
@@ -480,6 +481,30 @@ setter, que es justo lo que se sacó.
    suspensión de la transacción ante la llamada remota y persistencia/reclamo de la outbox.
    Los nuevos mappings y consultas igual necesitan casos de integración específicos a medida
    que se agreguen.
+---
+
+## 39. Un perfil queda huérfano si la baja del donante en donaciones no llega
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/controllers/PerfilController.java` (`DELETE /api/perfiles/interno/{idUsuario}`), `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java` (`eliminarPerfilPorBajaDeDonante`, `borrarPerfilYHistorial`). Contraparte: punto 35 de `donaciones-service/PENDIENTES.md`.
+
+### Qué pasa
+
+El perfil gamificado de un donante dado de baja en `donaciones-service` **sobrevive en la base de incentivos**. La baja la dispara y la ejecuta donaciones por HTTP síncrono (`DELETE /api/perfiles/interno/{idUsuario}`); incentivos no tiene forma de enterarse por sí solo de que el donante dejó de existir. Cuando esa llamada no llega —o llega con un id que no matchea— el perfil queda huérfano y nada lo limpia después.
+
+### Por qué no se ve
+
+1. `PerfilService.eliminarPerfilPorBajaDeDonante` es idempotente y **devuelve 200 aunque no borre nada**: hace `if (!repositorioPerfiles.existsById(idUsuario)) return;`. Un id que no coincide con ningún perfil (perfil creado con otro id, datos viejos o de un seed) es indistinguible de un borrado exitoso. El llamador no puede saber si quedó algo.
+2. La baja depende de que donaciones ejecute la llamada, y **en el momento correcto**: si la baja local aborta antes (por la FK del punto 34 de donaciones) o falla la red, la cascada no corre y no hay reintento.
+3. No hay ninguna consulta ni job que detecte perfiles cuyo `idUsuario` ya no exista en donaciones.
+
+### Propuesta
+
+1. Consumir un evento `donante.baja` publicado por donaciones (Rabbit) y borrar ahí el perfil y su historial de impactos de forma idempotente, con DLQ y reintentos. Deja de depender de una llamada HTTP en medio de la baja del otro servicio.
+2. Exponer una **reconciliación** (endpoint de admin o job) que liste/borre perfiles sin donante, o un borrado de respaldo por `nombreUsuario`.
+3. Verificar que el despliegue tenga el endpoint `/api/perfiles/interno/{idUsuario}` (commit `7e9da04`); sin él, la llamada de donaciones da 404 y la baja entera falla.
+
 ---
 
 ## Corregidos

@@ -33,6 +33,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 26 | 26    | El PUT de necesidad ignora el id de entidad y castea a ciegas                                     |
 | 28 | 28    | `BienDTO` mezcla el mensaje de integración con el modelo de logóstica                             |
 | 29 | 29    | `POST /donaciones/formulario` devuelve 400 sin decir por qué                                    |
+| 34 | 34    | Tras donar con un formulario, el donante no se puede dar de baja (FK sin cascade)                  |
+| 35 | 35    | Dar de baja un donante no borra siempre su perfil en incentivos (cascada frágil)                    |
 
 ---
 
@@ -914,6 +916,56 @@ servicios— responde `201` con persistencia real.
 
 **Nota:** el `GlobalExceptionHandler` de este servicio está comentado entero, igual que el de
 `notificaciones-service`. Es la causa de que el `400` no diga nada.
+
+---
+
+## 34. Tras donar por el formulario, el donante no se puede dar de baja (FK sin cascade)
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Formulario/Formulario.java` (líneas 27-29), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Donacion.java` (líneas 37-39), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 132-136), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDonantes.java` (línea 50), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/exceptions/GlobalExceptionHandler.java` (línea 52)
+
+### Qué pasa
+
+`POST /api/donaciones/formulario` crea un `Formulario` con FK `donante_id` (`@ManyToOne` **sin cascade REMOVE**) y, al segmentar, una o más `Donacion` que **también** apuntan al donante por `donante_id` (mismo criterio, sin cascade REMOVE). A partir de esa donación, `DELETE /api/personas/{id}` recorre `DonanteController.eliminarDonante` → `DonanteService.eliminarPersona` → `RepositorioDonantes.eliminarPorId` → `jpaRepository.deleteById(id)`, y el `delete` **choca contra la FK**: la base tira violación de integridad y `GlobalExceptionHandler.manejarDataIntegrityViolation` la mapea a **409 CONFLICT**. El donante (y su Persona) queda vivo.
+
+En la práctica: **cualquier donante que haya donado alguna vez no se puede dar de baja**, que es el caso normal (un donante existe justamente para donar). Se reproduce a mano: `POST /api/donaciones/formulario` con el id de un donante y después `DELETE /api/personas/{id}` responde 409.
+
+### Por qué no se ve / workaround
+
+El propio `DonacionController.eliminarFormulario` documenta la causa ("Formulario.donante_id es FK no nula sin cascade REMOVE: hay que borrar los formularios de un Donante antes de poder borrar al Donante (si no, 409)"), y se agregó `GET /api/donaciones/formularios` + `DELETE /api/donaciones/formularios/{id}` para liberar al donante. Pero es un **workaround manual**: el front no lo hace, así que desde la UI "borrar el perfil" simplemente no borra — recibe un 409 con un cuerpo de error de integridad, igual que cualquier otro conflicto.
+
+### Propuesta
+
+1. Que la baja del donante resuelva en **una sola transacción** lo que la referencia: borrar (o anonimizar) los `Formulario` y las `Donacion` del donante antes del `delete`, o pasar las FK a `ON DELETE CASCADE`/`@OnDelete` según qué deba sobrevivir (las donaciones ya entregadas probablemente no).
+2. Decidir la política: si un donante con historial no debería borrarse físicamente, hacer **baja lógica** (soft delete) en vez de un `delete` que siempre va a chocar contra su propio historial.
+3. Mientras tanto, que `DELETE /api/personas/{id}` haga el trabajo del lado del servidor (borrar en orden, o un `?forzar=true`), para que el front no dependa de dos llamadas en el orden correcto.
+
+---
+
+## 35. Dar de baja un donante no borra siempre su perfil en incentivos
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 126-136), `src/main/java/ar/edu/utn/frba/ddsi/donaciones/clients/IncentivosClient.java` (líneas 105-121). Del otro lado: `incentivos-service/.../controllers/PerfilController.java` (`DELETE /api/perfiles/interno/{idUsuario}`) e `incentivos-service/.../services/PerfilService.java` (`eliminarPerfilPorBajaDeDonante`). Ver también el punto 39 de `incentivos-service/PENDIENTES.md`.
+
+### Qué pasa
+
+Al dar de baja un donante en donaciones, el perfil que ese donante tiene en la base de incentivos **no siempre desaparece**: queda huérfano. La baja en cascada existe desde el commit `7e9da04` ("Arreglo de Eliminar perfil", 2026-10-08): `DonanteService.eliminarPersona` avisa con `DELETE /api/perfiles/interno/{idUsuario}` antes del `delete` local. El problema no es que falte el aviso, sino que la cascada es **mejor esfuerzo y no es atómica ni confiable**.
+
+### Por qué pasa (causas concretas)
+
+1. **Orden y atomicidad.** La llamada a incentivos va **antes** del `delete` local y no comparten transacción. Si el `delete` local falla (punto 34), el request termina en 409 pero el aviso a incentivos ya se hizo: los dos lados quedan desincronizados (perfil borrado, donante vivo) y nada lo detecta. En cualquier otro punto de fallo queda al revés (donante borrado, perfil vivo).
+2. **Sin reintentos ni outbox.** Si incentivos está caído o la URL quedó desalineada, la excepción **aborta la baja entera** y el huérfano queda; nada lo reintenta después.
+3. **Idempotente pero silencioso.** `PerfilService.eliminarPerfilPorBajaDeDonante` hace `if (!repositorioPerfiles.existsById(idUsuario)) return;`: responde 200 sin borrar nada cuando el id no coincide con ningún perfil (perfil creado con otro id, datos viejos o de un seed). El llamador no puede distinguir "se borró" de "no había nada".
+4. **Versión.** El endpoint `/api/perfiles/interno/{idUsuario}` y la llamada son del commit `7e9da04`. Cualquier despliegue anterior de uno de los dos servicios deja el alta y la baja desalineadas (incentivos sin el endpoint → 404 → excepción → donante vivo).
+
+### Propuesta
+
+1. Mover la baja al **canal de eventos** que ya usan los dos servicios: donaciones publica `donante.baja` en el exchange (mismo patrón que las notificaciones asíncronas) e incentivos lo consume de forma idempotente, con DLQ y reintentos. Así la baja no depende de que incentivos esté arriba en el momento.
+2. Si se mantiene HTTP: envolverlo con reintentos/outbox y **no abortar** la baja local si incentivos falla —dejar el huérfano marcado para reconciliar— en vez de bloquear el borrado del donante.
+3. Agregar una **reconciliación** (job o endpoint de admin) que borre perfiles cuyo `idUsuario` ya no exista en donaciones.
+4. Confirmar que el build que se prueba tiene `7e9da04` en **los dos** servicios.
 
 ---
 
