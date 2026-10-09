@@ -317,7 +317,7 @@
       ]
     },
     {
-      "name": "08. Asignar la donacion  (DISPARA: donating -> logistica y donating -> incentivos)",
+      "name": "08. Asignar la donacion  (DISPARA: donating -> logistica y la notificacion al donante; el impacto en incentivos recien en el paso 14)",
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -492,6 +492,32 @@
               "    pm.response.to.have.status(200);",
               "    var rutas = pm.response.json().rutas;",
               "    pm.expect(rutas).to.be.an('array').that.is.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13b. Iniciar la ruta del chofer (deja los items EN_CAMINO)",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{logisticasUrl}}/rutas/chofer/{{idChofer}}/iniciar",
+          "host": ["{{logisticasUrl}}"],
+          "path": ["rutas", "chofer", "{{idChofer}}", "iniciar"]
+        },
+        "description": "OBLIGATORIO antes del paso 14. Deja la ruta EN_CURSO y los items EN_CAMINO. Sin esto, el PATCH de 'ENTREGADA' NO publica el evento ENTREGA_CONFIRMADA: GestorPublicacionEventos.publicarEntregaConfirmada solo actua si el item esta EN_CAMINO. Y sin ese evento, donaciones nunca le reporta el impacto de la donacion a incentivos."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('la ruta se inicio', function () {",
+              "    pm.response.to.have.status(200);",
               "});"
             ]
           }
