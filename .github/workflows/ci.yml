@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - module: donaciones-service
+            experimental: false
+          - module: incentivos-service
+            experimental: false
+          - module: notificaciones-service
+            experimental: false
+          # La suite de logística todavía no pasa completa: se corre igual para
+          # ver el estado, pero no bloquea. Seguimiento en el issue abierto y en
+          # logisticas-service/PENDIENTES.md. Cuando quede verde, borrar la
+          # marca `experimental: true` de este módulo.
+          - module: logisticas-service
+            experimental: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Tests
+        run: mvn -B -ntp test -pl ${{ matrix.module }}
