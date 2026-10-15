@@ -83,7 +83,7 @@ mvn test
 mvn test -pl incentivos-service
 ```
 
-Los tests no necesitan infraestructura: los de persistencia de `incentivos-service` levantan H2 en memoria y el resto son unitarios con mocks. La suite corre en CI (GitHub Actions) por módulo: `donaciones`, `incentivos` y `notificaciones` son bloqueantes; `logisticas-service` corre como no bloqueante mientras se estabiliza su suite ([issue #2](https://github.com/NicolasSchkurko/TPA-G3-DDS-2026/issues/2)).
+Los tests no necesitan infraestructura: los de persistencia de `incentivos-service` levantan H2 en memoria y el resto son unitarios con mocks. La suite corre en CI (GitHub Actions) por módulo para `donaciones`, `incentivos` y `notificaciones`. La de `logisticas-service` todavía no está estable y queda fuera del CI hasta arreglarla ([issue #2](https://github.com/NicolasSchkurko/TPA-G3-DDS-2026/issues/2)).
 
 ## Docker Compose
 
