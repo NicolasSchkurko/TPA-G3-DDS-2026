@@ -4,11 +4,12 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "unidad_medida")
+@Document(collection = "unidad_medida")
 @Getter
 @Setter
 @NoArgsConstructor(force = true)
@@ -19,21 +20,20 @@ public class UnidadDeMedida {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id_unidad", nullable = false, updatable = false)
+    @Field(name = "id_unidad")
     private UUID idUnidad;
 
     /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @Column(name = "nombre", nullable = false)
+    @Field(name = "nombre")
     private String nombre;
 
-    @Column(name = "factor_peso_kg_por_unidad", nullable = false)
+    @Field(name = "factor_peso_kg_por_unidad")
     private double factorPesoKgPorUnidad;
 
-    @Column(name = "factor_volumen_m3_por_unidad", nullable = false)
+    @Field(name = "factor_volumen_m3_por_unidad")
     private double factorVolumenM3PorUnidad;
 
     public UnidadDeMedida(String nombre, double factorPesoKgPorUnidad, double factorVolumenM3PorUnidad) {

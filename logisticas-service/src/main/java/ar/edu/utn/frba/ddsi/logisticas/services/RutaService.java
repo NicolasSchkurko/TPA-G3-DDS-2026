@@ -79,7 +79,7 @@ public class RutaService {
     // 2. Publicamos el evento y guardamos los ítems actualizados
     List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
     for (Parada parada : paradas) {
-      parada.getItems().forEach(repoItemEntrega::saveAndFlush);
+      parada.getItems().forEach(repoItemEntrega::save);
     }
   }
 

@@ -2,10 +2,11 @@ package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
 @Repository
-public interface RepositorioPaises extends JpaRepository<Pais, Long> {
+public interface RepositorioPaises extends MongoRepository<Pais, Long> {
 }

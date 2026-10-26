@@ -2,34 +2,31 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer;
 
 import java.util.UUID;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "chofer")
+@Document(collection = "choferes")
 public class Chofer {
     @Id
-    @Column(name = "id_chofer", nullable = false, updatable = false)
+    @Field(name = "id_chofer")
     private UUID idChofer;
 
     /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @Column(name = "nombre", nullable = false)
+    @Field(name = "nombre")
     private String nombre;
 
-    @Column(name = "disponible", nullable = false)
+    @Field(name = "disponible")
     private boolean disponible;
 
     public Chofer(UUID idChofer, String nombre){

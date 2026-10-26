@@ -4,13 +4,14 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
+public interface RepositorioRutas extends MongoRepository<Ruta, UUID> {
 
     default Optional<Ruta> findByIdDonacion(UUID idDonacion){
         return this.findAll().stream()

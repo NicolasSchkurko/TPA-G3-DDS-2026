@@ -2,49 +2,48 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
+@Document(collection = "camiones")
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "camion")
 public class Camion {
-    @ManyToOne
-    @JoinColumn(name = "id_chofer", referencedColumnName = "id_chofer")
     private Chofer chofer;
 
     @Id
-    @Column(name = "patente", length = 20, nullable = false)
+    @Field(name = "patente")
     private String patente;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
+    @Field(name = "version")
     private Long version;
 
-    @Column(name = "capacidad_volumen_m3", nullable = false)
+    @Field(name = "capacidad_volumen_m3")
     private Double capacidadVolumen;
 
-    @Column(name = "altura_m", nullable = false)
+    @Field(name = "altura_m")
     private Double altura;
 
-    @Column(name = "capacidad_carga_kg", nullable = false)
+    @Field(name = "capacidad_carga_kg")
     private Double capacidadCarga;
 
-    @Column(name = "disponible", nullable = false)
+    @Field(name = "disponible")
     private Boolean disponible;
 
-    @Column(name = "peso_ocupado_kg")
+    @Field(name = "peso_ocupado_kg")
     private Double pesoOcupado;
 
-    @Column(name = "volumen_ocupado_m3")
+    @Field(name = "volumen_ocupado_m3")
     private Double volumenOcupado;
 
-    @Column(name = "ciudad_destino_actual")
+    @Field(name = "ciudad_destino_actual")
     private String ciudadDestinoActual;
 
     public Camion(Chofer chofer, String patente, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){

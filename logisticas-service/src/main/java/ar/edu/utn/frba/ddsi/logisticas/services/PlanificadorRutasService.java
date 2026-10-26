@@ -80,16 +80,16 @@ public class PlanificadorRutasService {
         try {
             for (Ruta ruta : rutasGeneradas) {
 
-                repoRutas.saveAndFlush(ruta);
+                repoRutas.save(ruta);
 
                 for (Parada parada : ruta.getParadas()) {
 
                     parada.setRuta(ruta);
-                    repoParadas.saveAndFlush(parada);
+                    repoParadas.save(parada);
 
                     for (ItemEntrega item : parada.getItems()) {
                         item.setParada(parada);
-                        repoItemEntrega.saveAndFlush(item);
+                        repoItemEntrega.save(item);
                     }
                 }
             }
@@ -126,7 +126,7 @@ public class PlanificadorRutasService {
                     repoChoferes.save(choferElegido);
                 }
 
-                repoRutas.saveAndFlush(ruta);
+                repoRutas.save(ruta);
                 choferesDisponibles.remove(choferElegido);
             }
             return rutas;
@@ -145,7 +145,7 @@ public class PlanificadorRutasService {
                     repoChoferes.save(chofer);
                 }
 
-                repoRutas.saveAndFlush(rutaElegida);
+                repoRutas.save(rutaElegida);
                 rutas.remove(rutaElegida);
                 rutasAsignadas.add(rutaElegida);
             }

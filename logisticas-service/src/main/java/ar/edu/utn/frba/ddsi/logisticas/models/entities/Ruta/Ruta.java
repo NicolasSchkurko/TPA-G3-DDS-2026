@@ -14,38 +14,34 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "ruta")
+@Document(collection = "ruta")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Ruta {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id_ruta", nullable = false, updatable = false)
+    @Field(name = "id_ruta")
     private UUID idRuta;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @ManyToOne
-    @JoinColumn(name = "patente_camion", referencedColumnName = "patente", nullable = false)
     private Camion camionAsignado;
 
-    @Column(name = "fecha_programada", nullable = false)
+    @Field(name = "fecha_programada")
     private LocalDate fechaProgramada;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
+    @Field(name = "estado")
     private EstadoRuta estado;
 
-    @Column(name = "url_seguimiento")
+    @Field(name = "url_seguimiento")
     private String urlSeguimiento; // Enlace al mapa interactivo para tracking en tiempo real
 
-    @OneToMany(mappedBy = "ruta", orphanRemoval = true)
     private List<Parada> paradas;
 
     public Ruta(Camion camion){

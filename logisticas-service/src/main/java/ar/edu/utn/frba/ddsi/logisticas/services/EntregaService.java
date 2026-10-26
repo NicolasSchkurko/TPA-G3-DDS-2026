@@ -178,7 +178,7 @@ public class EntregaService {
       repoDirecciones.save(direccion);
 
       try {
-        return repoEntidades.saveAndFlush(new Entidad(idEntidad, direccion));
+        return repoEntidades.save(new Entidad(idEntidad, direccion));
       } catch (DataIntegrityViolationException carrera) {
         // Otra instancia la insertó concurrentemente entre el findById y el save
         log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente", idEntidad);
@@ -278,7 +278,7 @@ public class EntregaService {
         if(faltaTexto(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getFotoUrl()));
         break;
@@ -287,7 +287,7 @@ public class EntregaService {
         if(faltaTexto(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getJustificacion()));
         break;
@@ -295,14 +295,14 @@ public class EntregaService {
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarReingresoDeposito(item));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
         break;
 
       default:
         throw new IllegalArgumentException("Estado no válido. Use ENTREGADA, NO_RECIBIDA o PENDIENTE.");
     }
 
-    repoItemEntrega.saveAndFlush(item);
+    repoItemEntrega.save(item);
   }
 
   /** {@code true} si el texto vino nulo o vacío. */

@@ -1,28 +1,55 @@
 package ar.edu.utn.frba.ddsi.logisticas;
 
+import ar.edu.utn.frba.ddsi.logisticas.mongoDB.MongoDBConnection;
+import com.mongodb.client.MongoDatabase;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.bson.Document;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
 public class LogisticaServiceApplication {
+
   public static void main(String[] args) {
-    // Carga el .env del modulo antes de que arranque Spring, para que placeholders como
-    // ${DB_PASSWORD} se resuelvan. En Docker las variables llegan por entorno y no hay .env:
-    // ahi ignoreIfMissing() hace que esto no haga nada.
-    //
-    // Sin esto el servicio NO levanta fuera de Docker: application.properties no tiene default
-    // para las credenciales a proposito, asi que sin la variable y sin el .env no hay con que
-    // resolver el placeholder.
-    Dotenv.configure().ignoreIfMissing().load().entries().forEach(entrada -> {
+
+    Dotenv dotenv = Dotenv.configure()
+            .directory("./logisticas-service")
+            .ignoreIfMissing()
+            .load();
+
+    dotenv.entries().forEach(entrada -> {
       if (System.getProperty(entrada.getKey()) == null
               && System.getenv(entrada.getKey()) == null) {
         System.setProperty(entrada.getKey(), entrada.getValue());
       }
     });
 
-    SpringApplication.run(LogisticaServiceApplication.class, args);
+    System.out.println("Directorio de trabajo: " + System.getProperty("user.dir"));
+    System.out.println("MONGODB_URI cargada: "
+            + (System.getProperty("MONGODB_URI") != null ? "Sí" : "No"));
+    System.out.println("MONGODB_DB_NAME cargada: "
+            + System.getProperty("MONGODB_DB_NAME"));
+
+    ConfigurableApplicationContext context =
+            SpringApplication.run(LogisticaServiceApplication.class, args);
+
+    try {
+      MongoDBConnection conexion =
+              context.getBean(MongoDBConnection.class);
+
+      MongoDatabase database = conexion.getDatabase();
+
+      database.runCommand(new Document("ping", 1));
+
+      System.out.println("Conexión a MongoDB exitosa.");
+
+    } catch (Exception e) {
+      System.err.println(
+              "No se pudo conectar con MongoDB: " + e.getMessage()
+      );
+    }
   }
 }
