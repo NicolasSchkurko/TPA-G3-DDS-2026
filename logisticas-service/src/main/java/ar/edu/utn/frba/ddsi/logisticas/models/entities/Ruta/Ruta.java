@@ -10,7 +10,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +24,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 public class Ruta {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Field(name = "id_ruta")
     private UUID idRuta;
 
@@ -35,7 +35,6 @@ public class Ruta {
     @Field(name = "fecha_programada")
     private LocalDate fechaProgramada;
 
-    @Enumerated(EnumType.STRING)
     @Field(name = "estado")
     private EstadoRuta estado;
 

@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,9 +15,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class Pais {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Field(name = "id_pais")
-    private Long idPais;
+    private String idPais;
 
     @Version
     private Long version;

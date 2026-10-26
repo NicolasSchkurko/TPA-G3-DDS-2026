@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,7 +20,6 @@ public class UnidadDeMedida {
     public static final UnidadDeMedida LITROS = new UnidadDeMedida("Litros", 1.0, 0.001);
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Field(name = "id_unidad")
     private UUID idUnidad;
 

@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class Provincia {
     @Id
     @Field(name = "id_provincia")
-    private Long idProvincia;
+    private String idProvincia;
 
     @Version
     private Long version;

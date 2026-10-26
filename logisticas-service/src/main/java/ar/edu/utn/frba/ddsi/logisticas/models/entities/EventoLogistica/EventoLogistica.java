@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,9 +22,8 @@ import java.time.LocalDateTime;
 public class EventoLogistica {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Field(name = "id_evento")
-  private Long id;
+  private String id;
 
 
   @Version

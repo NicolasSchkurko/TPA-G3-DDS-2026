@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,7 +22,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 public class Parada {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Field(name = "id_parada")
     private UUID idParada;
 

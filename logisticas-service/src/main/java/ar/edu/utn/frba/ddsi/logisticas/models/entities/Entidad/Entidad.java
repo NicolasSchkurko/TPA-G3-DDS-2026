@@ -4,7 +4,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 
 import java.util.UUID;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

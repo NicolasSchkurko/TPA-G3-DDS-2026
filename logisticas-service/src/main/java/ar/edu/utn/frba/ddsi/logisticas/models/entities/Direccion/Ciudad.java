@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class Ciudad {
     @Id
     @Field(name = "id_ciudad")
-    private Long idCiudad;
+    private String idCiudad; //cambiamos en logistica el tipo de los id de "Long" a "String" para que Mongo pueda autoincrementar automaticamente el valor
 
     @Version
     private Long version;
@@ -28,5 +28,6 @@ public class Ciudad {
     public Ciudad(String nombre, Provincia provincia){
         this.nombre = nombre;
         this.provincia = provincia;
+        /*preguntar */
     }
 }
