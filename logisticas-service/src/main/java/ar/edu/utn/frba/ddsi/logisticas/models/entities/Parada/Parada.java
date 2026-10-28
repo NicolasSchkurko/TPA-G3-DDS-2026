@@ -38,6 +38,7 @@ public class Parada {
 
     // Se crea siempre a partir de un primer itm y su dirección
     public Parada(ItemEntrega primerItem) {
+        this.idParada = UUID.randomUUID();
         Entidad entidad = primerItem.getEntidadDestino();
         this.entidadDestino = entidad;
         this.direccion = entidad.getDireccionDestino();

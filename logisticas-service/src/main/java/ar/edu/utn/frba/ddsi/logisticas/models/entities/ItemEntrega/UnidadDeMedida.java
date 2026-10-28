@@ -37,6 +37,7 @@ public class UnidadDeMedida {
     private double factorVolumenM3PorUnidad;
 
     public UnidadDeMedida(String nombre, double factorPesoKgPorUnidad, double factorVolumenM3PorUnidad) {
+        this.idUnidad = UUID.randomUUID();
         this.nombre = nombre;
         this.factorPesoKgPorUnidad = factorPesoKgPorUnidad;
         this.factorVolumenM3PorUnidad = factorVolumenM3PorUnidad;

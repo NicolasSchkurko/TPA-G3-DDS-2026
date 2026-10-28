@@ -44,6 +44,7 @@ public class Ruta {
     private List<Parada> paradas;
 
     public Ruta(Camion camion){
+        this.idRuta = UUID.randomUUID();
         this.camionAsignado = camion;
         this.fechaProgramada = LocalDate.now().plusDays(1);
         this.paradas = new ArrayList<>();
