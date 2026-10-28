@@ -28,11 +28,19 @@ public interface RepositorioRutas extends MongoRepository<Ruta, UUID> {
     }
 
     default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
-        if (chofer == null || estado == null) return Optional.empty();
+        if (chofer == null || estado == null || chofer.getIdChofer() == null) {
+            return Optional.empty();
+        }
+
+        UUID idChofer = chofer.getIdChofer();
+
         return this.findAll().stream()
-                .filter(ruta -> ruta.getCamionAsignado() != null &&
-                        chofer.equals(ruta.getCamionAsignado().getChofer()) &&
-                        estado.equals(ruta.getEstado()))
+                .filter(ruta -> ruta.getCamionAsignado() != null)
+                .filter(ruta -> ruta.getCamionAsignado().getChofer() != null)
+                .filter(ruta -> idChofer.equals(
+                        ruta.getCamionAsignado().getChofer().getIdChofer()
+                ))
+                .filter(ruta -> estado.equals(ruta.getEstado()))
                 .findFirst();
     }
 }
