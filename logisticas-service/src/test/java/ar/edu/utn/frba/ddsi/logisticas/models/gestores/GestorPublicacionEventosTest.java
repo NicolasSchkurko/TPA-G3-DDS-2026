@@ -95,7 +95,6 @@ class GestorPublicacionEventosTest {
         Ruta ruta = rutaVacia();
 
         Parada parada = new Parada();
-        parada.setRuta(ruta);
         for (ItemEntrega item : items) {
             parada.agregarItem(item);
         }
