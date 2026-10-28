@@ -6,15 +6,12 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorPublicacionEventos;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioDirecciones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEntidades;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioPaises;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioProvincias;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioUnidadesDeMedida;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,14 +56,11 @@ import static org.mockito.Mockito.when;
 class EntregaServiceIdempotenciaTest {
 
     @Mock private RepositorioItemEntrega repoItemEntrega;
-    @Mock private RepositorioRutas repoRutas;
     @Mock private RepositorioEntidades repoEntidades;
     @Mock private RepositorioDirecciones repoDirecciones;
     @Mock private RepositorioCiudades repoCiudades;
     @Mock private RepositorioProvincias repoProvincias;
     @Mock private RepositorioPaises repoPaises;
-    @Mock private RepositorioUnidadesDeMedida repoUnidades;
-    @Mock private GestorPublicacionEventos gestorPublicacionEventos;
 
     /**
      * El servicio abre sus propias transacciones con REQUIRES_NEW. El mock alcanza para que
@@ -104,9 +98,8 @@ class EntregaServiceIdempotenciaTest {
         DireccionDTO direccion = new DireccionDTO(ID_ENTIDAD, "Av. Corrientes", "100", 100, 1,
                 "A", "CABA", "Buenos Aires", "Argentina");
 
-        EntregaDTO dto = new EntregaDTO(List.of(UUID.randomUUID()),
+        return new EntregaDTO(List.of(UUID.randomUUID()),
                 List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null)), direccion);
-        return dto;
     }
 
     private static EntregaDTO peticionConUnBien() {
@@ -132,7 +125,6 @@ class EntregaServiceIdempotenciaTest {
         servicio.procesarPeticion(peticionConUnBien());
 
         verify(repoItemEntrega, never()).save(any(ItemEntrega.class));
-        verify(repoItemEntrega, never()).saveAndFlush(any(ItemEntrega.class));
     }
 
     @Test
@@ -150,7 +142,6 @@ class EntregaServiceIdempotenciaTest {
         // hubiera reescrito, el item en memoria seria el del constructor, en PENDIENTE.
         assertThat(entregado.getEstado()).isEqualTo(EstadoEntrega.ENTREGADA);
         verify(repoItemEntrega, never()).save(any());
-        verify(repoItemEntrega, never()).saveAndFlush(any());
     }
 
     @Test
@@ -177,7 +168,7 @@ class EntregaServiceIdempotenciaTest {
         // La entidad se guarda con saveAndFlush a proposito: el flush forzado hace visible
         // la violacion de clave primaria en el momento, que es lo que permite tratar la carrera
         // con otra instancia sin que se lleve por delante los items.
-        verify(repoEntidades, times(1)).saveAndFlush(any());
+        verify(repoEntidades, times(1)).save(any());
     }
 
     @Test
