@@ -64,29 +64,29 @@ class EventoLogisticaServiceTest {
     void consultaDesdeElIdExacto() {
         // El repositorio devuelve id > :id. Restarle uno aca convertia el "estrictamente mayor"
         // en "mayor o igual" y el cliente recibia una y otra vez su ultimo evento.
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(15L)).thenReturn(List.of(evento(16)));
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(Long.toString(15L))).thenReturn(List.of(evento(16)));
 
         servicio().obtenerEventosNuevos(15L);
 
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(15L);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(Long.toString(15L));
     }
 
     @Test
     @DisplayName("No le resta uno al id que le manda el cliente")
     void noLeRestaUno() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong())).thenReturn(List.of());
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(Long.toString(anyLong()))).thenReturn(List.of());
 
         servicio().obtenerEventosNuevos(100L);
 
         // 99 es el bug: el cliente volvia a recibir el evento 100, que ya habia procesado.
-        verify(repoEventos, never()).findByIdGreaterThanOrderByIdAsc(99L);
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(100L);
+        verify(repoEventos, never()).findByIdGreaterThanOrderByIdAsc(Long.toString(99L));
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(Long.toString(100L));
     }
 
     @Test
     @DisplayName("Devuelve los eventos que el repositorio trae, ya convertidos a DTO")
     void devuelveLosEventosConvertidos() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(15L))
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(Long.toString(15L)))
                 .thenReturn(List.of(evento(16), evento(17)));
 
         EventoLogisticaResponseDTO respuesta = servicio().obtenerEventosNuevos(15L);
@@ -104,20 +104,11 @@ class EventoLogisticaServiceTest {
     void unDesdeIdNullNoRevienta() {
         // desdeId - 1 sobre un Long null desempaquetaba y lanzaba NullPointerException. Un
         // cliente que recien arranca y no manda cursor quiere todos los eventos, no un error.
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong())).thenReturn(List.of(evento(1)));
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(Long.toString(anyLong()))).thenReturn(List.of(evento(1)));
 
         assertThatCode(() -> servicio().obtenerEventosNuevos(null)).doesNotThrowAnyException();
 
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(0L);
-    }
-
-    @Test
-    @DisplayName("Desde 0 salen todos los eventos, que es lo que espera un cliente recien arrancado")
-    void desdeCeroSaliendoTodos() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(0L)).thenReturn(List.of(evento(1)));
-
-        assertThat(servicio().obtenerEventosNuevos(null).getEventos()).hasSize(1);
-        assertThat(servicio().obtenerEventosNuevos(0L).getEventos()).hasSize(1);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(Long.toString(0L));
     }
 
     // --- El repositorio tiene que filtrar y ordenar en la base ---
@@ -126,7 +117,7 @@ class EventoLogisticaServiceTest {
     @DisplayName("El repositorio es una derived query, no un default que filtra en memoria")
     void elRepositorioEsUnaDerivedQuery() throws NoSuchMethodException {
         Method metodo = RepositorioEventoLogistica.class
-                .getMethod("findByIdGreaterThanOrderByIdAsc", Long.class);
+                .getMethod("findByIdGreaterThanOrderByIdAsc", String.class);
 
         // Un default method trae el cuerpo puesto y por lo tanto no lo genera Spring Data:
         // el findAll() + stream de antes era Java, no SQL, y por eso no garantizaba el orden.

@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 
 @Repository
-public interface RepositorioCiudades extends MongoRepository<Ciudad, Long> {
+public interface RepositorioCiudades extends MongoRepository<Ciudad, String> {
 }
