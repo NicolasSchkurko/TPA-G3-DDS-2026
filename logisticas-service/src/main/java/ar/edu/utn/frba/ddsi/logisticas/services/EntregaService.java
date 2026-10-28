@@ -2,7 +2,10 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
@@ -152,40 +155,91 @@ public class EntregaService {
  * {@code idEntidad} viene del mensaje.
  */
   private Entidad resolverEntidad(DireccionDTO dto) {
+
     if (dto == null) {
-      throw new IllegalArgumentException("La entidad beneficiaria no trae dirección");
+      throw new IllegalArgumentException(
+              "La entidad beneficiaria no trae dirección");
     }
 
     UUID idEntidad = dto.getIdEntidad();
+
     if (idEntidad == null) {
-      throw new IllegalArgumentException("El ID de la entidad beneficiaria no puede ser nulo");
+      throw new IllegalArgumentException(
+              "El ID de la entidad beneficiaria no puede ser nulo");
     }
 
     return enSuPropiaTransaccion(() -> {
-      // 1. Verificar primero si la entidad ya existe
-      Optional<Entidad> yaExistente = repoEntidades.findById(idEntidad);
+
+      Optional<Entidad> yaExistente =
+              repoEntidades.findById(idEntidad);
+
       if (yaExistente.isPresent()) {
         return yaExistente.get();
       }
 
-      // 2. Solo si no existe, construir y persistir el catálogo de dirección
-      Direccion direccion = this.convertirDireccionDTO(dto);
-
-      repoPaises.save(direccion.getCiudad().getProvincia().getPais());
-      repoProvincias.save(direccion.getCiudad().getProvincia());
-      repoCiudades.save(direccion.getCiudad());
-      repoDirecciones.save(direccion);
+      Direccion direccion = resolverDireccion(dto);
 
       try {
-        return repoEntidades.save(new Entidad(idEntidad, direccion));
+        return repoEntidades.save(
+                new Entidad(idEntidad, direccion));
+
       } catch (DataIntegrityViolationException carrera) {
-        // Otra instancia la insertó concurrentemente entre el findById y el save
-        log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente", idEntidad);
-        return repoEntidades.findById(idEntidad).orElseThrow(
-                () -> new IllegalStateException(
-                        "La entidad " + idEntidad + " no se pudo resolver tras una carrera", carrera));
+
+        log.info(
+                "La entidad {} ya fue registrada por otra instancia",
+                idEntidad);
+
+        return repoEntidades.findById(idEntidad)
+                .orElseThrow(() -> new IllegalStateException(
+                        "La entidad " + idEntidad
+                                + " no se pudo resolver tras una carrera",
+                        carrera));
       }
     });
+  }
+
+  private Direccion resolverDireccion(DireccionDTO dto) {
+
+    // 1. Buscar el país o crearlo si no existe.
+    Pais pais = repoPaises.findByNombreIgnoreCase(dto.getPais())
+            .orElseGet(() -> {
+              Pais nuevoPais = new Pais();
+              nuevoPais.setNombre(dto.getPais());
+              return repoPaises.save(nuevoPais);
+            });
+
+    // 2. Buscar la provincia dentro de ese país o crearla.
+    Provincia provincia = repoProvincias
+            .findByNombreIgnoreCaseAndPais_IdPais(
+                    dto.getProvincia(), pais.getIdPais())
+            .orElseGet(() -> {
+              Provincia nuevaProvincia = new Provincia();
+              nuevaProvincia.setNombre(dto.getProvincia());
+              nuevaProvincia.setPais(pais);
+              return repoProvincias.save(nuevaProvincia);
+            });
+
+    // 3. Buscar la ciudad dentro de esa provincia o crearla.
+    Ciudad ciudad = repoCiudades
+            .findByNombreIgnoreCaseAndProvincia_IdProvincia(
+                    dto.getCiudad(), provincia.getIdProvincia())
+            .orElseGet(() -> {
+              Ciudad nuevaCiudad = new Ciudad(
+                      dto.getCiudad(), provincia);
+              return repoCiudades.save(nuevaCiudad);
+            });
+
+    // 4. Construir la dirección usando el catálogo resuelto.
+    Direccion direccion = new Direccion();
+    direccion.setIdDireccion(UUID.randomUUID());
+    direccion.setCalle1(dto.getCalleUno());
+    direccion.setCalle2(dto.getCalleDos());
+    direccion.setAltura(dto.getAltura());
+    direccion.setPiso(dto.getPiso());
+    direccion.setDepartamento(dto.getDepartamento());
+    direccion.setCiudad(ciudad);
+
+    return repoDirecciones.save(direccion);
   }
 
   /**
