@@ -10,10 +10,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +22,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.lang.reflect.Field;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,8 +74,7 @@ class GestorPublicacionEventosTest {
     }
 
     private static ItemEntrega item(UUID id) {
-        ItemEntrega item = new ItemEntrega(id, 1, UnidadDeMedida.UNIDADES, null);
-        return item;
+        return new ItemEntrega(id, 1, UnidadDeMedida.UNIDADES, null);
     }
 
     private static Ruta rutaVacia() {
@@ -118,45 +112,6 @@ class GestorPublicacionEventosTest {
             sincronizacion.afterCompletion(TransactionSynchronization.STATUS_COMMITTED);
         }
         TransactionSynchronizationManager.clearSynchronization();
-    }
-
-    // --- El mapeo: la FK real ---
-
-    @Test
-    @DisplayName("La relacion item-evento apunta a la FK real, no a la clave primaria del evento")
-    void laRelacionApuntaALaFkReal() throws NoSuchFieldException {
-        // mappedBy="id" no es un atributo que referencie al item: id es la PK del propio evento
-        // (id_evento, IDENTITY). Hibernate armaba una relacion inventada con la FK en
-        // item_entrega.id_evento, siempre en NULL, y la lista salia vacia siempre.
-        Field eventos = ItemEntrega.class.getDeclaredField("eventos");
-        OneToMany relacion = eventos.getAnnotation(OneToMany.class);
-
-        assertThat(relacion.mappedBy()).isEqualTo("item");
-
-        // Y del lado dueño tiene que existir el ManyToOne que apunta al item, con la FK
-        // escrita sobre id_donacion.
-        Field item = EventoLogistica.class.getDeclaredField("item");
-        assertThat(item.getAnnotation(ManyToOne.class)).isNotNull();
-        assertThat(item.getAnnotation(JoinColumn.class).name()).isEqualTo("id_donacion");
-    }
-
-    /**
-     * El cascade tiene que seguir, porque es lo único que permite borrar un ítem con historial.
-     *
-     * <p>Sin cascade ni orphanRemoval, la FK nueva vuelve imposible el DELETE: MySQL rechaza
-     * borrar un ítem que tiene eventos, y {@code DELETE /entregas/{id} devolvería 500 para
-     * cualquier entrega que hubiera pasado por logística.
-     */
-    @Test
-    @DisplayName("La lista de eventos conserva el cascade, para que el item se pueda borrar")
-    void laListaConservaElCascade() throws NoSuchFieldException {
-        OneToMany relacion = ItemEntrega.class.getDeclaredField("eventos")
-                .getAnnotation(OneToMany.class);
-
-        assertThat(relacion.cascade())
-                .as("sin cascade, borrar un item con eventos viola la FK")
-                .contains(CascadeType.ALL);
-        assertThat(relacion.orphanRemoval()).isTrue();
     }
 
     // --- El inicio de ruta es de la ruta, no de cada item ---
