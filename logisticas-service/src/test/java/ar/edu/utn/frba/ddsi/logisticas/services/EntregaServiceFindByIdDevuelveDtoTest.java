@@ -96,11 +96,8 @@ class EntregaServiceFindByIdDevuelveDtoTest {
 
         Ruta ruta = new Ruta(null);
         Parada parada = new Parada();
-        parada.setRuta(ruta);
         parada.agregarItem(item);
         ruta.getParadas().add(parada);
-
-        item.setParada(parada);
         item.getEventos().add(evento);
         return item;
     }
