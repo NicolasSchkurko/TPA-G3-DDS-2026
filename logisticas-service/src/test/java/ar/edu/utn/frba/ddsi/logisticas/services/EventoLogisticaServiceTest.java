@@ -53,7 +53,7 @@ class EventoLogisticaServiceTest {
     private static EventoLogistica evento(long id) {
         EventoLogistica evento = new EventoLogistica("ENTREGA_CONFIRMADA", "uuid-" + id,
                 LocalDateTime.now(), null);
-        evento.setId(id);
+        evento.setId(Long.toString(id));
         return evento;
     }
 
