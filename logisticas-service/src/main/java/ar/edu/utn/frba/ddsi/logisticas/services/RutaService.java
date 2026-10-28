@@ -27,10 +27,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class RutaService {
@@ -70,17 +69,52 @@ public class RutaService {
   /** Inicia la ruta del chofer: la pone EN_CURSO y avisa por el broker. */
   @Transactional
   public void iniciarRuta(UUID idChofer) {
-    Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.PROGRAMADA);
+    Ruta rutaActual = rutaDelChoferPorEstado(
+            idChofer,
+            EstadoRuta.PROGRAMADA
+    );
 
-    // 1. Cambiamos el estado de la entidad y persistimos con save()
-    rutaActual.setEstado(EstadoRuta.EN_CURSO);
-    repoRutas.save(rutaActual);
+    List<Parada> paradas =
+            gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
 
-    // 2. Publicamos el evento y guardamos los ítems actualizados
-    List<Parada> paradas = gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
     for (Parada parada : paradas) {
       parada.getItems().forEach(repoItemEntrega::save);
     }
+    rutaActual = obtenerRutaActualizada(rutaActual.getIdRuta());
+    rutaActual.setEstado(EstadoRuta.EN_CURSO);
+    repoRutas.save(rutaActual);
+  }
+
+  public Ruta obtenerRutaActualizada(UUID idRuta) {
+    Ruta ruta = repoRutas.findById(idRuta)
+            .orElseThrow(() -> new NoSuchElementException(
+                    "No existe la ruta con id " + idRuta
+            ));
+
+    List<UUID> idsDonaciones = ruta.obtenerTodosLosItems()
+            .stream()
+            .map(ItemEntrega::getIdDonacion)
+            .distinct()
+            .toList();
+
+    Map<UUID, ItemEntrega> itemsActualizados =
+            repoItemEntrega.findAllById(idsDonaciones).stream().collect(Collectors.toMap(
+                    ItemEntrega::getIdDonacion,
+                    Function.identity()
+            ));
+
+    for (Parada parada : ruta.getParadas()) {
+      List<ItemEntrega> itemsActualizadosDeParada =
+              parada.getItems().stream()
+                      .map(ItemEntrega::getIdDonacion)
+                      .map(itemsActualizados::get)
+                      .filter(Objects::nonNull)
+                      .collect(Collectors.toList());
+
+      parada.setItems(itemsActualizadosDeParada);
+    }
+
+    return ruta;
   }
 
   @Transactional
