@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" th:href="@{/}">
+                <i class="bi bi-box-seam me-2"></i>DDSI — Portal
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/}"><i class="bi bi-house me-1"></i>Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/donaciones}"><i class="bi bi-gift me-1"></i>Donaciones</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/donaciones/donantes}"><i class="bi bi-people me-1"></i>Donantes</a>
+                    </li>
+                </ul>
+
+                <!-- Usuario autenticado y botón de salir -->
+                <div class="d-flex align-items-center gap-3">
+                    <div sec:authorize="isAuthenticated()" class="text-light small">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span class="fw-semibold" sec:authentication="name">Usuario</span>
+                        <span sec:authorize="hasRole('ADMIN')" class="badge bg-danger ms-1">ADMIN</span>
+                        <span sec:authorize="!hasRole('ADMIN')" class="badge bg-secondary ms-1">USER</span>
+                    </div>
+
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline m-0">
+                        <button type="submit" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-box-arrow-right me-1"></i>Salir
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>
