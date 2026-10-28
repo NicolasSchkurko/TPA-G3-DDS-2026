@@ -82,8 +82,7 @@ public class EntregaService {
     DireccionDTO direccionDTO = new DireccionDTO(item.get().getEntidadDestino().getIdEntidadBeneficiaria(), item.get().getEntidadDestino().getDireccionDestino().getCalle1(), item.get().getEntidadDestino().getDireccionDestino().getCalle2(), item.get().getEntidadDestino().getDireccionDestino().getAltura(), item.get().getEntidadDestino().getDireccionDestino().getPiso(), item.get().getEntidadDestino().getDireccionDestino().getDepartamento(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
     List<BienDTO> bienesDTO = new ArrayList<>();
     bienesDTO.add(new BienDTO(item.get().getCantidad(), item.get().getUnidad().toString(), item.get().getEstado().toString(), item.get().getFechaCambioEstado(), item.get().getFotoComprobante(), direccionDTO, item.get().getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
-    EntregaDTO dto = new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
-    return dto;
+      return new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
   }
 
   /**
