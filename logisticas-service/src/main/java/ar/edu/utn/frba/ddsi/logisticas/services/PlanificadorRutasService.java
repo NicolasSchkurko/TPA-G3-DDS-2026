@@ -83,12 +83,9 @@ public class PlanificadorRutasService {
                 repoRutas.save(ruta);
 
                 for (Parada parada : ruta.getParadas()) {
-
-                    parada.setRuta(ruta);
                     repoParadas.save(parada);
 
                     for (ItemEntrega item : parada.getItems()) {
-                        item.setParada(parada);
                         repoItemEntrega.save(item);
                     }
                 }

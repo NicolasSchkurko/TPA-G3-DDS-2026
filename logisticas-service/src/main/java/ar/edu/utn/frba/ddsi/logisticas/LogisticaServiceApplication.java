@@ -27,12 +27,6 @@ public class LogisticaServiceApplication {
       }
     });
 
-    System.out.println("Directorio de trabajo: " + System.getProperty("user.dir"));
-    System.out.println("MONGODB_URI cargada: "
-            + (System.getProperty("MONGODB_URI") != null ? "Sí" : "No"));
-    System.out.println("MONGODB_DB_NAME cargada: "
-            + System.getProperty("MONGODB_DB_NAME"));
-
     ConfigurableApplicationContext context =
             SpringApplication.run(LogisticaServiceApplication.class, args);
 

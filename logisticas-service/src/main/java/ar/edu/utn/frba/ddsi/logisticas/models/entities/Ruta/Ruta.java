@@ -62,7 +62,6 @@ public class Ruta {
                         parada -> parada.agregarItem(item),
                         () -> {
                             Parada parada = new Parada(item);
-                            parada.setRuta(this);
                             paradas.add(parada);
                         }
                 );

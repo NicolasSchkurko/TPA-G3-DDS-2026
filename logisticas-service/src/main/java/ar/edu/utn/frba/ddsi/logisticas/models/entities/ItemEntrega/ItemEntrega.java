@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import lombok.Getter;
@@ -39,7 +38,6 @@ public class ItemEntrega {
      * {@code item.parada} → {@code parada.ruta} → {@code ruta.paradas} vuelve al mismo objeto y
      * Jackson reventaría con {@code StackOverflowError}.
      */
-    private Parada parada;
 
     @Field(name = "cantidad")
     private Integer cantidad;

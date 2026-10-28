@@ -5,8 +5,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
-
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import org.slf4j.Logger;
@@ -47,11 +45,7 @@ public class PlanificadorDeRutasScheduler {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
-              .filter(item -> item.getParada() == null
-                      || item.getParada().getRuta() == null
-                      || item.getParada().getRuta().getEstado() == EstadoRuta.FINALIZADA)
-              .collect(Collectors.toList());
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
 
       camionesDisponibles = repoCamiones.findAll().stream()
               .filter(Camion::getDisponible)

@@ -6,8 +6,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import lombok.Getter;
@@ -27,8 +25,6 @@ public class Parada {
 
     @Version
     private Long version;
-
-    private Ruta ruta;
 
     private Direccion direccion;
 
