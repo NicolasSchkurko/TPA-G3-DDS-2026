@@ -21,7 +21,7 @@ public class EventoLogisticaMensajeDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** Id del evento. Sirve de cursor para el consumidor: no reprocesa lo que ya vio. */
-    private Long id;
+    private String id;
 
     /** INICIO_RUTA, ENTREGA_CONFIRMADA, ENTREGA_FALLIDA o REINGRESO_DEPOSITO (contrato del consumidor). */
     private String tipoEvento;
