@@ -25,7 +25,6 @@ public class EventoLogistica {
   @Field(name = "id_evento")
   private String id;
 
-
   @Version
   private Long version;
 

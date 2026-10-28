@@ -19,7 +19,6 @@ public class Chofer {
     @Field(name = "id_chofer")
     private UUID idChofer;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
     private Long version;
 

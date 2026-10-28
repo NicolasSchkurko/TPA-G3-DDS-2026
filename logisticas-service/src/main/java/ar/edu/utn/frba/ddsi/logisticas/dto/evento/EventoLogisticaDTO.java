@@ -6,13 +6,13 @@ import lombok.Setter;
 @Getter
 @Setter
 public class EventoLogisticaDTO {
-    private Long id;
+    private String id;
     private String tipoEvento;
     private String referenciaId;
     private String justificacion;
     private String payloadJson;
 
-    public EventoLogisticaDTO(Long id,
+    public EventoLogisticaDTO(String id,
                               String tipoEvento,
                               String referenciaId,
                               String justificacion,
