@@ -1,9 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -12,10 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @RestController

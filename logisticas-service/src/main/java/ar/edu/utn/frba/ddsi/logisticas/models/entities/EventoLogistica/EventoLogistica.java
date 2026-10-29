@@ -23,7 +23,7 @@ public class EventoLogistica {
 
   @Id
   @Field(name = "id_evento")
-  private String id;
+  private Long id;
 
   @Version
   private Long version;
@@ -50,6 +50,7 @@ public class EventoLogistica {
   private ItemEntrega item;
 
   public EventoLogistica(String tipoEvento, String referenciaId, LocalDateTime fecha, String justificacion) {
+    this.id = Secuencia.siguiente();
     this.tipoEvento = tipoEvento;
     this.referenciaId = referenciaId;
     this.fecha = fecha != null ? fecha : LocalDateTime.now();
@@ -57,6 +58,7 @@ public class EventoLogistica {
   }
 
   public EventoLogistica(String tipoEvento, String payloadJson) {
+    this.id = Secuencia.siguiente();
     this.tipoEvento = tipoEvento;
     this.payloadJson = payloadJson;
     this.fecha = LocalDateTime.now();
