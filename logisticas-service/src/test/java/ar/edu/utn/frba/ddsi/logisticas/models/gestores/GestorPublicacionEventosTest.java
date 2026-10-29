@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,10 +61,11 @@ class GestorPublicacionEventosTest {
             UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Mock private RepositorioEventoLogistica repoEventos;
+    @Mock private RepositorioItemEntrega repoItemEntrega;
     @Mock private ProductorEventosLogistica productorEventos;
 
     private GestorPublicacionEventos gestor() {
-        return new GestorPublicacionEventos(repoEventos, new ObjectMapper(), productorEventos);
+        return new GestorPublicacionEventos(repoEventos, repoItemEntrega, new ObjectMapper(), productorEventos);
     }
 
     @AfterEach

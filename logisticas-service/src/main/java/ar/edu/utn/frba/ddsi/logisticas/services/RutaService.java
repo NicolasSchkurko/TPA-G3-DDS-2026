@@ -121,10 +121,6 @@ public class RutaService {
   public void terminarRuta(UUID idChofer) {
     Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.EN_CURSO);
 
-    // 1. Persistencia correcta del cambio de estado a la ruta
-    rutaActual.setEstado(EstadoRuta.FINALIZADA);
-    repoRutas.save(rutaActual);
-
     // 2. Procesamos el estado de los ítems
     for (Parada parada : rutaActual.getParadas()) {
       for (ItemEntrega item : parada.getItems()) {
@@ -150,6 +146,10 @@ public class RutaService {
     camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
     gestorCamiones.resetearCamion(camionDeRuta);
     repoCamiones.save(camionDeRuta);
+
+    rutaActual = obtenerRutaActualizada(rutaActual.getIdRuta());
+    rutaActual.setEstado(EstadoRuta.FINALIZADA);
+    repoRutas.save(rutaActual);
   }
 
   /** La ruta del chofer filtrada por su estado actual. */

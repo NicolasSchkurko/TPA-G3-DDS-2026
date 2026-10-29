@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,13 +33,16 @@ public class GestorPublicacionEventos {
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
     private final RepositorioEventoLogistica repoEventos;
+    private final RepositorioItemEntrega repoItemEntrega;
     private final ObjectMapper objectMapper;
     private final ProductorEventosLogistica productorEventos;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
+                                    RepositorioItemEntrega repoItemEntrega,
                                     ObjectMapper objectMapper,
                                     ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
+        this.repoItemEntrega = repoItemEntrega;
         this.objectMapper = objectMapper;
         this.productorEventos = productorEventos;
     }
@@ -123,7 +127,7 @@ public class GestorPublicacionEventos {
         );
 
         guardarEventoDeItem(item, evento);
-
+        repoItemEntrega.save(item);
         return item;
     }
 
