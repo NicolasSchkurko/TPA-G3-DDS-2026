@@ -116,11 +116,6 @@ public class GestorPublicacionEventos {
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
-        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA) {
-            throw new IllegalStateException("Solo se puede reingresar a depósito una entrega en estado NO_RECIBIDA "
-                    + "(estado actual: " + item.getEstado() + ").");
-        }
-
         item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
 
         EventoLogistica evento = new EventoLogistica(
