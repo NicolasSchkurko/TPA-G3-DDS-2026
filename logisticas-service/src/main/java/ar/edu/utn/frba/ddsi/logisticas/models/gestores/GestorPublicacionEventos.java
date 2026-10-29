@@ -133,7 +133,6 @@ public class GestorPublicacionEventos {
     }
 
     private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
-        evento.setItem(item);
         repoEventos.save(evento);
         item.getEventos().add(evento);
         publicarAlCommit(evento);

@@ -1,6 +1,4 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
-
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import lombok.Getter;
@@ -47,7 +45,6 @@ public class EventoLogistica {
   /** El ítem al que pertenece el evento (lado dueño; el lado muchos es
    *  {@code ItemEntrega.eventos}, mapeado por {@code mappedBy} sin {@code @JoinColumn}).
    *  Nullable a propósito: el {@code INICIO_RUTA} es de la ruta y lo dice su {@code referenciaId}. */
-  private ItemEntrega item;
 
   public EventoLogistica(String tipoEvento, String referenciaId, LocalDateTime fecha, String justificacion) {
     this.id = Secuencia.siguiente();
