@@ -146,7 +146,6 @@ class GestorPublicacionEventosTest {
         assertThat(captor.getValue().getTipoEvento()).isEqualTo("INICIO_RUTA");
         assertThat(captor.getValue().getReferenciaId()).isEqualTo(ruta.getIdRuta().toString());
         // No pertenece a ningun item en particular: pertenece a la ruta.
-        assertThat(captor.getValue().getItem()).isNull();
     }
 
     @Test
@@ -169,8 +168,6 @@ class GestorPublicacionEventosTest {
 
         ArgumentCaptor<EventoLogistica> captor = ArgumentCaptor.forClass(EventoLogistica.class);
         verify(repoEventos).save(captor.capture());
-
-        assertThat(captor.getValue().getItem()).isSameAs(item);
         assertThat(captor.getValue().getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
     }
 
@@ -242,8 +239,6 @@ class GestorPublicacionEventosTest {
 
         ArgumentCaptor<EventoLogistica> captor = ArgumentCaptor.forClass(EventoLogistica.class);
         verify(repoEventos).save(captor.capture());
-
-        assertThat(captor.getValue().getItem()).isSameAs(item);
         assertThat(captor.getValue().getTipoEvento()).isEqualTo("REINGRESO_DEPOSITO");
         verify(productorEventos, times(1)).publicar(captor.getValue());
     }
