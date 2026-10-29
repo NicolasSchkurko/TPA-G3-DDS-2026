@@ -1,17 +1,27 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.stereotype.Component;
 
+@Component
 public class Secuencia {
 
     private static MongoTemplate mongoTemplate;
 
+    private final MongoTemplate mongoTemplateInstance;
+
     public Secuencia(MongoTemplate mongoTemplate) {
-        Secuencia.mongoTemplate = mongoTemplate;
+        this.mongoTemplateInstance = mongoTemplate;
+    }
+
+    @PostConstruct
+    public void inicializar() {
+        Secuencia.mongoTemplate = mongoTemplateInstance;
     }
 
     public static Long siguiente() {
