@@ -13,6 +13,7 @@ import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class AsignacionScheduler {
@@ -33,6 +34,7 @@ public class AsignacionScheduler {
     }
 
     @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
+    @Transactional(rollbackFor = Exception.class)
     public void ejecutarAsignacion() {
         AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorAsignaciones,repositorioDeResultadosMatchmaking);
         List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();

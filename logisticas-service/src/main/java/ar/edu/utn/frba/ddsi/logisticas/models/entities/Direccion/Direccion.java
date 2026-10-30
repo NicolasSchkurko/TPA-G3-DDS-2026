@@ -1,51 +1,49 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "direccion")
+@Document(collection = "direccion")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Direccion {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id_direccion", nullable = false, updatable = false)
+    @Field(name = "id_direccion")
     private UUID idDireccion;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @Column(name = "calle_1")
+    @Field(name = "calle_1")
     private String calle1;
 
-    @Column(name = "calle_2")
+    @Field(name = "calle_2")
     private String calle2;
 
-    @Column(name = "altura")
+    @Field(name = "altura")
     private Integer altura;
 
-    @Column(name = "sin_altura")
+    @Field(name = "sin_altura")
     private Boolean sinAltura;
 
-    @Column(name = "piso")
+    @Field(name = "piso")
     private Integer piso;
 
-    @Column(name = "departamento")
+    @Field(name = "departamento")
     private String departamento;
 
-    @ManyToOne
-    @JoinColumn(name = "id_ciudad", referencedColumnName = "id_ciudad")
     private Ciudad ciudad;
 
     public Direccion(String calle1, String calle2, Integer altura, Integer piso, String departamento, String nombreCiudad, String nombreProvincia, String nombrePais){
+        this.idDireccion = UUID.randomUUID();
         this.calle1 = calle1;
         this.calle2 = calle2;
         this.altura = altura;

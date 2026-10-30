@@ -230,4 +230,23 @@ public class PerfilController {
         perfilService.eliminarPerfilPorBajaDeDonante(idUsuario);
         return ResponseEntity.ok().build();
     }
+
+    @Operation(
+        summary = "Actualizar perfil por modificación de donante (uso interno)",
+        description = "Lo invoca donaciones-service cuando se actualiza un donante, para propagar "
+            + "el nuevo nombre de usuario a incentivos. No requiere header de administrador. "
+            + "Idempotente: si el donante no llegó a tener perfil, responde 200 sin error."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Perfil actualizado con éxito, o no existía"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
+    })
+    @PutMapping("/interno/{idUsuario}")
+    public ResponseEntity<Void> actualizarPerfilPorModificacionDeDonante(
+        @Parameter(description = "UUID del donante modificado")
+        @PathVariable UUID idUsuario,
+        @RequestBody PerfilDonanteDTO dto) {
+        perfilService.actualizarPerfilPorModificacionDeDonante(idUsuario, dto);
+        return ResponseEntity.ok().build();
+    }
 }

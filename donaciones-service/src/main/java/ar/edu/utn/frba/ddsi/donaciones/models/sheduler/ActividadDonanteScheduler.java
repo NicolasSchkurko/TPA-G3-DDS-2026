@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.sheduler;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class ActividadDonanteScheduler {
@@ -13,6 +14,7 @@ public class ActividadDonanteScheduler {
     }
 
     @Scheduled(cron = "0 0 0 * * ?") // una vez por día
+    @Transactional(rollbackFor = Exception.class)
     public void revisarActividadDonantes() {
         service.revisarActividades();
     }

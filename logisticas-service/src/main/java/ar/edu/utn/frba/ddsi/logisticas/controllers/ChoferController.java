@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,17 +49,47 @@ public class ChoferController {
     }
 
     @Operation(summary = "Registrar un nuevo chofer")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Chofer registrado exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Datos del chofer inválidos"),
+            @ApiResponse(responseCode = "409", description = "El chofer ya se encuentra registrado")
+    })
     @PostMapping
-    public ResponseEntity<ChoferDTO> crearChofer(@RequestBody ChoferDTO request) {
-        ChoferDTO nuevo = choferService.create(request);
-        return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+    public ResponseEntity<?> crearChofer(@RequestBody ChoferDTO request) {
+        try {
+            ChoferDTO nuevo = choferService.create(request);
+            return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
+        } catch (DuplicateKeyException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Ya existe un chofer registrado con ese identificador");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al registrar el chofer: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "Registrar múltiples choferes")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Choferes registrados exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Datos de choferes inválidos"),
+            @ApiResponse(responseCode = "409", description = "Conflicto por clave duplicada")
+    })
     @PostMapping("/registrar")
-    public ResponseEntity<ChoferesDTO> registrarChoferes(@RequestBody ChoferesDTO choferes) {
-        ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
-        return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
+    public ResponseEntity<?> registrarChoferes(@RequestBody ChoferesDTO choferes) {
+        try {
+            ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
+            return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
+        } catch (DuplicateKeyException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Error de clave duplicada al registrar los choferes");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al registrar choferes: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "Actualizar datos de un chofer")

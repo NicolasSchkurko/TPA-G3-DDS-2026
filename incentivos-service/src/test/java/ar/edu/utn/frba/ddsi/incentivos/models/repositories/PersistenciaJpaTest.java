@@ -12,12 +12,16 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.PublicacionPendienteN8n;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.Ranking;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPublicacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioRankings;
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.PublicacionesN8nService;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
@@ -26,6 +30,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -59,6 +65,9 @@ class PersistenciaJpaTest {
 
     @Autowired
     private PublicacionesN8nService publicacionesN8nService;
+
+    @Autowired
+    private RepositorioRankings repositorioRankings;
 
     @MockBean
     private DonacionClient donacionClient;
@@ -169,6 +178,34 @@ class PersistenciaJpaTest {
         LocalDateTime ahora = LocalDateTime.now().plusSeconds(1);
 
         assertThat(publicacionesN8nService.reclamarSiguiente(ahora)).isPresent();
+    }
+
+    @Test
+    void historialRankingsPaginaCorrectamenteEnBaseDeDatos() {
+        RankingMensual r1 = new RankingMensual(YearMonth.of(2026, 1));
+        r1.agregarPosicion(new Ranking(r1, UUID.randomUUID(), "usuario1", 1, 10L));
+        entityManager.persist(r1);
+
+        RankingMensual r2 = new RankingMensual(YearMonth.of(2026, 2));
+        r2.agregarPosicion(new Ranking(r2, UUID.randomUUID(), "usuario2", 1, 15L));
+        entityManager.persist(r2);
+
+        RankingMensual r3 = new RankingMensual(YearMonth.of(2026, 3));
+        r3.agregarPosicion(new Ranking(r3, UUID.randomUUID(), "usuario3", 1, 20L));
+        entityManager.persist(r3);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Page<RankingMensual> pagina =
+            repositorioRankings.findAllByOrderByPeriodoDesc(PageRequest.of(0, 2));
+
+        assertThat(pagina.getTotalElements()).isEqualTo(3);
+        assertThat(pagina.getTotalPages()).isEqualTo(2);
+        assertThat(pagina.getContent()).hasSize(2);
+        assertThat(pagina.getContent().get(0).getPeriodo()).isEqualTo(YearMonth.of(2026, 3));
+        assertThat(pagina.getContent().get(1).getPeriodo()).isEqualTo(YearMonth.of(2026, 2));
+        assertThat(pagina.getContent().get(0).getPosiciones()).hasSize(1);
     }
 
     private Mision crearMision(AtributoImpacto atributo) {

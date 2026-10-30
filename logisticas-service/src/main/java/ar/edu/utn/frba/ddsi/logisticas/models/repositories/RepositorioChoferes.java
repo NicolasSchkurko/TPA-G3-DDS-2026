@@ -1,11 +1,11 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
 @Repository
-public interface RepositorioChoferes extends JpaRepository<Chofer, UUID> {
+public interface RepositorioChoferes extends MongoRepository<Chofer, UUID> {
 }

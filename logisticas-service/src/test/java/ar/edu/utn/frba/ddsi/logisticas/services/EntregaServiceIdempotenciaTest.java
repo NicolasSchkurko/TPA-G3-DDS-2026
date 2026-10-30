@@ -4,17 +4,15 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Ciudad;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorPublicacionEventos;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCiudades;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioDirecciones;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEntidades;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioPaises;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioProvincias;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioUnidadesDeMedida;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -86,6 +84,30 @@ class EntregaServiceIdempotenciaTest {
     void nadaRegistradoTodavia() {
         when(repoItemEntrega.existsById(any())).thenReturn(false);
 
+        Pais pais = new Pais();
+        pais.setIdPais("pais-1");
+        pais.setNombre("Argentina");
+
+        Provincia provincia = new Provincia();
+        provincia.setIdProvincia("provincia-1");
+        provincia.setNombre("Buenos Aires");
+        provincia.setPais(pais);
+
+        Ciudad ciudad = new Ciudad("CABA", provincia);
+        ciudad.setIdCiudad("ciudad-1");
+
+        Direccion direccion = new Direccion();
+        direccion.setIdDireccion(UUID.randomUUID());
+        direccion.setCiudad(ciudad);
+
+        Entidad entidad = new Entidad(ID_ENTIDAD, direccion);
+
+        when(repoPaises.save(any(Pais.class))).thenReturn(pais);
+        when(repoProvincias.save(any(Provincia.class))).thenReturn(provincia);
+        when(repoCiudades.save(any(Ciudad.class))).thenReturn(ciudad);
+        when(repoDirecciones.save(any(Direccion.class))).thenReturn(direccion);
+        when(repoEntidades.save(any(Entidad.class))).thenReturn(entidad);
+
         // El servicio abre sus propias transacciones con REQUIRES_NEW para aislar el
         // catalogo de los items. TransactionTemplate necesita un gestor y un
         // TransactionStatus para correr el bloque; la persistencia real ya esta
@@ -104,9 +126,7 @@ class EntregaServiceIdempotenciaTest {
         DireccionDTO direccion = new DireccionDTO(ID_ENTIDAD, "Av. Corrientes", "100", 100, 1,
                 "A", "CABA", "Buenos Aires", "Argentina");
 
-        EntregaDTO dto = new EntregaDTO(List.of(UUID.randomUUID()),
-                List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null)), direccion);
-        return dto;
+        return new EntregaDTO(idsDonaciones, bienes, direccion);
     }
 
     private static EntregaDTO peticionConUnBien() {
@@ -132,7 +152,6 @@ class EntregaServiceIdempotenciaTest {
         servicio.procesarPeticion(peticionConUnBien());
 
         verify(repoItemEntrega, never()).save(any(ItemEntrega.class));
-        verify(repoItemEntrega, never()).saveAndFlush(any(ItemEntrega.class));
     }
 
     @Test
@@ -150,7 +169,6 @@ class EntregaServiceIdempotenciaTest {
         // hubiera reescrito, el item en memoria seria el del constructor, en PENDIENTE.
         assertThat(entregado.getEstado()).isEqualTo(EstadoEntrega.ENTREGADA);
         verify(repoItemEntrega, never()).save(any());
-        verify(repoItemEntrega, never()).saveAndFlush(any());
     }
 
     @Test
@@ -177,7 +195,7 @@ class EntregaServiceIdempotenciaTest {
         // La entidad se guarda con saveAndFlush a proposito: el flush forzado hace visible
         // la violacion de clave primaria en el momento, que es lo que permite tratar la carrera
         // con otra instancia sin que se lleve por delante los items.
-        verify(repoEntidades, times(1)).saveAndFlush(any());
+        verify(repoEntidades, times(1)).save(any());
     }
 
     @Test

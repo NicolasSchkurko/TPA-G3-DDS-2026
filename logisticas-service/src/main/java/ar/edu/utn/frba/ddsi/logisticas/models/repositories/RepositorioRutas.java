@@ -3,14 +3,14 @@ package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
+public interface RepositorioRutas extends MongoRepository<Ruta, UUID> {
 
     default Optional<Ruta> findByIdDonacion(UUID idDonacion){
         return this.findAll().stream()
@@ -28,11 +28,19 @@ public interface RepositorioRutas extends JpaRepository<Ruta, UUID> {
     }
 
     default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
-        if (chofer == null || estado == null) return Optional.empty();
+        if (chofer == null || estado == null || chofer.getIdChofer() == null) {
+            return Optional.empty();
+        }
+
+        UUID idChofer = chofer.getIdChofer();
+
         return this.findAll().stream()
-                .filter(ruta -> ruta.getCamionAsignado() != null &&
-                        chofer.equals(ruta.getCamionAsignado().getChofer()) &&
-                        estado.equals(ruta.getEstado()))
+                .filter(ruta -> ruta.getCamionAsignado() != null)
+                .filter(ruta -> ruta.getCamionAsignado().getChofer() != null)
+                .filter(ruta -> idChofer.equals(
+                        ruta.getCamionAsignado().getChofer().getIdChofer()
+                ))
+                .filter(ruta -> estado.equals(ruta.getEstado()))
                 .findFirst();
     }
 }

@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -40,6 +41,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @Version
     private Long version;
 
+    @Column(length = 500)
     private String nombreUsuario;
 
     @ManyToOne
@@ -150,11 +152,11 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
 
         if (misionAnterior != null) {
             registerEvent(new MisionCambiada(
-                    misionAnterior.getNombreMision(),
-                    misionAnterior.getInsigniaObjetivo().getNombre(),
-                    this.nombreUsuario,
-                    this.idUsuario,
-                    misionNueva.getNombreMision()
+                misionAnterior.getNombreMision(),
+                misionAnterior.getInsigniaObjetivo().getNombre(),
+                this.nombreUsuario,
+                this.idUsuario,
+                misionNueva.getNombreMision()
             ));
         }
     }

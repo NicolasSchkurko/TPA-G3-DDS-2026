@@ -7,21 +7,21 @@ import java.util.List;
 import java.util.UUID;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "item_entrega")
+@Document(collection = "item_entrega")
 @Getter
 @Setter
 @NoArgsConstructor
 public class ItemEntrega {
     @Id
-    @Column(name = "id_donacion", nullable = false, updatable = false)
+    @Field(name = "id_donacion")
     private UUID idDonacion;
 
     /**
@@ -31,7 +31,6 @@ public class ItemEntrega {
      * {@code save()} va siempre por {@code merge()}.
      */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
     /**
@@ -39,30 +38,21 @@ public class ItemEntrega {
      * {@code item.parada} → {@code parada.ruta} → {@code ruta.paradas} vuelve al mismo objeto y
      * Jackson reventaría con {@code StackOverflowError}.
      */
-    @ManyToOne
-    @JoinColumn(name = "id_parada", referencedColumnName = "id_parada")
-    @JsonIgnore
-    private Parada parada;
 
-    @Column(name = "cantidad", nullable = false)
+    @Field(name = "cantidad")
     private Integer cantidad;
 
-    @ManyToOne
-    @JoinColumn(name = "id_unidad_medida", referencedColumnName = "id_unidad", nullable = false)
     private UnidadDeMedida unidad;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
+    @Field(name = "estado")
     private EstadoEntrega estado;
 
-    @Column(name = "fecha_cambio_estado", nullable = false)
+    @Field(name = "fecha_cambio_estado")
     private LocalDateTime fechaCambioEstado;
 
-    @Column(name = "foto_comprobante")
+    @Field(name = "foto_comprobante")
     private String fotoComprobante; // URL de la foto cargada por la entidad al confirmar recepción
 
-    @ManyToOne
-    @JoinColumn(name = "id_entidad_beneficiaria")
     private Entidad entidadDestino;
 
     /**
@@ -71,7 +61,6 @@ public class ItemEntrega {
      * <p>El {@code cascade} es lo que hace que el ítem se pueda borrar: MySQL rechaza el
      * {@code DELETE} de un ítem con eventos, así que el remove borra primero los hijos.
      */
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EventoLogistica> eventos;
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {

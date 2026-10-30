@@ -5,8 +5,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 @Component
 public class GestorCamiones {
     private final RepositorioCamiones repoCamiones;
@@ -30,13 +28,9 @@ public class GestorCamiones {
     }
 
     // --- MAPPERS ---
-    public void resetearCamion(Camion camion){
-        Optional<Camion> camionEncontrado = repoCamiones.findById(camion.getPatente());
-        if(camionEncontrado.isPresent()){
-            camionEncontrado.get().eliminarChofer();
-            camionEncontrado.get().disponible();
-            camionEncontrado.get().resetearCargaOcupada();
-            repoCamiones.save(camionEncontrado.get());
-        }
+    public void resetearCamion(Camion camion) {
+        camion.eliminarChofer();
+        camion.disponible();
+        camion.resetearCargaOcupada();
     }
 }

@@ -7,8 +7,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -21,17 +19,21 @@ public class Mail extends MedioDeContacto {
 
     public Mail(String dirMail, List<TipoDeMensaje> tiposDeMensajeProhibidos) {
         super(tiposDeMensajeProhibidos);
-        this.direccionMail = dirMail;
+        this.direccionMail = dirMail != null ? dirMail.toLowerCase().trim() : null;
     }
 
     public Mail(String dirMail) {
         super();
-        this.direccionMail = dirMail;
+        this.direccionMail = dirMail != null ? dirMail.toLowerCase().trim() : null;
+    }
+
+    public void setDireccionMail(String dirMail) {
+        this.direccionMail = dirMail != null ? dirMail.toLowerCase().trim() : null;
     }
 
     @Override
     public String getValor() {
-        return direccionMail;
+        return direccionMail != null ? direccionMail.toLowerCase().trim() : null;
     }
 
     @Override

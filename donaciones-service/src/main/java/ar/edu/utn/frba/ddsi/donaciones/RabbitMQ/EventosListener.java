@@ -49,7 +49,6 @@ public class EventosListener {
     }
 
     @RabbitListener(queues = RabbitMQConfig.COLA_EVENTOS)
-    @Transactional
     public void recibirEvento(EventoLogisticaDTO evento) {
         if (evento == null || evento.getId() == null) {
             log.warn("LLEGA un evento sin id, se descarta");
@@ -73,10 +72,9 @@ public class EventosListener {
             ultimoIdProcesado = evento.getId();
             log.info("Evento {} procesado", evento.getId());
         } catch (RuntimeException error) {
-            // Se aísla: si el error saliera del listener, el broker reintentaría el mismo
-            // mensaje para siempre y la cola quedaría trabada.
             log.error("No se pudo procesar el evento {}: {}",
                     evento.getId(), error.getMessage(), error);
+            throw error;
         }
     }
 

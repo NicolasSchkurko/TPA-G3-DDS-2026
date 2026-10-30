@@ -161,8 +161,8 @@ public class RankingService {
     }
 
     /**
-     * Todos los rankings publicados, del más reciente al más viejo. Usa {@code @EntityGraph}
-     * para evitar una consulta por ranking.
+     * Todos los rankings publicados, del más reciente al más viejo. Paginado en base
+     * de datos para evitar traer la totalidad del historial a memoria.
      */
     @Transactional(readOnly = true)
     public Page<RankingMesDTO> obtenerHistorialRankings(Pageable pageable) {

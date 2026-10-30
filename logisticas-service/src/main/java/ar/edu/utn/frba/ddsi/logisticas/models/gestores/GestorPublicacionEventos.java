@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.messaging.ProductorEventosLogistica;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,13 +33,16 @@ public class GestorPublicacionEventos {
     private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
 
     private final RepositorioEventoLogistica repoEventos;
+    private final RepositorioItemEntrega repoItemEntrega;
     private final ObjectMapper objectMapper;
     private final ProductorEventosLogistica productorEventos;
 
     public GestorPublicacionEventos(RepositorioEventoLogistica repoEventos,
+                                    RepositorioItemEntrega repoItemEntrega,
                                     ObjectMapper objectMapper,
                                     ProductorEventosLogistica productorEventos) {
         this.repoEventos = repoEventos;
+        this.repoItemEntrega = repoItemEntrega;
         this.objectMapper = objectMapper;
         this.productorEventos = productorEventos;
     }
@@ -107,11 +112,6 @@ public class GestorPublicacionEventos {
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
-        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA) {
-            throw new IllegalStateException("Solo se puede reingresar a depósito una entrega en estado NO_RECIBIDA "
-                    + "(estado actual: " + item.getEstado() + ").");
-        }
-
         item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
 
         EventoLogistica evento = new EventoLogistica(
@@ -119,13 +119,13 @@ public class GestorPublicacionEventos {
         );
 
         guardarEventoDeItem(item, evento);
-
+        repoItemEntrega.save(item);
         return item;
     }
 
     private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
-        evento.setItem(item);
         repoEventos.save(evento);
+        item.getEventos().add(evento);
         publicarAlCommit(evento);
     }
 

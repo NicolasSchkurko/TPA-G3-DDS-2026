@@ -53,6 +53,10 @@ public class DonacionListener {
                 // intentos ni se frena la cola.
                 log.warn("Donación descartada por datos inválidos: {}", errorDeNegocio.getMessage());
                 return;
+            } catch (DataIntegrityViolationException carrera) {
+                // Carrera de duplicados o clave primaria: otra instancia ya la registró con éxito
+                log.info("Donación ya registrada por otra instancia concurrente: {}", carrera.getMessage());
+                return;
             } catch (RuntimeException error) {
                 ultimoFallo = error;
                 log.warn("Falló el procesamiento de una donación (intento {} de {}): {}",

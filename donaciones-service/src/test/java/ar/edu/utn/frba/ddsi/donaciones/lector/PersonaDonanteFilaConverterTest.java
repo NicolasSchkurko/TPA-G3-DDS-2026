@@ -98,6 +98,22 @@ public class PersonaDonanteFilaConverterTest {
     }
 
     @Test
+    @DisplayName("Debe lanzar excepción si la fila no contiene nombre ni apellido o razón social")
+    void convertir_LanzaExcepcionPorNombreVacio() {
+        Map<String, String> fila = new HashMap<>();
+        fila.put("TipoPersona", "HUMANA");
+        fila.put("Documento", "12345678");
+
+        assertThrows(IllegalArgumentException.class, () -> converter.convertir(fila));
+
+        Map<String, String> filaEspacios = new HashMap<>();
+        filaEspacios.put("TipoPersona", "HUMANA");
+        filaEspacios.put("Nombre", "   ");
+        filaEspacios.put("Apellido", "");
+        assertThrows(IllegalArgumentException.class, () -> converter.convertir(filaEspacios));
+    }
+
+    @Test
     @DisplayName("Debe asignar 0 al documento si contiene letras o datos no parseables, sin romper el proceso")
     void convertir_ManejaExcepcionAlParsearDocumentos() {
         Map<String, String> fila = new HashMap<>();

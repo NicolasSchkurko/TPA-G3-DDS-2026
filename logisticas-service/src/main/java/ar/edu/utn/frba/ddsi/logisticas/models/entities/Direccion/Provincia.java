@@ -1,31 +1,28 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "provincia")
+@Document(collection = "provincia")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Provincia {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_provincia")
-    private Long idProvincia;
+    @Field(name = "id_provincia")
+    private String idProvincia;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @Column(name = "nombre", nullable = false)
+    @Field(name = "nombre")
     private String nombre;
 
-    @ManyToOne
-    @JoinColumn(name = "id_pais", referencedColumnName = "id_pais", nullable = false)
     private Pais pais;
 }
 

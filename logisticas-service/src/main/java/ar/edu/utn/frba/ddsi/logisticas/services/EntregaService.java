@@ -2,16 +2,22 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -64,6 +70,24 @@ public class EntregaService {
       this.gestorTransacciones = gestorTransacciones;
   }
 
+  @PostConstruct
+  public void inicializarCatalogoUnidades() {
+    try {
+      List<UnidadDeMedida> defaultUnits = List.of(
+              UnidadDeMedida.UNIDADES,
+              UnidadDeMedida.KILOGRAMOS,
+              UnidadDeMedida.LITROS
+      );
+      for (UnidadDeMedida unidad : defaultUnits) {
+        if (!repoUnidades.existsById(unidad.getIdUnidad())) {
+          repoUnidades.save(unidad);
+        }
+      }
+    } catch (Exception e) {
+      log.warn("No se pudo pre-cargar el catálogo de unidades de medida: {}", e.getMessage());
+    }
+  }
+
   // --- MÉTODOS CRUD BÁSICOS ---
   public BienesDTO findAll() {
       List<ItemEntrega> items = repoItemEntrega.findAll();
@@ -74,16 +98,42 @@ public class EntregaService {
    * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
    * los getters de la entidad y entraría en ciclo al serializar.
    */
-  public EntregaDTO findById(UUID id) {
+  public BienDTO findById(UUID id) {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
     if (item.isEmpty()){
       throw new IllegalArgumentException("Entrega no encontrada");
     }
-    DireccionDTO direccionDTO = new DireccionDTO(item.get().getEntidadDestino().getIdEntidadBeneficiaria(), item.get().getEntidadDestino().getDireccionDestino().getCalle1(), item.get().getEntidadDestino().getDireccionDestino().getCalle2(), item.get().getEntidadDestino().getDireccionDestino().getAltura(), item.get().getEntidadDestino().getDireccionDestino().getPiso(), item.get().getEntidadDestino().getDireccionDestino().getDepartamento(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
-    List<BienDTO> bienesDTO = new ArrayList<>();
-    bienesDTO.add(new BienDTO(item.get().getCantidad(), item.get().getUnidad().toString(), item.get().getEstado().toString(), item.get().getFechaCambioEstado(), item.get().getFotoComprobante(), direccionDTO, item.get().getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
-    EntregaDTO dto = new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
-    return dto;
+    DireccionDTO direccionDTO = null;
+    if (item.get().getEntidadDestino() != null && item.get().getEntidadDestino().getDireccionDestino() != null) {
+      var dir = item.get().getEntidadDestino().getDireccionDestino();
+      var ciudad = dir.getCiudad();
+      var provincia = ciudad != null ? ciudad.getProvincia() : null;
+      var pais = provincia != null ? provincia.getPais() : null;
+      direccionDTO = new DireccionDTO(
+          item.get().getEntidadDestino().getIdEntidadBeneficiaria(),
+          dir.getCalle1(),
+          dir.getCalle2(),
+          dir.getAltura(),
+          dir.getPiso(),
+          dir.getDepartamento(),
+          ciudad != null ? ciudad.getNombre() : null,
+          provincia != null ? provincia.getNombre() : null,
+          pais != null ? pais.getNombre() : null
+      );
+    }
+    List<EventoLogisticaDTO> eventosDTO = item.get().getEventos() != null
+        ? item.get().getEventos().stream().map(evento -> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()
+        : List.of();
+
+    return new BienDTO(
+        item.get().getCantidad(),
+        item.get().getUnidad() != null ? item.get().getUnidad().toString() : null,
+        item.get().getEstado() != null ? item.get().getEstado().toString() : null,
+        item.get().getFechaCambioEstado(),
+        item.get().getFotoComprobante(),
+        direccionDTO,
+        eventosDTO
+    );
   }
 
   /**
@@ -153,40 +203,91 @@ public class EntregaService {
  * {@code idEntidad} viene del mensaje.
  */
   private Entidad resolverEntidad(DireccionDTO dto) {
+
     if (dto == null) {
-      throw new IllegalArgumentException("La entidad beneficiaria no trae dirección");
+      throw new IllegalArgumentException(
+              "La entidad beneficiaria no trae dirección");
     }
 
     UUID idEntidad = dto.getIdEntidad();
+
     if (idEntidad == null) {
-      throw new IllegalArgumentException("El ID de la entidad beneficiaria no puede ser nulo");
+      throw new IllegalArgumentException(
+              "El ID de la entidad beneficiaria no puede ser nulo");
     }
 
     return enSuPropiaTransaccion(() -> {
-      // 1. Verificar primero si la entidad ya existe
-      Optional<Entidad> yaExistente = repoEntidades.findById(idEntidad);
+
+      Optional<Entidad> yaExistente =
+              repoEntidades.findById(idEntidad);
+
       if (yaExistente.isPresent()) {
         return yaExistente.get();
       }
 
-      // 2. Solo si no existe, construir y persistir el catálogo de dirección
-      Direccion direccion = this.convertirDireccionDTO(dto);
-
-      repoPaises.save(direccion.getCiudad().getProvincia().getPais());
-      repoProvincias.save(direccion.getCiudad().getProvincia());
-      repoCiudades.save(direccion.getCiudad());
-      repoDirecciones.save(direccion);
+      Direccion direccion = resolverDireccion(dto);
 
       try {
-        return repoEntidades.saveAndFlush(new Entidad(idEntidad, direccion));
+        return repoEntidades.save(
+                new Entidad(idEntidad, direccion));
+
       } catch (DataIntegrityViolationException carrera) {
-        // Otra instancia la insertó concurrentemente entre el findById y el save
-        log.info("La entidad {} ya fue registrada por otra instancia, se usa la existente", idEntidad);
-        return repoEntidades.findById(idEntidad).orElseThrow(
-                () -> new IllegalStateException(
-                        "La entidad " + idEntidad + " no se pudo resolver tras una carrera", carrera));
+
+        log.info(
+                "La entidad {} ya fue registrada por otra instancia",
+                idEntidad);
+
+        return repoEntidades.findById(idEntidad)
+                .orElseThrow(() -> new IllegalStateException(
+                        "La entidad " + idEntidad
+                                + " no se pudo resolver tras una carrera",
+                        carrera));
       }
     });
+  }
+
+  private Direccion resolverDireccion(DireccionDTO dto) {
+
+    // 1. Buscar el país o crearlo si no existe.
+    Pais pais = repoPaises.findByNombreIgnoreCase(dto.getPais())
+            .orElseGet(() -> {
+              Pais nuevoPais = new Pais();
+              nuevoPais.setNombre(dto.getPais());
+              return repoPaises.save(nuevoPais);
+            });
+
+    // 2. Buscar la provincia dentro de ese país o crearla.
+    Provincia provincia = repoProvincias
+            .findByNombreIgnoreCaseAndPais_IdPais(
+                    dto.getProvincia(), pais.getIdPais())
+            .orElseGet(() -> {
+              Provincia nuevaProvincia = new Provincia();
+              nuevaProvincia.setNombre(dto.getProvincia());
+              nuevaProvincia.setPais(pais);
+              return repoProvincias.save(nuevaProvincia);
+            });
+
+    // 3. Buscar la ciudad dentro de esa provincia o crearla.
+    Ciudad ciudad = repoCiudades
+            .findByNombreIgnoreCaseAndProvincia_IdProvincia(
+                    dto.getCiudad(), provincia.getIdProvincia())
+            .orElseGet(() -> {
+              Ciudad nuevaCiudad = new Ciudad(
+                      dto.getCiudad(), provincia);
+              return repoCiudades.save(nuevaCiudad);
+            });
+
+    // 4. Construir la dirección usando el catálogo resuelto.
+    Direccion direccion = new Direccion();
+    direccion.setIdDireccion(UUID.randomUUID());
+    direccion.setCalle1(dto.getCalleUno());
+    direccion.setCalle2(dto.getCalleDos());
+    direccion.setAltura(dto.getAltura());
+    direccion.setPiso(dto.getPiso());
+    direccion.setDepartamento(dto.getDepartamento());
+    direccion.setCiudad(ciudad);
+
+    return repoDirecciones.save(direccion);
   }
 
   /**
@@ -215,7 +316,6 @@ public class EntregaService {
         BienDTO bien = bienes.get(j);
 
         UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
-        repoUnidades.save(unidadDominio);
 
         ItemEntrega nuevoItem = new ItemEntrega(idDonacion, bien.getCantidad(), unidadDominio,
                 entidadDestino);
@@ -278,31 +378,54 @@ public class EntregaService {
         if(faltaTexto(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaEntregada = repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getFotoUrl()));
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, rutaEntregada, request.getFotoUrl()));
+        sincronizarItemEnRuta(rutaEntregada, item);
         break;
 
       case "NO_RECIBIDA":
         if(faltaTexto(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaFallida = repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getJustificacion()));
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaFallida(item, rutaFallida, request.getJustificacion()));
+        sincronizarItemEnRuta(rutaFallida, item);
         break;
 
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-        repoItemEntrega.saveAndFlush(gestorPublicacionEventos.publicarReingresoDeposito(item));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
+        repoRutas.findByIdDonacion(item.getIdDonacion()).ifPresent(ruta -> sincronizarItemEnRuta(ruta, item));
         break;
 
       default:
         throw new IllegalArgumentException("Estado no válido. Use ENTREGADA, NO_RECIBIDA o PENDIENTE.");
     }
 
-    repoItemEntrega.saveAndFlush(item);
+    repoItemEntrega.save(item);
+  }
+
+  private void sincronizarItemEnRuta(Ruta ruta, ItemEntrega item) {
+    if (ruta != null && ruta.getParadas() != null) {
+      for (Parada parada : ruta.getParadas()) {
+        if (parada.getItems() != null) {
+          for (ItemEntrega it : parada.getItems()) {
+            if (item.getIdDonacion().equals(it.getIdDonacion())) {
+              it.setEstado(item.getEstado());
+              it.setFotoComprobante(item.getFotoComprobante());
+              it.setFechaCambioEstado(item.getFechaCambioEstado());
+              it.setEventos(item.getEventos());
+            }
+          }
+        }
+      }
+      repoRutas.save(ruta);
+    }
   }
 
   /** {@code true} si el texto vino nulo o vacío. */

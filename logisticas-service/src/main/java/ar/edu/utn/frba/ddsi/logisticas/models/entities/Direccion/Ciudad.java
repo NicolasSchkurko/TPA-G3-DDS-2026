@@ -1,35 +1,33 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion;
 
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "ciudad")
+@Document(collection = "ciudad")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Ciudad {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_ciudad")
-    private Long idCiudad;
+    @Field(name = "id_ciudad")
+    private String idCiudad; //cambiamos en logistica el tipo de los id de "Long" a "String" para que Mongo pueda autoincrementar automaticamente el valor
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
     @Version
-    @Column(name = "version", nullable = false)
     private Long version;
 
-    @Column(name = "nombre", nullable = false)
+    @Field(name = "nombre")
     private String nombre;
 
-    @ManyToOne
-    @JoinColumn(name = "id_provincia", referencedColumnName = "id_provincia", nullable = false)
     private Provincia provincia;
 
     public Ciudad(String nombre, Provincia provincia){
         this.nombre = nombre;
         this.provincia = provincia;
+        /*preguntar */
     }
 }

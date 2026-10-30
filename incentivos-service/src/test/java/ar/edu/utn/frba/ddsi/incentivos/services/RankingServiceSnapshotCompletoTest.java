@@ -21,6 +21,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 @DisplayName("Punto 2: el ranking se persiste completo y el limite recorta la respuesta")
@@ -130,6 +133,30 @@ class RankingServiceSnapshotCompletoTest {
             assertThat(service.obtenerRanking(idRanking).getRanking())
                     .as("si el recorte vaciara el snapshot, el segundo pedido devolvería 3")
                     .hasSize(30);
+        }
+    }
+
+    @Nested
+    @DisplayName("Punto 43: el historial pagina en base de datos sin cargar todo en memoria")
+    class HistorialRankings {
+
+        @Test
+        @DisplayName("obtenerHistorialRankings delega el Pageable al repositorio y mapea a DTO")
+        void paginaHistorialConDelegacionYMapDTO() {
+            RankingMensual rm = new RankingMensual(YearMonth.of(2026, 3));
+            rm.agregarPosicion(new Ranking(rm, UUID.randomUUID(), "Donante 1", 1, 10L));
+
+            Pageable pageable = PageRequest.of(0, 10);
+            when(repoRankings.findAllByOrderByPeriodoDesc(pageable))
+                    .thenReturn(new PageImpl<>(List.of(rm), pageable, 1));
+
+            Page<RankingMesDTO> resultado = service.obtenerHistorialRankings(pageable);
+
+            assertThat(resultado.getTotalElements()).isEqualTo(1);
+            assertThat(resultado.getContent()).hasSize(1);
+            assertThat(resultado.getContent().get(0).getPeriodo()).isEqualTo(YearMonth.of(2026, 3));
+            assertThat(resultado.getContent().get(0).getRanking()).hasSize(1);
+            assertThat(resultado.getContent().get(0).getRanking().get(0).getNombreUsuario()).isEqualTo("Donante 1");
         }
     }
 

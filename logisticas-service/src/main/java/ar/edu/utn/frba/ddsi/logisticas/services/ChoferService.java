@@ -102,7 +102,7 @@ public class ChoferService {
 
   private Chofer convertirChoferDTO(ChoferDTO dto){
     if (dto == null) return null;
-    boolean esDisponible = dto.getDisponible() != null ? dto.getDisponible() : true;
+    boolean esDisponible = dto.getDisponible() == null || dto.getDisponible();
     return new Chofer(UUID.randomUUID(), dto.getNombre(), esDisponible);
   }
 }

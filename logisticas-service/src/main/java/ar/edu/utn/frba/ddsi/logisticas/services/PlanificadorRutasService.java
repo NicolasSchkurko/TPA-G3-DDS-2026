@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
@@ -80,16 +81,13 @@ public class PlanificadorRutasService {
         try {
             for (Ruta ruta : rutasGeneradas) {
 
-                repoRutas.saveAndFlush(ruta);
+                repoRutas.save(ruta);
 
                 for (Parada parada : ruta.getParadas()) {
-
-                    parada.setRuta(ruta);
-                    repoParadas.saveAndFlush(parada);
+                    repoParadas.save(parada);
 
                     for (ItemEntrega item : parada.getItems()) {
-                        item.setParada(parada);
-                        repoItemEntrega.saveAndFlush(item);
+                        repoItemEntrega.save(item);
                     }
                 }
             }
@@ -103,11 +101,22 @@ public class PlanificadorRutasService {
         return rutasGeneradas;
     }
 
-    public List<Ruta> asignarChoferes(List<Ruta> rutas){
+    public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas){
+        Set<UUID> choferesEnRutasActivas = repoRutas.findAll().stream()
+                .filter(ruta -> ruta.getEstado() != null && ruta.getEstado() != EstadoRuta.FINALIZADA)
+                .map(Ruta::getCamionAsignado)
+                .filter(Objects::nonNull)
+                .map(Camion::getChofer)
+                .filter(Objects::nonNull)
+                .map(Chofer::getIdChofer)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
         List<Chofer> choferesDisponibles = new ArrayList<>(
                 repoChoferes.findAll()
                         .stream()
                         .filter(Chofer::isDisponible)
+                        .filter(chofer -> !choferesEnRutasActivas.contains(chofer.getIdChofer()))
                         .toList()
         );
         Random random = new Random();
@@ -126,8 +135,9 @@ public class PlanificadorRutasService {
                     repoChoferes.save(choferElegido);
                 }
 
-                repoRutas.saveAndFlush(ruta);
+                repoRutas.save(ruta);
                 choferesDisponibles.remove(choferElegido);
+                choferesEnRutasActivas.add(choferElegido.getIdChofer());
             }
             return rutas;
         } else {
@@ -145,9 +155,10 @@ public class PlanificadorRutasService {
                     repoChoferes.save(chofer);
                 }
 
-                repoRutas.saveAndFlush(rutaElegida);
+                repoRutas.save(rutaElegida);
                 rutas.remove(rutaElegida);
                 rutasAsignadas.add(rutaElegida);
+                choferesEnRutasActivas.add(chofer.getIdChofer());
             }
             return rutasAsignadas;
         }

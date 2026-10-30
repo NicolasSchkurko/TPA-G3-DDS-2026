@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JuridicaTest {
@@ -34,6 +35,14 @@ public class JuridicaTest {
         assertEquals(1, persona.getRepresentantes().size());
         assertTrue(persona.getRepresentantes().contains(representante));
         assertEquals("Fundacion Ayuda", persona.getNombreDeUsuario());
+    }
+
+    @Test
+    public void noPermiteCrearJuridicaSinRazonSocial() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new Juridica(null, "ONGs", TipoJuridico.ONG, "20-123", List.of()));
+        assertThrows(IllegalArgumentException.class, () ->
+            new Juridica("   ", "ONGs", TipoJuridico.ONG, "20-123", List.of()));
     }
 
     @Test

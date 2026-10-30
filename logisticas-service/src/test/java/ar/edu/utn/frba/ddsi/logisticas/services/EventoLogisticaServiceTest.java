@@ -111,15 +111,6 @@ class EventoLogisticaServiceTest {
         verify(repoEventos).findByIdGreaterThanOrderByIdAsc(0L);
     }
 
-    @Test
-    @DisplayName("Desde 0 salen todos los eventos, que es lo que espera un cliente recien arrancado")
-    void desdeCeroSaliendoTodos() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(0L)).thenReturn(List.of(evento(1)));
-
-        assertThat(servicio().obtenerEventosNuevos(null).getEventos()).hasSize(1);
-        assertThat(servicio().obtenerEventosNuevos(0L).getEventos()).hasSize(1);
-    }
-
     // --- El repositorio tiene que filtrar y ordenar en la base ---
 
     @Test

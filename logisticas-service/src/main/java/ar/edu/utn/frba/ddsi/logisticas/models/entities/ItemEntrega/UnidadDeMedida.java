@@ -1,14 +1,16 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-@Entity
-@Table(name = "unidad_medida")
+@Document(collection = "unidad_medida")
 @Getter
 @Setter
 @NoArgsConstructor(force = true)
@@ -18,28 +20,28 @@ public class UnidadDeMedida {
     public static final UnidadDeMedida LITROS = new UnidadDeMedida("Litros", 1.0, 0.001);
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id_unidad", nullable = false, updatable = false)
+    @Field(name = "id_unidad")
     private UUID idUnidad;
 
-    /** Optimistic locking: una escritura concurrente tira OptimisticLockingFailureException en vez de pisar. */
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
-
-    @Column(name = "nombre", nullable = false)
+    @Field(name = "nombre")
     private String nombre;
 
-    @Column(name = "factor_peso_kg_por_unidad", nullable = false)
+    @Field(name = "factor_peso_kg_por_unidad")
     private double factorPesoKgPorUnidad;
 
-    @Column(name = "factor_volumen_m3_por_unidad", nullable = false)
+    @Field(name = "factor_volumen_m3_por_unidad")
     private double factorVolumenM3PorUnidad;
 
-    public UnidadDeMedida(String nombre, double factorPesoKgPorUnidad, double factorVolumenM3PorUnidad) {
+    public UnidadDeMedida(UUID idUnidad, String nombre, double factorPesoKgPorUnidad, double factorVolumenM3PorUnidad) {
+        this.idUnidad = idUnidad;
         this.nombre = nombre;
         this.factorPesoKgPorUnidad = factorPesoKgPorUnidad;
         this.factorVolumenM3PorUnidad = factorVolumenM3PorUnidad;
+    }
+
+    public UnidadDeMedida(String nombre, double factorPesoKgPorUnidad, double factorVolumenM3PorUnidad) {
+        this(UUID.nameUUIDFromBytes(nombre.toUpperCase().getBytes(StandardCharsets.UTF_8)),
+                nombre, factorPesoKgPorUnidad, factorVolumenM3PorUnidad);
     }
 
     public double calcularPesoKg(Integer cantidad) {
@@ -48,5 +50,10 @@ public class UnidadDeMedida {
 
     public double calcularVolumenM3(Integer cantidad) {
         return cantidad * factorVolumenM3PorUnidad;
+    }
+
+    @Override
+    public String toString() {
+        return nombre != null ? nombre : "";
     }
 }

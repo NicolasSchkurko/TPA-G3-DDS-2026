@@ -148,7 +148,7 @@ public class DonanteController {
   public ResponseEntity<?> eliminarMedioContacto(@PathVariable UUID id, @RequestBody MediosContactoDTO dto) {
     try {
       PersonaDonanteDTO actualizada = donanteService.eliminarMedioContacto(id, dto);
-      return new ResponseEntity<>(actualizada, HttpStatus.FOUND);
+      return ResponseEntity.ok(actualizada);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }

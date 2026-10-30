@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, Develop]
   pull_request:
 
 permissions:
@@ -24,8 +24,7 @@ jobs:
           - donaciones-service
           - incentivos-service
           - notificaciones-service
-          # logisticas-service queda afuera hasta estabilizar su suite. Ver issue #2:
-          # https://github.com/NicolasSchkurko/TPA-G3-DDS-2026/issues/2
+          - logisticas-service
     steps:
       - name: Checkout
         uses: actions/checkout@v4

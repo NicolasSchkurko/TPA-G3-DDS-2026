@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class GestorEventosLogistica {
@@ -39,6 +40,7 @@ public class GestorEventosLogistica {
     this.objectMapper = objectMapper;
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public void procesarEvento(EventoLogisticaDTO evento, List<MedioDeContacto> contactosAdministradores) {
     switch (evento.getTipoEvento()) {
       case "INICIO_RUTA":
@@ -146,7 +148,7 @@ public class GestorEventosLogistica {
 
     if (donacionOpt.isPresent()) {
       Donacion donacion = donacionOpt.get();
-      donacion.actualizarEstado(Estado.PENDIENTE_ASIGNACION, "Reingresado a depósito tras revisión de entrega fallida");
+      donacion.actualizarEstado(Estado.EN_DEPOSITO, "Reingresado a depósito tras revisión de entrega fallida");
       repositorioDonaciones.guardar(donacion);
     }
   }

@@ -47,13 +47,9 @@ class ConfiguracionArranqueTest {
         Properties propiedades = new Properties();
         propiedades.load(new java.io.StringReader(applicationProperties()));
 
-        // `${DB_USERNAME}` a secas: el placeholder sin nada despues de los dos puntos. Con un
-        // default (`:algo`) el servicio conectaba igual sin que nadie definiera la variable.
-        assertThat(propiedades.getProperty("spring.datasource.username"))
+        assertThat(propiedades.getProperty("spring.data.mongodb.uri"))
                 .as("con default, un deploy sin variables conecta con la credencial del codigo")
-                .isEqualTo("${DB_USERNAME}");
-        assertThat(propiedades.getProperty("spring.datasource.password"))
-                .isEqualTo("${DB_PASSWORD}");
+                .isEqualTo("${MONGODB_URI}");
     }
 
     /**
@@ -70,7 +66,7 @@ class ConfiguracionArranqueTest {
         Properties propiedades = new Properties();
         propiedades.load(new java.io.StringReader(applicationProperties()));
 
-        for (String clave : List.of("spring.datasource.username", "spring.datasource.password")) {
+        for (String clave : List.of("spring.data.mongodb.uri")) {
             String valor = propiedades.getProperty(clave);
             assertThat(valor)
                     .as("%s no debe traer nada despues de los dos puntos", clave)

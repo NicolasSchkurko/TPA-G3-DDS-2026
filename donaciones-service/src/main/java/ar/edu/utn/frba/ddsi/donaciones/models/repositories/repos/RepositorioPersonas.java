@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.PersonaJpa
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 
 import java.util.List;
 import java.util.Optional;
@@ -80,6 +81,14 @@ public class RepositorioPersonas {
         // UUID recién generado por su propio constructor. Pisar el @Id de existente con ese
         // valor hacía que el merge() de actualizar() insertara una fila duplicada en vez de
         // actualizar la original.
+
+        if (existente instanceof Humana ph && datosNuevos instanceof Humana phNuevos) {
+            ph.setNombre(phNuevos.getNombre());
+            ph.setApellido(phNuevos.getApellido());
+            ph.setEdad(phNuevos.getEdad());
+            ph.setNumeroDeDocumento(phNuevos.getNumeroDeDocumento());
+            ph.setGenero(phNuevos.getGenero());
+        }
 
         // Lógica propia de dominio extraída del Controller/Service
         if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {

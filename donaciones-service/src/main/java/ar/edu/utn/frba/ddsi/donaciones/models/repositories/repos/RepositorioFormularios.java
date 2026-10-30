@@ -38,6 +38,10 @@ public class RepositorioFormularios {
         return jpaRepository.findById(id);
     }
 
+    public void desvincularDonante(UUID donanteId) {
+        jpaRepository.desvincularDonante(donanteId);
+    }
+
     public void eliminarPorId(UUID id) {
         jpaRepository.deleteById(id);
     }

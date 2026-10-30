@@ -61,6 +61,9 @@ public class PersonaDonanteFilaConverter implements FilaConverter<Donante> {
     }
 
     private Donante instanciarDonante(String tipoPersona, String nombreRazonSocial, String documento) {
+        if (nombreRazonSocial == null || nombreRazonSocial.isBlank()) {
+            throw new IllegalArgumentException("La fila no tiene un nombre o razón social válido");
+        }
         switch (tipoPersona) {
             case "HUMANA":
                 return crearDonanteHumana(nombreRazonSocial, documento);
