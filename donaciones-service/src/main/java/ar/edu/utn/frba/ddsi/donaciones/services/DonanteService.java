@@ -147,7 +147,15 @@ public class DonanteService {
     if (existente.getPersona() != null && datosNuevos.getPersona() != null) {
       repositorioPersonas.modificarPersona(existente.getPersona().getId(), datosNuevos.getPersona());
     }
-    return PersonaDonanteDTO.from(repositorioDonantes.modificarDonante(id, datosNuevos));
+    Donante actualizado = repositorioDonantes.modificarDonante(id, datosNuevos);
+    if (actualizado != null && actualizado.getPersona() != null && incentivosClient != null) {
+      try {
+        incentivosClient.actualizarPerfil(id, perfilDe(actualizado));
+      } catch (Exception e) {
+        log.warn("No se pudo propagar la actualización del donante {} a incentivos: {}", id, e.getMessage());
+      }
+    }
+    return PersonaDonanteDTO.from(actualizado);
   }
 
   /**

@@ -98,15 +98,42 @@ public class EntregaService {
    * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
    * los getters de la entidad y entraría en ciclo al serializar.
    */
-  public EntregaDTO findById(UUID id) {
+  public BienDTO findById(UUID id) {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
     if (item.isEmpty()){
       throw new IllegalArgumentException("Entrega no encontrada");
     }
-    DireccionDTO direccionDTO = new DireccionDTO(item.get().getEntidadDestino().getIdEntidadBeneficiaria(), item.get().getEntidadDestino().getDireccionDestino().getCalle1(), item.get().getEntidadDestino().getDireccionDestino().getCalle2(), item.get().getEntidadDestino().getDireccionDestino().getAltura(), item.get().getEntidadDestino().getDireccionDestino().getPiso(), item.get().getEntidadDestino().getDireccionDestino().getDepartamento(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getNombre(), item.get().getEntidadDestino().getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
-    List<BienDTO> bienesDTO = new ArrayList<>();
-    bienesDTO.add(new BienDTO(item.get().getCantidad(), item.get().getUnidad().toString(), item.get().getEstado().toString(), item.get().getFechaCambioEstado(), item.get().getFotoComprobante(), direccionDTO, item.get().getEventos().stream().map(evento-> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()));
-      return new EntregaDTO(List.of(item.get().getIdDonacion()), bienesDTO, direccionDTO);
+    DireccionDTO direccionDTO = null;
+    if (item.get().getEntidadDestino() != null && item.get().getEntidadDestino().getDireccionDestino() != null) {
+      var dir = item.get().getEntidadDestino().getDireccionDestino();
+      var ciudad = dir.getCiudad();
+      var provincia = ciudad != null ? ciudad.getProvincia() : null;
+      var pais = provincia != null ? provincia.getPais() : null;
+      direccionDTO = new DireccionDTO(
+          item.get().getEntidadDestino().getIdEntidadBeneficiaria(),
+          dir.getCalle1(),
+          dir.getCalle2(),
+          dir.getAltura(),
+          dir.getPiso(),
+          dir.getDepartamento(),
+          ciudad != null ? ciudad.getNombre() : null,
+          provincia != null ? provincia.getNombre() : null,
+          pais != null ? pais.getNombre() : null
+      );
+    }
+    List<EventoLogisticaDTO> eventosDTO = item.get().getEventos() != null
+        ? item.get().getEventos().stream().map(evento -> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()
+        : List.of();
+
+    return new BienDTO(
+        item.get().getCantidad(),
+        item.get().getUnidad() != null ? item.get().getUnidad().toString() : null,
+        item.get().getEstado() != null ? item.get().getEstado().toString() : null,
+        item.get().getFechaCambioEstado(),
+        item.get().getFotoComprobante(),
+        direccionDTO,
+        eventosDTO
+    );
   }
 
   /**

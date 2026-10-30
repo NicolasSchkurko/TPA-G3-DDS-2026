@@ -70,14 +70,6 @@ public class GestorPublicacionEventos {
         evento.setPayloadJson(serializar(payload));
 
         repoEventos.save(evento);
-        ruta.getParadas().forEach(parada ->
-                parada.getItems().forEach(item -> {
-                    if(item.getEventos() == null) {
-                        item.setEventos(new ArrayList<>());
-                    }
-                    item.getEventos().add(evento);}
-                )
-        );
         publicarAlCommit(evento);
 
         return ruta;

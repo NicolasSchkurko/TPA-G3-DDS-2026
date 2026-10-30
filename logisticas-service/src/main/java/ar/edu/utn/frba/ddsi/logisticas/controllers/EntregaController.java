@@ -44,7 +44,7 @@ public class EntregaController {
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
         try {
-            EntregaDTO dto = entregaService.findById(id);
+            BienDTO dto = entregaService.findById(id);
             return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());

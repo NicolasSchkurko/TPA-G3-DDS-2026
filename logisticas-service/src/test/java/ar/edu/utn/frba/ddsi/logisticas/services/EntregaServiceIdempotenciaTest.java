@@ -126,8 +126,7 @@ class EntregaServiceIdempotenciaTest {
         DireccionDTO direccion = new DireccionDTO(ID_ENTIDAD, "Av. Corrientes", "100", 100, 1,
                 "A", "CABA", "Buenos Aires", "Argentina");
 
-        return new EntregaDTO(List.of(UUID.randomUUID()),
-                List.of(new BienDTO(1, "KILOGRAMOS", null, null, null, null, null)), direccion);
+        return new EntregaDTO(idsDonaciones, bienes, direccion);
     }
 
     private static EntregaDTO peticionConUnBien() {

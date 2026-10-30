@@ -45,12 +45,17 @@ public abstract class MedioDeContacto {
         String thatValor = that.getValor();
         return Objects.equals(thisTipo != null ? thisTipo.toUpperCase() : null,
                               thatTipo != null ? thatTipo.toUpperCase() : null)
-            && Objects.equals(thisValor, thatValor);
+            && Objects.equals(thisValor != null ? thisValor.toLowerCase().trim() : null,
+                              thatValor != null ? thatValor.toLowerCase().trim() : null);
     }
 
     @Override
     public int hashCode() {
         String tipo = getTipo();
-        return Objects.hash(tipo != null ? tipo.toUpperCase() : null, getValor());
+        String valor = getValor();
+        return Objects.hash(
+            tipo != null ? tipo.toUpperCase() : null,
+            valor != null ? valor.toLowerCase().trim() : null
+        );
     }
 }
