@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +30,8 @@ public class Ranking {
     private RankingMensual rankingMensual;
 
     private UUID idUsuario; // Para saber quién es sin cargar todo el perfil
+
+    @Column(length = 500)
     private String nombreUsuario; // Desnormalizado para lectura rápida en frontend
 
     private Integer puesto;

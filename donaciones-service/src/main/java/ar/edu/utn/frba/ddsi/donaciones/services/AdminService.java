@@ -5,6 +5,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrad
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,27 +51,25 @@ public AdminDTO getAdminPorId(UUID id) {
         return AdminDTO.from(nuevoAdmin);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public AdminDTO actualizarAdmin(UUID id, AdminDTO dto) {
-        // Mismo motivo que en getAdminPorId: .get() sobre un Optional vacio es una
-        // excepcion, y el null check de abajo no se ejecutaba nunca.
         Administrador existente = repositorioAdministradores.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "No se encontro la persona con ID: " + id));
+                        "No se encontró el administrador con ID: " + id));
 
         Administrador datosNuevos = dto.toDomain();
         if (existente.getHumano() != null && datosNuevos.getHumano() != null) {
             repositorioPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
+        } else if (datosNuevos.getHumano() != null) {
+            repositorioPersonas.registrarPersona(datosNuevos.getHumano());
+            existente.setHumano(datosNuevos.getHumano());
         }
         existente.setHumano(datosNuevos.getHumano());
         existente.setMedioDeContacto(datosNuevos.getContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 
-        try {
-            repositorioAdministradores.actualizar(id, datosNuevos);
-            System.out.println("Administrador actualizado con éxito.");
-        } catch (IllegalArgumentException e) {
-            System.err.println("Error al modificar administrador: " + e.getMessage());
-        }
+        repositorioAdministradores.actualizar(id, existente);
+        System.out.println("Administrador actualizado con éxito.");
         return AdminDTO.from(existente);
     }
 

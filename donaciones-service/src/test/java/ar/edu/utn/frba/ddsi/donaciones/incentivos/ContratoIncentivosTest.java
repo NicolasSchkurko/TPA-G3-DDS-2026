@@ -49,6 +49,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -282,5 +283,40 @@ public class ContratoIncentivosTest {
             assertEquals(fechaRealizacion, donacion.getFechaEntrega(),
                     "sin este valor, el reporte a incentivos sale con fecha nula (punto 10)");
         }
+    }
+
+    @Test
+    @DisplayName("La actualización de donante propaga el nuevo nombreUsuario a incentivos")
+    void actualizacionDeDonante_propagaAIncentivos() {
+        IncentivosClient cliente = mock(IncentivosClient.class);
+        RepositorioDonantes repoDonantes = mock(RepositorioDonantes.class);
+        RepositorioPersonas repoPersonas = mock(RepositorioPersonas.class);
+        DonanteService donanteService = new DonanteService(
+                repoPersonas,
+                mock(RepositorioCiudades.class),
+                mock(FabricaEstrategiasNotificacion.class),
+                cliente,
+                repoDonantes,
+                mock(java.util.concurrent.ExecutorService.class)
+        );
+
+        UUID idDonante = UUID.randomUUID();
+        ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana persona =
+                new ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana(
+                        "Juan", "Perez", 30, 12345678, ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero.HOMBRE);
+        Donante donante = new Donante(null, persona);
+        donante.setId(idDonante);
+
+        when(repoDonantes.buscarPorId(idDonante)).thenReturn(Optional.of(donante));
+        when(repoDonantes.modificarDonante(eq(idDonante), org.mockito.ArgumentMatchers.any())).thenReturn(donante);
+
+        PersonaDonanteDTO dto = new PersonaDonanteDTO();
+        dto.setTipoPersona("HUMANA");
+        dto.setNombre("Juan Carlos");
+        dto.setApellido("Perez Gomez");
+
+        donanteService.actualizarPersona(idDonante, dto);
+
+        verify(cliente).actualizarPerfil(eq(idDonante), org.mockito.ArgumentMatchers.any());
     }
 }

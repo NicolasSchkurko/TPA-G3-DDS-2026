@@ -37,7 +37,7 @@ public class PublicacionPendienteN8n {
     @Column(nullable = false, length = 100)
     private String redSocial;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String nombreUsuario;
 
     @Column(nullable = false)

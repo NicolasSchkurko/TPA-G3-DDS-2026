@@ -74,8 +74,10 @@ public class RutaService {
             EstadoRuta.PROGRAMADA
     );
 
-    List<Parada> paradas =
-            gestorPublicacionEventos.publicarInicioRuta(rutaActual).getParadas();
+    Ruta rutaConEvento = gestorPublicacionEventos.publicarInicioRuta(rutaActual);
+    repoRutas.save(rutaConEvento);
+
+    List<Parada> paradas = rutaConEvento.getParadas();
 
     for (Parada parada : paradas) {
       parada.getItems().forEach(repoItemEntrega::save);
@@ -120,6 +122,7 @@ public class RutaService {
   @Transactional
   public void terminarRuta(UUID idChofer) {
     Ruta rutaActual = rutaDelChoferPorEstado(idChofer, EstadoRuta.EN_CURSO);
+    rutaActual = obtenerRutaActualizada(rutaActual.getIdRuta());
 
     // 2. Procesamos el estado de los ítems
     for (Parada parada : rutaActual.getParadas()) {
@@ -147,7 +150,6 @@ public class RutaService {
     gestorCamiones.resetearCamion(camionDeRuta);
     repoCamiones.save(camionDeRuta);
 
-    rutaActual = obtenerRutaActualizada(rutaActual.getIdRuta());
     rutaActual.setEstado(EstadoRuta.FINALIZADA);
     repoRutas.save(rutaActual);
   }

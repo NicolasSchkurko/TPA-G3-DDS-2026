@@ -121,6 +121,21 @@ public class IncentivosClient {
     }
 
     /**
+     * Propaga la actualización del donante (nombreUsuario/role) a incentivos:
+     * {@code PUT /api/perfiles/interno/{idUsuario}}.
+     */
+    public void actualizarPerfil(UUID idUsuario, IDDTO dto) {
+        String url = url(RUTA_PERFIL_INTERNO + "/" + idUsuario);
+
+        try {
+            restTemplate.put(url, dto);
+            log.debug("Perfil actualizado en incentivos para {}", idUsuario);
+        } catch (Exception e) {
+            log.warn("No se pudo actualizar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
+        }
+    }
+
+    /**
      * Quita la barra final para poder componer rutas sin duplicar separadores.
      *
      * <p>La propiedad puede venir como {@code http://host:8082} o

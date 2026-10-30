@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -139,8 +140,9 @@ public class PerfilService {
      * Alta en lote: la importación CSV de donaciones manda hasta 500 perfiles por llamada.
      * Un perfil que ya existe se saltea (reintentar una importación parcial es idempotente) y
      * una fila rota no tumba el resto: el motivo queda en {@code errores}.
+     * Cada ítem se persiste en su propia transacción para que un fallo en la base de datos
+     * no marque la sesión en rollback-only ni anule a los perfiles válidos del lote.
      */
-    @Transactional
     public ResultadoLotePerfilesDTO crearPerfilesEnLote(List<PerfilDonanteDTO> perfiles) {
         int creados = 0;
         int yaExistian = 0;
@@ -148,18 +150,34 @@ public class PerfilService {
 
         for (PerfilDonanteDTO perfil : perfiles) {
             try {
-                if (repositorioPerfiles.existsById(perfil.getIdUsuario())) {
+                Boolean creado = transactionTemplate.execute(status -> {
+                    if (repositorioPerfiles.existsById(perfil.getIdUsuario())) {
+                        return false;
+                    }
+                    crearPerfilNuevo(perfil);
+                    return true;
+                });
+
+                if (Boolean.TRUE.equals(creado)) {
+                    creados++;
+                } else {
                     yaExistian++;
-                    continue;
                 }
-                crearPerfilNuevo(perfil);
-                creados++;
             } catch (Exception e) {
-                errores.add(perfil.getIdUsuario() + ": " + e.getMessage());
+                log.warn("Fallo al persistir perfil en lote {}: {}", perfil.getIdUsuario(), e.getMessage());
+                errores.add(formatearError(perfil.getIdUsuario(), e));
             }
         }
 
         return new ResultadoLotePerfilesDTO(creados, yaExistian, errores);
+    }
+
+    private String formatearError(UUID idUsuario, Exception e) {
+        if (e instanceof DataIntegrityViolationException) {
+            return idUsuario + ": Error de integridad de datos al persistir el perfil";
+        }
+        String msg = e.getMessage();
+        return idUsuario + ": " + (msg != null && !msg.isBlank() ? msg : e.getClass().getSimpleName());
     }
 
     private PerfilDTO crearPerfilNuevo(PerfilDonanteDTO dto) {
@@ -476,6 +494,24 @@ public class PerfilService {
             return;
         }
         borrarPerfilYHistorial(idUsuario);
+    }
+
+    /**
+     * Variante sin autenticación para propagar cambios de nombre de donante desde donaciones-service.
+     * Idempotente: si el donante no existe, no falla.
+     */
+    @Transactional
+    public void actualizarPerfilPorModificacionDeDonante(UUID idUsuario, PerfilDonanteDTO dto) {
+        if (idUsuario == null || dto == null) return;
+        Optional<Perfil> opt = repositorioPerfiles.findById(idUsuario);
+        if (opt.isEmpty()) return;
+
+        Perfil perfil = opt.get();
+        if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isBlank()) {
+            perfil.cambiarNombre(dto.getNombreUsuario().trim());
+            repositorioPerfiles.save(perfil);
+            log.debug("Perfil {} actualizado con nuevo nombreUsuario='{}'", idUsuario, perfil.getNombreUsuario());
+        }
     }
 
     /**

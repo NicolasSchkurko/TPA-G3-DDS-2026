@@ -51,6 +51,10 @@ public class RepositorioDonantes {
     jpaRepository.deleteById(id);
   }
 
+  public void flush() {
+    jpaRepository.flush();
+  }
+
   // --- Antes vivían en GestorDonantes: son manejo de dominio de la propia Donante,
   // se movieron acá para no mantener un gestor que solo delegaba en el repositorio. ---
 

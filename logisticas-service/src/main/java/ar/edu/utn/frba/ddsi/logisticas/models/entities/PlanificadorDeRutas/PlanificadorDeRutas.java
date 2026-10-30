@@ -6,6 +6,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.Prove
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -17,20 +19,39 @@ import java.util.UUID;
 @Component
 public class PlanificadorDeRutas {
 
+  private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutas.class);
   private static final int TAMANO_LOTE_MAXIMO = 100;
 
   private ProveedorRutasExterno proveedorExterno;
 
   /**
    * Manda las donaciones pendientes al proveedor externo en lotes de
-   * {@value #TAMANO_LOTE_MAXIMO}.
+   * {@value #TAMANO_LOTE_MAXIMO}, particionando también los camiones disponibles
+   * para que ningún camión viaje en más de un lote en el mismo día.
    */
   public void iniciarPlanificacion(List<ItemEntrega> itemsPendientes, List<Camion> camionesDisponibles) {
+    if (itemsPendientes == null || itemsPendientes.isEmpty() || camionesDisponibles == null || camionesDisponibles.isEmpty()) {
+      return;
+    }
 
+    int cantidadLotes = (int) Math.ceil((double) itemsPendientes.size() / TAMANO_LOTE_MAXIMO);
+    int camionesPorLote = Math.max(1, (int) Math.ceil((double) camionesDisponibles.size() / cantidadLotes));
+
+    int indiceCamion = 0;
     for (int i = 0; i < itemsPendientes.size(); i += TAMANO_LOTE_MAXIMO) {
-      int fin = Math.min(itemsPendientes.size(), i + TAMANO_LOTE_MAXIMO);
-      List<ItemEntrega> lote = itemsPendientes.subList(i, fin);
-      proveedorExterno.solicitarPlanificacion(lote, camionesDisponibles);
+      if (indiceCamion >= camionesDisponibles.size()) {
+        log.warn("No hay suficientes camiones disponibles para cubrir todos los lotes de pendientes hoy.");
+        break;
+      }
+
+      int finItems = Math.min(itemsPendientes.size(), i + TAMANO_LOTE_MAXIMO);
+      List<ItemEntrega> loteItems = itemsPendientes.subList(i, finItems);
+
+      int finCamiones = Math.min(camionesDisponibles.size(), indiceCamion + camionesPorLote);
+      List<Camion> loteCamiones = camionesDisponibles.subList(indiceCamion, finCamiones);
+
+      proveedorExterno.solicitarPlanificacion(loteItems, loteCamiones);
+      indiceCamion = finCamiones;
     }
   }
 

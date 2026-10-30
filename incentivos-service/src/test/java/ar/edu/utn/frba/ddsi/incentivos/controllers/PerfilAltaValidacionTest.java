@@ -29,6 +29,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -116,5 +117,19 @@ public class PerfilAltaValidacionTest {
         .andExpect(jsonPath("$.campos.perfiles").value("El lote requiere al menos un perfil"));
 
     verify(perfilService, never()).crearPerfilesEnLote(any());
+  }
+
+  @Test
+  @DisplayName("PUT /api/perfiles/interno/{idUsuario} propaga el cambio de nombre sin requerir Admin-Id")
+  void actualizacionInterna_noRequiereAdminId() throws Exception {
+    UUID id = UUID.randomUUID();
+    PerfilDonanteDTO dto = new PerfilDonanteDTO(id, "Nuevo Nombre", "DONANTE");
+
+    mockMvc.perform(put("/api/perfiles/interno/" + id)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new ObjectMapper().writeValueAsString(dto)))
+        .andExpect(status().isOk());
+
+    verify(perfilService).actualizarPerfilPorModificacionDeDonante(org.mockito.ArgumentMatchers.eq(id), any());
   }
 }

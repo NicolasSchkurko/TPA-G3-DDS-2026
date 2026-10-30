@@ -8,10 +8,13 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 @Component
 public class Secuencia {
 
     private static MongoTemplate mongoTemplate;
+    private static final AtomicLong fallbackEnMemoria = new AtomicLong(1);
 
     private final MongoTemplate mongoTemplateInstance;
 
@@ -24,7 +27,15 @@ public class Secuencia {
         Secuencia.mongoTemplate = mongoTemplateInstance;
     }
 
+    public static void setMongoTemplate(MongoTemplate template) {
+        Secuencia.mongoTemplate = template;
+    }
+
     public static Long siguiente() {
+        if (mongoTemplate == null) {
+            return fallbackEnMemoria.getAndIncrement();
+        }
+
         Query query = new Query(
                 Criteria.where("_id").is("evento_logistica")
         );
@@ -42,6 +53,8 @@ public class Secuencia {
                 SecuenciaDocumento.class
         );
 
-        return secuencia.getValor();
+        return (secuencia != null && secuencia.getValor() != null)
+                ? secuencia.getValor()
+                : fallbackEnMemoria.getAndIncrement();
     }
 }

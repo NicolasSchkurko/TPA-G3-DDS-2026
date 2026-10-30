@@ -32,6 +32,7 @@ public class RankingMensual {
     @Column(nullable = false, unique = true)
     private YearMonth periodo;
 
+    @org.hibernate.annotations.BatchSize(size = 30)
     @OneToMany(mappedBy = "rankingMensual", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("puesto ASC")
     private List<Ranking> posiciones = new ArrayList<>();

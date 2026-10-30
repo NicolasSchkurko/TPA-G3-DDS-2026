@@ -11,10 +11,13 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLog
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,6 +68,24 @@ public class EntregaService {
       this.repoUnidades = repoUnidades;
       this.gestorPublicacionEventos = gestorPublicacionEventos;
       this.gestorTransacciones = gestorTransacciones;
+  }
+
+  @PostConstruct
+  public void inicializarCatalogoUnidades() {
+    try {
+      List<UnidadDeMedida> defaultUnits = List.of(
+              UnidadDeMedida.UNIDADES,
+              UnidadDeMedida.KILOGRAMOS,
+              UnidadDeMedida.LITROS
+      );
+      for (UnidadDeMedida unidad : defaultUnits) {
+        if (!repoUnidades.existsById(unidad.getIdUnidad())) {
+          repoUnidades.save(unidad);
+        }
+      }
+    } catch (Exception e) {
+      log.warn("No se pudo pre-cargar el catálogo de unidades de medida: {}", e.getMessage());
+    }
   }
 
   // --- MÉTODOS CRUD BÁSICOS ---
@@ -268,7 +289,6 @@ public class EntregaService {
         BienDTO bien = bienes.get(j);
 
         UnidadDeMedida unidadDominio = mapearUnidadDeMedida(bien.getUnidadDeMedida());
-        repoUnidades.save(unidadDominio);
 
         ItemEntrega nuevoItem = new ItemEntrega(idDonacion, bien.getCantidad(), unidadDominio,
                 entidadDestino);
@@ -331,24 +351,29 @@ public class EntregaService {
         if(faltaTexto(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaEntregada = repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getFotoUrl()));
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, rutaEntregada, request.getFotoUrl()));
+        sincronizarItemEnRuta(rutaEntregada, item);
         break;
 
       case "NO_RECIBIDA":
         if(faltaTexto(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaFallida(item, repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaFallida = repoRutas.findByIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró la ruta correspondiente a la donación " + idDonacion)), request.getJustificacion()));
+                        "No se encontró la ruta correspondiente a la donación " + idDonacion));
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaFallida(item, rutaFallida, request.getJustificacion()));
+        sincronizarItemEnRuta(rutaFallida, item);
         break;
 
       case "PENDIENTE":
         // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
         // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
         repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
+        repoRutas.findByIdDonacion(item.getIdDonacion()).ifPresent(ruta -> sincronizarItemEnRuta(ruta, item));
         break;
 
       default:
@@ -356,6 +381,24 @@ public class EntregaService {
     }
 
     repoItemEntrega.save(item);
+  }
+
+  private void sincronizarItemEnRuta(Ruta ruta, ItemEntrega item) {
+    if (ruta != null && ruta.getParadas() != null) {
+      for (Parada parada : ruta.getParadas()) {
+        if (parada.getItems() != null) {
+          for (ItemEntrega it : parada.getItems()) {
+            if (item.getIdDonacion().equals(it.getIdDonacion())) {
+              it.setEstado(item.getEstado());
+              it.setFotoComprobante(item.getFotoComprobante());
+              it.setFechaCambioEstado(item.getFechaCambioEstado());
+              it.setEventos(item.getEventos());
+            }
+          }
+        }
+      }
+      repoRutas.save(ruta);
+    }
   }
 
   /** {@code true} si el texto vino nulo o vacío. */

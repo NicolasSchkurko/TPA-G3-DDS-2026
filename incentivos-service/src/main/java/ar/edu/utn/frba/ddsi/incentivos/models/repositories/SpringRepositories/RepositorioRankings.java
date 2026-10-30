@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,10 +23,10 @@ public interface RepositorioRankings extends JpaRepository<RankingMensual, UUID>
     Optional<RankingMensual> findByPeriodo(YearMonth periodo);
 
     /**
-     * El historial paginado, con las posiciones ya cargadas para evitar una consulta por
-     * ranking.
+     * El historial de rankings paginado, ordenado por período descendente.
+     * La paginación se realiza en base de datos con SQL LIMIT/OFFSET sin cargar
+     * el histórico completo en memoria.
      */
-    @EntityGraph(attributePaths = "posiciones")
     Page<RankingMensual> findAllByOrderByPeriodoDesc(Pageable pageable);
 
     /**

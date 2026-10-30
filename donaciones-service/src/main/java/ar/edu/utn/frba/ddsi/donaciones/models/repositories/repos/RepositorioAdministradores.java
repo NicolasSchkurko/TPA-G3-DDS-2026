@@ -45,6 +45,7 @@ public class RepositorioAdministradores {
 
     public void actualizar(UUID idOriginal, Administrador adminActualizado) {
         if (jpaRepository.existsById(idOriginal)) {
+            adminActualizado.setId(idOriginal);
             jpaRepository.save(adminActualizado);
         } else {
             throw new IllegalArgumentException("No se encontró el administrador a actualizar.");

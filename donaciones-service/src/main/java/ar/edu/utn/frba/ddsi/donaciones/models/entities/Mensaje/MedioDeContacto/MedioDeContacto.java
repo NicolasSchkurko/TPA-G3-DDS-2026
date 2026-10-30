@@ -9,28 +9,23 @@ import jakarta.persistence.InheritanceType;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @Getter
 @Setter
-
 public abstract class MedioDeContacto {
 
     @Id
     private UUID id = UUID.randomUUID();
 
-    //private List<TipoDeMensaje> tiposDeMensajeProhibidos;
-
     public MedioDeContacto(List<TipoDeMensaje> tiposDeMensajeProhibidos) {
-       // this.tiposDeMensajeProhibidos = new ArrayList<>(tiposDeMensajeProhibidos);
     }
 
     public MedioDeContacto() {
-      //  this.tiposDeMensajeProhibidos = new ArrayList<>();
     }
 
     public abstract String getValor();
@@ -38,18 +33,24 @@ public abstract class MedioDeContacto {
     public abstract String getTipo();
 
     public void enviarMensaje(Mensaje mensaje) {
-//        if (tiposDeMensajeProhibidos.contains(mensaje.getTipoDeMensaje())) {
-//            throw new IllegalArgumentException("Tipo de mensaje no permitido: " + mensaje.getTipoDeMensaje());
-//        }
     }
 
-//    public void agregarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
-//        this.tiposDeMensajeProhibidos.add(tipoDeMensaje);
-//    }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof MedioDeContacto that)) return false;
+        String thisTipo = getTipo();
+        String thatTipo = that.getTipo();
+        String thisValor = getValor();
+        String thatValor = that.getValor();
+        return Objects.equals(thisTipo != null ? thisTipo.toUpperCase() : null,
+                              thatTipo != null ? thatTipo.toUpperCase() : null)
+            && Objects.equals(thisValor, thatValor);
+    }
 
-//    public void eliminarTipoDeMensajeProhibido(TipoDeMensaje tipoDeMensaje) {
-//        this.tiposDeMensajeProhibidos.remove(tipoDeMensaje);
-//    }
-
-
+    @Override
+    public int hashCode() {
+        String tipo = getTipo();
+        return Objects.hash(tipo != null ? tipo.toUpperCase() : null, getValor());
+    }
 }

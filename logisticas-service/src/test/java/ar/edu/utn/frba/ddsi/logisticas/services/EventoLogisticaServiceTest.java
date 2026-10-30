@@ -117,7 +117,7 @@ class EventoLogisticaServiceTest {
     @DisplayName("El repositorio es una derived query, no un default que filtra en memoria")
     void elRepositorioEsUnaDerivedQuery() throws NoSuchMethodException {
         Method metodo = RepositorioEventoLogistica.class
-                .getMethod("findByIdGreaterThanOrderByIdAsc", String.class);
+                .getMethod("findByIdGreaterThanOrderByIdAsc", Long.class);
 
         // Un default method trae el cuerpo puesto y por lo tanto no lo genera Spring Data:
         // el findAll() + stream de antes era Java, no SQL, y por eso no garantizaba el orden.

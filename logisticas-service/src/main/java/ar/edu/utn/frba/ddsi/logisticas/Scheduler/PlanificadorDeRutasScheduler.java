@@ -5,8 +5,11 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.ProveedorRutasExterno.ProveedorRutasExterno;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,17 +29,27 @@ public class PlanificadorDeRutasScheduler {
 
   private final RepositorioItemEntrega repoItemEntrega;
   private final RepositorioCamiones repoCamiones;
+  private final RepositorioRutas repoRutas;
   private final PlanificadorDeRutas planificadorDominio;
+
+  public PlanificadorDeRutasScheduler(
+          ProveedorRutasExterno proveedorExterno,
+          RepositorioItemEntrega repoItemEntrega,
+          RepositorioCamiones repoCamiones) {
+    this(proveedorExterno, repoItemEntrega, repoCamiones, null);
+  }
 
   @Autowired
   public PlanificadorDeRutasScheduler(
           ProveedorRutasExterno proveedorExterno,
           RepositorioItemEntrega repoItemEntrega,
-          RepositorioCamiones repoCamiones) {
+          RepositorioCamiones repoCamiones,
+          RepositorioRutas repoRutas) {
     this.planificadorDominio = new PlanificadorDeRutas();
     this.planificadorDominio.setProveedorExterno(proveedorExterno);
     this.repoItemEntrega = repoItemEntrega;
     this.repoCamiones = repoCamiones;
+    this.repoRutas = repoRutas;
   }
 
   @Scheduled(cron = "0 0 2 * * ?", zone = ZonaPlanificacion)
@@ -45,7 +58,18 @@ public class PlanificadorDeRutasScheduler {
     List<Camion> camionesDisponibles;
 
     try {
-      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE);
+      Set<UUID> idsItemsEnRutasActivas = (repoRutas != null)
+              ? repoRutas.findAll().stream()
+                  .filter(ruta -> ruta.getEstado() != null && ruta.getEstado() != EstadoRuta.FINALIZADA)
+                  .flatMap(ruta -> ruta.obtenerTodosLosItems().stream())
+                  .map(ItemEntrega::getIdDonacion)
+                  .filter(Objects::nonNull)
+                  .collect(Collectors.toSet())
+              : Collections.emptySet();
+
+      itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
+              .filter(item -> !idsItemsEnRutasActivas.contains(item.getIdDonacion()))
+              .collect(Collectors.toList());
 
       camionesDisponibles = repoCamiones.findAll().stream()
               .filter(Camion::getDisponible)
@@ -61,12 +85,6 @@ public class PlanificadorDeRutasScheduler {
       return;
     }
 
-    for (int inicio = 0; inicio < itemsPendientes.size(); inicio += TAMANO_LOTE_MAXIMO) {
-      List<ItemEntrega> lote = itemsPendientes.subList(
-              inicio, Math.min(inicio + TAMANO_LOTE_MAXIMO, itemsPendientes.size()));
-
-      // Se pasa la lista de camiones disponibles; la aislación de estado la realiza el proveedor/simulador por lote
-      planificadorDominio.iniciarPlanificacion(lote, camionesDisponibles);
-    }
+    planificadorDominio.iniciarPlanificacion(itemsPendientes, camionesDisponibles);
   }
 }

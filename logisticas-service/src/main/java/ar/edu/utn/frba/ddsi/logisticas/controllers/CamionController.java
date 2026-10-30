@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -45,18 +46,48 @@ public class CamionController {
   }
 
   @Operation(summary = "Registrar un nuevo camión")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "201", description = "Camión registrado exitosamente"),
+          @ApiResponse(responseCode = "400", description = "Datos del camión inválidos"),
+          @ApiResponse(responseCode = "409", description = "La patente ya se encuentra registrada")
+  })
   @PostMapping
-  public ResponseEntity<CamionDTO> crearCamion(@RequestBody CamionDTO request) {
-    CamionDTO nuevoCamion = camionService.create(request);
-    return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
+  public ResponseEntity<?> crearCamion(@RequestBody CamionDTO request) {
+    try {
+      CamionDTO nuevoCamion = camionService.create(request);
+      return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
+    } catch (DuplicateKeyException e) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+              .body("Ya existe un camión registrado con la patente: " + (request != null ? request.getPatente() : ""));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body("Error al registrar el camión: " + e.getMessage());
+    }
   }
 
   @Operation(summary = "Registrar múltiples camiones")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "201", description = "Camiones registrados exitosamente"),
+          @ApiResponse(responseCode = "400", description = "Datos de los camiones inválidos"),
+          @ApiResponse(responseCode = "409", description = "Conflicto por patente duplicada")
+  })
   @PostMapping("/registrar")
-  public ResponseEntity<CamionesDTO> registrarCamiones(@RequestBody CamionesDTO camiones) {
-    CamionesDTO nuevosCamiones = camionService.createMultiple(camiones);
-  return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
-}
+  public ResponseEntity<?> registrarCamiones(@RequestBody CamionesDTO camiones) {
+    try {
+      CamionesDTO nuevosCamiones = camionService.createMultiple(camiones);
+      return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
+    } catch (DuplicateKeyException e) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+              .body("Error de clave duplicada: una o más patentes ya se encuentran registradas");
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body("Error al registrar camiones: " + e.getMessage());
+    }
+  }
 
   @Operation(summary = "Actualizar un camión existente")
   @ApiResponses(value = {

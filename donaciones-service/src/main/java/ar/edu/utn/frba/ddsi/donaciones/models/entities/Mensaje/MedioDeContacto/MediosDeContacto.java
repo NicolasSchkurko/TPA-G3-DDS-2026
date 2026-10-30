@@ -48,18 +48,19 @@ public class MediosDeContacto {
     }
 
     public void eliminarMedioDeContacto(MedioDeContacto medioDeContacto) {
+        if (medioDeContacto == null) return;
         // Si se borra el predeterminado, hay que promover otro ANTES de sacarlo de la lista:
         // listaMediosDeContacto tiene orphanRemoval=true, así que Hibernate borra la fila en el
         // flush, y medioDeContactoPredeterminado (que no es dueño de la relación) quedaba
         // apuntando a un id inexistente.
-        if (medioDeContacto != null && medioDeContacto.equals(this.medioDeContactoPredeterminado)) {
+        if (medioDeContacto.equals(this.medioDeContactoPredeterminado)) {
             this.listaMediosDeContacto.stream()
                     .filter(m -> !m.equals(medioDeContacto))
                     .findFirst()
                     .ifPresentOrElse(this::setMedioDeContactoPredeterminado,
                             () -> this.medioDeContactoPredeterminado = null);
         }
-        this.listaMediosDeContacto.remove(medioDeContacto);
+        this.listaMediosDeContacto.removeIf(m -> m.equals(medioDeContacto));
     }
 
     public void eliminarMediosDeContacto(List<MedioDeContacto> mediosDeContacto) {

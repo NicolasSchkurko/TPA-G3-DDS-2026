@@ -19,7 +19,14 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiud
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioFormularios;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -41,11 +48,15 @@ public class DonanteService {
   /** Máximo de perfiles por llamada al alta en lote de incentivos (contrato: 500). */
   private static final int TAMANO_LOTE_PERFILES = 500;
 
+  private static final Logger log = LoggerFactory.getLogger(DonanteService.class);
+
   private final RepositorioPersonas repositorioPersonas;
   private final RepositorioCiudades repositorioCiudades;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
   private final RepositorioDonantes repositorioDonantes;
+  private final RepositorioDonaciones repositorioDonaciones;
+  private final RepositorioFormularios repositorioFormularios;
 
   /** Reportes en memoria de importaciones CSV en curso/terminadas, consultables por id. */
   private final Map<UUID, ReporteImportacionDTO> reportesImportacion = new ConcurrentHashMap<>();
@@ -57,13 +68,29 @@ public class DonanteService {
   public DonanteService(RepositorioPersonas repositorioPersonas,
                         RepositorioCiudades repositorioCiudades,
                         FabricaEstrategiasNotificacion fabricaEstrategias,
-                        IncentivosClient incentivosClient, RepositorioDonantes repositorioDonantes,
+                        IncentivosClient incentivosClient,
+                        RepositorioDonantes repositorioDonantes,
+                        ExecutorService executorImportacion) {
+    this(repositorioPersonas, repositorioCiudades, fabricaEstrategias, incentivosClient,
+         repositorioDonantes, null, null, executorImportacion);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public DonanteService(RepositorioPersonas repositorioPersonas,
+                        RepositorioCiudades repositorioCiudades,
+                        FabricaEstrategiasNotificacion fabricaEstrategias,
+                        IncentivosClient incentivosClient,
+                        RepositorioDonantes repositorioDonantes,
+                        RepositorioDonaciones repositorioDonaciones,
+                        RepositorioFormularios repositorioFormularios,
                         ExecutorService executorImportacion) {
     this.repositorioPersonas = repositorioPersonas;
     this.repositorioCiudades = repositorioCiudades;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repositorioDonantes = repositorioDonantes;
+    this.repositorioDonaciones = repositorioDonaciones;
+    this.repositorioFormularios = repositorioFormularios;
     this.executorImportacion = executorImportacion;
   }
 
@@ -124,15 +151,51 @@ public class DonanteService {
   }
 
   /**
-   * Se avisa primero a incentivos (mismo orden que {@link #crearPersona}: allá también se
-   * llama a incentivos antes de persistir el lado local) para no dejar un perfil húerfano si
-   * incentivos está caído -- si la llamada falla, la excepción se propaga y el donante no se
-   * borra, en vez de quedar borrado acá y vivo del otro lado.
+   * Da de baja a un donante del sistema.
+   *
+   * <p>Punto 34: Desvincula previamente las donaciones y formularios asociados para evitar
+   * violaciones de integridad referencial (claves foráneas) al momento de eliminar el donante.
+   *
+   * <p>Punto 35: Notifica la baja a incentivos-service SOLO una vez confirmado el borrado
+   * local en la base de datos (después del commit o flush), capturando cualquier excepción para que
+   * caídas o demoras de incentivos no aborten la baja local ni provoquen inconsistencias.
    */
+  @Transactional(rollbackFor = Exception.class)
   public void eliminarPersona(UUID id) {
-    incentivosClient.eliminarPerfil(id);
+    if (repositorioDonantes.buscarPorId(id).isEmpty()) {
+      return;
+    }
+
+    if (repositorioDonaciones != null) {
+      repositorioDonaciones.desvincularDonante(id);
+    }
+    if (repositorioFormularios != null) {
+      repositorioFormularios.desvincularDonante(id);
+    }
+
     repositorioDonantes.eliminarPorId(id);
-    System.out.println("Donante dado de baja (si existía).");
+    repositorioDonantes.flush();
+
+    Runnable notificarIncentivos = () -> {
+      try {
+        incentivosClient.eliminarPerfil(id);
+      } catch (Exception e) {
+        log.warn("No se pudo notificar la baja a incentivos-service para el donante {}: {}", id, e.getMessage());
+      }
+    };
+
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          notificarIncentivos.run();
+        }
+      });
+    } else {
+      notificarIncentivos.run();
+    }
+
+    System.out.println("Donante dado de baja con éxito.");
   }
 
   public UUID importarDonantes(MultipartFile file, List<MapeoCSV> mapeosCsv) {
@@ -224,6 +287,7 @@ public class DonanteService {
     return List.of();
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public PersonaDonanteDTO agregarMedioContacto(UUID id, MediosContactoDTO dto) {
     Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
     if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
@@ -231,6 +295,7 @@ public class DonanteService {
     return PersonaDonanteDTO.from(donante);
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public PersonaDonanteDTO eliminarMedioContacto(UUID id, MediosContactoDTO dto) {
     Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
     if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
@@ -238,6 +303,7 @@ public class DonanteService {
     return PersonaDonanteDTO.from(donante);
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public void revisarActividades(){
     for (Donante p : repositorioDonantes.obtenerTodos()) {
       if (p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
