@@ -19,17 +19,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 public class LectorCSVtest {
 
-
-  private final FilaConverter<String> mockConverter = fila -> {
-    if (fila.containsKey("Nombre") && fila.get("Nombre").equals("DESCARTAR")) { //Si detecta DESCARTAR lanza excepcion
-      throw new IllegalArgumentException("Nombre inválido: DESCARTAR");
-    }
-    return fila.get("Nombre") + "-" + fila.get("Edad"); //Sino devuelve nombre - edad
-  };
-
   private InputStream crearStreamDesdeString(String contenido) {
     return new ByteArrayInputStream(contenido.getBytes(StandardCharsets.UTF_8));
   }
+  private final FilaConverter<String> mockConverter = fila -> {
+    if (fila.containsKey("nombre")
+            && fila.get("nombre").equals("DESCARTAR")) {
+      throw new IllegalArgumentException(
+              "Nombre inválido: DESCARTAR");
+    }
+
+    return fila.get("nombre") + "-" + fila.get("edad");
+  };
 
   @Test
   @DisplayName("Debe importar correctamente un CSV bien formateado")
