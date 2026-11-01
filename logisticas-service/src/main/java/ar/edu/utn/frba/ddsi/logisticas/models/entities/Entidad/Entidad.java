@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.data.annotation.Id;
@@ -29,5 +30,18 @@ public class Entidad {
   public Entidad(UUID idEntidadBeneficiaria, Direccion direccionDestino){
     this.idEntidadBeneficiaria = idEntidadBeneficiaria;
     this.direccionDestino = direccionDestino;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Entidad entidad = (Entidad) o;
+    return idEntidadBeneficiaria != null && Objects.equals(idEntidadBeneficiaria, entidad.idEntidadBeneficiaria);
+  }
+
+  @Override
+  public int hashCode() {
+    return idEntidadBeneficiaria != null ? Objects.hash(idEntidadBeneficiaria) : 0;
   }
 }

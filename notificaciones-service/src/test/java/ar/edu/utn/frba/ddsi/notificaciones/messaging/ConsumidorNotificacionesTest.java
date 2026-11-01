@@ -1,0 +1,397 @@
+package ar.edu.utn.frba.ddsi.notificaciones.messaging;
+
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.gestores.GestorNotificaciones;
+import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.repository.query.FluentQuery;
+
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ConsumidorNotificacionesTest {
+
+    private StubGestor gestor;
+    private StubRepositorio repositorio;
+    private ObjectMapper objectMapper;
+    private ConsumidorNotificaciones consumidor;
+
+    static class StubGestor extends GestorNotificaciones {
+        String ultimoMedio;
+        String ultimaDireccion;
+        String ultimoAsunto;
+        String ultimoCuerpo;
+        boolean lanzarErrorEnSolicitud = false;
+        int llamadasEnviarNotificacion = 0;
+        int llamadasEnviarSolicitud = 0;
+        String ultimoIdSolicitud;
+        Notificacion ultimaNotificacionDespachada;
+        final RepositorioNotificaciones repo;
+
+        public StubGestor(RepositorioNotificaciones repo) {
+            super(repo, null, null);
+            this.repo = repo;
+        }
+
+        @Override
+        public void enviarSolicitudDeNotificacion(String idSolicitud, String tipoMedio, String direccion, String asunto, String cuerpo) {
+            if (lanzarErrorEnSolicitud) {
+                throw new DataAccessResourceFailureException("MySQL fuera de línea");
+            }
+            this.llamadasEnviarSolicitud++;
+            this.ultimoIdSolicitud = idSolicitud;
+            this.ultimoMedio = tipoMedio;
+            this.ultimaDireccion = direccion;
+            this.ultimoAsunto = asunto;
+            this.ultimoCuerpo = cuerpo;
+            if (repo != null) {
+                Notificacion n = new Notificacion(idSolicitud, direccion, tipoMedio, new Mensaje(asunto, cuerpo));
+                repo.save(n);
+            }
+        }
+
+        @Override
+        public void enviarSolicitudDeNotificacion(String tipoMedio, String direccion, String asunto, String cuerpo) {
+            enviarSolicitudDeNotificacion(null, tipoMedio, direccion, asunto, cuerpo);
+        }
+
+        @Override
+        public void enviarNotificacion(String tipoMedio, String direccion, Notificacion notificacion) {
+            this.llamadasEnviarNotificacion++;
+            this.ultimoMedio = tipoMedio;
+            this.ultimaDireccion = direccion;
+            this.ultimaNotificacionDespachada = notificacion;
+        }
+    }
+
+    static class StubRepositorio implements RepositorioNotificaciones {
+        Map<UUID, Notificacion> tabla = new HashMap<>();
+        Map<String, Notificacion> tablaPorIdSolicitud = new HashMap<>();
+
+        @Override
+        public Optional<Notificacion> findById(UUID id) {
+            return Optional.ofNullable(tabla.get(id));
+        }
+
+        @Override
+        public Optional<Notificacion> findByIdSolicitud(String idSolicitud) {
+            return Optional.ofNullable(tablaPorIdSolicitud.get(idSolicitud));
+        }
+
+        @Override
+        public <S extends Notificacion> S save(S entity) {
+            tabla.put(entity.getId(), entity);
+            if (entity.getIdSolicitud() != null) {
+                tablaPorIdSolicitud.put(entity.getIdSolicitud(), entity);
+            }
+            return entity;
+        }
+
+        @Override public void flush() {}
+        @Override public <S extends Notificacion> S saveAndFlush(S entity) { return null; }
+        @Override public <S extends Notificacion> List<S> saveAllAndFlush(Iterable<S> entities) { return null; }
+        @Override public void deleteAllInBatch(Iterable<Notificacion> entities) {}
+        @Override public void deleteAllByIdInBatch(Iterable<UUID> ids) {}
+        @Override public void deleteAllInBatch() {}
+        @Override public Notificacion getOne(UUID id) { return null; }
+        @Override public Notificacion getById(UUID id) { return null; }
+        @Override public Notificacion getReferenceById(UUID id) { return null; }
+        @Override public <S extends Notificacion> Optional<S> findOne(Example<S> example) { return Optional.empty(); }
+        @Override public <S extends Notificacion> List<S> findAll(Example<S> example) { return null; }
+        @Override public <S extends Notificacion> List<S> findAll(Example<S> example, Sort sort) { return null; }
+        @Override public <S extends Notificacion> Page<S> findAll(Example<S> example, Pageable pageable) { return null; }
+        @Override public <S extends Notificacion> long count(Example<S> example) { return 0; }
+        @Override public <S extends Notificacion> boolean exists(Example<S> example) { return false; }
+        @Override public <S extends Notificacion, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { return null; }
+        @Override public <S extends Notificacion> List<S> saveAll(Iterable<S> entities) { return null; }
+        @Override public boolean existsById(UUID id) { return false; }
+        @Override public List<Notificacion> findAll() { return null; }
+        @Override public List<Notificacion> findAllById(Iterable<UUID> ids) { return null; }
+        @Override public long count() { return 0; }
+        @Override public void deleteById(UUID id) {}
+        @Override public void delete(Notificacion entity) {}
+        @Override public void deleteAllById(Iterable<? extends UUID> ids) {}
+        @Override public void deleteAll(Iterable<? extends Notificacion> entities) {}
+        @Override public void deleteAll() {}
+        @Override public List<Notificacion> findAll(Sort sort) { return null; }
+        @Override public Page<Notificacion> findAll(Pageable pageable) { return null; }
+    }
+
+    @BeforeEach
+    void setUp() {
+        repositorio = new StubRepositorio();
+        gestor = new StubGestor(repositorio);
+        objectMapper = new ObjectMapper();
+        consumidor = new ConsumidorNotificaciones(gestor, repositorio, objectMapper);
+    }
+
+    private Message crearMensajeAmqp(String json, String routingKey) {
+        MessageProperties properties = new MessageProperties();
+        properties.setReceivedRoutingKey(routingKey);
+        return new Message(json.getBytes(StandardCharsets.UTF_8), properties);
+    }
+
+    @Test
+    @DisplayName("Punto 30: Solicitud sin asunto o sin cuerpo se rechaza a DLQ con AmqpRejectAndDontRequeueException")
+    void solicitudSinAsuntoSeRechazaADeadLetter() {
+        String jsonIncompleto = """
+                {
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "cuerpoMensaje": "Cuerpo sin asunto"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonIncompleto, "notificaciones.donacion");
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertNull(gestor.ultimoAsunto);
+    }
+
+    @Test
+    @DisplayName("Punto 30: Solicitud con cuerpo en blanco se rechaza a DLQ con AmqpRejectAndDontRequeueException")
+    void solicitudConCuerpoEnBlancoSeRechazaADeadLetter() {
+        String jsonIncompleto = """
+                {
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "asuntoMensaje": "Asunto",
+                  "cuerpoMensaje": "   "
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonIncompleto, "notificaciones.donacion");
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertNull(gestor.ultimoCuerpo);
+    }
+
+    @Test
+    @DisplayName("Punto 32: Mensaje corrupto que no es JSON válido se rechaza a DLQ sin tragarlo")
+    void mensajeNoValidoSeRechazaADeadLetterSinTragar() {
+        Message mensaje = crearMensajeAmqp("esto no es json {", "notificaciones.donacion");
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertNull(gestor.ultimoMedio);
+    }
+
+    @Test
+    @DisplayName("Punto 32: Caída de base de datos durante solicitud se propaga para activar reintentos de RabbitMQ")
+    void errorDeBaseDeDatosEnSolicitudSePropagaParaReintento() {
+        String jsonValido = """
+                {
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "asuntoMensaje": "Asunto",
+                  "cuerpoMensaje": "Cuerpo"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonValido, "notificaciones.donacion");
+        gestor.lanzarErrorEnSolicitud = true;
+
+        assertThrows(RuntimeException.class, () -> consumidor.recibir(mensaje));
+    }
+
+    @Test
+    @DisplayName("Solicitud completa y válida se procesa y persiste correctamente")
+    void solicitudValidaSeProcesaCorrectamente() {
+        String jsonValido = """
+                {
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "asuntoMensaje": "Asunto de prueba",
+                  "cuerpoMensaje": "Cuerpo de prueba"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonValido, "notificaciones.donacion");
+
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+
+        assertEquals("email", gestor.ultimoMedio);
+        assertEquals("juan@test.com", gestor.ultimaDireccion);
+        assertEquals("Asunto de prueba", gestor.ultimoAsunto);
+        assertEquals("Cuerpo de prueba", gestor.ultimoCuerpo);
+    }
+
+    @Test
+    @DisplayName("Aviso ya enviado no se vuelve a despachar")
+    void avisoYaEnviadoNoSeVuelveAEnviar() {
+        UUID id = UUID.randomUUID();
+        String jsonAviso = String.format("""
+                {
+                  "id": "%s",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com"
+                }
+                """, id);
+        Message mensaje = crearMensajeAmqp(jsonAviso, ar.edu.utn.frba.ddsi.notificaciones.config.rabbit.RabbitConfig.RK_AVISO);
+
+        Notificacion notificacion = new Notificacion("juan@test.com", "email", new Mensaje("A", "C"));
+        notificacion.marcarEnviada();
+        repositorio.tabla.put(id, notificacion);
+
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+
+        assertEquals(0, gestor.llamadasEnviarNotificacion);
+    }
+
+    @Test
+    @DisplayName("Punto 33: Solicitud entrante que contiene un campo 'id' se procesa como solicitud y no se confunde con un aviso")
+    void solicitudConCampoIdSeProcesaComoSolicitud() {
+        String jsonSolicitudConId = """
+                {
+                  "id": "donacion-12345",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "asuntoMensaje": "Donación confirmada",
+                  "cuerpoMensaje": "Gracias por su donación"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonSolicitudConId, "notificaciones.donacion");
+
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+
+        assertEquals("email", gestor.ultimoMedio);
+        assertEquals("juan@test.com", gestor.ultimaDireccion);
+        assertEquals("Donación confirmada", gestor.ultimoAsunto);
+        assertEquals("Gracias por su donación", gestor.ultimoCuerpo);
+    }
+    @Test
+    @DisplayName("Punto 29: Solicitud con idSolicitud reentregada se descarta por idempotencia sin duplicar guardado ni envío")
+    void solicitudReentregadaConIdSolicitudSeDescartaPorIdempotencia() {
+        String idSolicitud = "donacion-uuid-9999";
+        String jsonSolicitud = String.format("""
+                {
+                  "idSolicitud": "%s",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "juan@test.com",
+                  "asuntoMensaje": "Donación confirmada",
+                  "cuerpoMensaje": "Gracias por donar"
+                }
+                """, idSolicitud);
+        Message mensaje = crearMensajeAmqp(jsonSolicitud, "notificaciones.donacion");
+
+        // Primera entrega: se procesa normalmente y se guarda en el repositorio real del stub
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+        assertEquals(1, gestor.llamadasEnviarSolicitud);
+        assertEquals("donacion-uuid-9999", gestor.ultimoIdSolicitud);
+        assertTrue(repositorio.findByIdSolicitud(idSolicitud).isPresent());
+
+        // Segunda entrega (reentrega del broker con el mismo idSolicitud):
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+        // Se descarta por idempotencia sin volver a invocar el gestor
+        assertEquals(1, gestor.llamadasEnviarSolicitud);
+    }
+
+    @Test
+    @DisplayName("Aviso con notificación PENDIENTE se despacha exitosamente al medio")
+    void avisoPendienteSeDespachaCorrectamente() {
+        UUID id = UUID.randomUUID();
+        String jsonAviso = String.format("""
+                {
+                  "id": "%s",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "ana@test.com"
+                }
+                """, id);
+        Message mensaje = crearMensajeAmqp(jsonAviso, ar.edu.utn.frba.ddsi.notificaciones.config.rabbit.RabbitConfig.RK_AVISO);
+
+        Notificacion notificacion = new Notificacion("ana@test.com", "email", new Mensaje("Asunto", "Cuerpo"));
+        repositorio.tabla.put(id, notificacion);
+
+        assertDoesNotThrow(() -> consumidor.recibir(mensaje));
+
+        assertEquals(1, gestor.llamadasEnviarNotificacion);
+        assertEquals("email", gestor.ultimoMedio);
+        assertEquals("ana@test.com", gestor.ultimaDireccion);
+        assertEquals(notificacion, gestor.ultimaNotificacionDespachada);
+    }
+
+    @Test
+    @DisplayName("Aviso con id inexistente en BD se rechaza a DLQ")
+    void avisoConIdNoExistenteSeRechazaADeadLetter() {
+        UUID idInexistente = UUID.randomUUID();
+        String jsonAviso = String.format("""
+                {
+                  "id": "%s",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "nadie@test.com"
+                }
+                """, idInexistente);
+        Message mensaje = crearMensajeAmqp(jsonAviso, ar.edu.utn.frba.ddsi.notificaciones.config.rabbit.RabbitConfig.RK_AVISO);
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertEquals(0, gestor.llamadasEnviarNotificacion);
+    }
+
+    @Test
+    @DisplayName("Aviso con id con formato no UUID se rechaza a DLQ")
+    void avisoConIdNoUUIDSeRechazaADeadLetter() {
+        String jsonAviso = """
+                {
+                  "id": "formato-invalido-no-uuid",
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "ana@test.com"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonAviso, ar.edu.utn.frba.ddsi.notificaciones.config.rabbit.RabbitConfig.RK_AVISO);
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertEquals(0, gestor.llamadasEnviarNotificacion);
+    }
+
+    @Test
+    @DisplayName("Solicitud sin medioDeContacto se rechaza a DLQ")
+    void solicitudSinMedioDeContactoSeRechazaADeadLetter() {
+        String jsonSinMedio = """
+                {
+                  "direccionDeContacto": "ana@test.com",
+                  "asuntoMensaje": "Asunto",
+                  "cuerpoMensaje": "Cuerpo"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonSinMedio, "notificaciones.donacion");
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertEquals(0, gestor.llamadasEnviarSolicitud);
+    }
+
+    @Test
+    @DisplayName("Solicitud sin direccionDeContacto se rechaza a DLQ")
+    void solicitudSinDireccionDeContactoSeRechazaADeadLetter() {
+        String jsonSinDireccion = """
+                {
+                  "medioDeContacto": "email",
+                  "direccionDeContacto": "   ",
+                  "asuntoMensaje": "Asunto",
+                  "cuerpoMensaje": "Cuerpo"
+                }
+                """;
+        Message mensaje = crearMensajeAmqp(jsonSinDireccion, "notificaciones.donacion");
+
+        assertThrows(AmqpRejectAndDontRequeueException.class, () -> consumidor.recibir(mensaje));
+        assertEquals(0, gestor.llamadasEnviarSolicitud);
+    }
+}

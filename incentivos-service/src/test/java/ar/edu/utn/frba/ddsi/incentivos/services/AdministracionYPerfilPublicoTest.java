@@ -225,11 +225,13 @@ class AdministracionYPerfilPublicoTest {
         @DisplayName("borrar un perfil verifica los permisos del administrador")
         void borrarVerificaPermisos() {
             UUID idUsuario = UUID.randomUUID();
-            when(repoPerfiles.existsById(idUsuario)).thenReturn(true);
+            Perfil perfil = new Perfil(idUsuario, "Ana");
+            when(repoPerfiles.findById(idUsuario)).thenReturn(Optional.of(perfil));
 
             perfilService.eliminarPerfil(idUsuario, ADMIN);
 
             verify(validadorAdmin).verificarPermisos(ADMIN);
+            assertThat(perfil.isActivo()).isFalse();
         }
 
         @Test

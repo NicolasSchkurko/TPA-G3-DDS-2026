@@ -3,33 +3,37 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class ChoferService {
   private final RepositorioChoferes repoChoferes;
+  private final RepositorioCamiones repoCamiones;
 
-  public ChoferService(RepositorioChoferes repoChoferes) {
+  public ChoferService(RepositorioChoferes repoChoferes, RepositorioCamiones repoCamiones) {
     this.repoChoferes = repoChoferes;
+    this.repoCamiones = repoCamiones;
   }
 
   // --- MÉTODOS CRUD ---
   public ChoferesDTO findAll() {
     List<Chofer> choferes = repoChoferes.findAll();
     return new ChoferesDTO(choferes.stream()
+            .filter(Chofer::isActivo)
             .map(this::convertirAChoferDTO)
             .collect(Collectors.toList()));
   }
 
   public ChoferDTO findById(UUID id) {
     Chofer chofer = repoChoferes.findById(id)
+            .filter(Chofer::isActivo)
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
     return convertirAChoferDTO(chofer);
   }
@@ -47,6 +51,7 @@ public class ChoferService {
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
     Chofer choferExistente = repoChoferes.findById(id)
+            .filter(Chofer::isActivo)
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
 
     if (dto.getNombre() != null) {
@@ -60,15 +65,25 @@ public class ChoferService {
     return convertirAChoferDTO(choferExistente);
   }
 
-  /** Borra el chofer: el 404 es para lo que dice (el recurso no estaba). */
+  /**
+   * Da de baja lógica al chofer y desvincula el camión si tenía uno asignado.
+   * Preserva el registro histórico para trazabilidad de rutas en MongoDB.
+   */
   public void delete(UUID id) {
-    Optional<Chofer> chofer = repoChoferes.findById(id);
-    if(chofer.isPresent()){
-      repoChoferes.deleteById(id);
-    }
-    else {
+    Chofer chofer = repoChoferes.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+
+    if (!chofer.isActivo()) {
       throw new IllegalArgumentException("Chofer no encontrado");
     }
+
+    chofer.darDeBaja();
+    repoChoferes.save(chofer);
+
+    repoCamiones.findByChofer_IdChofer(id).ifPresent(camion -> {
+      camion.eliminarChofer();
+      repoCamiones.save(camion);
+    });
   }
 
   public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
@@ -79,6 +94,7 @@ public class ChoferService {
     boolean disponible = body.get("disponible");
 
     Chofer chofer = repoChoferes.findById(id)
+            .filter(Chofer::isActivo)
             .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
     if (disponible) {
       chofer.disponible();
@@ -97,6 +113,7 @@ public class ChoferService {
     dto.setIdChofer(chofer.getIdChofer());
     dto.setNombre(chofer.getNombre());
     dto.setDisponible(chofer.isDisponible());
+    dto.setActivo(chofer.isActivo());
     return dto;
   }
 

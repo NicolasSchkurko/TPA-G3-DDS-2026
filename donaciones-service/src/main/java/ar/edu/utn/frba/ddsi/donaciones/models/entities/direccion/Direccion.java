@@ -68,6 +68,14 @@ public class Direccion {
     this.ciudad = ciudad;
   }
 
+  public void anonimizar() {
+    this.calleUno = null;
+    this.calleDos = null;
+    this.altura = null;
+    this.piso = 0;
+    this.departamento = null;
+  }
+
   /**
    * Permite obtener la direccion completa.
    *

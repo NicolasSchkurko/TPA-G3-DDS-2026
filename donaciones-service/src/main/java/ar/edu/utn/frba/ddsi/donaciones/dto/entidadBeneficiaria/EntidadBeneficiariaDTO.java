@@ -24,6 +24,7 @@ public class EntidadBeneficiariaDTO {
     private String telefono;
     private DireccionDTO direccion;
     private UUID id;
+    private Boolean activa;
     private List<NecesidadDTO> necesidades;
 
     public EntidadBeneficiaria toDomain(Ciudad ciudad) {
@@ -86,6 +87,7 @@ public class EntidadBeneficiariaDTO {
         }
 
         dto.setId(entidad.getId());
+        dto.setActiva(entidad.isActiva());
         dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
 
         // Mapeamos la lista de necesidades asociadas a la entidad

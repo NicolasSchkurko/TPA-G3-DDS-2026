@@ -29,8 +29,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -147,13 +149,25 @@ class DeleteDevuelve204Test {
     // --- Choferes ---
 
     @Test
-    @DisplayName("Borrar un chofer que existe no tira excepcion")
+    @DisplayName("Borrar un chofer que existe aplica baja lógica, desvincula camión y no tira excepción")
     void borrarChoferExistenteNoTira() {
-        when(repoChoferes.findById(ID_CHOFER)).thenReturn(Optional.of(choferExistente()));
+        Chofer chofer = choferExistente();
+        Camion camion = camionExistente();
+        camion.setChofer(chofer);
+
+        when(repoChoferes.findById(ID_CHOFER)).thenReturn(Optional.of(chofer));
+        when(repoCamiones.findByChofer_IdChofer(ID_CHOFER)).thenReturn(Optional.of(camion));
 
         assertThatCode(() -> choferService.delete(ID_CHOFER)).doesNotThrowAnyException();
 
-        verify(repoChoferes).deleteById(ID_CHOFER);
+        assertThat(chofer.isActivo()).isFalse();
+        assertThat(chofer.isDisponible()).isFalse();
+        assertThat(chofer.getFechaBaja()).isNotNull();
+        assertThat(camion.getChofer()).isNull();
+
+        verify(repoChoferes).save(chofer);
+        verify(repoCamiones).save(camion);
+        verify(repoChoferes, never()).deleteById(any());
     }
 
     @Test
@@ -166,5 +180,20 @@ class DeleteDevuelve204Test {
                 .hasMessageContaining("Chofer no encontrado");
 
         verify(repoChoferes, never()).deleteById(ID_CHOFER);
+    }
+
+    @Test
+    @DisplayName("Borrar un chofer ya dado de baja tira Chofer no encontrado")
+    void borrarChoferYaInactivoTira() {
+        Chofer chofer = choferExistente();
+        chofer.darDeBaja();
+
+        when(repoChoferes.findById(ID_CHOFER)).thenReturn(Optional.of(chofer));
+
+        assertThatThrownBy(() -> choferService.delete(ID_CHOFER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Chofer no encontrado");
+
+        verify(repoChoferes, never()).deleteById(any());
     }
 }

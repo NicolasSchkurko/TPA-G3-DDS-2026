@@ -6,9 +6,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
-
 public class ChoferDTO {
     private UUID idChofer;
     private String nombre;
     private Boolean disponible;
+    private Boolean activo;
 }

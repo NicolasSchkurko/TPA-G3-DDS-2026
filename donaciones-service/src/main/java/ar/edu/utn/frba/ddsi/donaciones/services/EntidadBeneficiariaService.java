@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNece
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioSubcategoriasDeBienes;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,10 @@ public class EntidadBeneficiariaService {
     }
 
     public List<EntidadBeneficiariaDTO> obtenerTodas() {
-        return repositorioEntidadesBeneficiarias.obtenerTodas().stream().map(EntidadBeneficiariaDTO::from).collect(Collectors.toList());
+        return repositorioEntidadesBeneficiarias.obtenerTodas().stream()
+                .filter(EntidadBeneficiaria::isActiva)
+                .map(EntidadBeneficiariaDTO::from)
+                .collect(Collectors.toList());
     }
 
     public EntidadBeneficiariaDTO obtenerEntidadPorId(UUID id) {
@@ -48,6 +52,7 @@ public class EntidadBeneficiariaService {
         return EntidadBeneficiariaDTO.from(entidad);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public EntidadBeneficiariaDTO registrarEntidad(EntidadBeneficiariaDTO dto) {
         Ciudad ciudad = resolverCiudad(dto.getDireccion());
         EntidadBeneficiaria entidad = dto.toDomain(ciudad);
@@ -56,6 +61,7 @@ public class EntidadBeneficiariaService {
         return EntidadBeneficiariaDTO.from(entidad);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public EntidadBeneficiariaDTO actualizarEntidad(UUID id, EntidadBeneficiariaDTO dto) {
         Ciudad ciudad = resolverCiudad(dto.getDireccion());
         EntidadBeneficiaria entidadActualizada = dto.toDomain(ciudad);
@@ -68,17 +74,29 @@ public class EntidadBeneficiariaService {
         return EntidadBeneficiariaDTO.from(repositorioEntidadesBeneficiarias.modificarEntidad(id, entidadActualizada));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void eliminarEntidad(UUID id) {
-        repositorioEntidadesBeneficiarias.eliminarPorId(id);
-        System.out.println("Entidad beneficiaria dada de baja (si existía).");
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
+        if (entidad == null) {
+            return;
+        }
+
+        entidad.darDeBaja();
+        repositorioEntidadesBeneficiarias.actualizar(id, entidad);
+        repositorioEntidadesBeneficiarias.flush();
+        System.out.println("Entidad beneficiaria dada de baja con éxito.");
     }
 
     public List<NecesidadDTO> obtenerNecesidades(UUID idEntidad) {
         EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
         if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
-        return entidad.getNecesidades().stream().map(NecesidadDTO::from).collect(Collectors.toList());
+        return entidad.getNecesidades().stream()
+                .filter(Necesidad::isActiva)
+                .map(NecesidadDTO::from)
+                .collect(Collectors.toList());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
         SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
         Necesidad necesidad = dto.toDomain(subcategoria);
@@ -87,6 +105,7 @@ public class EntidadBeneficiariaService {
         return NecesidadDTO.from(necesidad);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public NecesidadDTO actualizarNecesidad(UUID idEntidad, UUID idNecesidad, NecesidadDTO dto) {
         // idEntidad antes viajaba sin usarse: PUT /entidades/A/necesidades/idDeB modificaba la
         // necesidad de B igual. Ahora se valida que la necesidad pertenezca a esa entidad.
@@ -102,10 +121,20 @@ public class EntidadBeneficiariaService {
         return NecesidadDTO.from(repositorioNecesidades.modificarNecesidad(idNecesidad, necesidadActualizada));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void eliminarNecesidad(UUID idEntidad, UUID idNecesidad) {
-        repositorioEntidadesBeneficiarias.eliminarNecesidadDeEntidad(idEntidad, idNecesidad);
-        repositorioNecesidades.eliminarPorId(idNecesidad);
-        System.out.println("Administrador dado de baja (si existía).");
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+        if (entidad == null) {
+            throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
+        }
+
+        Necesidad necesidad = entidad.buscarNecesidadPorId(idNecesidad)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró la necesidad con ID: " + idNecesidad));
+
+        necesidad.setActiva(false);
+        repositorioNecesidades.actualizar(idNecesidad, necesidad);
+        repositorioNecesidades.flush();
+        System.out.println("Necesidad dada de baja con éxito.");
     }
 
     public List<DonacionDTO> obtenerDonaciones(UUID idEntidad) {

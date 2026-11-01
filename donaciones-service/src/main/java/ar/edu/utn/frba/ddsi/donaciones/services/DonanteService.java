@@ -122,6 +122,7 @@ public class DonanteService {
 
   public List<PersonaDonanteDTO> listarTodas() {
     return repositorioDonantes.obtenerTodos().stream()
+                         .filter(Donante::isActivo)
                          .map(PersonaDonanteDTO::from)
                          .collect(Collectors.toList());
   }
@@ -134,7 +135,7 @@ public class DonanteService {
 
   public PersonaDonanteDTO buscarPorNombre(String nombre) {
     return repositorioDonantes.obtenerTodos().stream()
-                         .filter(d -> d.getPersona().getNombreDeUsuario().equalsIgnoreCase(nombre))
+                         .filter(d -> d.isActivo() && d.getPersona() != null && d.getPersona().getNombreDeUsuario() != null && d.getPersona().getNombreDeUsuario().equalsIgnoreCase(nombre))
                          .findFirst()
                          .map(PersonaDonanteDTO::from).orElse(null);
   }
@@ -159,29 +160,25 @@ public class DonanteService {
   }
 
   /**
-   * Da de baja a un donante del sistema.
+   * Da de baja a un donante del sistema mediante soft delete y anonimización (Punto 69).
    *
-   * <p>Punto 34: Desvincula previamente las donaciones y formularios asociados para evitar
-   * violaciones de integridad referencial (claves foráneas) al momento de eliminar el donante.
+   * <p>Punto 69: Aplica borrado lógico (activo = false, fechaBaja = now()) y anonimización de datos
+   * personales sensibles (persona y dirección), preservando intacta la clave foránea del donante
+   * en donaciones y formularios para evitar NullPointerExceptions en trazabilidad logística.
    *
-   * <p>Punto 35: Notifica la baja a incentivos-service SOLO una vez confirmado el borrado
+   * <p>Punto 35: Notifica la baja a incentivos-service SOLO una vez confirmado el soft delete
    * local en la base de datos (después del commit o flush), capturando cualquier excepción para que
    * caídas o demoras de incentivos no aborten la baja local ni provoquen inconsistencias.
    */
   @Transactional(rollbackFor = Exception.class)
   public void eliminarPersona(UUID id) {
-    if (repositorioDonantes.buscarPorId(id).isEmpty()) {
+    Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
+    if (donante == null) {
       return;
     }
 
-    if (repositorioDonaciones != null) {
-      repositorioDonaciones.desvincularDonante(id);
-    }
-    if (repositorioFormularios != null) {
-      repositorioFormularios.desvincularDonante(id);
-    }
-
-    repositorioDonantes.eliminarPorId(id);
+    donante.darDeBaja();
+    repositorioDonantes.actualizar(id, donante);
     repositorioDonantes.flush();
 
     Runnable notificarIncentivos = () -> {
@@ -314,7 +311,7 @@ public class DonanteService {
   @Transactional(rollbackFor = Exception.class)
   public void revisarActividades(){
     for (Donante p : repositorioDonantes.obtenerTodos()) {
-      if (p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
+      if (p.isActivo() && p.getFormularios() != null && !p.getFormularios().isEmpty() && p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())) {
         fabricaEstrategias.ejecutar(TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, p);
       }
     }

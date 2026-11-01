@@ -38,7 +38,9 @@ public class AsignacionScheduler {
     public void ejecutarAsignacion() {
         AsignadorDonaciones asignadorDonaciones = new AsignadorDonaciones(gestorMatchmaking,gestorAsignaciones,repositorioDeResultadosMatchmaking);
         List<Donacion> donacionesNoAsignadas = repositorioDonaciones.buscarDonacionesSinAsignar();
-        List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas();
+        List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas().stream()
+                .filter(EntidadBeneficiaria::isActiva)
+                .toList();
         asignadorDonaciones.ejecutarMatchmakingBatch(donacionesNoAsignadas,entidades);
     }
 }

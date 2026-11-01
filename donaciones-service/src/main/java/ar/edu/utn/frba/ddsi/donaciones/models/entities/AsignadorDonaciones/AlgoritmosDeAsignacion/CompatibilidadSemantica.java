@@ -23,6 +23,9 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
+            if (!entidad.isActiva()) {
+                continue;
+            }
             for (Necesidad necesidad : entidad.getNecesidades()) {
                 if (!necesidad.esCompatibleCon(donacion)) {
                     continue;
