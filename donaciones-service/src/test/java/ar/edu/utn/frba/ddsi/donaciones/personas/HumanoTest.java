@@ -1,12 +1,13 @@
 package ar.edu.utn.frba.ddsi.donaciones.personas;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class HumanoTest {
 
@@ -49,5 +50,25 @@ public class HumanoTest {
 
     Humana conEspacios = new Humana("  Maria  ", "  Gomez  ", 28, 33333333, Genero.MUJER);
     assertEquals("Maria Gomez", conEspacios.getNombreDeUsuario());
+  }
+
+  @Test
+  @DisplayName("Punto 69: anonimizar() minimiza datos personales y limpia medios de contacto")
+  void anonimizarHumanaTest() {
+    Humana humana = new Humana("Nico", "Scurchjcko", 27, 1234567, Genero.HOMBRE);
+    MediosDeContacto medios = new MediosDeContacto();
+    medios.agregarMedioDeContacto(new Mail("nico@example.com"));
+    humana.setMediosDeContacto(medios);
+
+    humana.anonimizar();
+
+    assertNull(humana.getNombre());
+    assertNull(humana.getApellido());
+    assertEquals(0, humana.getEdad());
+    assertEquals(0, humana.getNumeroDeDocumento());
+    assertNull(humana.getGenero());
+    assertTrue(humana.getMediosDeContacto().getListaMediosDeContacto().isEmpty());
+    assertNull(humana.getMediosDeContacto().getMedioDeContactoPredeterminado());
+    assertNull(humana.getNombreDeUsuario());
   }
 }

@@ -397,8 +397,10 @@ public class EntregaService {
         break;
 
       case "PENDIENTE":
-        // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
-        // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
+        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA) {
+          throw new IllegalStateException("Solo se puede reingresar a depósito una entrega en estado NO_RECIBIDA (estado actual: "
+                  + item.getEstado() + ").");
+        }
         repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
         repoRutas.findByIdDonacion(item.getIdDonacion()).ifPresent(ruta -> sincronizarItemEnRuta(ruta, item));
         break;

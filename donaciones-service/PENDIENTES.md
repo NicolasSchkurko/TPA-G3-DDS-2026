@@ -10,25 +10,30 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 El orden no es el de la severidad declarada en cada punto sino el del daño real: cuánto se
 rompe cuando pasa, y qué tan fácil es que pase.
 
-| #  | Punto | Severidad | Por qué está acá                                                                                  |
-|----|-------|-----------|---------------------------------------------------------------------------------------------------|
-| 1  | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo              |
-| 2  | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara |
-| 3  | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias      |
-| 4  | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente          |
-| 5  | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking              |
-| 6  | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals  |
-| 7  | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                |
-| 8  | 41    | Media     | La modificación de donante ignora campos y la baja deja la Persona huérfana                       |
-| 9  | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                            |
-| 10 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                    |
-| 11 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                      |
-| 12 | 58    | Baja      | Declaración duplicada de dependencia `spring-boot-starter-validation` en `pom.xml`                |
-| 13 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                               |
-| 14 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                          |
-| 15 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                   |
-| 16 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                  |
-| 17 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                            |
+| #  | Punto | Severidad | Por qué está acá                                                                                                    |
+|----|-------|-----------|---------------------------------------------------------------------------------------------------------------------|
+| 1  | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                                |
+| 2  | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara                   |
+| 3  | 64    | Media     | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
+| 4  | 63    | Media     | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada       |
+| 5  | 62    | Media     | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real      |
+| 6  | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias                        |
+| 7  | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente                            |
+| 8  | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                                |
+| 9  | 65    | Media     | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior           |
+| 10 | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals                    |
+| 11 | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                                  |
+| 12 | 41    | Media     | La modificación de donante (`PUT`) ignora campos de personas jurídicas (`rubro`, `tipoJuridico`, `representantes`)   |
+| 13 | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                                              |
+| 14 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                                      |
+| 15 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                                        |
+| 16 | 67    | Baja      | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos       |
+| 17 | 68    | Baja      | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe           |
+| 18 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                                 |
+| 19 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                                            |
+| 20 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                                     |
+| 21 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                                    |
+| 22 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                                              |
 
 ---
 
@@ -84,6 +89,115 @@ En la demo los cuatro servicios suelen estar arriba y logística declaró el exc
 ### Propuesta
 
 Declarar el exchange en `RabbitMQConfig` (es de los que este servicio publica: la misma regla que dejó el Corregido #2) y sacar la publicación del cuerpo transaccional: publicar en `afterCommit` o con un outbox, para que el mensaje salga solo si la asignación quedó persistida.
+
+---
+
+## 64. Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDeResultadosMatchmaking.java` (líneas 28-36), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 178-192), `.../models/gestores/GestorEventosLogistica.java` (líneas 131 y 151)
+
+### Qué pasa
+
+Cuando una donación pasa por matchmaking, se persiste un `ResultadoMatchmaking` en la base de datos. Si la donación reingresa a depósito (por entrega fallida en `GestorEventosLogistica.manejarEntregaFallida` / `manejarReingresoDeposito`, o por reseteo manual de estado a `EN_DEPOSITO`), el `ResultadoMatchmaking` anterior no se elimina (únicamente se borra en `DonacionService.asignarPropuesta`).
+
+Al volver a correr el matchmaking (`AsignacionScheduler` o `POST /matchmaking/ejecutar`), `buscarDonacionesSinAsignar()` incluye la donación en `EN_DEPOSITO`. Pero al persistir el nuevo resultado, `RepositorioDeResultadosMatchmaking.guardar` valida:
+
+```java
+if (findByDonacionId(resultado.getDonacion().getId()).isPresent()) {
+    throw new IllegalArgumentException("Ya existe un resultado de matchmaking para la donación: " + resultado.getDonacion().getId());
+}
+```
+
+La excepción es capturada en `AsignadorDonaciones.ejecutarMatchmakingBatch`, imprimiendo el error en consola y omitiendo la donación. La donación queda varada en `EN_DEPOSITO` permanentemente sin poder generar propuestas nuevas, y `GET /donaciones/pendientes` sigue sirviendo las propuestas obsoletas del ciclo anterior.
+
+### Cómo se dispara
+
+1. Una donación es asignada y enviada a entrega.
+2. La entrega falla (`ENTREGA_FALLIDA`) o la donación reingresa a depósito (`REINGRESO_DEPOSITO`).
+3. El scheduler de matchmaking intenta procesar la donación.
+4. Falla con `IllegalArgumentException` por clave única duplicada y nunca más se vuelve a procesar.
+
+### Propuesta de arreglo
+
+En `AsignadorDonaciones.registrarDonacionPendienteDeAprobacion` (o en `RepositorioDeResultadosMatchmaking`), borrar o actualizar el resultado previo si ya existía para esa donación antes de insertar el nuevo.
+
+---
+
+## 63. Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 78-85), `.../models/gestores/GestorMatchmaking.java` (líneas 29-39)
+
+### Qué pasa
+
+En `AsignadorDonaciones.procesarMatchmaking`, si no hay intersección entre algoritmos (`huboCoincidenciaTotal == false`), se ejecuta:
+
+```java
+todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
+resultadoFinal = todasLasPropuestas;
+```
+
+A diferencia de la rama con intersección (donde se reasigna `setPosicion(i + 1)`), en esta rama cada algoritmo aportó propuestas numeradas `1..N`. La lista resultante contiene múltiples elementos con `posicion == 1`, múltiples con `posicion == 2`, etc.
+
+`GestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion` asume que el parámetro `posicion` recibido en `POST /donaciones/asignar` corresponde al índice de la lista:
+
+```java
+PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion - 1);
+```
+
+Si el operador visualiza en la interfaz una propuesta con posición 2 (proveniente de `CompatibilidadSemantica`) y envía `posicionPropuesta = 2`, el código accede al índice 1 de la lista, que corresponde a la propuesta de `SubAtendidos` (cuya posición original era 1). El sistema aprueba y asigna una propuesta completamente distinta a la seleccionada.
+
+### Cómo se dispara
+
+1. Se corre matchmaking para una donación donde `CompatibilidadSemantica` y `SubAtendidos` recomiendan entidades distintas (`huboCoincidenciaTotal = false`).
+2. `GET /donaciones/pendientes` devuelve la lista con posiciones repetidas (`1, 1, 2, 2...`).
+3. Se invoca `POST /donaciones/asignar` con `posicionPropuesta = 2`.
+4. Se asigna la entidad del índice 1 (que tiene posición 1 de otro algoritmo) en lugar de la elegida.
+
+### Propuesta de arreglo
+
+Renumerar secuencialmente las posiciones de `resultadoFinal` (`setPosicion(i + 1)`) en la rama `else` de `AsignadorDonaciones.procesarMatchmaking`, o permitir seleccionar la propuesta por un identificador unívoco (ID de necesidad/entidad).
+
+---
+
+## 62. `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java` (líneas 62-74), `.../models/entities/Donaciones/Donacion.java` (líneas 114-116), `.../models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java` (líneas 64-70)
+
+### Qué pasa
+
+Al registrar un formulario de donación, `SegmentadorDonaciones.crearDonacion` asigna la fecha del formulario directamente al campo `fechaEntrega` de cada segmento creado:
+
+```java
+return new Donacion(
+    donante,
+    null,
+    "Segmento de donación: " + sub.getNombre(),
+    bienesDelGrupo,
+    Estado.EN_DEPOSITO,
+    sub,
+    fechaEntrega // <-- Recibe formulario.getFechaRealizacion()
+);
+```
+
+Esto genera dos inconsistencias graves:
+1. `SubAtendidos.cantidadDonacionesUltimoTrimestre` cuenta donaciones recibidas filtrando por `d.getFechaEntrega() != null && d.getFechaEntrega().isAfter(haceUnTrimestre)`, **sin validar `d.getEstado() == Estado.ENTREGADO`**. Cualquier donación en depósito o en traslado ya suma como donación entregada para la entidad, penalizándola en el ranking injustamente.
+2. En `Donacion.actualizarEstado`:
+   `if (nuevoEstado == Estado.ENTREGADO && this.fechaEntrega == null) { this.fechaEntrega = LocalDate.now(); }`
+   Como `this.fechaEntrega` ya fue poblada en la creación, esta condición nunca se cumple. La fecha de entrega real nunca se registra y queda congelada con la fecha de carga del formulario, distorsionando las ventanas de `NecesidadRecurrente.cantidadRecibidaEnPeriodo`.
+
+### Cómo se dispara
+
+Crear una donación vía `POST /api/donaciones/formulario` y consultar el ranking de matchmaking o el cálculo de `SubAtendidos` antes de que la donación haya sido entregada.
+
+### Propuesta de arreglo
+
+Instanciar la donación con `fechaEntrega = null` en `SegmentadorDonaciones.crearDonacion`, y verificar `d.getEstado() == Estado.ENTREGADO` en `SubAtendidos.cantidadDonacionesUltimoTrimestre`.
 
 ---
 
@@ -156,6 +270,41 @@ Borrar o desvincular el `ResultadoMatchmaking` dentro de `eliminarDonacion` (en 
 
 ---
 
+## 65. `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/AdminService.java` (líneas 61-71), `.../models/entities/administrador/Administrador.java` (líneas 28-30)
+
+### Qué pasa
+
+En `AdminService.actualizarAdmin`:
+
+```java
+Administrador datosNuevos = dto.toDomain();
+if (existente.getHumano() != null && datosNuevos.getHumano() != null) {
+    repositorioPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
+} else if (datosNuevos.getHumano() != null) {
+    repositorioPersonas.registrarPersona(datosNuevos.getHumano());
+    existente.setHumano(datosNuevos.getHumano());
+}
+existente.setHumano(datosNuevos.getHumano());
+```
+
+A pesar de que el primer `if` actualiza los datos de la `Humana` existente en `repositorioPersonas`, la línea 68 reasigna incondicionalmente `existente.setHumano(datosNuevos.getHumano())`. `datosNuevos.getHumano()` es una nueva instancia generada por `dto.toDomain()` con un UUID recién generado.
+
+Al persistir `existente`, debido al `cascade = {CascadeType.PERSIST, CascadeType.MERGE}` de `Administrador.humano`, Hibernate inserta una fila nueva en las tablas `personas` y `humana`. La fila anterior actualizada queda huérfana en la base de datos. Cada llamada a `PUT /api/admins/{id}` acumula registros huérfanos.
+
+### Cómo se dispara
+
+Invocar `PUT /api/admins/{id}` sobre un administrador existente.
+
+### Propuesta de arreglo
+
+Eliminar la línea redundante `existente.setHumano(datosNuevos.getHumano())` para mantener la instancia de `Humana` vinculada al administrador cuando ya existía.
+
+---
+
 ## 55. El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals
 
 **Estado:** abierto
@@ -211,24 +360,23 @@ Quitar los catches de esos tres controllers y dejar que el `GlobalExceptionHandl
 
 ---
 
-## 41. La modificación de donante ignora campos y la baja deja la Persona huérfana
+## 41. La modificación de donante ignora campos de personas jurídicas
 
 **Estado:** abierto
 **Severidad:** media
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDonantes.java` (`modificarDonante`), `.../models/repositories/repos/RepositorioPersonas.java` (`modificarPersona`), `.../services/DonanteService.java` (`actualizarPersona`, `eliminarPersona`)
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioPersonas.java` (`modificarPersona`), `.../services/DonanteService.java` (`actualizarPersona`)
 
 ### Qué pasa
 
-El enunciado pide alta, baja y modificación de donantes humanas y jurídicas. La modificación guarda poco y responde 200 (el cliente cree que guardó):
+La modificación de personas jurídicas (`PUT /api/personas/{id}`) ignora campos obligatorios y responde 200 (el cliente cree que se guardaron):
+- `RepositorioPersonas.modificarPersona` solo actualiza `mediosDeContacto`, `razonSocial` y `cuit`.
+- Ignora silenciosamente los campos `rubro`, `tipoJuridico` y `representantes`.
 
-- `RepositorioDonantes.modificarDonante` solo pisa `direccion`.
-- `RepositorioPersonas.modificarPersona` solo pisa `mediosDeContacto` y, si es jurídica, `razonSocial`/`cuit`. Para humanas no se actualizan `nombre`, `apellido`, `documento`, `edad` ni `genero`; para jurídicas se ignoran `rubro`, `tipoJuridico` y `representantes`.
-
-Y la baja (`eliminarPersona`) borra el `Donante` pero **no la `Persona`**, que queda huérfana en la base. (El 409 por formularios asociados está en el punto 34; el id del PUT, en el punto 13.)
+*(Nota: el problema de orfandad en la baja de `Persona` que antes se mencionaba en este punto queda resuelto bajo el diseño de Soft Delete y anonimización del **Punto 69**).*
 
 ### Propuesta
 
-Completar el update campo por campo según el tipo de persona, o devolver 400 por lo que hoy se ignora en silencio. En la baja, borrar también la `Persona` en la misma transacción; la política de bajas con historial se discute en los puntos 34 y 35.
+Completar el update campo por campo para personas jurídicas (`rubro`, `tipoJuridico`, y sincronización de `representantes`), o devolver 400 por campos no soportados.
 
 ---
 
@@ -308,31 +456,64 @@ Sumar paginación en los cinco listados: `Pageable` en el controller (default ch
 
 ---
 
-## 58. Declaración duplicada de dependencia `spring-boot-starter-validation` en `pom.xml`
+## 67. `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos
 
 **Estado:** abierto
 **Severidad:** baja
-**Archivos:** `pom.xml:43-46`
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/DonanteService.java` (líneas 315-321), `.../models/entities/donador/Donante.java` (líneas 30-31), `.../models/sheduler/ActividadDonanteScheduler.java` (líneas 16-20)
 
 ### Qué pasa
 
-En `donaciones-service/pom.xml`, el starter `org.springframework.boot:spring-boot-starter-validation` está declarado dos veces (en las líneas 34-36 y en las líneas 43-46).
+`DonanteService.revisarActividades` evalúa la inactividad mediante:
 
-Maven emite una advertencia formal durante la fase de análisis del modelo efectivo:
-
-```text
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.springframework.boot:spring-boot-starter-validation:jar -> duplicate declaration of version (?) @ line 43, column 21
-[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
-[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+```java
+p.getFormularios().getLast().getFechaRealizacion().plusDays(20).isBefore(LocalDate.now())
 ```
+
+1. `Donante.formularios` es un `@OneToMany` sin `@OrderBy`: el orden en que Hibernate llena la lista es arbitrario (depende del orden de lectura o UUID de la tabla `formulario`), por lo que `getLast()` no garantiza ser el formulario más reciente.
+2. Cada vez que el cron se ejecuta (`0 0 0 * * ?` todas las noches), todo donante con más de 20 días de inactividad vuelve a cumplir la condición `isBefore(LocalDate.now())`. No existe marca de notificación enviada ni control de frecuencia, por lo que el donante recibe una notificación de inactividad todas las noches de forma indefinida.
 
 ### Cómo se dispara
 
-Cualquier comando de compilación o empaquetado Maven (`mvn clean compile`, `mvn verify`).
+Dejar transcurrir 21 días desde la última donación de un donante y esperar las corridas diarias del scheduler a medianoche.
 
-### Propuesta
+### Propuesta de arreglo
 
-Remover el bloque `<dependency>` duplicado de `spring-boot-starter-validation` en las líneas 43-46.
+Ordenar los formularios por `fechaRealizacion` de forma descendente (o via `@OrderBy`) y registrar una fecha o flag de `ultimaNotificacionInactividad` para evitar renotificar a diario.
+
+---
+
+## 68. `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/services/EntidadBeneficiariaService.java` (líneas 111-113 y 124-132), `.../controllers/EntidadBeneficiariaController.java` (líneas 128-136)
+
+### Qué pasa
+
+En `EntidadBeneficiariaService.java`:
+
+```java
+private List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
+    EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
+    if (entidad != null) {
+        return entidad.verDonaciones();
+    } else {
+        System.err.println("Entidad no encontrada.");
+        return new ArrayList<>();
+    }
+}
+```
+
+A diferencia de `obtenerEntidadPorId` o `obtenerNecesidades`, si la entidad no existe, `obtenerDonacionesDeEntidad` atrapa la ausencia imprimiendo en `System.err` y retorna una lista vacía. El controller responde **200 OK** con `[]`. El cliente HTTP no puede distinguir si la entidad existe y no tiene donaciones, o si se consultó un UUID inexistente.
+
+### Cómo se dispara
+
+Enviar un `GET /api/entidades/{uuid-inexistente}/donaciones`.
+
+### Propuesta de arreglo
+
+Lanzar `IllegalArgumentException` o `EntityNotFoundException` cuando `buscarPorId(idEntidad)` esté vacío, de forma consistente con el resto de los métodos del servicio.
 
 ---
 
@@ -439,7 +620,11 @@ Definir si la consulta queda delegada en incentivos-service (dejarlo documentado
 
 ## Corregidos
 
-
+- **61.** Llamada síncrona a `IncentivosClient` en transacción de entrega revertía la persistencia y descartaba el evento de logística — aislada la llamada a `incentivosClient.notificarImpactoDonacion` para ejecutarse post-commit mediante `TransactionSynchronizationManager` con `afterCommit()` (o fallback directo aislado en `try/catch` con log de advertencia), evitando que caídas o demoras de incentivos reviertan la confirmación local de la donación a `ENTREGADO` y previniendo el descarte irreversible del evento en RabbitMQ.
+- **70.** Soft Delete en `EntidadBeneficiaria` y cancelación lógica de necesidades, evitando 409 y preservando donaciones — implementada baja lógica (`activa = false`, `fechaBaja = now()`) en `EntidadBeneficiaria`, cancelación lógica de necesidades (`activa = false` en `Necesidad`), anonimización de persona jurídica y dirección, exclusión de entidades y necesidades inactivas en matchmaking (`CompatibilidadSemantica`, `SubAtendidos`, `AsignacionScheduler`, `DonacionService`) y listados, y eliminación del borrado físico en `EntidadBeneficiariaService.eliminarEntidad` y `eliminarNecesidad` para evitar el 409 por restricción de clave foránea (absorbió bug 66).
+- **69.** Soft Delete y minimización de datos en `Donante` y `Persona`, eliminando desvinculación a `null` de donaciones — implementada baja lógica (`activo = false`, `fechaBaja = now()`) en `Donante`, anonimización en cascada (`Persona.anonimizar()`, `Humana`, `Juridica`, `Direccion`, `MediosDeContacto.limpiarMedios()`), filtrado de inactivos en `DonanteService.listarTodas()` y `buscarPorNombre()`, y eliminadas las desvinculaciones destructivas a `null` del punto 34 para preservar claves foráneas y prevenir `NullPointerException` en eventos de entrega logística (absorbió bug 60).
+- **60.** NPE en eventos de logística al procesar donaciones de donantes desvinculados — absorbido por el **Punto 69**: con Soft Delete la donación nunca se desvincula del donante (se elimina el parche del punto 34 y la FK `donacion.donante_id` permanece intacta), atacando la causa raíz del error.
+- **66.** `DELETE /api/entidades/{id}` respondía 409 por necesidades asociadas — absorbido por el **Punto 70**: con Soft Delete la entidad nunca se elimina físicamente (`activa = false`) y sus necesidades abiertas se cancelan lógicamente, protegiendo las FKs y el histórico de donaciones.
 - **47.** `REINGRESO_DEPOSITO` dejaba la donación varada en `PENDIENTE_ASIGNACION` sin resultado de matchmaking - actualizado el estado a `EN_DEPOSITO` en `GestorEventosLogistica.manejarReingresoDeposito` para que el scheduler de matchmaking la recoja automáticamente.
 - **48.** `DELETE /personas/{id}/medios-contacto` no borraba nada y respondía 302 - implementado equals/hashCode por tipo+valor en `MedioDeContacto`, `removeIf` en `MediosDeContacto`, retorno 200 OK en controller.
 - **46.** `PUT /api/admins/{id}` insertaba un admin nuevo en cada modificación - `AdminService` reutiliza la entidad original y `RepositorioAdministradores.actualizar` fuerza `idOriginal` antes de `save()`.
@@ -450,6 +635,7 @@ Definir si la consulta queda delegada en incentivos-service (dejarlo documentado
 
 Un bullet por arreglo; el número es el ID estable del punto original («sin ID» = arreglos de integración que no tenían punto propio). Los residuales que siguen abiertos quedan anotados en el bullet.
 
+- **58.** Declaración duplicada de dependencia `spring-boot-starter-validation` en `pom.xml` — eliminada del `pom.xml` en commit `8e3fa0f`.
 - **59.** Importación CSV con nombres malformados o vacíos — saneado en `Humana`, `Juridica` y `PersonaDonanteFilaConverter`, evitando strings vacíos o de solo espacios y asegurando compatibilidad con los DTOs de incentivos.
 - **40.** Importación CSV no actualizaba donantes existentes — descartado / por diseño: se toman intencionalmente como donantes distintos al no poseer identificador unívoco.
 - **33.** La importación CSV dejaba a los donantes sin medio predeterminado — el converter marca el primero si ninguno viene marcado.

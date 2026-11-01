@@ -4,8 +4,10 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notifica
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RepositorioNotificaciones extends JpaRepository<Notificacion, UUID> {
+    Optional<Notificacion> findByIdSolicitud(String idSolicitud);
 }

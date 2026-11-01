@@ -165,4 +165,28 @@ class PerfilTest {
         assertThat(obtenida.getFechaObtencion()).isNotNull();
         assertThat(obtenida.getInsignia()).isNotNull();
     }
+    @Test
+    @DisplayName("darDeBaja desactiva el perfil, anonimiza nombre y limpia insignias y misiones")
+    void darDeBajaDesactivaYMinimizaDatos() {
+        Perfil perfil = new Perfil(ID_USUARIO, "Ana");
+        Categoria cat = categoria("Base", mision("M1"));
+        perfil.iniciarEn(cat);
+
+        Insignia insignia = new Insignia("Medalla", "Desc");
+        perfil.getInsigniasObtenidas().add(new InsigniaObtenida(perfil, insignia));
+
+        assertThat(perfil.isActivo()).isTrue();
+        assertThat(perfil.getNombreUsuario()).isEqualTo("Ana");
+        assertThat(perfil.getCategoriaActual()).isNotNull();
+        assertThat(perfil.getProgresoMisionActual()).isNotNull();
+        assertThat(perfil.getInsigniasObtenidas()).isNotEmpty();
+
+        perfil.darDeBaja();
+
+        assertThat(perfil.isActivo()).isFalse();
+        assertThat(perfil.getNombreUsuario()).isNull();
+        assertThat(perfil.getCategoriaActual()).isNull();
+        assertThat(perfil.getProgresoMisionActual()).isNull();
+        assertThat(perfil.getInsigniasObtenidas()).isEmpty();
+    }
 }

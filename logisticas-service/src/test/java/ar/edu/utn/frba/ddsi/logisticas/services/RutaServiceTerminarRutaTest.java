@@ -23,10 +23,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -78,5 +82,69 @@ class RutaServiceTerminarRutaTest {
         // Debe eliminar el ítem entregado de repoItemEntrega y NUNCA publicar reingreso
         verify(gestorPublicacionEventos, never()).publicarReingresoDeposito(any());
         verify(repoItemEntrega).deleteById(idDonacionEntregada);
+    }
+
+    @Test
+    @DisplayName("terminarRuta debe persistir instancias actualizadas de Chofer y Camion desde repositorios y no los snapshots embebidos")
+    void persistirInstanciasActualizadasDeChoferYCamion() {
+        UUID idChofer = UUID.randomUUID();
+        String patente = "AAA111";
+
+        // Snapshot embebido en la ruta con version 1
+        Chofer choferEmbebido = new Chofer(idChofer, "Nombre Viejo", false);
+        choferEmbebido.setVersion(1L);
+
+        Camion camionEmbebido = new Camion("AAA111", 10.0, 3.0, 1000.0, false);
+        camionEmbebido.setChofer(choferEmbebido);
+        camionEmbebido.setVersion(1L);
+
+        Ruta rutaEnCurso = new Ruta(camionEmbebido);
+        rutaEnCurso.setEstado(EstadoRuta.EN_CURSO);
+
+        // Instancias frescas en los repositorios con version 2 (fueron modificadas durante el día)
+        Chofer choferFresco = new Chofer(idChofer, "Nombre Actualizado", false);
+        choferFresco.setVersion(2L);
+
+        Camion camionFresco = new Camion("AAA111", 10.0, 3.0, 1000.0, false);
+        camionFresco.setChofer(choferFresco);
+        camionFresco.setVersion(2L);
+
+        when(repoChoferes.findById(idChofer)).thenReturn(Optional.of(choferFresco));
+        when(repoRutas.findByChoferYEstado(choferFresco, EstadoRuta.EN_CURSO)).thenReturn(Optional.of(rutaEnCurso));
+        when(repoRutas.findById(rutaEnCurso.getIdRuta())).thenReturn(Optional.of(rutaEnCurso));
+        when(repoCamiones.findById(patente)).thenReturn(Optional.of(camionFresco));
+
+        rutaService.terminarRuta(idChofer);
+
+        // Debe guardar choferFresco (version 2), NO choferEmbebido (version 1)
+        verify(repoChoferes).save(choferFresco);
+        verify(repoChoferes, never()).save(choferEmbebido);
+        assertTrue(choferFresco.isDisponible(), "El chofer actualizado debe quedar marcado como disponible");
+
+        // Debe guardar camionFresco (version 2), NO camionEmbebido (version 1)
+        verify(repoCamiones).save(camionFresco);
+        verify(repoCamiones, never()).save(camionEmbebido);
+        assertTrue(camionFresco.getDisponible(), "El camión actualizado debe quedar marcado como disponible");
+        assertNull(camionFresco.getChofer(), "El camión actualizado debe quedar desvinculado de su chofer");
+    }
+
+    @Test
+    @DisplayName("terminarRuta no debe lanzar NullPointerException si la ruta no tiene camión asignado")
+    void noLanzaNpeSiRutaNoTieneCamion() {
+        UUID idChofer = UUID.randomUUID();
+        Chofer choferFresco = new Chofer(idChofer, "Chofer", false);
+
+        Ruta rutaEnCurso = new Ruta();
+        rutaEnCurso.setIdRuta(UUID.randomUUID());
+        rutaEnCurso.setParadas(new ArrayList<>());
+        rutaEnCurso.setCamionAsignado(null);
+        rutaEnCurso.setEstado(EstadoRuta.EN_CURSO);
+
+        when(repoChoferes.findById(idChofer)).thenReturn(Optional.of(choferFresco));
+        when(repoRutas.findByChoferYEstado(choferFresco, EstadoRuta.EN_CURSO)).thenReturn(Optional.of(rutaEnCurso));
+        when(repoRutas.findById(rutaEnCurso.getIdRuta())).thenReturn(Optional.of(rutaEnCurso));
+
+        assertDoesNotThrow(() -> rutaService.terminarRuta(idChofer));
+        verify(repoChoferes).save(choferFresco);
     }
 }

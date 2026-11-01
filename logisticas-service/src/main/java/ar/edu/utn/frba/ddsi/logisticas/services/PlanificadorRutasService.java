@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PlanificadorRutasService {
@@ -77,31 +78,14 @@ public class PlanificadorRutasService {
             throw new RuntimeException("Falla en la base de datos al recuperar información para el ruteo", e);
         }
 
-        List<Ruta> rutasGeneradas = planificadorDominio.procesarCallbackRutas(asignacion, camionesDb, itemsDb);
-        try {
-            for (Ruta ruta : rutasGeneradas) {
-
-                repoRutas.save(ruta);
-
-                for (Parada parada : ruta.getParadas()) {
-                    repoParadas.save(parada);
-
-                    for (ItemEntrega item : parada.getItems()) {
-                        repoItemEntrega.save(item);
-                    }
-                }
-            }
-            log.info("Se guardaron exitosamente {} rutas nuevas", rutasGeneradas.size());
-
-        } catch (Exception e) {
-            log.error("Error al persistir las nuevas rutas en la base de datos", e);
-            throw new RuntimeException("Error al persistir las nuevas rutas en la base de datos", e);
-        }
-
-        return rutasGeneradas;
+        return planificadorDominio.procesarCallbackRutas(asignacion, camionesDb, itemsDb);
     }
 
-    public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas){
+    public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas) {
+        if (rutas == null || rutas.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         Set<UUID> choferesEnRutasActivas = repoRutas.findAll().stream()
                 .filter(ruta -> ruta.getEstado() != null && ruta.getEstado() != EstadoRuta.FINALIZADA)
                 .map(Ruta::getCamionAsignado)
@@ -110,57 +94,64 @@ public class PlanificadorRutasService {
                 .filter(Objects::nonNull)
                 .map(Chofer::getIdChofer)
                 .filter(Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         List<Chofer> choferesDisponibles = new ArrayList<>(
                 repoChoferes.findAll()
                         .stream()
+                        .filter(Chofer::isActivo)
                         .filter(Chofer::isDisponible)
                         .filter(chofer -> !choferesEnRutasActivas.contains(chofer.getIdChofer()))
                         .toList()
         );
         Random random = new Random();
 
-        if(rutas.size() <= choferesDisponibles.size()){
-            for (Ruta ruta : rutas) {
-                Chofer choferElegido = choferesDisponibles.get(random.nextInt(choferesDisponibles.size()));
+        List<Ruta> rutasPendientes = new ArrayList<>(rutas);
+        List<Ruta> rutasAsignadas = new ArrayList<>();
 
-                Camion camion = ruta.getCamionAsignado();
-                if (camion != null) {
-                    camion.setChofer(choferElegido);
-                    camion.ocupado();
-                    choferElegido.ocupado();
+        int cantidadAAsignar = Math.min(rutasPendientes.size(), choferesDisponibles.size());
 
-                    repoCamiones.save(camion);
-                    repoChoferes.save(choferElegido);
-                }
+        for (int i = 0; i < cantidadAAsignar; i++) {
+            Chofer choferElegido = choferesDisponibles.remove(random.nextInt(choferesDisponibles.size()));
+            Ruta rutaElegida = rutasPendientes.remove(random.nextInt(rutasPendientes.size()));
 
-                repoRutas.save(ruta);
-                choferesDisponibles.remove(choferElegido);
-                choferesEnRutasActivas.add(choferElegido.getIdChofer());
+            Camion camion = rutaElegida.getCamionAsignado();
+            if (camion != null) {
+                camion.setChofer(choferElegido);
+                camion.ocupado();
+                choferElegido.ocupado();
+
+                repoCamiones.save(camion);
+                repoChoferes.save(choferElegido);
             }
-            return rutas;
+
+            persistirRutaAsignada(rutaElegida);
+            rutasAsignadas.add(rutaElegida);
+            choferesEnRutasActivas.add(choferElegido.getIdChofer());
+        }
+
+        if (rutasAsignadas.size() < rutas.size()) {
+            log.warn("Se generaron {} rutas pero solo se asignaron {} por falta de choferes disponibles. " +
+                    "Las rutas no asignadas no fueron persistidas y sus ítems continúan pendientes para futuras planificaciones.",
+                    rutas.size(), rutasAsignadas.size());
         } else {
-            List<Ruta> rutasAsignadas = new ArrayList<>();
-            for (Chofer chofer : choferesDisponibles) {
-                Ruta rutaElegida = rutas.get(random.nextInt(rutas.size()));
+            log.info("Se asignaron y persistieron exitosamente {} rutas nuevas.", rutasAsignadas.size());
+        }
 
-                Camion camion = rutaElegida.getCamionAsignado();
-                if (camion != null) {
-                    camion.setChofer(chofer);
-                    camion.ocupado();
-                    chofer.ocupado();
+        return rutasAsignadas;
+    }
 
-                    repoCamiones.save(camion);
-                    repoChoferes.save(chofer);
+    private void persistirRutaAsignada(Ruta ruta) {
+        repoRutas.save(ruta);
+        if (ruta.getParadas() != null) {
+            for (Parada parada : ruta.getParadas()) {
+                repoParadas.save(parada);
+                if (parada.getItems() != null) {
+                    for (ItemEntrega item : parada.getItems()) {
+                        repoItemEntrega.save(item);
+                    }
                 }
-
-                repoRutas.save(rutaElegida);
-                rutas.remove(rutaElegida);
-                rutasAsignadas.add(rutaElegida);
-                choferesEnRutasActivas.add(chofer.getIdChofer());
             }
-            return rutasAsignadas;
         }
     }
 }

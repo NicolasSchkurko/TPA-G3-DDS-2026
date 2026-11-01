@@ -74,6 +74,11 @@ public class MediosDeContacto {
         this.listaMediosDeContacto.removeAll(mediosDeContacto);
     }
 
+    public void limpiarMedios() {
+        this.medioDeContactoPredeterminado = null;
+        this.listaMediosDeContacto.clear();
+    }
+
     @Override
     public String toString() {
         return "MediosDeContacto{listaMediosDeContacto=" + listaMediosDeContacto + '}';
@@ -84,5 +89,3 @@ public class MediosDeContacto {
     }
 
 }
-
-

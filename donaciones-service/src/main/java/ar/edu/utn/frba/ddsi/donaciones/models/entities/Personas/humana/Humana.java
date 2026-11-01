@@ -48,7 +48,7 @@ public class Humana extends Persona {
   @Override
   public String getNombreDeUsuario() {
     if ((nombre == null || nombre.isBlank()) && (apellido == null || apellido.isBlank())) {
-      throw new IllegalStateException("El donante no tiene nombre ni apellido");
+      return null;
     }
     if (nombre == null || nombre.isBlank()) {
       return apellido.trim();
@@ -57,5 +57,15 @@ public class Humana extends Persona {
       return nombre.trim();
     }
     return (nombre.trim() + " " + apellido.trim()).trim();
+  }
+
+  @Override
+  public void anonimizar() {
+    limpiarMediosDeContacto();
+    this.nombre = null;
+    this.apellido = null;
+    this.edad = 0;
+    this.numeroDeDocumento = 0;
+    this.genero = null;
   }
 }

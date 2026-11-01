@@ -112,6 +112,11 @@ public class GestorPublicacionEventos {
     }
 
     public ItemEntrega publicarReingresoDeposito(ItemEntrega item) {
+        if (item.getEstado() != EstadoEntrega.NO_RECIBIDA && item.getEstado() != EstadoEntrega.EN_CAMINO) {
+            throw new IllegalStateException("No se puede registrar reingreso a depósito: la donación "
+                    + item.getIdDonacion() + " no está en camino ni no recibida (estado actual: " + item.getEstado() + ").");
+        }
+
         item.getEstado().cambiarEstado(item, EstadoEntrega.PENDIENTE);
 
         EventoLogistica evento = new EventoLogistica(

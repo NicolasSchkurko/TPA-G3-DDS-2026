@@ -199,6 +199,7 @@ public class PerfilService {
     @Transactional(readOnly = true)
     public PerfilDTO buscarPorIdUsuario(UUID idUsuario) {
         Perfil p = repositorioPerfiles.findById(idUsuario)
+                                      .filter(Perfil::isActivo)
                                       .orElseThrow(() -> new InexistenteException(
                                           "No existe un perfil para el usuario " + idUsuario
                                       ));
@@ -212,9 +213,9 @@ public class PerfilService {
      */
     @Transactional(readOnly = true)
     public Page<InsigniaDTO> obtenerInsigniasPorIdUsuario(UUID idUsuario, Pageable pageable) {
-        if (!repositorioPerfiles.existsById(idUsuario)) {
-            throw new InexistenteException();
-        }
+        repositorioPerfiles.findById(idUsuario)
+                .filter(Perfil::isActivo)
+                .orElseThrow(InexistenteException::new);
 
         return repositorioPerfiles.paginaInsigniasPorIdUsuario(idUsuario, pageable)
                                   .map(obtenida -> convertirInsigniaADTO(obtenida.getInsignia()));
@@ -226,8 +227,14 @@ public class PerfilService {
      */
     @Transactional(readOnly = true)
     public MisionPerfilDTO obtenerMisionPorIdUsuario(UUID idUsuario) {
-        ProgresoMision progreso = repositorioPerfiles.obtenerProgresoMisionPorIdUsuario(idUsuario)
-                                                .orElseThrow(InexistenteException::new);
+        Perfil p = repositorioPerfiles.findById(idUsuario)
+                .filter(Perfil::isActivo)
+                .orElseThrow(InexistenteException::new);
+
+        ProgresoMision progreso = p.getProgresoMisionActual();
+        if (progreso == null) {
+            throw new InexistenteException();
+        }
         return convertirProgresoMisionADTO(progreso);
     }
 
@@ -238,6 +245,7 @@ public class PerfilService {
     @Transactional(readOnly = true)
     public PerfilPublicoDTO obtenerPerfilPublico(UUID idUsuario) {
         Perfil perfil = repositorioPerfiles.findById(idUsuario)
+                                           .filter(Perfil::isActivo)
                                            .orElseThrow(InexistenteException::new);
 
         Categoria categoria = perfil.getCategoriaActual();
@@ -299,6 +307,7 @@ public class PerfilService {
         }
 
         Perfil p = repositorioPerfiles.findById(idUsuario)
+                                      .filter(Perfil::isActivo)
                                       .orElseThrow(InexistenteException::new);
 
         boolean perfilActualizado = this.progresarPerfil(p, donacion);
@@ -385,6 +394,7 @@ public class PerfilService {
         }
 
         Perfil p = repositorioPerfiles.findById(idUsuario)
+                                      .filter(Perfil::isActivo)
                                       .orElseThrow(InexistenteException::new);
 
         if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
@@ -468,43 +478,47 @@ public class PerfilService {
 
     // ========== ELIMINAR ==========
     /**
-     * Borra el perfil del donante. El 404 va por {@link InexistenteException}. Exige
-     * administrador.
+     * Da de baja el perfil del donante de forma lógica (soft delete) y minimiza sus datos.
+     * Preserva intacto el historial en ImpactoDonacion para salvaguardar las métricas contables
+     * y los snapshots de ranking.
+     * El 404 va por {@link InexistenteException}. Exige administrador.
      */
     @Transactional
     public void eliminarPerfil(UUID idUsuario, UUID idAdmin) {
         validadorAdmin.verificarPermisos(idAdmin);
 
-        if (!repositorioPerfiles.existsById(idUsuario)) {
-            throw new InexistenteException();
-        }
-        borrarPerfilYHistorial(idUsuario);
+        Perfil perfil = repositorioPerfiles.findById(idUsuario)
+                .filter(Perfil::isActivo)
+                .orElseThrow(InexistenteException::new);
+
+        darDeBajaPerfil(perfil);
     }
 
     /**
      * Variante sin autenticación para el borrado en cascada que dispara donaciones-service al
      * eliminar un donante: la baja ya la autorizó donaciones-service, así que exigir
      * {@code Admin-Id} acá solo duplicaría (mal) esa validación. Idempotente -- si el donante
-     * nunca llegó a donar no hay perfil, y eso no es un error -- para que donaciones-service no
-     * tenga que distinguir "ya no tenía perfil" de "se borró bien".
+     * nunca llegó a donar o ya fue dado de baja, no falla -- para que donaciones-service no
+     * tenga que distinguir "ya no tenía perfil" de "se dio de baja bien".
      */
     @Transactional
     public void eliminarPerfilPorBajaDeDonante(UUID idUsuario) {
-        if (!repositorioPerfiles.existsById(idUsuario)) {
+        Optional<Perfil> opt = repositorioPerfiles.findById(idUsuario);
+        if (opt.isEmpty() || !opt.get().isActivo()) {
             return;
         }
-        borrarPerfilYHistorial(idUsuario);
+        darDeBajaPerfil(opt.get());
     }
 
     /**
      * Variante sin autenticación para propagar cambios de nombre de donante desde donaciones-service.
-     * Idempotente: si el donante no existe, no falla.
+     * Idempotente: si el donante no existe o está inactivo, no falla.
      */
     @Transactional
     public void actualizarPerfilPorModificacionDeDonante(UUID idUsuario, PerfilDonanteDTO dto) {
         if (idUsuario == null || dto == null) return;
         Optional<Perfil> opt = repositorioPerfiles.findById(idUsuario);
-        if (opt.isEmpty()) return;
+        if (opt.isEmpty() || !opt.get().isActivo()) return;
 
         Perfil perfil = opt.get();
         if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isBlank()) {
@@ -515,12 +529,11 @@ public class PerfilService {
     }
 
     /**
-     * {@code ImpactoDonacion} no tiene relación JPA hacia {@code Perfil} (ver comentario en
-     * {@code RepositorioDonaciones.deleteByIdUsuario}): sin este borrado explícito el historial
-     * de donaciones del usuario sobrevivía en silencio a la baja del perfil.
+     * Aplica la baja lógica y minimización de datos en Perfil.
+     * Las filas de ImpactoDonacion se preservan intactas en la base de datos.
      */
-    private void borrarPerfilYHistorial(UUID idUsuario) {
-        repositorioDonaciones.deleteByIdUsuario(idUsuario);
-        repositorioPerfiles.deleteById(idUsuario);
+    private void darDeBajaPerfil(Perfil perfil) {
+        perfil.darDeBaja();
+        repositorioPerfiles.save(perfil);
     }
 }

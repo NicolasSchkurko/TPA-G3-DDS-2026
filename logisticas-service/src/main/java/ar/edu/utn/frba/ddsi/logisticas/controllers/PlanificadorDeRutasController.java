@@ -48,7 +48,8 @@ public class PlanificadorDeRutasController {
   public ResponseEntity<String> recibirRutasPlanificadas(@RequestBody String jsonAsignacion) {
     try {
       List<Ruta> rutasGeneradas = planificadorService.procesarCallbackRutas(jsonAsignacion);
-      if (rutasGeneradas.equals(planificadorService.asignarChoferes(rutasGeneradas))){
+      List<Ruta> rutasAsignadas = planificadorService.asignarChoferes(rutasGeneradas);
+      if (rutasGeneradas.size() == rutasAsignadas.size()) {
         return ResponseEntity.ok("Rutas procesadas y guardadas exitosamente en el sistema de logística.");
       } else {
         return ResponseEntity.ok("Lo sentimos, no pudimos asignar todas las rutas por falta de choferes");

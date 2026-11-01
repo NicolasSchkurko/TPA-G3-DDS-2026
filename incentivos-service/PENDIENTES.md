@@ -10,15 +10,20 @@ de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
 | 1 | 39 | Alta | Un perfil queda huérfano si la baja del donante en donaciones no llega |
-| 2 | 1 | Alta | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
-| 3 | 43 | Media | El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones |
-| 4 | 44 | Media | Un `nombreUsuario` largo revienta el alta con un 409 confuso |
-| 5 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
-| 6 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
-| 7 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
-| 8 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 9 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
-| 10 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
+| 2 | 47 | Alta | `actualizarCategoria` rechaza cualquier cambio de posición en la secuencia de categorías con un 409 espurio |
+| 3 | 48 | Alta | `Categoria.siguienteMision` y `eliminarMision` comparan `Mision` por igualdad referencial en vez de ID o `equals`, saltándose misiones del donante |
+| 4 | 49 | Alta | La racha de constancia mensual expira al inicio del mes siguiente si la última donación fue a principios de mes |
+| 5 | 1 | Alta | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
+| 6 | 50 | Media | `InsigniaObtenida.equals` compara instancias de `Insignia` sin `equals`, permitiendo duplicar medallas en JPA |
+| 7 | 51 | Media | `buscarSiguienteParaEnviar` en la outbox de n8n bloquea pesimistamente toda la tabla de pendientes sin paginación (`LIMIT 1`) |
+| 8 | 52 | Media | `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia |
+| 9 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
+| 10 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
+| 11 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
+| 12 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
+| 13 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 14 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
+| 15 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
 
 El punto 1 requiere una decisión del equipo para acordar una identidad compartida entre servicios.
 El punto 10 queda documentado pero no es relevante: el equipo decidió deliberadamente contar insignias.
@@ -46,9 +51,133 @@ El perfil gamificado de un donante dado de baja en `donaciones-service` **sobrev
 
 ### Propuesta
 
-1. Consumir un evento `donante.baja` publicado por donaciones (Rabbit) y borrar ahí el perfil y su historial de impactos de forma idempotente, con DLQ y reintentos. Deja de depender de una llamada HTTP en medio de la baja del otro servicio.
-2. Exponer una **reconciliación** (endpoint de admin o job) que liste/borre perfiles sin donante, o un borrado de respaldo por `nombreUsuario`.
-3. Verificar que el despliegue tenga el endpoint `/api/perfiles/interno/{idUsuario}` (commit `7e9da04`); sin él, la llamada de donaciones da 404 y la baja entera falla.
+1. Consumir un evento `donante.baja` publicado por donaciones (Rabbit) para procesar la baja de forma idempotente con DLQ y reintentos, desacoplándola de la llamada HTTP en medio de la transacción del otro servicio.
+2. **Alineación con punto 54:** El procesamiento de la baja (sea por evento o por el endpoint interno `DELETE /api/perfiles/interno/{idUsuario}`) debe aplicar **soft delete y minimización** en `Perfil` (`activo = false`, anonimizar `nombreUsuario`, limpiar insignias y progreso) y **preservar intacto el historial en `impacto_donacion`** (eliminar la llamada a `deleteByIdUsuario` para no destruir las métricas históricas de la plataforma).
+3. Exponer una **reconciliación** (job periódico o endpoint de admin) que detecte perfiles cuyo donante ya no exista en `donaciones-service` y aplique sobre ellos la baja lógica y minimización del punto 54.
+4. Mantener el endpoint `/api/perfiles/interno/{idUsuario}` operativo y transaccional como canal síncrono de respaldo (commit `7e9da04`).
+
+---
+
+## 47. `actualizarCategoria` rechaza cualquier cambio de posición en la secuencia de categorías con un 409 espurio
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/CategoriaService.java:140-146`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/gestores/SecuenciaCategoria.java:21-38`
+
+### Qué pasa
+
+En una secuencia válida de categorías, las posiciones ocupadas son consecutivas y contiguas (`1..N`, sin huecos). Cuando un administrador intenta modificar la posición de una categoría existente mediante `PUT /api/categorias/admin/{id}` (por ejemplo, mover la categoría de posición 1 a 2):
+
+```java
+Integer destino = categoriaModificada.getPosicionSecuencia();
+if (destino != null) {
+    // La posición tiene que estar libre, salvo que sea la misma que ya tenía esta
+    // categoría (el caso normal de editar el nombre).
+    if (!destino.equals(categoriaActual.getPosicionSecuencia())
+            && repoCategorias.existsByPosicionSecuencia(destino)) {
+        throw new ConflictoException(
+                "Ya hay una categoría en la posición " + destino + ".");
+    }
+
+    gestorSecuencia.desplazarParaActualizar(
+            repoCategorias,
+            categoriaActual.getPosicionSecuencia(),
+            destino,
+            gestorSecuencia.posicionMaxima(repoCategorias)
+    );
+    categoriaActual.moverAPosicion(destino);
+}
+```
+
+Como la posición de destino ya está ocupada por otra categoría dentro de `1..N`, `repoCategorias.existsByPosicionSecuencia(destino)` es siempre `true`. La guarda aborta la operación con `ConflictoException` (409 Conflict).
+Si se intenta pasar una posición libre más allá de `N` (ej. `destino = max + 1`), `SecuenciaCategoria.verificarPosicionEnRango` rechaza con `IllegalArgumentException` (400) porque en actualización el tope es `max`.
+En consecuencia, es imposible mover cualquier categoría a una posición distinta; el bloque `gestorSecuencia.desplazarParaActualizar` es código muerto inalcanzable.
+
+### Cómo se dispara
+
+Llamar a `PUT /api/categorias/admin/{id}` con un `posicionSecuencia` distinto al actual (cualquier valor de 1 a N). Responde 409 Conflict en lugar de reordenar las categorías.
+
+### Propuesta de arreglo
+
+Eliminar la guarda `repoCategorias.existsByPosicionSecuencia(destino)` en `actualizarCategoria`: `SecuenciaCategoria.desplazarParaActualizar` ya se encarga de validar el rango válido `[1, max]` y desplazar en bloque las demás categorías hacia arriba o abajo para hacer lugar al destino.
+
+---
+
+## 48. `Categoria.siguienteMision` y `eliminarMision` comparan `Mision` por igualdad referencial en vez de ID o `equals`, saltándose misiones del donante
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/CategoriaPerfil/Categoria.java:79, 115`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/Mision/Mision.java`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/CategoriaPerfil/CategoriaMision.java:34`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java:357-372`
+
+### Qué pasa
+
+`Mision` no implementa `equals` ni `hashCode`, por lo que hereda `Object.equals` (comparación por identidad `this == other`).
+En `CategoriaMision`, la relación con `mision` es perezosa (`fetch = FetchType.LAZY`).
+Cuando un donante completa una misión, `PerfilService.asignarSiguienteMision` llama a `categoriaActual.siguienteMision(misionCompletada)`:
+
+```java
+Integer posicionActual = this.categoriaMisiones.stream()
+        .filter(cm -> cm.getMision().equals(misionActual))
+        .map(CategoriaMision::getPosicion)
+        .findFirst()
+        .orElse(null);
+```
+
+`cm.getMision()` es un `HibernateProxy` creado al hidratar la colección `categoriaMisiones`. Al evaluar `cm.getMision().equals(misionActual)`, Java evalúa `proxy == misionActual`, lo cual siempre da `false` porque el proxy y la entidad cargada previamente en el contexto de persistencia son objetos distintos en memoria.
+Al dar `false`, `posicionActual` queda en `null`, y `siguienteMision` retorna `null`.
+`PerfilService.asignarSiguienteMision` interpreta erróneamente que la categoría no tiene más misiones y promueve al donante a la siguiente categoría (`cambiarCategoria`) o da por terminada la secuencia (`finalizarSecuencia`), salteándose todas las misiones intermedias de la categoría actual tras completar la primera.
+De igual forma, en `Categoria.eliminarMision(Mision mision)`:
+
+```java
+boolean removida = this.categoriaMisiones.removeIf(cm -> cm.getMision().equals(mision));
+```
+
+El `removeIf` no elimina la relación si `cm.getMision()` es un proxy, dejando la fila en `categoria_mision` y rompiendo el posterior borrado de la misión en `MisionService.eliminarMision` por violación de clave foránea.
+
+### Cómo se dispara
+
+Un donante completa la primera misión de una categoría que posee 2 o más misiones (flujo normal de donación en `PATCH /api/perfiles/donacion/{idUsuario}`). El servicio promueve al donante directamente a la siguiente categoría en lugar de asignarle la segunda misión.
+
+### Propuesta de arreglo
+
+Implementar `equals` y `hashCode` en `Mision` basados en `idMision` compatibles con proxies Hibernate (`idMision != null && idMision.equals(...)`), o comparar explícitamente los identificadores en `Categoria`: `Objects.equals(cm.getMision().getIdMision(), misionActual.getIdMision())`, tal como ya se hace en `SincronizacionPerfiles`.
+
+---
+
+## 49. La racha de constancia mensual expira al inicio del mes siguiente si la última donación fue a principios de mes
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/Perfil/ProgresoMision.java:109-117`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/ServiciosInternos/scheduler/MisionesScheduler.java:23-26`
+
+### Qué pasa
+
+La constancia en misiones como "Racha" se define por meses calendario consecutivos (punto 26 de Corregidos). Sin embargo, `ProgresoMision.evaluarConstancia` calcula el límite de caducidad sumando la duración directamente a la marca temporal de la última donación:
+
+```java
+ImpactoDonacion ultima = donacionesQueProgresaron.get(donacionesQueProgresaron.size() - 1);
+LocalDateTime limite = ultima.getFechaEntrega()
+        .plus(constancia.getCantidad(), constancia.getUnidadTiempo().comoChronoUnit());
+
+if (fechaEvaluacion.isAfter(limite)) {
+    // La racha caduco: el donante arranca de cero.
+    reiniciarProgreso();
+    return;
+}
+```
+
+Si un donante realiza su aporte el 1 de octubre a las 10:00, `limite` queda fijado en el 1 de noviembre a las 10:00.
+Cuando `MisionesScheduler` corre a la medianoche del 2 de noviembre (00:00):
+`fechaEvaluacion.isAfter(limite)` es `true` (2 de noviembre > 1 de noviembre).
+El scheduler resetea a cero el progreso del donante (`reiniciarProgreso()`), a pesar de que el mes de noviembre acaba de comenzar y el donante aún dispone de prácticamente todo el mes para cumplir su donación mensual consecutiva.
+
+### Cómo se dispara
+
+Un donante en una misión de constancia mensual dona los primeros días del mes M, y no dona el primer día del mes M+1. El scheduler nocturno borra su progreso el día 2 de M+1.
+
+### Propuesta de arreglo
+
+Para constancias basadas en meses, evaluar la caducidad comparando `YearMonth` (la racha solo vence si `YearMonth.from(fechaEvaluacion)` es posterior al mes siguiente a la última donación), o extender `limite` hasta el fin del mes calendario correspondiente.
 
 ---
 
@@ -118,61 +247,139 @@ módulos y al cliente de front.
 
 ---
 
-## 43. El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones
+## 50. `InsigniaObtenida.equals` compara instancias de `Insignia` sin `equals`, permitiendo duplicar medallas en JPA
 
 **Estado:** abierto
 **Severidad:** media
-**Archivos:** `models/repositories/SpringRepositories/RepositorioRankings.java:30-31`,
-`services/RankingService.java:168-172`
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/Perfil/InsigniaObtenida.java:64-78`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/Insignia/Insignia.java`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/entities/Perfil/Perfil.java:125-138`
 
 ### Qué pasa
 
-`GET /api/rankings` es paginado, pero la consulta que lo alimenta hace `fetch` de una colección
-y a la vez recibe `Pageable`:
+La deduplicación de insignias para evitar que un colaborador reciba la misma medalla dos veces (punto 28 de Corregidos) se apoya en el `Set<InsigniaObtenida>` de `Perfil`:
 
 ```java
-@EntityGraph(attributePaths = "posiciones")
-Page<RankingMensual> findAllByOrderByPeriodoDesc(Pageable pageable);
+boolean esNueva = insigniasObtenidas.add(new InsigniaObtenida(this, insignia));
 ```
 
-Hibernate no puede aplicar `LIMIT`/`OFFSET` sobre un `fetch join` a una colección: ignora el
-límite y **trae todos los rankings con todas sus posiciones a memoria**, y recién ahí Spring
-arma la página. La respuesta sale correcta, pero el costo crece con todo el historial.
+`InsigniaObtenida` define `equals` y `hashCode` delegando en sus atributos `perfil` e `insignia`:
+
+```java
+return Objects.equals(perfil, otra.perfil)
+        && Objects.equals(insignia, otra.insignia);
+```
+
+Sin embargo, ni `Insignia` ni `Perfil` implementan `equals` ni `hashCode`.
+Además, en `InsigniaObtenida`, `insignia` está mapeada con `FetchType.LAZY`. Cuando el perfil se recupera de la base de datos, las insignias obtenidas previamente contienen proxies de Hibernate (`Insignia$HibernateProxy`). Al ganar una misión (o recompletar una misión compartida entre categorías, como ocurre en el seed entre "Sostenedor" y "Transformador"), `insignia` es la entidad instanciada desde la misión activa.
+Dado que `Insignia` no sobreescribe `equals`, la comparación `proxy.equals(entidad)` usa identidad de memoria (`==`) y da `false`, con hash codes divergentes.
+El `Set.add` añade la insignia nuevamente, se inserta una fila duplicada en `insignia_obtenida` (que carece de unique constraint en base de datos), y se reemite el evento `MisionCompletada`, disparando notificaciones y publicaciones a n8n repetidas.
 
 ### Cómo se dispara
 
-Pedir una página del historial (`GET /api/rankings?size=10`) cuando hay muchos rankings
-publicados —uno por mes— y cada uno con todos los donantes de ese mes.
+Un donante que ya tiene una insignia vuelve a completar la misma misión (por ejemplo, en otra categoría de la secuencia donde se reutiliza la misión, o ante un recálculo). Al estar el perfil hidratado desde la base de datos, el `Set` no detecta el duplicado.
 
 ### Propuesta de arreglo
 
-Paginar sobre `RankingMensual` sin el `@EntityGraph` y resolver las posiciones por página, o una
-`@Query` con `countQuery` aparte como ya se hizo en `paginaInsigniasPorIdUsuario`.
+Implementar `equals` y `hashCode` en `Insignia` basados en `idInsignia` (o comparar `getIdInsignia()` en `InsigniaObtenida.equals`), y agregar un `@UniqueConstraint(name = "uk_insignia_obtenida_perfil_insignia", columnNames = {"perfil_id", "insignia_id"})` en la tabla `insignia_obtenida`.
 
 ---
 
-## 44. El alta de perfil no acota el largo de `nombreUsuario`: un nombre largo revienta con un 409 confuso
+## 51. `buscarSiguienteParaEnviar` en la outbox de n8n bloquea pesimistamente toda la tabla de pendientes sin paginación (`LIMIT 1`)
 
 **Estado:** abierto
 **Severidad:** media
-**Archivos:** `dto/Persona/PerfilDonanteDTO.java:19-20`, `models/entities/Perfil/Perfil.java`
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/repositories/SpringRepositories/RepositorioPublicacionesPendientes.java:20-27`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PublicacionesN8nService.java:44-50`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/clients/N8nClient.java:58-84`
 
 ### Qué pasa
 
-`PerfilDonanteDTO.nombreUsuario` solo tiene `@NotBlank`; no hay `@Size` ni `@Column(length = ...)`
-en `Perfil`. La columna queda `varchar(255)`, así que un nombre de más de 255 caracteres pasa la
-validación y falla en el INSERT con `DataIntegrityViolationException`, que el handler traduce a
-**409 "hay datos relacionados que la impiden"** — un mensaje que no tiene nada que ver con la
-causa. `role` está igual de suelto.
+En `RepositorioPublicacionesPendientes`:
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT p FROM PublicacionPendienteN8n p "
+        + "WHERE p.proximoIntento <= :ahora "
+        + "AND (p.leaseHasta IS NULL OR p.leaseHasta <= :ahora) "
+        + "ORDER BY p.fechaCreacion, p.id")
+List<PublicacionPendienteN8n> buscarSiguienteParaEnviar(
+        @Param("ahora") LocalDateTime ahora
+);
+```
+
+La consulta aplica bloqueo pesimista exclusivo (`SELECT ... FOR UPDATE`) sobre todas las filas coincidentes sin límite SQL (`LIMIT 1`).
+`PublicacionesN8nService.reclamarSiguiente` toma sólo la primera fila con `stream().findFirst()`, y `N8nClient.procesarPendientes` ejecuta esto en un bucle de hasta 50 iteraciones seguidas cada 30 segundos.
+En cada iteración se bloquea la totalidad de publicaciones pendientes en la tabla. Si en ese intervalo llegan donaciones que completan misiones, el listener de persistencia `N8nClient.encolarInsignia` (que se ejecuta dentro de la transacción de la donación vía `@EventListener`) intenta insertar una fila en `publicacion_pendiente_n8n` y queda en espera pasiva por los cerrojos de tabla/índice. Esto genera cuellos de botella en la ingesta de donaciones, degradación de latencia o excepciones por lock wait timeout.
 
 ### Cómo se dispara
 
-`POST /api/perfiles` (o `/lote`, ver punto 42) con `nombreUsuario` de 256+ caracteres.
+Procesamiento del scheduler de n8n con publicaciones pendientes acumuladas concurrente con el registro de donaciones que completan misiones.
 
 ### Propuesta de arreglo
 
-`@Size(max = 255)` en el DTO y `@Column(length = ...)` en la entidad, para que sea un 400 con el
-campo señalado.
+Limitar la consulta a un único registro mediante `Pageable` (`PageRequest.of(0, 1)`) o método derivado con `LIMIT 1` (`findFirstBy...`), de modo que el bloqueo `FOR UPDATE` afecte únicamente a la fila que efectivamente se va a reclamar.
+
+---
+
+## 52. `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/repositories/RepositorioNotificacionesPendientes.java:13-33`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/clients/NotificacionClient.java:51-56`
+
+### Qué pasa
+
+Cuando falla la publicación de una notificación en RabbitMQ, `NotificacionClient.enviarNotificacion` atrapa el error y lo guarda en `RepositorioNotificacionesPendientes`:
+
+```java
+} catch (Exception e) {
+    log.error("Error al publicar la notificación para {}, guardando en pendientes",
+            dto.getDireccionDeContacto(), e);
+
+    repositorioPendientes.guardar(dto);
+    throw new EnvioNotificacionException(dto);
+}
+```
+
+`RepositorioNotificacionesPendientes` acumula los DTOs en un `List<PerfilNotificacionDTO>` en memoria RAM.
+Sin embargo:
+1. No existe en todo el proyecto ningún worker, scheduler ni consumidor que llame a `listarTodas()` ni reintente enviar los mensajes pendientes.
+2. Si la aplicación se reinicia o el pod se recrea, todas las notificaciones pendientes se pierden sin posibilidad de recuperación.
+3. La lista interna es un `ArrayList` estándar no sincronizado, por lo que llamadas concurrentes desde distintos hilos pueden provocar `ConcurrentModificationException`.
+
+### Cómo se dispara
+
+Caída momentánea del broker RabbitMQ al momento de confirmarse una donación que completa una misión o cambia de categoría.
+
+### Propuesta de arreglo
+
+Implementar una outbox persistente en base de datos para notificaciones con un scheduler de reintento periódico (idéntico al esquema de `publicacion_pendiente_n8n`), o apoyarse en el mecanismo de reintentos nativo de Spring AMQP con DLQ.
+
+---
+
+## 53. `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java:390-392`, `src/main/java/ar/edu/utn/frba/ddsi/incentivos/controllers/PerfilController.java:184-192`
+
+### Qué pasa
+
+`PUT /api/perfiles/{idUsuario}` recibe `@RequestBody PerfilDTO perfil` sin la anotación `@Valid`.
+En `PerfilService.actualizarDatosPerfil`:
+
+```java
+if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
+    p.cambiarNombre(dto.getNombreUsuario());
+}
+```
+
+La condición comprueba `!isEmpty()` en lugar de `!isBlank()`. Si se envía una cadena compuesta únicamente por espacios en blanco (ej. `"   "`), `isEmpty()` devuelve `false`, la condición se cumple y se asigna a la entidad un nombre de usuario en blanco sin sanitizar ni aplicar `trim()`. Esto deja al donante con un nombre invisible en la base de datos, en las consultas públicas y en los rankings desnormalizados.
+
+### Cómo se dispara
+
+Llamar a `PUT /api/perfiles/{idUsuario}` con header `Admin-Id` válido y cuerpo `{ "nombreUsuario": "   " }`. Responde 200 OK y persiste el nombre de usuario compuesto únicamente por espacios en blanco.
+
+### Propuesta de arreglo
+
+Sanitizar con `!dto.getNombreUsuario().isBlank()` y aplicar `.trim()`, o anotar el DTO con `@NotBlank` y activar `@Valid` en el controlador.
 
 ---
 
@@ -549,6 +756,9 @@ Un ítem por fix, en el orden en que se cerraron. Los números son los que tení
 corrigió; los que no llevan número son fixes sin punto propio. Cuando hubo una decisión consciente
 que conviene no deshacer sin leer el porqué, va en cursiva en la misma línea.
 
+- **54.** Soft Delete y minimización en `Perfil` preservando métricas de `ImpactoDonacion` y snapshots de `Ranking`: agregado estado `activo = true` en `Perfil`, método de dominio `darDeBaja()` (anonimiza `nombreUsuario = null`, desvincula categoría y anula misiones/insignias vía `orphanRemoval`), se eliminó definitivamente `deleteByIdUsuario` para salvaguardar la contabilidad histórica de donaciones, y las consultas/actualizaciones sobre perfiles inactivos responden 404 (`InexistenteException`).
+- **44.** Alta de perfil acota el largo de `nombreUsuario` (`@Size(max = 500)` en `PerfilDonanteDTO` y `@Column(length = 500)` en `Perfil`; rechaza nombres largos con 400 Bean Validation en vez de un 409 por violación de integridad).
+- **43.** El historial de rankings pagina en base de datos sin cargar todas las posiciones a memoria: se removió `@EntityGraph` en `RepositorioRankings` y se configuró `@BatchSize(size = 30)` en `RankingMensual.posiciones` para hidratar en sub-lotes.
 - **42.** `crearPerfilesEnLote` maneja transacciones independientes por perfil (`TransactionTemplate`) evitando que un error de persistencia marque la sesión en rollback-only y tumbe el lote entero. Errores formateados sin exponer internals de BD.
 - **21.** Las rutas de ranking exigen administrador (`Admin-Id` + `ValidadorAdmin`). *El scheduler entra por un método privado sin permisos.*
 - **12.** Las llamadas HTTP salieron de las transacciones (timeouts; el contacto se resuelve en `AFTER_COMMIT`). *Sin reintentos automáticos: el `POST` a n8n no tiene idempotency key.*

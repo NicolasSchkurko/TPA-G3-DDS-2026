@@ -139,16 +139,26 @@ public class RutaService {
     }
 
     // 3. Liberar chofer
-    Chofer chofer = rutaActual.getCamionAsignado().getChofer();
-    chofer.disponible();
-    repoChoferes.save(chofer);
+    Chofer chofer = repoChoferes.findById(idChofer).orElse(null);
+    if (chofer == null && rutaActual.getCamionAsignado() != null) {
+      chofer = rutaActual.getCamionAsignado().getChofer();
+    }
+    if (chofer != null) {
+      chofer.disponible();
+      repoChoferes.save(chofer);
+    }
 
     // 4. Liberar y desvincular camión
-    Camion camionDeRuta = rutaActual.getCamionAsignado();
-    camionDeRuta.disponible();
-    camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
-    gestorCamiones.resetearCamion(camionDeRuta);
-    repoCamiones.save(camionDeRuta);
+    if (rutaActual.getCamionAsignado() != null) {
+      String patente = rutaActual.getCamionAsignado().getPatente();
+      Camion camionDeRuta = (patente != null)
+              ? repoCamiones.findById(patente).orElse(rutaActual.getCamionAsignado())
+              : rutaActual.getCamionAsignado();
+      camionDeRuta.disponible();
+      camionDeRuta.eliminarChofer(); // Desvinculamos el chofer del camión
+      gestorCamiones.resetearCamion(camionDeRuta);
+      repoCamiones.save(camionDeRuta);
+    }
 
     rutaActual.setEstado(EstadoRuta.FINALIZADA);
     repoRutas.save(rutaActual);

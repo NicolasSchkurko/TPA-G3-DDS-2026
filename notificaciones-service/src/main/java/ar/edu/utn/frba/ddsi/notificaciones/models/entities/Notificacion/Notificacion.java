@@ -27,6 +27,9 @@ public class Notificacion {
     @Id
     private UUID id = UUID.randomUUID();
 
+    @Column(name = "id_solicitud", unique = true)
+    private String idSolicitud;
+
     /** Cascade ALL y no PERSIST: el repo siempre va por merge() porque el id se asigna a mano. */
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_mensaje", referencedColumnName = "id_mensaje")
@@ -50,6 +53,11 @@ public class Notificacion {
     private String tipoMedioDeContacto;
 
     public Notificacion(String direccionDeContacto, String tipoMedioDeContacto, Mensaje mensaje) {
+        this(null, direccionDeContacto, tipoMedioDeContacto, mensaje);
+    }
+
+    public Notificacion(String idSolicitud, String direccionDeContacto, String tipoMedioDeContacto, Mensaje mensaje) {
+        this.idSolicitud = idSolicitud;
         this.fechaCreacion = LocalDateTime.now();
         this.estado = EstadoNotificacion.PENDIENTE;
         this.direccionDeContacto = direccionDeContacto;

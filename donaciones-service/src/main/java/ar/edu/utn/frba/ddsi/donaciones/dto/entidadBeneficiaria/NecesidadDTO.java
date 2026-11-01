@@ -23,6 +23,7 @@ public class NecesidadDTO {
     private String nombreCategoria;
     private Integer plazoEnDias;
     private UUID id;
+    private Boolean activa;
     private List<DonacionDTO> donaciones;
 
     /**
@@ -57,6 +58,10 @@ public class NecesidadDTO {
             necesidad.setId(this.id);
         }
 
+        if (this.activa != null) {
+            necesidad.setActiva(this.activa);
+        }
+
         return necesidad;
     }
 
@@ -70,6 +75,7 @@ public class NecesidadDTO {
             if (necesidad.getSubcategoria().getCategoria() != null) dto.setNombreCategoria(necesidad.getSubcategoria().getCategoria().getNombre());
         }
         dto.setId(necesidad.getId());
+        dto.setActiva(necesidad.isActiva());
         dto.setTipoNecesidad(necesidad instanceof NecesidadRecurrente ? "RECURRENTE" : "EXTRAORDINARIA");
         if (necesidad instanceof NecesidadRecurrente recurrente) dto.setPlazoEnDias(recurrente.getPlazoEnDias());
 

@@ -47,6 +47,14 @@ public abstract class Persona {
         this.mediosDeContacto.eliminarMedioDeContacto(medioDeContacto);
     }
 
+    public abstract void anonimizar();
+
+    protected void limpiarMediosDeContacto() {
+        if (this.mediosDeContacto != null) {
+            this.mediosDeContacto.limpiarMedios();
+        }
+    }
+
     public String getNombreDeUsuario(){
       return "";
     };

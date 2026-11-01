@@ -1,17 +1,19 @@
 package ar.edu.utn.frba.ddsi.donaciones.personas;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Representante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class JuridicaTest {
 
@@ -54,5 +56,32 @@ public class JuridicaTest {
         assertEquals(30, humana.getEdad());
         assertEquals(12345678, humana.getNumeroDeDocumento());
         assertEquals(Genero.HOMBRE, humana.getGenero());
+    }
+
+    @Test
+    @DisplayName("Punto 69: anonimizar() minimiza datos corporativos y vacia representantes")
+    void anonimizarJuridicaTest() {
+        Humana rep = new Humana("Maria", "Lopez", 40, 87654321, Genero.MUJER);
+        Representante representante = new Representante(rep, true);
+        Juridica juridica = new Juridica(
+                "Fundacion Ayuda",
+                "ONGs",
+                TipoJuridico.ONG,
+                "20-12345678-9",
+                new ArrayList<>(List.of(representante))
+        );
+        MediosDeContacto medios = new MediosDeContacto();
+        medios.agregarMedioDeContacto(new Mail("info@fundacion.org"));
+        juridica.setMediosDeContacto(medios);
+
+        juridica.anonimizar();
+
+        assertNull(juridica.getRazonSocial());
+        assertNull(juridica.getRubro());
+        assertNull(juridica.getTipoJuridico());
+        assertNull(juridica.getCuit());
+        assertTrue(juridica.getRepresentantes().isEmpty());
+        assertTrue(juridica.getMediosDeContacto().getListaMediosDeContacto().isEmpty());
+        assertNull(juridica.getNombreDeUsuario());
     }
 }

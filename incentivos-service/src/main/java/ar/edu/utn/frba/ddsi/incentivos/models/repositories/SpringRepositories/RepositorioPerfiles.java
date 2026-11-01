@@ -71,7 +71,7 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
         + "JOIN FETCH p.progresoMisionActual pm "
         + "JOIN FETCH pm.mision m "
         + "JOIN FETCH m.reglaDeProgreso "
-        + "WHERE m.reglaDeProgreso.constancia IS NOT NULL")
+        + "WHERE p.activo = true AND m.reglaDeProgreso.constancia IS NOT NULL")
     Page<Perfil> buscarPerfilesConMisionQueRequiereConstancia(Pageable pageable);
 
     /**

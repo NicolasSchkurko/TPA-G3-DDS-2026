@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @Setter
 public class PersonaDonanteDTO {
   private UUID id;
+  private Boolean activo;
   private String tipoPersona;
   private String nombre;
   private String apellido;
@@ -76,6 +77,7 @@ public class PersonaDonanteDTO {
 
     PersonaDonanteDTO dto = new PersonaDonanteDTO();
     dto.setId(entidad.getId());
+    dto.setActivo(entidad.isActivo());
     dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
 
     if (entidad.getPersona() == null) {

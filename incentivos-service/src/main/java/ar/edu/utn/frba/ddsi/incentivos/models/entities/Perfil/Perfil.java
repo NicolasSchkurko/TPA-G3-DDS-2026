@@ -44,6 +44,9 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @Column(length = 500)
     private String nombreUsuario;
 
+    @Column(nullable = false)
+    private boolean activo = true;
+
     @ManyToOne
     @JoinColumn(name = "categoria_id")
     private Categoria categoriaActual;
@@ -93,6 +96,23 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     /** Cambia el nombre del donante. */
     public void cambiarNombre(String nombre) {
         this.nombreUsuario = nombre;
+    }
+
+    /**
+     * Da de baja lógica al perfil (soft delete) y minimiza sus datos:
+     * desactiva el perfil, anonimiza el nombre de usuario, desvincula la categoría,
+     * limpia el progreso de la misión actual y remueve todas las insignias obtenidas
+     * (eliminadas de la persistencia por {@code orphanRemoval = true}).
+     * Preserva el historial en {@code ImpactoDonacion} y snapshots de ranking.
+     */
+    public void darDeBaja() {
+        this.activo = false;
+        this.nombreUsuario = null;
+        this.categoriaActual = null;
+        this.progresoMisionActual = null;
+        if (this.insigniasObtenidas != null) {
+            this.insigniasObtenidas.clear();
+        }
     }
 
     /** Recalcula la racha de la misión vigente a partir del historial. No hace nada sin misión. */

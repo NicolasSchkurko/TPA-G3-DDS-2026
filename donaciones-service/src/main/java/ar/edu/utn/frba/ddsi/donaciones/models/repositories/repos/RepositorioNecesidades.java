@@ -64,6 +64,10 @@ public class RepositorioNecesidades {
     }
   }
 
+  public void flush() {
+    jpaRepository.flush();
+  }
+
   public void eliminarPorId(UUID id) {
     jpaRepository.deleteById(id);
   }

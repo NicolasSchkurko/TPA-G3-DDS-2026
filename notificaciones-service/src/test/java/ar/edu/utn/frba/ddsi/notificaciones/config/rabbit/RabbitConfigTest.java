@@ -39,4 +39,12 @@ class RabbitConfigTest {
         assertEquals(RabbitConfig.COLA_DLQ, bindingDlq.getRoutingKey());
         assertEquals(RabbitConfig.COLA_DLQ, bindingDlq.getDestination());
     }
+    @Test
+    void elAvisoInternoTieneRoutingKeyYBindingPropio() {
+        assertEquals("notificaciones.aviso", RabbitConfig.RK_AVISO);
+        Binding bindingAviso = config.bindingNotificacionesAviso(
+                config.colaNotificaciones(), config.exchangeNotificaciones());
+        assertEquals(RabbitConfig.RK_AVISO, bindingAviso.getRoutingKey());
+        assertEquals(RabbitConfig.COLA_NOTIFICACIONES, bindingAviso.getDestination());
+    }
 }

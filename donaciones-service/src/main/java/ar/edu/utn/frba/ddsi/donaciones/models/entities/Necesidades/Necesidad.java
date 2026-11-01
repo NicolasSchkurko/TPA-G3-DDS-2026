@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
@@ -25,6 +26,9 @@ public abstract class Necesidad {
     @Id
     private UUID id = UUID.randomUUID(); // Identificador único autogenerado
 
+    @Column(nullable = false)
+    private boolean activa = true;
+
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
     SubcategoriaBien subcategoria;
@@ -42,6 +46,7 @@ public abstract class Necesidad {
         this.descripcion = descripcion;
         this.cantidadObjetivo = cantidadObjetivo;
         this.donaciones = new ArrayList<>();
+        this.activa = true;
     }
 
     protected Necesidad() {
@@ -71,6 +76,6 @@ public abstract class Necesidad {
     public abstract boolean estaSatisfecha();
 
     public boolean esCompatibleCon(Donacion donacion) {
-        return !this.estaSatisfecha() && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
+        return this.activa && !this.estaSatisfecha() && this.subcategoria != null && donacion != null && donacion.getSubcategoria() != null && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
     }
 }

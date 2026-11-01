@@ -12,69 +12,152 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
-| 1 | 10 | Media | El reingreso a depósito no valida nada y su comentario cita un método que no existe |
-| 2 | 31 | Media | El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio |
-| 3 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
-| 4 | 54 | Media | `RutaController.terminarRuta` no atrapa `IllegalStateException` y responde 500 ante un chofer sin ruta en curso |
-| 5 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante errores de validación |
+| 1 | 60 | Alta | `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper` |
+| 2 | 61 | Alta | `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales |
+| 3 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
+| 4 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
+| 5 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
 | 6 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
 | 7 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
-| 8 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 9 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
-| 10 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
-| 11 | 45 | Baja | El callback del proveedor externo está fijado a `localhost:8086`: si el puerto cambia o el proveedor es real, el resultado no vuelve |
+| 8 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
+| 9 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 10 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
+| 11 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
 | 12 | 49 | Baja | Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems en memoria |
 | 13 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
-## 10. El reingreso a depósito no valida nada y su comentario cita un método que no existe
+## 60. `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper`
 
 **Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `services/EntregaService.java:348-353`, `models/gestores/GestorPublicacionEventos.java:122-132`
+**Severidad:** alta  
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java:24-60`
 
 ### Qué pasa
 
-En `EntregaService`:
+En `ProveedorRutasExternoHttp`:
 
 ```java
-case "PENDIENTE":
-  // Reingreso a depósito tras revisión de una entrega NO_RECIBIDA.
-  // reingresarADeposito() ya valida que solo se pueda hacer desde NO_RECIBIDA.
-  repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
-  break;
+public ProveedorRutasExternoHttp(String urlApiExterna) {
+  this.httpClient = HttpClient.newHttpClient();
+  this.urlApiExterna = urlApiExterna;
+  this.objectMapper = new ObjectMapper();
+}
+...
+Map<String, Object> payload = new HashMap<>();
+payload.put("donaciones", lote);
+payload.put("camiones", camionesDisponibles);
+
+String jsonPayload = objectMapper.writeValueAsString(payload);
 ```
 
-1. `reingresarADeposito()` **no existe** en ningún lugar de la base de código.
-2. En `GestorPublicacionEventos.publicarReingresoDeposito(item)` se eliminó la guarda de estado en el commit `31396d0`. El método cambia el estado incondicionalmente a `PENDIENTE` sin validar si el estado actual es `NO_RECIBIDA`.
-
-Un `PATCH /api/entregas/{id}/estado` con body `{"estado": "PENDIENTE"}` sobre un ítem en `ENTREGADA` o `EN_CAMINO` lo transiciona a `PENDIENTE` sin validar nada, reincorporándolo a la cola de pendientes a planificar.
-
-### Propuesta de arreglo
-
-Validar que `item.getEstado() == EstadoEntrega.NO_RECIBIDA` antes de procesar el reingreso en `publicarReingresoDeposito` o en `EntregaService`.
-
----
-
-## 31. El callback del simulador no tiene timeout y descarta la respuesta: un lote se pierde en silencio
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:24-53`
-
-### Qué pasa
-
-1. **Sin timeout:** `HttpClient.newHttpClient()` no define `connectTimeout` y `HttpRequest` no tiene `.timeout()`. Si el callback no acepta la conexión, `httpClient.send(...)` puede bloquear el hilo del `CompletableFuture.runAsync` indefinidamente.
-2. **Status descartado:** `send(...)` ignora el `statusCode()` de la respuesta HTTP. Si el callback responde 400 o 500, el simulador no lo detecta ni reintenta. El lote se pierde silenciosamente y los ítems quedan en `PENDIENTE` sin aviso.
+1. `objectMapper` se instancia directamente con `new ObjectMapper()` sin registrar `JavaTimeModule` ni invocar `findAndRegisterModules()`.
+2. `lote` contiene instancias de `ItemEntrega`, que incluye `private LocalDateTime fechaCambioEstado;` y una lista de `EventoLogistica` (que también posee `private LocalDateTime fecha;`).
+3. Por defecto, Jackson lanza `InvalidDefinitionException: Java 8 date/time type java.time.LocalDateTime not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling`.
+4. La excepción es atrapada por el bloque `catch (Exception e)` de la línea 57, logueando el fallo sin enviar jamás la petición HTTP al proveedor externo. Toda llamada con este proveedor falla de inmediato.
+5. Adicionalmente, `HttpClient` y `HttpRequest` no configuran timeouts, y `sendAsync` no tiene bloque `.exceptionally(...)` para manejar fallos de conexión o caídas del servicio externo.
 
 ### Cómo se dispara
 
-Simular caída o error 500 en el callback durante la ejecución del scheduler: la falla no se registra ni se reintenta.
+Configurar el bean `ProveedorRutasExternoHttp` en `LogisticaConfig` y disparar una planificación manual o automática.
 
 ### Propuesta de arreglo
 
-Configurar timeouts en `HttpClient` y `HttpRequest`, verificar `statusCode() == 200` y loguear con ERROR ante cualquier fallo.
+Registrar `new JavaTimeModule()` en el `ObjectMapper` (o inyectar el `ObjectMapper` configurado por Spring Boot), configurar timeouts en la petición HTTP y encadenar `.exceptionally(...)` en el `CompletableFuture`.
+
+---
+
+## 61. `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales
+
+**Estado:** abierto  
+**Severidad:** alta  
+**Archivos:** `services/EntregaService.java:450-465`, `controllers/EntregaController.java:28-37`
+
+### Qué pasa
+
+En `EntregaService.convertirADireccionDTO`:
+
+```java
+private DireccionDTO convertirADireccionDTO(Entidad entidad){
+  return new DireccionDTO(
+      entidad.getIdEntidadBeneficiaria(),
+      entidad.getDireccionDestino().getCalle1(),
+      entidad.getDireccionDestino().getCalle2(),
+      entidad.getDireccionDestino().getAltura(),
+      entidad.getDireccionDestino().getPiso(),
+      entidad.getDireccionDestino().getDepartamento(),
+      entidad.getDireccionDestino().getCiudad().getNombre(),
+      entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(),
+      entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre()
+  );
+}
+```
+
+Y en `convertirABienDTO`:
+
+```java
+private BienDTO convertirABienDTO(ItemEntrega item){
+  return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
+}
+```
+
+A diferencia de `EntregaService.findById` (líneas 107-122), que implementa verificaciones de nulidad exhaustivas para `entidadDestino`, `direccionDestino`, `ciudad`, `provincia`, `pais`, `unidad` y `estado`, los métodos `convertirADireccionDTO` y `convertirABienDTO` desreferencian directamente toda la cadena de navegación.
+
+Si existe un solo ítem en la base de datos con `entidadDestino` nula, dirección destino nula, o alguna relación geográfica sin completar, la invocación de `GET /api/entregas` o `GET /api/entregas/no-recibidas` falla con HTTP 500 por `NullPointerException`, bloqueando la visualización de todos los ítems del sistema.
+
+### Cómo se dispara
+
+Consultar `GET /api/entregas` o `GET /api/entregas/no-recibidas` existiendo en base de datos un ítem con dirección o entidad incompleta.
+
+### Propuesta de arreglo
+
+Replicar en `convertirADireccionDTO` y `convertirABienDTO` las comprobaciones de nulidad presentes en `findById`.
+
+---
+
+## 31. Callback del simulador de rutas: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:23-53`
+
+### Qué pasa
+
+En `ProveedorRutasExternoSimulado`:
+
+1. **URL fijada en el código:** La URL del callback está cableada como constante estática:
+   ```java
+   private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
+   ```
+   Si el servicio corre en otro puerto (`SERVER_PORT != 8086`) o en un contenedor Docker en red puente, el callback intenta conectarse a un host o puerto erróneo y las rutas calculadas nunca regresan.
+2. **Sin timeouts en el cliente HTTP:**
+   ```java
+   HttpClient httpClient = HttpClient.newHttpClient();
+   HttpRequest request = HttpRequest.newBuilder()
+           .uri(URI.create(URL_CALLBACK_LOCAL))
+           .header("Content-Type", "application/json")
+           .POST(HttpRequest.BodyPublishers.ofString(jsonRutas))
+           .build();
+   ```
+   Ni el `HttpClient` define `connectTimeout` ni la `HttpRequest` define `.timeout()`. Si el callback tarda en responder o no acepta conexiones, el hilo de `CompletableFuture.runAsync` queda bloqueado indefinidamente.
+3. **Código de estado descartado:**
+   ```java
+   HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+   System.out.println("Respuesta del servidor: " + response.body());
+   ```
+   Se descarta `response.statusCode()`. Si el endpoint de callback responde 400 Bad Request o 500 Internal Server Error (ej. fallas en deserialización o validación), el simulador lo ignora sin reintentar ni registrar un error estructurado, provocando que el lote de ítems se pierda en silencio y permanezca bloqueado o sin asignación.
+
+### Cómo se dispara
+
+- Levantar la aplicación en un puerto distinto al 8086 (`-Dserver.port=8080`).
+- Simular indisponibilidad o error 500 en el endpoint de recepción del callback durante la planificación nocturna: la falla es silenciosa.
+
+### Propuesta de arreglo
+
+1. Extraer la URL de callback a una propiedad inyectable (`logistica.callback-url` o resolver dinámicamente según `server.port`) en `application.properties`.
+2. Configurar timeouts explícitos de conexión y lectura en `HttpClient` y `HttpRequest` (ej. `Duration.ofSeconds(5)`).
+3. Validar `response.statusCode() == 200` y loguear un error explícito ante respuestas fallidas o excepciones de red.
 
 ---
 
@@ -100,68 +183,52 @@ Atrapar la excepción de RabbitMQ dentro de `afterCommit` y loguear como adverte
 
 ---
 
-## 54. `RutaController.terminarRuta` no atrapa `IllegalStateException` y responde 500 ante un chofer sin ruta en curso
+## 43. El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException`
 
 **Estado:** abierto  
 **Severidad:** media  
-**Archivos:** `controllers/RutaController.java:90-99`, `services/RutaService.java:156-162`
+**Archivos:** `controllers/CamionController.java:101-106`, `controllers/ChoferController.java:104-109`, `controllers/RutaController.java:80-99`, `controllers/EntregaController.java:44-52`, `services/RutaService.java:156-164`
 
 ### Qué pasa
 
-Cuando un chofer intenta finalizar una ruta que no existe o no está en estado `EN_CURSO`:
-`RutaService.rutaDelChoferPorEstado` lanza:
+No existe un `@ControllerAdvice` o `@RestControllerAdvice` global. Cada controlador maneja excepciones manualmente con bloques `try/catch` dispersos, lo que genera inconsistencias graves y códigos HTTP erróneos:
 
-```java
-return repoRutas.findByChoferYEstado(chofer, estado)
-        .orElseThrow(() -> new IllegalStateException(
-                "No se encontró una ruta en estado " + estado + " para el chofer " + idChofer));
-```
-
-En `RutaController.terminarRuta`:
-
-```java
-@PatchMapping("/chofer/{idChofer}/terminar")
-public ResponseEntity<String> terminarRuta(@PathVariable UUID idChofer) {
-  try {
-    rutaService.terminarRuta(idChofer);
-    return ResponseEntity.ok("Ruta finalizada correctamente...");
-  } catch (IllegalArgumentException e) {
-    return ResponseEntity.badRequest().body(e.getMessage());
-  } catch (Exception e) {
-    return ResponseEntity.internalServerError().body("Error interno al finalizar la ruta: " + e.getMessage());
-  }
-}
-```
-
-A diferencia de `iniciarRuta` (línea 81), que atrapa `IllegalArgumentException | IllegalStateException` y responde 400 Bad Request, `terminarRuta` solo atrapa `IllegalArgumentException`. La `IllegalStateException` cae en `catch (Exception e)` y responde **500 Internal Server Error** filtrando el mensaje interno.
+1. **Traducción errónea de validaciones a 404:**
+   - En `ChoferController.cambiarEstadoDisponibilidad` y `CamionController.cambiarEstadoDisponibilidad`: si se omite el campo obligatorio `disponible` en el body JSON, el servicio lanza `IllegalArgumentException("El campo 'disponible' es obligatorio.")`. El controller atrapa `IllegalArgumentException` y responde **404 Not Found** en lugar de 400 Bad Request, informando falsamente que el recurso no existe.
+   - En contraste, `EntregaController.actualizarEstadoEntrega` traduce `IllegalArgumentException` a 400 Bad Request, mientras que `EntregaController.obtenerPorId` la traduce a 404.
+2. **Fugas de `IllegalStateException` que devuelven 500:**
+   - En `RutaController.terminarRuta`:
+     ```java
+     @PatchMapping("/chofer/{idChofer}/terminar")
+     public ResponseEntity<String> terminarRuta(@PathVariable UUID idChofer) {
+       try {
+         rutaService.terminarRuta(idChofer);
+         return ResponseEntity.ok("Ruta finalizada correctamente...");
+       } catch (IllegalArgumentException e) {
+         return ResponseEntity.badRequest().body(e.getMessage());
+       } catch (Exception e) {
+         return ResponseEntity.internalServerError().body("Error interno al finalizar la ruta: " + e.getMessage());
+       }
+     }
+     ```
+     Si un chofer intenta terminar una ruta sin tener una en curso, `RutaService.rutaDelChoferPorEstado` lanza:
+     ```java
+     throw new IllegalStateException("No se encontró una ruta en estado EN_CURSO para el chofer " + idChofer);
+     ```
+     A diferencia de `RutaController.iniciarRuta` (que atrapa `IllegalArgumentException | IllegalStateException` y responde 400), `terminarRuta` solo atrapa `IllegalArgumentException`. La `IllegalStateException` cae en `catch (Exception e)` y responde **500 Internal Server Error**, filtrando detalles internos de la aplicación ante un error que es estrictamente de precondición o estado de negocio (400/409/422).
 
 ### Cómo se dispara
 
-Llamar a `PATCH /api/rutas/chofer/{idChofer}/terminar` para un chofer que no tiene una ruta en `EN_CURSO` → 500 Internal Server Error en vez de 400/404.
+- Enviar `PATCH /api/choferes/{id}/disponibilidad` con `{}` → Devuelve 404 en lugar de 400.
+- Enviar `PATCH /api/rutas/chofer/{id}/terminar` sin una ruta activa → Devuelve 500 en lugar de 400/409.
 
 ### Propuesta de arreglo
 
-Agregar `IllegalStateException` al bloque `catch` de `RutaController.terminarRuta`.
-
----
-
-## 43. El manejo de errores está repetido en cada controller
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `controllers/CamionController.java:101-106`, `controllers/ChoferController.java:104-109`, `controllers/RutaController.java:90-99`, `controllers/EntregaController.java:44-52`
-
-### Qué pasa
-
-No hay `@ControllerAdvice`: cada controlador maneja las excepciones de forma aislada e inconsistente:
-
-- En `ChoferController.cambiarEstadoDisponibilidad` y `CamionController.cambiarEstadoDisponibilidad`: omitir el campo obligatorio `disponible` en el body dispara `IllegalArgumentException("El campo 'disponible' es obligatorio.")` en el service, y el controller la atrapa y responde **404 Not Found** en lugar de 400 Bad Request.
-- `RutaController.terminarRuta` responde 500 ante `IllegalStateException` (punto 54).
-- `EntregaController.obtenerPorId` traduce `IllegalArgumentException` en 404, mientras que `actualizarEstadoEntrega` la traduce en 400.
-
-### Propuesta de arreglo
-
-Crear un `@ControllerAdvice` global que mapee excepciones por tipo y significado (400 para argumentos inválidos, 404 para entidades no encontradas, 422 para reglas de negocio) y limpiar los `try/catch` dispersos en los controladores.
+Crear un `@RestControllerAdvice` global (`GlobalExceptionHandler`) que centralice el manejo de excepciones:
+- `IllegalArgumentException` o `MethodArgumentNotValidException` → HTTP 400 Bad Request.
+- `NoSuchElementException` o excepciones custom `RecursoNoEncontradoException` → HTTP 404 Not Found.
+- `IllegalStateException` → HTTP 400 Bad Request o 409 Conflict / 422 Unprocessable Entity.
+- Eliminar los bloques `try/catch` manuales y duplicados en todos los controllers para que deleguen en el advice central.
 
 ---
 
@@ -194,6 +261,57 @@ El simulador crea copias locales de `Camion` y resetea su carga ocupada (`copia.
 ### Propuesta de arreglo
 
 Persistir el estado de carga acumulado de los camiones tras la asignación, o derivar la ocupación directamente de las rutas activas persistidas.
+
+---
+
+## 62. `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer`
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `services/CamionService.java:60-65`, `models/gestores/GestorCamiones.java:16-28`
+
+### Qué pasa
+
+En `CamionService.update`:
+
+```java
+public CamionDTO update(String patente, CamionDTO dto) {
+  Chofer nuevoChofer = dto.getIdChofer() != null ? repoChoferes.findById(dto.getIdChofer())
+          .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado")): null;
+  Camion camionExistente = gestorCamiones.actualizarCamion(patente, nuevoChofer, dto.getCapacidadVolumen(), dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
+  return convertirADTO(camionExistente);
+}
+```
+
+Y en `GestorCamiones.actualizarCamion`:
+
+```java
+public Camion actualizarCamion(String patente, Chofer nuevoChofer, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
+    Camion camionExistente = repoCamiones.findById(patente)
+            .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
+
+    camionExistente.setChofer(nuevoChofer);
+    if (capacidadVolumen != null) camionExistente.setCapacidadVolumen(capacidadVolumen);
+    if (altura != null) camionExistente.setAltura(altura);
+    if (capacidadCarga != null) camionExistente.setCapacidadCarga(capacidadCarga);
+    if (disponible != null) camionExistente.setDisponible(disponible);
+
+    repoCamiones.save(camionExistente);
+    return camionExistente;
+}
+```
+
+A diferencia de los demás atributos que se actualizan condicionalmente solo si vienen informados (`!= null`), la asignación del chofer es incondicional (`camionExistente.setChofer(nuevoChofer)`).
+
+Si un cliente o frontend envía un `PUT /api/camiones/{patente}` para modificar un dato operativo (por ejemplo actualizar la disponibilidad o la capacidad de carga) sin incluir la propiedad `idChofer` en el body JSON, `nuevoChofer` se resuelve como `null`. Como resultado, se remueve silenciosamente el chofer asignado al camión, pudiendo desvincular choferes asignados a rutas activas o programadas.
+
+### Cómo se dispara
+
+Enviar una petición `PUT /api/camiones/{patente}` con un payload que no contenga `idChofer`. El chofer que tenía asignado el camión se elimina.
+
+### Propuesta de arreglo
+
+En `CamionService.update` o `GestorCamiones.actualizarCamion`, solo actualizar el chofer si `dto.getIdChofer()` está presente en la petición, o proveer endpoints explícitos para vincular/desvincular choferes.
 
 ---
 
@@ -245,28 +363,6 @@ Renombrar los paquetes a minúsculas (`rabbitmq`, `scheduler`) y ubicarlos bajo 
 
 ---
 
-## 45. El callback del proveedor externo está fijado a `localhost:8086`
-
-**Estado:** abierto  
-**Severidad:** baja  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:23`
-
-### Qué pasa
-
-La URL de callback está cableada como constante estática:
-
-```java
-private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
-```
-
-Si el servicio corre en otro puerto (`SERVER_PORT != 8086`) o en un entorno contenerizado en red bridge, el callback pega contra un puerto incorrecto y el lote se pierde silenciosamente.
-
-### Propuesta de arreglo
-
-Extraer la URL a una propiedad configurable (`logistica.callback-url`) en `application.properties`.
-
----
-
 ## 49. Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems en memoria
 
 **Estado:** abierto  
@@ -303,6 +399,16 @@ El servicio de logística mantiene el cumplimiento estricto del enunciado: no re
 ---
 
 ## Corregidos
+
+- **59** — `RutaService.terminarRuta` persistía instancias desactualizadas de `Camion` y `Chofer` embebidas en `Ruta`, disparando `OptimisticLockingFailureException` y pisando datos → Causa raíz: `terminarRuta` tomaba el camión y chofer directamente del snapshot embebido en el documento `Ruta` en lugar de sus repositorios correspondientes. Al persistir con `@Version`, si el camión o chofer fueron editados durante el día, fallaba con excepción de concurrencia optimista o sobreescribía los datos vigentes, además de provocar `NullPointerException` ante rutas sin camión. Solución: se recargan las entidades vigentes mediante `repoChoferes.findById(idChofer)` y `repoCamiones.findById(patente)` con guardas defensivas ante nulos antes de actualizar disponibilidad y persistir. Tests de regresión agregados en `RutaServiceTerminarRutaTest` (validando persistencia de entidades frescas con version superior y ruta sin camión). Archivos: `RutaService.java`, `RutaServiceTerminarRutaTest.java`.
+
+- **58** — `Entidad` no implementaba `equals` ni `hashCode`: `Ruta.agregarEntrega` nunca agrupaba donaciones y generaba paradas duplicadas para el mismo destino → Causa raíz: al deserializar ítems desde MongoDB, cada `ItemEntrega` tiene su propia instancia de `Entidad` en memoria. Al evaluarse `Objects.equals(p.getEntidadDestino(), item.getEntidadDestino())`, Java recurría a la igualdad por identidad (`==`), fallando siempre la detección de paradas existentes para el mismo destino. Solución: se implementaron `equals` y `hashCode` en `Entidad` basados en `idEntidadBeneficiaria`. Test de regresión agregado en `RutaAgregarEntregaTest` verificando consolidación de múltiples ítems en una sola parada con instancias separadas. Archivos: `Entidad.java`, `RutaAgregarEntregaTest.java`.
+
+- **57** — Si había menos choferes que rutas generadas, las rutas sobrantes quedaban guardadas en `PROGRAMADA` sin chofer y sus ítems bloqueados de por vida → Causa raíz: `PlanificadorRutasService.procesarCallbackRutas` guardaba incondicionalmente todas las rutas en `repoRutas` antes de asignar choferes. Como `PlanificadorDeRutasScheduler` excluye de nuevas planificaciones a los ítems en rutas con estado distinto a `FINALIZADA`, y las rutas huérfanas sin chofer no podían iniciarse ni finalizarse jamás, los ítems quedaban congelados indefinidamente en `PENDIENTE`. Solución: se eliminó la persistencia prematura en `procesarCallbackRutas`; `asignarChoferes` opera sobre una copia local de la lista de rutas generadas, asigna choferes hasta el límite de choferes disponibles y persiste (`persistirRutaAsignada`) exclusivamente aquellas rutas que consiguieron chofer asignado, dejando las no asignadas libres en memoria para que sus ítems continúen disponibles para futuras planificaciones; en `PlanificadorDeRutasController` se corrigió la comparación verificando si la cantidad de rutas asignadas cubre la totalidad de las generadas (`rutasGeneradas.size() == rutasAsignadas.size()`). Tests de regresión agregados en `PlanificadorRutasServiceAsignarChoferesTest`. Archivos: `PlanificadorRutasService.java`, `PlanificadorDeRutasController.java`, `PlanificadorRutasServiceAsignarChoferesTest.java`.
+
+- **10** — El reingreso a depósito administrativo no validaba estado previo (`NO_RECIBIDA`) y citaba método inexistente → Causa raíz: en `EntregaService.actualizarEstado` el `case "PENDIENTE"` delegaba en `gestorPublicacionEventos.publicarReingresoDeposito(item)` asumiendo erróneamente en un comentario que un método inexistente `reingresarADeposito()` validaba el estado previo. Cualquier llamada a `PATCH /api/entregas/{id}/estado` con `PENDIENTE` sobre un ítem en `ENTREGADA` o `EN_CAMINO` lo devolvía a la cola de planificación. Además, `publicarReingresoDeposito` no tenía guarda defensiva. Solución: en `EntregaService.actualizarEstado` se valida que `item.getEstado() == EstadoEntrega.NO_RECIBIDA`, lanzando `IllegalStateException` ante otros estados. En `GestorPublicacionEventos.publicarReingresoDeposito` se agregó guarda defensiva que rechaza `ENTREGADA` y `PENDIENTE`, admitiendo `NO_RECIBIDA` y `EN_CAMINO` (para permitir el retorno al depósito al finalizar una jornada en `RutaService.terminarRuta`). Tests unitarios agregados en `EntregaServiceActualizarEstadoTest` y `GestorPublicacionEventosTest`. Archivos: `EntregaService.java`, `GestorPublicacionEventos.java`, `EntregaServiceActualizarEstadoTest.java`, `GestorPublicacionEventosTest.java`.
+
+- **63** — Soft Delete en Chofer y desvinculación de camión asignado, preservando trazabilidad de rutas históricas → Causa raíz: `ChoferService.delete` realizaba un borrado físico directo (`repoChoferes.deleteById(id)`). Si el chofer estaba asignado a un camión en `repoCamiones`, el camión quedaba apuntando a un chofer inexistente. Si bien en MongoDB el documento `Ruta` embebe un snapshot del chofer y no se pierde la trazabilidad de rutas históricas, el chofer seguía siendo elegible si se recreaba con el mismo ID o se generaban inconsistencias de relaciones activas. Solución: se implementó baja lógica (Soft Delete) en `Chofer` (`activo = true`, `fechaBaja`, `darDeBaja()`, `isActivo()`), `Chofer.disponible()` valida que el chofer esté activo antes de cambiar el estado, `ChoferService.delete` marca baja lógica y desvincula automáticamente cualquier camión asignado (`repoCamiones.findByChofer_IdChofer(id)` -> `camion.eliminarChofer()`), `ChoferService.findAll` filtra solo choferes activos, `findById` y `cambiarDisponibilidad` rechazan choferes inactivos (404 / 400), `PlanificadorRutasService.asignarChoferes` filtra exclusivamente choferes activos, y `CamionService.update` valida que el chofer a asociar esté activo. Tests agregados en `DeleteDevuelve204Test` y `PlanificadorRutasServiceAsignarChoferesTest`. Archivos: `Chofer.java`, `ChoferDTO.java`, `ChoferService.java`, `CamionService.java`, `PlanificadorRutasService.java`, `DeleteDevuelve204Test.java`, `PlanificadorRutasServiceAsignarChoferesTest.java`.
 
 - **34** — `UnidadDeMedida` persiste constantes estáticas con `@Version`: carreras concurrentes tiran `OptimisticLockingFailureException` y reinicios duplican catálogo → Causa raíz: `UNIDADES`, `KILOGRAMOS` y `LITROS` son singletons estáticos compartidos en memoria declarados con `@Version`, y `EntregaService` ejecutaba `repoUnidades.save` por cada donación, colisionando versiones entre hilos concurrentes. Además, se instanciaban con `UUID.randomUUID()` duplicando documentos al reiniciar. Solución: se removió `@Version` de `UnidadDeMedida`, se asignaron UUIDs deterministas basados en el nombre (`UUID.nameUUIDFromBytes`), se removió `repoUnidades.save` del flujo por donación y se pre-carga el catálogo en `@PostConstruct` de `EntregaService`. Archivos: `UnidadDeMedida.java`, `EntregaService.java`, `UnidadDeMedidaTest.java`. Referencia: Pendiente de commit (cambios en staged).
 

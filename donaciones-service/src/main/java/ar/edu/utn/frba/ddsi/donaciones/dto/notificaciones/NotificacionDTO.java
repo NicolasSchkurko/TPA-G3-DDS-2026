@@ -1,12 +1,14 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones;
 
 import java.util.Locale;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class NotificacionDTO {
+  private String idSolicitud;
   private String medioDeContacto;
   private String direccionDeContacto;
   private String cuerpoMensaje;
@@ -18,6 +20,17 @@ public class NotificacionDTO {
       String cuerpoMensaje,
       String asuntoMensaje
   ) {
+    this(UUID.randomUUID().toString(), medioDeContacto, direccionDeContacto, cuerpoMensaje, asuntoMensaje);
+  }
+
+  public NotificacionDTO(
+      String idSolicitud,
+      String medioDeContacto,
+      String direccionDeContacto,
+      String cuerpoMensaje,
+      String asuntoMensaje
+  ) {
+    this.idSolicitud = idSolicitud != null ? idSolicitud : UUID.randomUUID().toString();
     this.medioDeContacto = normalizarTipo(medioDeContacto);
     this.direccionDeContacto = direccionDeContacto;
     this.cuerpoMensaje = cuerpoMensaje;

@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitConfig {
 
     public static final String EXCHANGE_NOTIFICACIONES = "notificaciones.exchange";
+    public static final String RK_AVISO = "notificaciones.aviso";
     public static final String RK_INCENTIVO = "notificaciones.incentivo";
     public static final String RK_EVENTO_LOGISTICA = "notificaciones.evento.logistica";
     public static final String RK_DONACION = "notificaciones.donacion";
@@ -54,6 +55,14 @@ public class RabbitConfig {
         return BindingBuilder.bind(colaDlq)
                 .to(exchangeDlq)
                 .with(COLA_DLQ);
+    }
+
+    @Bean
+    public Binding bindingNotificacionesAviso(
+            Queue colaNotificaciones, TopicExchange exchangeNotificaciones) {
+        return BindingBuilder.bind(colaNotificaciones)
+                .to(exchangeNotificaciones)
+                .with(RK_AVISO);
     }
 
     @Bean

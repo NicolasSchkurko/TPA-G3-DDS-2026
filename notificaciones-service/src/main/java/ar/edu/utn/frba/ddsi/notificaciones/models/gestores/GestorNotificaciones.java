@@ -39,29 +39,59 @@ public class GestorNotificaciones {
                                               String direccionDeContacto,
                                               String asunto,
                                               String cuerpo) {
-        Notificacion notificacion =
-                crearNotificacion(tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
+        enviarSolicitudDeNotificacion(null, tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
+    }
 
-        log.info("[GESTOR] Notificación {} guardada como {} (medio='{}', destino='{}')",
-                notificacion.getId(), notificacion.getEstado(), tipoMedioDeContacto, direccionDeContacto);
+    @Transactional
+    public void enviarSolicitudDeNotificacion(String idSolicitud,
+                                              String tipoMedioDeContacto,
+                                              String direccionDeContacto,
+                                              String asunto,
+                                              String cuerpo) {
+        if (idSolicitud != null && !idSolicitud.isBlank()) {
+            if (repositorioNotificaciones.findByIdSolicitud(idSolicitud).isPresent()) {
+                log.info("[GESTOR] Solicitud idSolicitud='{}' ya procesada previamente, se omite por idempotencia",
+                        idSolicitud);
+                return;
+            }
+        }
+
+        Notificacion notificacion =
+                crearNotificacion(idSolicitud, tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
+
+        log.info("[GESTOR] Notificación {} guardada como {} (medio='{}', destino='{}', idSolicitud='{}')",
+                notificacion.getId(), notificacion.getEstado(), tipoMedioDeContacto, direccionDeContacto, idSolicitud);
 
         // En afterCommit: antes del commit el consumidor no ve la fila, y si el broker falla el
         // commit ya hecho deja la notificación PENDIENTE para reintentar.
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                log.info("[GESTOR] Transacción confirmada: publicando el aviso de la notificación {}",
-                        notificacion.getId());
-                productorNotificaciones.enviar(notificacion);
-            }
-        });
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    log.info("[GESTOR] Transacción confirmada: publicando el aviso de la notificación {}",
+                            notificacion.getId());
+                    productorNotificaciones.enviar(notificacion);
+                }
+            });
+        } else {
+            productorNotificaciones.enviar(notificacion);
+        }
     }
 
     public Notificacion crearNotificacion(String tipoMedioDeContacto,
                                           String direccionDeContacto,
                                           String asunto,
                                           String cuerpo) {
+        return crearNotificacion(null, tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
+    }
+
+    public Notificacion crearNotificacion(String idSolicitud,
+                                          String tipoMedioDeContacto,
+                                          String direccionDeContacto,
+                                          String asunto,
+                                          String cuerpo) {
         Notificacion notificacion = new Notificacion(
+                idSolicitud,
                 direccionDeContacto,
                 tipoMedioDeContacto,
                 new Mensaje(asunto, cuerpo)

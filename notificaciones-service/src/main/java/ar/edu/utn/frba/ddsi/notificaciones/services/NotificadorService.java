@@ -19,6 +19,7 @@ public class NotificadorService {
 
     public void procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO) {
         gestorNotificaciones.enviarSolicitudDeNotificacion(
+                solicitudNotificacionDTO.getIdSolicitud(),
                 solicitudNotificacionDTO.getMedioDeContacto(),
                 solicitudNotificacionDTO.getDireccionDeContacto(),
                 solicitudNotificacionDTO.getAsuntoMensaje(),

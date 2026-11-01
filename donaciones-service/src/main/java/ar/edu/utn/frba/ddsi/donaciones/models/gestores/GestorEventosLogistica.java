@@ -11,6 +11,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.DatosMens
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
@@ -20,11 +21,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class GestorEventosLogistica {
+  private static final Logger log = LoggerFactory.getLogger(GestorEventosLogistica.class);
+
   private final RepositorioDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
@@ -110,17 +117,48 @@ public class GestorEventosLogistica {
       // Recién ahora la donación está ENTREGADA: es el momento en el que incentivos cuenta el
       // impacto (sus reglas de misión exigen estado "ENTREGADA", no "ASIGNADO"). El id va como
       // clave de idempotencia: un reintento del evento no duplica el impacto.
-      incentivosClient.notificarImpactoDonacion(
-          donacion.getDonante().getId(), IncentivosDonacionDTO.desde(donacion));
+      // Punto 61: La llamada se ejecuta post-commit (afterCommit) o aislada en try/catch para
+      // que una falla externa de red/500 en incentivos-service no aborte la transacción de entrega.
+      UUID donanteId = donacion.getDonante() != null ? donacion.getDonante().getId() : null;
+      if (donanteId != null) {
+        IncentivosDonacionDTO dto = IncentivosDonacionDTO.desde(donacion);
+        Runnable notificarIncentivos = () -> {
+          try {
+            incentivosClient.notificarImpactoDonacion(donanteId, dto);
+          } catch (Exception e) {
+            log.warn("No se pudo notificar el impacto a incentivos-service para la donación {} (donante {}): {}",
+                idDonacion, donanteId, e.getMessage());
+          }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+          TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              notificarIncentivos.run();
+            }
+          });
+        } else {
+          notificarIncentivos.run();
+        }
+      }
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
 
-      fabricaEstrategias.ejecutar(TipoEventoNotificacion.COMPROBANTE_ENTREGA,
-              new NotificacionEntregaDatos(
-                  payload,
-                  donacion.getDonante().getPersona().getMediosDeContacto(),
-                  donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
-      ));
+      try {
+        fabricaEstrategias.ejecutar(TipoEventoNotificacion.COMPROBANTE_ENTREGA,
+                new NotificacionEntregaDatos(
+                    payload,
+                    donacion.getDonante() != null && donacion.getDonante().getPersona() != null
+                        ? donacion.getDonante().getPersona().getMediosDeContacto()
+                        : new MediosDeContacto(),
+                    donacion.getEntidad() != null && donacion.getEntidad().getPersonaJuridica() != null
+                        ? donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
+                        : new MediosDeContacto()
+        ));
+      } catch (Exception e) {
+        log.warn("No se pudo enviar la notificación de entrega para la donación {}: {}", idDonacion, e.getMessage());
+      }
     });
   }
 
@@ -132,13 +170,21 @@ public class GestorEventosLogistica {
       repositorioDonaciones.guardar(donacion);
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);
-      fabricaEstrategias.ejecutar(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA,
-              new NotificacionEntregaFallidaDatos(
-                  payload,
-                  donacion.getDonante().getPersona().getMediosDeContacto(),
-                  donacion.getEntidad().getPersonaJuridica().getMediosDeContacto(),
-                  contactosAdministradores
-      ));
+      try {
+        fabricaEstrategias.ejecutar(TipoEventoNotificacion.ENTREGA_NO_RECIBIDA,
+                new NotificacionEntregaFallidaDatos(
+                    payload,
+                    donacion.getDonante() != null && donacion.getDonante().getPersona() != null
+                        ? donacion.getDonante().getPersona().getMediosDeContacto()
+                        : new MediosDeContacto(),
+                    donacion.getEntidad() != null && donacion.getEntidad().getPersonaJuridica() != null
+                        ? donacion.getEntidad().getPersonaJuridica().getMediosDeContacto()
+                        : new MediosDeContacto(),
+                    contactosAdministradores
+        ));
+      } catch (Exception e) {
+        log.warn("No se pudo enviar la notificación de entrega fallida para la donación {}: {}", idDonacion, e.getMessage());
+      }
     });
   }
 

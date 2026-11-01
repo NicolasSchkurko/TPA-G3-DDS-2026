@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.PlanificadorDeRutas.PlanificadorDeRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
@@ -18,6 +20,7 @@ import org.mockito.quality.Strictness;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,5 +74,96 @@ class PlanificadorRutasServiceAsignarChoferesTest {
         assertNotNull(camionAsignado.getChofer());
         assertEquals(chofer2.getIdChofer(), camionAsignado.getChofer().getIdChofer(),
                 "Debe haber asignado al chofer 2, excluyendo al chofer 1 que ya está en una ruta activa");
+    }
+
+    @Test
+    @DisplayName("No debe asignar un chofer que fue dado de baja (inactivo)")
+    void noAsignaChoferInactivo() {
+        chofer1.darDeBaja(); // inactivo y no disponible
+
+        Camion nuevoCamion = new Camion("CAM333", 10.0, 3.0, 1000.0, true);
+        Ruta nuevaRuta = new Ruta(nuevoCamion);
+        nuevaRuta.setEstado(EstadoRuta.PROGRAMADA);
+
+        when(repoRutas.findAll()).thenReturn(List.of());
+        when(repoChoferes.findAll()).thenReturn(List.of(chofer1, chofer2));
+
+        List<Ruta> resultado = service.asignarChoferes(List.of(nuevaRuta));
+
+        assertEquals(1, resultado.size());
+        Camion camionAsignado = resultado.get(0).getCamionAsignado();
+        assertNotNull(camionAsignado);
+        assertNotNull(camionAsignado.getChofer());
+        assertEquals(chofer2.getIdChofer(), camionAsignado.getChofer().getIdChofer(),
+                "Debe haber asignado al chofer activo 2, ignorando al chofer inactivo 1");
+    }
+
+    @Test
+    @DisplayName("Cuando hay más rutas que choferes disponibles, solo se persisten las rutas asignadas")
+    void soloPersisteRutasQueTienenChoferAsignado() {
+        Camion camion1 = new Camion("CAM111", 10.0, 3.0, 1000.0, true);
+        Ruta ruta1 = new Ruta(camion1);
+        ruta1.setEstado(EstadoRuta.PROGRAMADA);
+
+        Camion camion2 = new Camion("CAM222", 10.0, 3.0, 1000.0, true);
+        Ruta ruta2 = new Ruta(camion2);
+        ruta2.setEstado(EstadoRuta.PROGRAMADA);
+
+        when(repoRutas.findAll()).thenReturn(List.of());
+        when(repoChoferes.findAll()).thenReturn(List.of(chofer1)); // solo chofer1 disponible
+
+        List<Ruta> resultado = service.asignarChoferes(List.of(ruta1, ruta2));
+
+        assertEquals(1, resultado.size());
+        Camion camionAsignado = resultado.get(0).getCamionAsignado();
+        assertNotNull(camionAsignado);
+        assertNotNull(camionAsignado.getChofer());
+        assertEquals(chofer1.getIdChofer(), camionAsignado.getChofer().getIdChofer());
+        // Solo debe haberse persistido la ruta asignada en repoRutas
+        verify(repoRutas, times(1)).save(resultado.get(0));
+        assertFalse(chofer1.isDisponible(), "El chofer asignado debe quedar marcado como ocupado");
+        assertFalse(camionAsignado.getDisponible(), "El camión asignado debe quedar marcado como ocupado");
+    }
+
+    @Test
+    @DisplayName("Cuando no hay choferes disponibles, no se asigna ni se persiste ninguna ruta")
+    void noPersisteRutasSiNoHayChoferesDisponibles() {
+        Camion camion1 = new Camion("CAM111", 10.0, 3.0, 1000.0, true);
+        Ruta ruta1 = new Ruta(camion1);
+        ruta1.setEstado(EstadoRuta.PROGRAMADA);
+
+        when(repoRutas.findAll()).thenReturn(List.of());
+        when(repoChoferes.findAll()).thenReturn(List.of()); // 0 choferes disponibles
+
+        List<Ruta> resultado = service.asignarChoferes(List.of(ruta1));
+
+        assertTrue(resultado.isEmpty());
+        verify(repoRutas, never()).save(any(Ruta.class));
+        verify(repoCamiones, never()).save(any(Camion.class));
+    }
+
+    @Test
+    @DisplayName("procesarCallbackRutas no debe persistir las rutas prematuramente antes de asignar choferes")
+    void procesarCallbackRutasNoPersisteRutasPrematuramente() {
+        UUID idItem = UUID.randomUUID();
+        String json = "{\"CAM111\": [\"" + idItem + "\"]}";
+
+        Camion camion = new Camion("CAM111", 10.0, 3.0, 1000.0, true);
+        ItemEntrega item = new ItemEntrega();
+        item.setIdDonacion(idItem);
+
+        Ruta rutaGenerada = new Ruta(camion);
+        rutaGenerada.setEstado(EstadoRuta.PROGRAMADA);
+
+        when(repoCamiones.findAll()).thenReturn(List.of(camion));
+        when(repoItemEntrega.findById(idItem)).thenReturn(Optional.of(item));
+        when(planificadorDominio.procesarCallbackRutas(any(), any(), any())).thenReturn(List.of(rutaGenerada));
+
+        List<Ruta> resultado = service.procesarCallbackRutas(json);
+
+        assertEquals(1, resultado.size());
+        // Verificar que no se persistió la ruta en procesarCallbackRutas
+        verify(repoRutas, never()).save(any(Ruta.class));
+        verify(repoParadas, never()).save(any(Parada.class));
     }
 }
