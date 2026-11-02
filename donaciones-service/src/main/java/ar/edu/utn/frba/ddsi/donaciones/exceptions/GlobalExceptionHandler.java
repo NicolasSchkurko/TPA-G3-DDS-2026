@@ -7,9 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -56,13 +60,55 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(error, HttpStatus.CONFLICT);
   }
 
-  // "sumidero" (catch-all) para cualquier excepción no reconocida, devuelve un 500 genérico.
+  // JSON mal formado o con un tipo que no se puede convertir (p. ej. una fecha inválida).
+  // El detalle de Jackson se loguea pero no se devuelve: filtra tipos Java internos.
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponseDTO> manejarHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+    log.warn("400 por cuerpo ilegible: {}", ex.getMessage());
+    ErrorResponseDTO error = new ErrorResponseDTO(
+            "El cuerpo de la petición no se pudo interpretar",
+            HttpStatus.BAD_REQUEST.value());
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
+  // Un path variable o query param con un tipo inválido (p. ej. un UUID mal formado): 400.
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponseDTO> manejarMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+    log.warn("400 por tipo inválido en '{}': {}", ex.getName(), ex.getValue());
+    ErrorResponseDTO error = new ErrorResponseDTO(
+            "El valor '" + ex.getValue() + "' no es válido para '" + ex.getName() + "'",
+            HttpStatus.BAD_REQUEST.value());
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
+  // Verbo HTTP no soportado por el endpoint: 405, no 500.
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponseDTO> manejarHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException ex) {
+    log.warn("405 por método no soportado: {}", ex.getMessage());
+    ErrorResponseDTO error = new ErrorResponseDTO(
+            "Método HTTP no soportado",
+            HttpStatus.METHOD_NOT_ALLOWED.value());
+    return new ResponseEntity<>(error, HttpStatus.METHOD_NOT_ALLOWED);
+  }
+
+  // Ruta inexistente: 404, no 500.
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ErrorResponseDTO> manejarNoResourceFoundException(NoResourceFoundException ex) {
+    log.debug("404 por ruta inexistente: {}", ex.getMessage());
+    ErrorResponseDTO error = new ErrorResponseDTO(
+            "Recurso no encontrado",
+            HttpStatus.NOT_FOUND.value());
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  // "sumidero" (catch-all) para cualquier excepción no reconocida: 500 con mensaje genérico,
+  // sin filtrar el mensaje interno de la excepción al cliente.
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponseDTO> manejarErroresInesperados(Exception ex) {
     log.error("500 por excepción inesperada", ex);
 
     ErrorResponseDTO error = new ErrorResponseDTO(
-            ex.getMessage(),
+            "Error interno del servidor",
             HttpStatus.INTERNAL_SERVER_ERROR.value());
 
     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
