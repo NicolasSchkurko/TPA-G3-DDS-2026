@@ -39,6 +39,14 @@ public class RepositorioDonantes {
     return jpaRepository.findById(id);
   }
 
+  public Optional<Donante> buscarPorNombre(String nombre) {
+    if (nombre == null || nombre.isBlank()) {
+      return Optional.empty();
+    }
+    List<Donante> resultados = jpaRepository.buscarPorNombreActivo(nombre.trim());
+    return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
+  }
+
   public void actualizar(UUID idOriginal, Donante donanteActualizado) {
     if (jpaRepository.existsById(idOriginal)) {
       jpaRepository.save(donanteActualizado);

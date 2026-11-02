@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,8 +60,16 @@ public class DonanteService {
   private final RepositorioDonaciones repositorioDonaciones;
   private final RepositorioFormularios repositorioFormularios;
 
-  /** Reportes en memoria de importaciones CSV en curso/terminadas, consultables por id. */
-  private final Map<UUID, ReporteImportacionDTO> reportesImportacion = new ConcurrentHashMap<>();
+  private static final int MAX_REPORTES = 100;
+
+  /** Reportes en memoria de importaciones CSV acotados a las últimas 100 con política LRU (Punto 73). */
+  private final Map<UUID, ReporteImportacionDTO> reportesImportacion =
+      Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<UUID, ReporteImportacionDTO> eldest) {
+          return size() > MAX_REPORTES;
+        }
+      });
 
   /** Pool propio (no el commonPool): una importación grande no compite por los hilos del resto.
    *  Es un bean con cola acotada y shutdown administrado por Spring (ver DonacionesServiceApplication). */
@@ -94,29 +104,64 @@ public class DonanteService {
     this.executorImportacion = executorImportacion;
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
     Ciudad ciudad = resolverCiudad(dto.getDireccion());
     Donante nuevoDonante = dto.toDomain(ciudad);
 
+    // Punto 52: Persistir localmente primero en transacción
     if (nuevoDonante.getPersona() != null) {
-      incentivosClient.peticionCrearPerfil(perfilDe(nuevoDonante));
+      repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
+    }
+    repositorioDonantes.guardar(nuevoDonante);
+
+    // Notificaciones y creación de perfil en incentivos después del commit local
+    Runnable sincronizacionExterna = () -> {
+      if (nuevoDonante.getPersona() != null) {
+        if (incentivosClient != null) {
+          try {
+            incentivosClient.peticionCrearPerfil(perfilDe(nuevoDonante));
+          } catch (Exception e) {
+            log.warn("No se pudo crear perfil en incentivos para donante {}: {}", nuevoDonante.getId(), e.getMessage());
+          }
+        }
+        try {
+          fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
+        } catch (Exception e) {
+          log.warn("No se pudo enviar notificación de registro para donante {}: {}", nuevoDonante.getId(), e.getMessage());
+        }
+      }
+    };
+
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          sincronizacionExterna.run();
+        }
+      });
+    } else {
+      sincronizacionExterna.run();
     }
 
-    return persistirConNotificacion(nuevoDonante);
+    return PersonaDonanteDTO.from(nuevoDonante);
   }
 
   private IDDTO perfilDe(Donante donante) {
     return new IDDTO(donante.getId(), donante.getPersona().getNombreDeUsuario(), "DONANTE");
   }
 
-  /** Notificación + persistencia local del donante, sin el alta de perfil en incentivos
-   *  (esa se hace sola al dar de alta o en lote durante la importación CSV). */
+  /** Notificación + persistencia local del donante para importación CSV (Punto 52: persistencia primero). */
   private PersonaDonanteDTO persistirConNotificacion(Donante nuevoDonante) {
     if (nuevoDonante.getPersona() != null) {
-      fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
       repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
+      try {
+        fabricaEstrategias.ejecutar(TipoEventoNotificacion.REGISTRO_PERSONA, nuevoDonante);
+      } catch (Exception e) {
+        log.warn("No se pudo enviar notificación de registro para donante {}: {}", nuevoDonante.getId(), e.getMessage());
+      }
     }
-    registrarDonante(nuevoDonante);
+    repositorioDonantes.guardar(nuevoDonante);
     return PersonaDonanteDTO.from(nuevoDonante);
   }
 
@@ -134,12 +179,15 @@ public class DonanteService {
   }
 
   public PersonaDonanteDTO buscarPorNombre(String nombre) {
-    return repositorioDonantes.obtenerTodos().stream()
-                         .filter(d -> d.isActivo() && d.getPersona() != null && d.getPersona().getNombreDeUsuario() != null && d.getPersona().getNombreDeUsuario().equalsIgnoreCase(nombre))
-                         .findFirst()
-                         .map(PersonaDonanteDTO::from).orElse(null);
+    if (nombre == null || nombre.isBlank()) {
+      return null;
+    }
+    return repositorioDonantes.buscarPorNombre(nombre)
+        .map(PersonaDonanteDTO::from)
+        .orElse(null);
   }
 
+  @Transactional(rollbackFor = Exception.class)
   public PersonaDonanteDTO actualizarPersona(UUID id, PersonaDonanteDTO dto) {
     Ciudad ciudad = resolverCiudad(dto.getDireccion());
     Donante datosNuevos = dto.toDomain(ciudad);
