@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.http.HttpClient;
@@ -42,22 +43,27 @@ public class DonacionesServiceApplication {
     }
 
     /**
-     * Pool de las importaciones CSV: 2 concurrentes y cola acotada. Cola acotada a propósito:
-     * la importación es pesada (parseo + alta con llamada HTTP por fila) y encolarla sin límite
-     * solo cambia el colapso de lugar — con la cola llena se rechaza con 429 y se reintenta.
-     * {@code destroyMethod} cierra el pool en el shutdown del contexto y los hilos son daemon
-     * para que la JVM nunca quede esperándolos.
+     * Pool de las importaciones CSV: 2 concurrentes y cola acotada de 8.
+     * Configurado con hilos no-daemon y apagado ordenado (graceful shutdown) que espera
+     * hasta 30 segundos a que las tareas en vuelo completen antes de destruir el DataSource
+     * y cerrar el contexto de la aplicación.
      */
-    @Bean(destroyMethod = "shutdown")
-    public ExecutorService executorImportacion() {
-        AtomicInteger numeroDeHilo = new AtomicInteger();
-        return new ThreadPoolExecutor(
-                2, 2, 0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<>(8),
-                tarea -> {
-                    Thread hilo = new Thread(tarea, "importacion-csv-" + numeroDeHilo.incrementAndGet());
-                    hilo.setDaemon(true);
-                    return hilo;
-                });
+    @Bean
+    public ThreadPoolTaskExecutor taskExecutorImportacion() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(8);
+        executor.setThreadNamePrefix("importacion-csv-");
+        executor.setDaemon(false);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean
+    public ExecutorService executorImportacion(ThreadPoolTaskExecutor taskExecutorImportacion) {
+        return taskExecutorImportacion.getThreadPoolExecutor();
     }
 }

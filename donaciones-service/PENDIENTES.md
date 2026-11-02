@@ -12,33 +12,32 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | #  | Punto | Severidad | Por qué está acá                                                                                                    |
 |----|-------|-----------|---------------------------------------------------------------------------------------------------------------------|
-| 1  | 71    | Alta      | `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor aborta la importación CSV a medias     |
-| 2  | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                                |
-| 3  | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara                   |
-| 4  | 64    | Media     | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 5  | 63    | Media     | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada       |
-| 6  | 62    | Media     | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real      |
-| 7  | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias                        |
-| 8  | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente                            |
-| 9  | 74    | Media     | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only   |
-| 10 | 75    | Media     | Cursor de eventos `ultimoIdProcesado` en `EventosListener` es en memoria: no sobrevive reinicios ni clusterización   |
-| 11 | 72    | Media     | `DonanteService.buscarPorNombre` escanea toda la tabla en memoria (`obtenerTodos().stream()`) en vez de consulta SQL |
-| 12 | 73    | Media     | Fuga de memoria en `DonanteService.reportesImportacion`: acumula reportes y errores en memoria sin TTL ni límite     |
-| 13 | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                                |
-| 14 | 65    | Media     | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior           |
-| 15 | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals                    |
-| 16 | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                                  |
-| 17 | 41    | Media     | La modificación de donante (`PUT`) ignora campos de personas jurídicas (`rubro`, `tipoJuridico`, `representantes`)   |
-| 18 | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                                              |
-| 19 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                                      |
-| 20 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                                        |
-| 21 | 67    | Baja      | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos       |
-| 22 | 68    | Baja      | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe           |
-| 23 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                                 |
-| 24 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                                            |
-| 25 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                                     |
-| 26 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                                    |
-| 27 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                                              |
+| 1  | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                                |
+| 2  | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara                   |
+| 3  | 64    | Media     | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
+| 4  | 63    | Media     | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada       |
+| 5  | 62    | Media     | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real      |
+| 6  | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias                        |
+| 7  | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente                            |
+| 8  | 74    | Media     | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only   |
+| 9  | 75    | Media     | Cursor de eventos `ultimoIdProcesado` en `EventosListener` es en memoria: no sobrevive reinicios ni clusterización   |
+| 10 | 72    | Media     | `DonanteService.buscarPorNombre` escanea toda la tabla en memoria (`obtenerTodos().stream()`) en vez de consulta SQL |
+| 11 | 73    | Media     | Fuga de memoria en `DonanteService.reportesImportacion`: acumula reportes y errores en memoria sin TTL ni límite     |
+| 12 | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                                |
+| 13 | 65    | Media     | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior           |
+| 14 | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals                    |
+| 15 | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                                  |
+| 16 | 41    | Media     | La modificación de donante (`PUT`) ignora campos de personas jurídicas (`rubro`, `tipoJuridico`, `representantes`)   |
+| 17 | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                                              |
+| 18 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                                      |
+| 19 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                                        |
+| 20 | 67    | Baja      | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos       |
+| 21 | 68    | Baja      | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe           |
+| 22 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                                 |
+| 23 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                                            |
+| 24 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                                     |
+| 25 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                                    |
+| 26 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                                              |
 
 ---
 
@@ -623,32 +622,6 @@ Definir si la consulta queda delegada en incentivos-service (dejarlo documentado
 
 ---
 
-## 71. `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor aborta la importación CSV a medias
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/DonacionesServiceApplication.java` (líneas 52-61), `.../services/DonanteService.java` (líneas 214-258)
-
-### Qué pasa
-
-`DonacionesServiceApplication.executorImportacion()` construye el pool para procesar archivos CSV marcando los hilos como daemon:
-
-```java
-hilo.setDaemon(true);
-```
-
-Cuando la JVM recibe una señal de apagado (`SIGTERM` en Kubernetes o Docker Compose), no espera a que los hilos daemon terminen: la JVM se destruye de inmediato. Si se está procesando un archivo de importación con cientos o miles de filas, el proceso se interrumpe a mitad de camino, dejando una porción de donantes creados localmente, perfiles a medio sincronizar en incentivos y el reporte en memoria perdido para siempre.
-
-### Cómo se dispara
-
-Cualquier despliegue, reinicio de pod o escalado descendente de Docker mientras una importación CSV esté en ejecución en segundo plano.
-
-### Propuesta de arreglo
-
-Configurar los hilos como no daemon (`hilo.setDaemon(false)`) y configurar en el bean del executor un shutdown ordenado que espere la terminación de tareas activas (`executor.setWaitForTasksToCompleteOnShutdown(true)` y `setAwaitTerminationSeconds(...)`).
-
----
-
 ## 72. `DonanteService.buscarPorNombre` escanea toda la tabla de donantes en memoria en vez de consultar por índice SQL
 
 **Estado:** abierto
@@ -769,6 +742,7 @@ Persistir los IDs de eventos procesados en una tabla de base de datos (`eventos_
 
 ## Corregidos
 
+- **71.** `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor abortaba la importación CSV a medias — migrado el pool a `ThreadPoolTaskExecutor` de Spring con hilos no-daemon (`setDaemon(false)`), espera de tareas activas al apagar (`setWaitForTasksToCompleteOnShutdown(true)`) y ventana de gracia de 30 segundos (`setAwaitTerminationSeconds(30)`), exponiendo `getThreadPoolExecutor()` como bean `ExecutorService` para preservar la inyección requerida por `DonanteService` sin que Spring destruya el `DataSource` ni los recursos de BD mientras hay importaciones en curso.
 - **61.** Llamada síncrona a `IncentivosClient` en transacción de entrega revertía la persistencia y descartaba el evento de logística — aislada la llamada a `incentivosClient.notificarImpactoDonacion` para ejecutarse post-commit mediante `TransactionSynchronizationManager` con `afterCommit()` (o fallback directo aislado en `try/catch` con log de advertencia), evitando que caídas o demoras de incentivos reviertan la confirmación local de la donación a `ENTREGADO` y previniendo el descarte irreversible del evento en RabbitMQ.
 - **70.** Soft Delete en `EntidadBeneficiaria` y cancelación lógica de necesidades, evitando 409 y preservando donaciones — implementada baja lógica (`activa = false`, `fechaBaja = now()`) en `EntidadBeneficiaria`, cancelación lógica de necesidades (`activa = false` en `Necesidad`), anonimización de persona jurídica y dirección, exclusión de entidades y necesidades inactivas en matchmaking (`CompatibilidadSemantica`, `SubAtendidos`, `AsignacionScheduler`, `DonacionService`) y listados, y eliminación del borrado físico en `EntidadBeneficiariaService.eliminarEntidad` y `eliminarNecesidad` para evitar el 409 por restricción de clave foránea (absorbió bug 66).
 - **69.** Soft Delete y minimización de datos en `Donante` y `Persona`, eliminando desvinculación a `null` de donaciones — implementada baja lógica (`activo = false`, `fechaBaja = now()`) en `Donante`, anonimización en cascada (`Persona.anonimizar()`, `Humana`, `Juridica`, `Direccion`, `MediosDeContacto.limpiarMedios()`), filtrado de inactivos en `DonanteService.listarTodas()` y `buscarPorNombre()`, y eliminadas las desvinculaciones destructivas a `null` del punto 34 para preservar claves foráneas y prevenir `NullPointerException` en eventos de entrega logística (absorbió bug 60).
