@@ -10,21 +10,24 @@ lista y pasa a la secciÃ³n [Corregidos](#corregidos) del final.
 El orden no es el de la severidad declarada en cada punto sino el del daÃ±o real: cuÃ¡nto se
 rompe cuando pasa, y quÃ© tan fÃ¡cil es que pase.
 
-| # | Punto | Por quÃ© estÃ¡ acÃ¡ |
+| # | Punto | Por qué está acá |
 |---|---|---|
-| 34 | 34 | `POST /api/notificaciones` no valida `medioDeContacto`: acepta con 202 medios invÃ¡lidos que mueren asÃ­ncronamente en `FALLIDA` |
+| 38 | 38 | `ConsumidorNotificaciones` traga fallos de red/timeout como `IllegalArgumentException`, marca `FALLIDA` y da ACK a RabbitMQ sin reintento |
+| 34 | 34 | `POST /api/notificaciones` no valida `medioDeContacto`: acepta con 202 medios inválidos que mueren asíncronamente en `FALLIDA` |
 | 35 | 35 | `GestorNotificaciones.enviarNotificacion` enmascara errores de red y timeout como `IllegalArgumentException` |
+| 39 | 39 | `POST /api/notificaciones` responde 202 sin retornar el ID asignado ni cabecera `Location` |
 | 37 | 37 | `NotificacionMapper` falla con `NullPointerException` si `mensaje` o `fechaCreacion` son nulos |
 | 20 | 20 | El reintento manual que prometen los comentarios no existe: ni endpoint, ni scheduler, ni forma de buscar por estado |
-| 27 | 27 | El canal SMS del enunciado no estÃ¡ contemplado: solo email, telÃ©fono y WhatsApp |
+| 27 | 27 | El canal SMS del enunciado no está contemplado: solo email, teléfono y WhatsApp |
 | 3 | 3 | Faltan tests de `ConsumidorNotificaciones` y de las transiciones de estado de `Notificacion` |
 | 21 | 21 | La idempotencia es check-then-act sin lock: dos entregas concurrentes mandan dos mails |
-| 22 | 22 | Binding de `notificaciones.evento.logistica` que ningÃºn servicio publica |
+| 22 | 22 | Binding de `notificaciones.evento.logistica` que ningún servicio publica |
 | 28 | 28 | El mapa de la ruta viaja como URL en el texto, no como adjunto |
-| 26 | 26 | No hay endpoint de colecciÃ³n ni paginaciÃ³n (`GET /notificaciones` paginado) |
+| 26 | 26 | No hay endpoint de colección ni paginación (`GET /notificaciones` paginado) |
 | 36 | 36 | `NotificacionDTO` no expone el campo `id` de la entidad |
-| 24 | 24 | La organizaciÃ³n de paquetes no sigue la de `incentivos-service` (repos, dto, clientes) |
-| 25 | 25 | `GestorNotificaciones` mezcla responsabilidades: no estÃ¡ partido por comportamiento |
+| 40 | 40 | `Notificacion` genera `UUID.randomUUID()` en el campo `@Id` forzando `merge` con SELECT previo en cada guardado |
+| 24 | 24 | La organización de paquetes no sigue la de `incentivos-service` (repos, dto, clientes) |
+| 25 | 25 | `GestorNotificaciones` mezcla responsabilidades: no está partido por comportamiento |
 ---
 
 ## 3. Faltan tests de `ConsumidorNotificaciones` y de las transiciones de estado de `Notificacion`
@@ -455,6 +458,112 @@ Consultar por id (`GET /api/notificaciones/{id}`) una notificaciÃ³n cuya fila 
 
 - Chequear nulidad en `NotificacionMapper` antes de invocar mÃ©todos sobre `notificacion.getMensaje()`,
   `fechaCreacion` y `estado`, asignando `null` o cadenas vacÃ­as si no estÃ¡n presentes.
+
+## 38. `ConsumidorNotificaciones` traga fallos de red/timeout como `IllegalArgumentException`, marca `FALLIDA` y da ACK a RabbitMQ sin reintento
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `messaging/ConsumidorNotificaciones.java:181-202`, `models/gestores/GestorNotificaciones.java:120-125`
+
+### Qué pasa
+
+En `GestorNotificaciones.enviarNotificacion`:
+
+```java
+} catch (RuntimeException excepcion) {
+    notificacion.marcarFallida();
+    log.error("[GESTOR] Falló el despacho de la notificación...", ...);
+    throw new IllegalArgumentException(mensajeDeEnvioFallido(excepcion), excepcion);
+}
+```
+
+Cualquier caída de n8n, fallo de DNS o timeout de red (`RestClientException`) es capturado y relanzado envuelto en un `IllegalArgumentException`.
+A su vez, en `ConsumidorNotificaciones.enviar`:
+
+```java
+try {
+    gestor.enviarNotificacion(...);
+    notificacion.marcarEnviada();
+} catch (RuntimeException excepcion) {
+    notificacion.marcarFallida();
+    log.error("[COLA] Notificación {} FALLÓ...", ...);
+}
+repositorioNotificaciones.save(notificacion);
+```
+
+El consumidor captura la excepción en un `catch (RuntimeException excepcion)`, persiste la notificación con estado `FALLIDA` y **retorna normalmente sin relanzar**.
+Como el método del `@RabbitListener` finaliza sin arrojar excepciones, RabbitMQ interpreta que el mensaje se consumió con éxito y envía el `ACK`.
+Como el servicio de notificaciones no posee ningún scheduler ni cola de reintentos para notificaciones en estado `FALLIDA`, cualquier caída transitoria de n8n de pocos segundos provoca que la notificación se pierda definitivamente sin posibilidad de recuperación.
+
+### Cómo se dispara
+
+Cualquier indisponibilidad temporal, reinicio de contenedor o lentitud en el webhook de n8n mientras se envían notificaciones.
+
+### Propuesta de arreglo
+
+Diferenciar en `GestorNotificaciones` los errores de cliente/datos inválidos (que sí son `IllegalArgumentException`) de los errores de transporte e infraestructura (`RestClientException` / timeouts). En `ConsumidorNotificaciones`, relanzar los errores transitorios para que opere la política de retry y dead letter exchange de RabbitMQ.
+
+---
+
+## 39. `POST /api/notificaciones` responde 202 sin retornar el ID asignado ni cabecera `Location`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `controllers/NotificadorController.java:51-61`
+
+### Qué pasa
+
+En `NotificadorController`:
+
+```java
+@PostMapping
+public ResponseEntity<String> recibirSolicitudNotificacion(@Valid @RequestBody SolicitudNotificacionDTO dto) {
+    ...
+    notificadorService.procesarSolicitudDeNotificacion(dto);
+    return new ResponseEntity<>("solicitud procesada con éxito", HttpStatus.ACCEPTED);
+}
+```
+
+El endpoint acepta la notificación con código HTTP 202 ACCEPTED y un string plano en el body. Sin embargo, no devuelve el identificador `id` (UUID) de la notificación creada ni expone una cabecera `Location: /api/notificaciones/{id}`.
+Como resultado, el servicio o cliente emisor que envía la notificación no tiene ninguna forma programática de conocer el `id` para luego consultar el estado de la entrega mediante `GET /api/notificaciones/{id}`.
+
+### Cómo se dispara
+
+Cualquier cliente HTTP que solicite el envío de una notificación y necesite trackear su estado.
+
+### Propuesta de arreglo
+
+Modificar el retorno de `procesarSolicitudDeNotificacion` para devolver el `UUID` creado y responder con un DTO que incluya el `id` y la URL del recurso en la cabecera `Location`.
+
+---
+
+## 40. `Notificacion` genera `UUID.randomUUID()` en el campo `@Id` forzando `merge` con SELECT previo en cada guardado
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `models/entities/Notificacion/Notificacion.java:28`
+
+### Qué pasa
+
+En `Notificacion`:
+
+```java
+@Id
+private UUID id = UUID.randomUUID();
+```
+
+En Spring Data JPA, cuando una entidad tiene su clave `@Id` preasignada en el constructor o declaración de campo, el método `JpaRepository.save(entity)` determina si la entidad es "nueva" mediante `entityInformation.isNew(entity)`. Al detectar que el `@Id` no es `null`, Hibernate asume que la entidad ya existe y ejecuta un `EntityManager.merge()` en lugar de `EntityManager.persist()`.
+Esto obliga a Hibernate a emitir un `SELECT` previo a la tabla `notificaciones` por cada notificación nueva que se inserta, para verificar si la clave ya está en la base de datos antes de disparar el `INSERT`. Esto duplica innecesariamente el tráfico de consultas sobre MySQL.
+
+### Cómo se dispara
+
+Cada guardado de una nueva notificación en la base de datos.
+
+### Propuesta de arreglo
+
+Hacer que `Notificacion` implemente `Persistable<UUID>` con un flag `@Transient private boolean isNew = true;`, o utilizar una estrategia de generación de identificadores `@GeneratedValue` de JPA/Hibernate.
+
+---
 
 ---
 

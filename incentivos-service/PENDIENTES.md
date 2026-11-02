@@ -17,13 +17,16 @@ de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
 | 6 | 50 | Media | `InsigniaObtenida.equals` compara instancias de `Insignia` sin `equals`, permitiendo duplicar medallas en JPA |
 | 7 | 51 | Media | `buscarSiguienteParaEnviar` en la outbox de n8n bloquea pesimistamente toda la tabla de pendientes sin paginación (`LIMIT 1`) |
 | 8 | 52 | Media | `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia |
-| 9 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
-| 10 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
-| 11 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
-| 12 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
-| 13 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 14 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
-| 15 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
+| 9 | 55 | Media | `PerfilService.actualizarPerfilImpacto` reintenta en bucle cerrado (tight spin loop) sin backoff ni jitter ante colisión optimista |
+| 10 | 56 | Media | `buscarPerfilesConMisionQueRequiereConstancia` combina `JOIN FETCH` con `Pageable`, arriesgando paginación en memoria |
+| 11 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
+| 12 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
+| 13 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
+| 14 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
+| 15 | 57 | Baja | `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler |
+| 16 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 17 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
+| 18 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
 
 El punto 1 requiere una decisión del equipo para acordar una identidad compartida entre servicios.
 El punto 10 queda documentado pero no es relevante: el equipo decidió deliberadamente contar insignias.
@@ -747,6 +750,113 @@ misión.
    donaciones con `hizoProgresarMision = true` cuya misión estaba dentro del período.
    Como el progreso solo avanza una misión por vez, "misiones cumplidas en el mes" se
    puede reconstruir, aunque hay que definir bien el período.
+
+---
+
+## 55. `PerfilService.actualizarPerfilImpacto` reintenta en bucle cerrado (tight spin loop) sin backoff ni jitter ante `OptimisticLockingFailureException`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java` (líneas 268-282)
+
+### Qué pasa
+
+En `PerfilService.actualizarPerfilImpacto`:
+
+```java
+for (int intento = 1; intento <= MAX_INTENTOS_CONCURRENCIA; intento++) {
+    try {
+        Boolean resultado = transactionTemplate.execute(estado ->
+                aplicarImpacto(idUsuario, dto));
+        return Boolean.TRUE.equals(resultado);
+    } catch (OptimisticLockingFailureException excepcion) {
+        ultimaFalla = excepcion;
+        log.warn("Carrera de concurrencia al aplicar la donacion...; intento {} de {}", ...);
+    }
+}
+throw ultimaFalla;
+```
+
+Cuando ocurre una colisión concurrente (dos donaciones que impactan sobre el mismo donante al mismo tiempo), la versión de la entidad `@Version` en `Perfil` falla. El bloque `catch` atrapa la excepción y reintenta de inmediato en la siguiente iteración del `for`, sin ninguna pausa.
+Al no existir ningún retardo ni jitter aleatorio, dos hilos que compiten vuelven a chocar casi con certeza en el segundo y tercer intento consecutivo, agotando rápidamente `MAX_INTENTOS_CONCURRENCIA` (3 intentos) y lanzando un `OptimisticLockingFailureException` que el `GlobalExceptionHandler` traduce a un HTTP 409 espurio.
+
+### Cómo se dispara
+
+Múltiples eventos de entrega o donaciones concurrentes procesadas en paralelo para un mismo donante.
+
+### Propuesta de arreglo
+
+Introducir una espera breve con backoff exponencial y jitter aleatorio (por ejemplo, entre 20ms y 100ms) antes de cada reintento, o delegar en la anotación `@Retryable(retryFor = OptimisticLockingFailureException.class, backoff = @Backoff(delay = 50, multiplier = 2, random = true))`.
+
+---
+
+## 56. `buscarPerfilesConMisionQueRequiereConstancia` combina `JOIN FETCH` con `Pageable`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/repositories/SpringRepositories/RepositorioPerfiles.java` (líneas 69-75), `.../services/PerfilService.java` (líneas 82-112)
+
+### Qué pasa
+
+`RepositorioPerfiles.buscarPerfilesConMisionQueRequiereConstancia` declara:
+
+```java
+@Query("SELECT p "
+        + "FROM Perfil p "
+        + "JOIN FETCH p.progresoMisionActual pm "
+        + "JOIN FETCH pm.mision m "
+        + "JOIN FETCH m.reglaDeProgreso "
+        + "WHERE p.activo = true AND m.reglaDeProgreso.constancia IS NOT NULL")
+Page<Perfil> buscarPerfilesConMisionQueRequiereConstancia(Pageable pageable);
+```
+
+En JPA/Hibernate y Spring Data, combinar `JOIN FETCH` con un parámetro `Pageable` genera dos problemas críticos:
+1. Hibernate no puede aplicar un `LIMIT` / `OFFSET` confiable a nivel de base de datos cuando hay joins fetch sobre asociaciones, produciendo la advertencia: `HHH000104: firstResult/maxResults specified with collection fetch; applying in memory!`. En ese escenario, Hibernate ejecuta la consulta trayendo **todas las filas coincidentes** a memoria y pagina en el heap de Java.
+2. La consulta de conteo (`countQuery`) automática generada por Spring Data falla o resulta inválida con JPQL porque la cláusula `FETCH` no está permitida en un `COUNT(...)`.
+
+### Cómo se dispara
+
+Cada ejecución diaria del scheduler de misiones (`MisionesScheduler.evaluarProgresosConstantes()`).
+
+### Propuesta de arreglo
+
+Configurar la consulta base sin `JOIN FETCH` y con `countQuery` explícito, utilizando `@EntityGraph(attributePaths = {"progresoMisionActual", "progresoMisionActual.mision", "progresoMisionActual.mision.reglaDeProgreso"})` para hidratar las relaciones sin corromper el cálculo de paginación de SQL.
+
+---
+
+## 57. `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/clients/N8nClient.java` (líneas 62-84)
+
+### Qué pasa
+
+`N8nClient.procesarPendientes()` corre cada 30 segundos con `@Scheduled` y procesa hasta `MAX_PUBLICACIONES_POR_CICLO = 50` publicaciones pendientes:
+
+```java
+for (int procesadas = 0; procesadas < MAX_PUBLICACIONES_POR_CICLO; procesadas++) {
+    Optional<PublicacionReclamada> siguiente = publicaciones.reclamarSiguiente(LocalDateTime.now());
+    if (siguiente.isEmpty()) return;
+    PublicacionReclamada reclamada = siguiente.orElseThrow();
+    try {
+        restTemplate.postForEntity(n8nUrl, reclamada.contenido(), void.class);
+        publicaciones.confirmar(reclamada.id());
+    } catch (RestClientException exception) {
+        ...
+    }
+}
+```
+
+Cada llamada a `restTemplate.postForEntity` es una petición HTTP síncrona y bloqueante contra una URL externa de n8n. Con una latencia habitual de 500ms a 2 segundos por llamada, procesar un lote de 30 o 50 publicaciones retiene el hilo de `@Scheduled` bloqueado durante 30 a 100 segundos. Si el `TaskScheduler` de Spring no tiene un pool dimensionado, retrasa otras tareas programadas del sistema (`MisionesScheduler`, `RankingScheduler`).
+
+### Cómo se dispara
+
+Acumulación de varias insignias en la outbox tras un evento masivo o período de alto tráfico de donaciones.
+
+### Propuesta de arreglo
+
+Despachar las publicaciones reclamadas de forma asíncrona mediante un pool de hilos o `CompletableFuture`, o procesar en sub-lotes más pequeños con timeout estricto.
 
 ---
 

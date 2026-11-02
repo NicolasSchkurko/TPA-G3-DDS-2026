@@ -12,19 +12,24 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
-| 1 | 60 | Alta | `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper` |
-| 2 | 61 | Alta | `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales |
-| 3 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
-| 4 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
-| 5 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
-| 6 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
-| 7 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
-| 8 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
-| 9 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 10 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
-| 11 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
-| 12 | 49 | Baja | Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems en memoria |
-| 13 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
+| 1 | 64 | Alta | `DonacionListener` duerme el hilo con `Thread.sleep` y no aborta ante interrupción, bloqueando el pool AMQP |
+| 2 | 60 | Alta | `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper` |
+| 3 | 61 | Alta | `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales |
+| 4 | 68 | Media | `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write) |
+| 5 | 65 | Media | `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM |
+| 6 | 66 | Media | `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red |
+| 7 | 67 | Media | `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster |
+| 8 | 49 | Media | RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer |
+| 9 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
+| 10 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
+| 11 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
+| 12 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
+| 13 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
+| 14 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
+| 15 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 16 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
+| 17 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
+| 18 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
@@ -363,28 +368,39 @@ Renombrar los paquetes a minúsculas (`rabbitmq`, `scheduler`) y ubicarlos bajo 
 
 ---
 
-## 49. Cada cambio de estado de una entrega recorre todas las rutas con sus paradas e ítems en memoria
+## 49. RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer
 
 **Estado:** abierto  
-**Severidad:** baja  
-**Archivos:** `models/repositories/RepositorioRutas.java:15-20`, `services/EntregaService.java:334,343`
+**Severidad:** media  
+**Archivos:** `models/repositories/RepositorioRutas.java:15-45`, `services/EntregaService.java:381,392,405`
 
 ### Qué pasa
 
+`RepositorioRutas` define tres métodos `default` en la interfaz de MongoDB:
+
 ```java
-default Optional<Ruta> findByIdDonacion(UUID idDonacion){
-    return this.findAll().stream()
-            .filter(ruta -> ruta.obtenerTodosLosItems().stream()
-                    .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
-            .findFirst();
+default Optional<Ruta> findByIdDonacion(UUID idDonacion) {
+    return this.findAll().stream().filter(...).findFirst();
+}
+
+default Optional<Ruta> findByChofer(Chofer chofer) {
+    return this.findAll().stream().filter(...).findFirst();
+}
+
+default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
+    return this.findAll().stream().filter(...).findFirst();
 }
 ```
 
-Cada actualización de estado de entrega invoca `repoRutas.findByIdDonacion`, el cual ejecuta `this.findAll()` trayendo **todas** las rutas de la historia a memoria para filtrarlas por stream.
+Cada vez que una entrega cambia de estado en `EntregaService`, o se verifica la asignación de un chofer en `PlanificadorRutasService`, se ejecuta `this.findAll()`. En MongoDB esto descarga **todos los documentos de la colección `ruta` a través de la red**, los deserializa completos a objetos Java en el heap y realiza una búsqueda secuencial O(N) en memoria descartando el resto. Con cientos o miles de rutas históricas, esto colapsa la red, la memoria y el rendimiento.
+
+### Cómo se dispara
+
+Cualquier invocación a `actualizarEstado` en `EntregaService` o asignación de choferes en el planificador.
 
 ### Propuesta de arreglo
 
-Reemplazar por una query nativa de Spring Data MongoDB sobre la colección `ruta` filtrando por el campo embebido `paradas.items.id_donacion`.
+Eliminar los métodos `default` con `this.findAll().stream()` y reemplazarlos por consultas declaradas de Spring Data MongoDB (`@Query` o derived query methods), aprovechando índices de Mongo sobre `paradas.items.id_donacion` y `camionAsignado.chofer.idChofer`.
 
 ---
 
@@ -395,6 +411,167 @@ Reemplazar por una query nativa de Spring Data MongoDB sobre la colección `ruta
 **Archivos:** todo `logisticas-service/src/main`
 
 El servicio de logística mantiene el cumplimiento estricto del enunciado: no realiza llamadas síncronas HTTP a otros servicios de dominio y notifica exclusivamente publicando eventos asíncronos en RabbitMQ hacia el exchange de logística.
+
+---
+
+## 64. `DonacionListener` duerme el hilo con `Thread.sleep` y no aborta ante interrupción, bloqueando el pool AMQP
+
+**Estado:** abierto  
+**Severidad:** alta  
+**Archivos:** `RabbitMQ/DonacionListener.java:82-89`
+
+### Qué pasa
+
+En `DonacionListener`:
+
+```java
+private void dormir() {
+    try {
+        Thread.sleep(esperaMs);
+    } catch (InterruptedException interrumpido) {
+        Thread.currentThread().interrupt();
+        log.debug("Se interrumpió la espera entre reintentos");
+    }
+}
+```
+
+Durante un reintento por fallo, el listener duerme el hilo de Spring AMQP de forma síncrona durante 2 segundos (`esperaMs`). Si se acumulan mensajes fallidos, todos los hilos del consumidor quedan retenidos en espera activa durmiendo, impidiendo que el servicio procese mensajes válidos que esperan en la cola.
+Además, si el hilo es interrumpido durante el apagado del contexto, el bloque `catch` restablece el flag con `interrupt()` pero el bucle `for (int intento = 1; intento <= intentos; intento++)` **nunca verifica `Thread.currentThread().isInterrupted()`**, por lo que continúa ejecutando reintentos contra un contexto que está cerrándose.
+
+### Cómo se dispara
+
+Cualquier falla transitoria o error al procesar una donación entrante desde RabbitMQ.
+
+### Propuesta de arreglo
+
+Eliminar el `Thread.sleep` manual y configurar el reintento a nivel del container de Spring AMQP con un `RetryTemplate` / `StatefulRetryOperationsInterceptor` o dead-lettering con TTL en RabbitMQ. En `dormir()` o en el bucle `for`, verificar `Thread.currentThread().isInterrupted()` y lanzar `AmqpRejectAndDontRequeueException` inmediatamente.
+
+---
+
+## 65. `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:34-52`
+
+### Qué pasa
+
+`ProveedorRutasExternoSimulado.solicitarPlanificacion` lanza una tarea asíncrona:
+
+```java
+CompletableFuture.runAsync(() -> {
+    try {
+        Thread.sleep(2000);
+        ...
+        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    } ...
+});
+```
+
+Al no pasarle un `Executor` explícito, `CompletableFuture.runAsync` delega en el pool estático `ForkJoinPool.commonPool()` de la JVM. Este pool tiene una cantidad muy limitada de hilos (igual a la cantidad de cores de CPU) y está pensado para procesamiento intensivo de cómputo en memoria, no para esperas bloqueantes ni llamadas HTTP por red. Bloquear este pool con `Thread.sleep(2000)` y peticiones HTTP reduce la capacidad de paralelismo de streams paralelos y otros componentes asíncronos en toda la JVM.
+
+### Cómo se dispara
+
+Cada ejecución de la planificación de rutas (automática o manual) que utilice el proveedor simulado.
+
+### Propuesta de arreglo
+
+Inyectar un `TaskExecutor` configurado en Spring (`ThreadPoolTaskExecutor`) dedicado para tareas en segundo plano del módulo de rutas, pasando el executor como segundo argumento: `CompletableFuture.runAsync(..., executor)`.
+
+---
+
+## 66. `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java:47-56`
+
+### Qué pasa
+
+En `ProveedorRutasExternoHttp.solicitarPlanificacion`:
+
+```java
+httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        .thenAccept(response -> {
+            if (response.statusCode() >= 400) {
+                log.error(...);
+            } else {
+                log.info(...);
+            }
+        });
+```
+
+Se llama a `httpClient.sendAsync().thenAccept(...)` pero **no se encadena ningún `.exceptionally(...)` ni `.handle(...)`**.
+Si ocurre un error de resolución DNS, falla de conexión TCP, caída del servidor externo o timeout, el `CompletableFuture` subyacente se completa de forma excepcional. Como nadie consume esa excepción, Java la descarta en silencio y en los logs del servicio no queda ningún registro del fallo, aparentando que la solicitud continúa en curso cuando en realidad murió.
+
+### Cómo se dispara
+
+Cualquier caída o indisponibilidad de la API externa de ruteo configurada.
+
+### Propuesta de arreglo
+
+Agregar `.exceptionally(ex -> { log.error("Fallo la llamada HTTP al proveedor externo de rutas", ex); return null; })` y configurar un timeout explícito en `HttpRequest.newBuilder().timeout(Duration.ofSeconds(10))`.
+
+---
+
+## 67. `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `services/PlanificadorRutasService.java:84`
+
+### Qué pasa
+
+El método `asignarChoferes` declara:
+
+```java
+public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas)
+```
+
+La sincronización se realiza sobre el monitor del bean singleton en memoria (`this`). En una arquitectura de microservicios con múltiples réplicas (por ejemplo, dos o más contenedores de `logisticas-service`), cada contenedor posee su propia instancia de la JVM y su propio monitor. Si dos callbacks de planificación llegan en paralelo a distintas réplicas, ambas ingresan simultáneamente a `asignarChoferes`, leen los mismos choferes disponibles y asignan el mismo chofer a dos rutas distintas concurrentemente.
+
+### Cómo se dispara
+
+Planificación concurrente o callbacks simultáneos recibidos con más de 1 réplica activa del servicio de logística.
+
+### Propuesta de arreglo
+
+Coordinar la exclusión mutua de la asignación mediante un bloqueo pesimista en base de datos (`findAndModify` atómico en MongoDB sobre el chofer / camion) o un cerrojo distribuido (ShedLock o Redis).
+
+---
+
+## 68. `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write)
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `services/EntregaService.java:367, 384, 395, 404`
+
+### Qué pasa
+
+En `actualizarEstado`:
+
+```java
+@Transactional
+public void actualizarEstado(UUID idDonacion, ActualizacionEntregaDTO request) {
+    ...
+    case "ENTREGADA":
+        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, rutaEntregada, request.getFotoUrl()));
+        sincronizarItemEnRuta(rutaEntregada, item);
+        break;
+    ...
+    repoItemEntrega.save(item);
+}
+```
+
+`gestorPublicacionEventos.publicarEntregaConfirmada(...)` emite el mensaje a RabbitMQ sincrónicamente antes de que la transacción de base de datos confirme. Si la sincronización de la ruta en MongoDB (`repoRutas.save(ruta)`) o el commit de la transacción de Spring falla a continuación, el evento en el broker ya fue emitido y entregado a `donaciones-service` e `incentivos-service`, provocando que el sistema considere entregada una donación cuya persistencia falló localmente.
+
+### Cómo se dispara
+
+Cualquier fallo de conexión a base de datos, error de concurrencia optimista o excepción en el commit posterior a la emisión a RabbitMQ.
+
+### Propuesta de arreglo
+
+Registrar la publicación del evento en RabbitMQ para ejecutarse en el callback `afterCommit()` mediante `TransactionSynchronizationManager`, asegurando que el mensaje solo viaje si la base de datos confirmó los cambios exitosamente.
 
 ---
 
