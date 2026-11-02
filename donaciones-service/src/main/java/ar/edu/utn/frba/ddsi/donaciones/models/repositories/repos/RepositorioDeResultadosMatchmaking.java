@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Fachada sobre ResultadoMatchmakingJpaRepository (Spring Data JPA).
@@ -23,6 +25,10 @@ public class RepositorioDeResultadosMatchmaking {
 
     public List<ResultadoMatchmaking> findAll() {
         return jpaRepository.findAll();
+    }
+
+    public Page<ResultadoMatchmaking> findAll(Pageable pageable) {
+        return jpaRepository.findAll(pageable);
     }
 
     public void guardar(ResultadoMatchmaking resultado) {

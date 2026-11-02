@@ -11,6 +11,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,8 +43,10 @@ public class DonacionController {
 
   @Operation(summary = "Ver formularios registrados (para poder liberar un Donante antes de borrarlo)")
   @GetMapping("/formularios")
-  public ResponseEntity<List<FormularioResumenDTO>> obtenerFormularios() {
-    return ResponseEntity.ok(donacionService.obtenerFormularios());
+  public ResponseEntity<Page<FormularioResumenDTO>> obtenerFormularios(
+      @PageableDefault(page = 0, size = 10) Pageable pageable
+  ) {
+    return ResponseEntity.ok(donacionService.obtenerFormularios(pageable));
   }
 
   @Operation(summary = "Eliminar un formulario. Formulario.donante_id es FK no nula sin cascade REMOVE: hay que borrar los formularios de un Donante antes de poder borrar al Donante (si no, 409).")
@@ -53,8 +58,10 @@ public class DonacionController {
 
   @Operation(summary = "Ver donaciones")
   @GetMapping
-  public ResponseEntity<List<DonacionDTO>> obtenerDonaciones() {
-    return ResponseEntity.ok(donacionService.obtenerTodas());
+  public ResponseEntity<Page<DonacionDTO>> obtenerDonaciones(
+      @PageableDefault(page = 0, size = 10) Pageable pageable
+  ) {
+    return ResponseEntity.ok(donacionService.obtenerTodas(pageable));
   }
 
   @Operation(summary = "Ver donación por id")
@@ -96,8 +103,10 @@ public class DonacionController {
 
   @Operation(summary = "Ver resultados de matchmaking pendientes")
   @GetMapping("/pendientes")
-  public ResponseEntity<List<ResultadoMatchmakingDTO>> verResultadosDeMatchmaking() {
-    return ResponseEntity.ok(donacionService.obtenerTodosLosResultadosMatchmaking());
+  public ResponseEntity<Page<ResultadoMatchmakingDTO>> verResultadosDeMatchmaking(
+      @PageableDefault(page = 0, size = 10) Pageable pageable
+  ) {
+    return ResponseEntity.ok(donacionService.obtenerTodosLosResultadosMatchmaking(pageable));
   }
 
   @Operation(summary = "Ejecutar algoritmos de asignación a demanda")

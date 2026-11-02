@@ -23,6 +23,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -81,6 +83,10 @@ public class DonacionService {
                            .map(DonacionDTO::from).collect(Collectors.toList());
   }
 
+  public Page<DonacionDTO> obtenerTodas(Pageable pageable) {
+    return repositorioDonaciones.obtenerTodos(pageable).map(DonacionDTO::from);
+  }
+
   public DonacionDTO obtenerPorId(UUID id) {
     return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new EntityNotFoundException("No se encontró la donación con ID: " + id)));
   }
@@ -108,6 +114,10 @@ public class DonacionService {
   public List<FormularioResumenDTO> obtenerFormularios() {
     return repositorioFormularios.obtenerTodos().stream()
                            .map(FormularioResumenDTO::from).collect(Collectors.toList());
+  }
+
+  public Page<FormularioResumenDTO> obtenerFormularios(Pageable pageable) {
+    return repositorioFormularios.obtenerTodos(pageable).map(FormularioResumenDTO::from);
   }
 
   @Transactional(rollbackFor = Exception.class)
@@ -173,6 +183,10 @@ public class DonacionService {
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
     return repositorioDeResultadosMatchmaking.findAll().stream()
                             .map(ResultadoMatchmakingDTO::from).collect(Collectors.toList());
+  }
+
+  public Page<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking(Pageable pageable) {
+    return repositorioDeResultadosMatchmaking.findAll(pageable).map(ResultadoMatchmakingDTO::from);
   }
 
   @Transactional(rollbackFor = Exception.class)

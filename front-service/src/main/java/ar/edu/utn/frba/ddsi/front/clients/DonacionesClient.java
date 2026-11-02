@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,10 +30,11 @@ public class DonacionesClient {
 
     public List<DonacionDTO> obtenerTodasLasDonaciones() {
         try {
-            return restClient.get()
+            PageResponse<DonacionDTO> page = restClient.get()
                     .uri(baseUrl + "/api/donaciones")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<List<DonacionDTO>>() {});
+                    .body(new ParameterizedTypeReference<PageResponse<DonacionDTO>>() {});
+            return page != null ? page.getContent() : Collections.emptyList();
         } catch (Exception e) {
             log.error("Error al obtener donaciones desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();
@@ -53,10 +55,11 @@ public class DonacionesClient {
 
     public List<PersonaDonanteDTO> obtenerDonantes() {
         try {
-            return restClient.get()
+            PageResponse<PersonaDonanteDTO> page = restClient.get()
                     .uri(baseUrl + "/api/personas")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<List<PersonaDonanteDTO>>() {});
+                    .body(new ParameterizedTypeReference<PageResponse<PersonaDonanteDTO>>() {});
+            return page != null ? page.getContent() : Collections.emptyList();
         } catch (Exception e) {
             log.error("Error al obtener donantes desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();

@@ -19,6 +19,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiud
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -172,9 +177,13 @@ public class DonanteService {
                          .collect(Collectors.toList());
   }
 
+  public Page<PersonaDonanteDTO> listarTodas(Pageable pageable) {
+    return repositorioDonantes.obtenerTodosActivos(pageable).map(PersonaDonanteDTO::from);
+  }
+
   public PersonaDonanteDTO buscarPorId(UUID id) {
-    Donante donante = repositorioDonantes.buscarPorId(id).orElse(null);
-    if (donante == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
+    Donante donante = repositorioDonantes.buscarPorId(id)
+        .orElseThrow(() -> new EntityNotFoundException("No se encontró persona con ID: " + id));
     return PersonaDonanteDTO.from(donante);
   }
 
@@ -191,8 +200,8 @@ public class DonanteService {
   public PersonaDonanteDTO actualizarPersona(UUID id, PersonaDonanteDTO dto) {
     Ciudad ciudad = resolverCiudad(dto.getDireccion());
     Donante datosNuevos = dto.toDomain(ciudad);
-    Donante existente = repositorioDonantes.buscarPorId(id).orElse(null);
-    if (existente == null) throw new IllegalArgumentException("No se encontró persona con ID: " + id);
+    Donante existente = repositorioDonantes.buscarPorId(id)
+        .orElseThrow(() -> new EntityNotFoundException("No se encontró persona con ID: " + id));
     if (existente.getPersona() != null && datosNuevos.getPersona() != null) {
       repositorioPersonas.modificarPersona(existente.getPersona().getId(), datosNuevos.getPersona());
     }

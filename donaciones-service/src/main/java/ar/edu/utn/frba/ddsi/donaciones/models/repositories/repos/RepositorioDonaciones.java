@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Fachada sobre DonacionJpaRepository (Spring Data JPA).
@@ -25,6 +27,10 @@ public class RepositorioDonaciones {
 
     public List<Donacion> obtenerTodos() {
         return jpaRepository.findAll();
+    }
+
+    public Page<Donacion> obtenerTodos(Pageable pageable) {
+        return jpaRepository.findAll(pageable);
     }
 
     public Optional<Donacion> obtenerPorId(UUID id) {
