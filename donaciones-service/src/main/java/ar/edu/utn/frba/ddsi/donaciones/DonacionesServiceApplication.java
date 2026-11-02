@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
 
+import org.springframework.beans.factory.annotation.Value;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -35,11 +37,20 @@ public class DonacionesServiceApplication {
     }
 
     @Bean
-    public RestTemplate restTemplate() {
+    public RestTemplate restTemplate(
+        @Value("${http.client.connect-timeout-seconds:5}") int connectTimeoutSeconds,
+        @Value("${http.client.read-timeout-seconds:10}") int readTimeoutSeconds
+    ) {
         // La factory default (HttpURLConnection) no soporta PATCH: el avance de donación a
         // incentivos es PATCH y con ella responde con "Invalid HTTP method: PATCH". El
         // HttpClient del JDK soporta PATCH sin dependencias extra.
-        return new RestTemplate(new JdkClientHttpRequestFactory(HttpClient.newHttpClient()));
+        // Punto 49: Timeouts explícitos para no colgar hilos ni listeners ante indisponibilidad.
+        HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
+            .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
+        return new RestTemplate(requestFactory);
     }
 
     /**
