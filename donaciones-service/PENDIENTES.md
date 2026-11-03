@@ -9,59 +9,22 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 | #  | Punto | Severidad | Paquete | Por qué está acá |
 |----|-------|-----------|---------|------------------|
-| 1  | 75    | Media     | `messaging` | Cursor de eventos `ultimoIdProcesado` en `EventosListener` es en memoria: no sobrevive reinicios ni clusterización |
-| 2  | 42    | Media     | `models.entities` | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados |
-| 3  | 62    | Media     | `models.entities` | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real |
-| 4  | 63    | Media     | `models.entities` | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada |
-| 5  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 6  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
-| 7  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
-| 8  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
-| 9  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
-| 10 | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
-| 11 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
-| 12 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
-| 13 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
-| 14 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
-| 15 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
-| 16 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
-| 17 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
-
-
----
-
-
-## 75. Cursor de deduplicación de eventos en `EventosListener` es en memoria y no apto para clúster o reinicios
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/RabbitMQ/EventosListener.java` (líneas 39, 60-63, 72)
-
-### Qué pasa
-
-`EventosListener` utiliza una variable en memoria para filtrar eventos ya vistos:
-
-```java
-private volatile long ultimoIdProcesado = 0;
-```
-
-Si el evento recibido tiene `evento.getId() <= ultimoIdProcesado`, se descarta. Esto presenta tres problemas:
-
-1. Al reiniciar el servicio, el cursor vuelve a 0, perdiendo la protección de idempotencia ante redeliveries históricas.
-
-2. Si se despliegan 2 o más réplicas del contenedor de `donaciones-service`, cada instancia tiene su propio cursor en memoria y desconoce lo que la otra procesó.
-
-3. Si la cola de eventos se procesa con concurrencia mayor a 1, un hilo que procese el evento $N+1$ antes que el evento $N$ actualizará el cursor a $N+1$, provocando que el hilo del evento $N$ sea erróneamente ignorado.
-
-### Cómo se dispara
-
-Reinicio del contenedor o escalado horizontal del servicio consumiendo eventos de logística concurrentemente.
-
-### Propuesta de arreglo
-
-Persistir los IDs de eventos procesados en una tabla de base de datos (`eventos_logistica_procesados`) con clave primaria sobre `id_evento`, asegurando la verificación e inserción atómica transaccional.
+| 1  | 42    | Media     | `models.entities` | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados |
+| 2  | 62    | Media     | `models.entities` | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real |
+| 3  | 63    | Media     | `models.entities` | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada |
+| 4  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
+| 5  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
+| 6  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
+| 7  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
+| 8  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
+| 9  | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
+| 10 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
+| 11 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
+| 12 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
+| 13 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
+| 14 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
+| 15 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
+| 16 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
 
 
 ---
@@ -615,6 +578,8 @@ Lanzar `IllegalArgumentException` o `EntityNotFoundException` cuando `buscarPorI
 
 ## Corregidos
 
+- **75.** El cursor de deduplicación de eventos `ultimoIdProcesado` en `EventosListener` era en memoria: no sobrevivía reinicios ni clusters - reemplazado por la tabla de idempotencia `eventos_logistica_procesados` (clave primaria `id_evento`, vía `RepositorioEventosProcesados`). El reclamo se inserta al comienzo de la transacción de `GestorEventosLogistica.procesarEvento` (`persist` + `flush`), así que la verificación y la inserción son atómicas: si el evento falla, el rollback borra la fila y el retry lo reprocesa; si otra réplica ya lo reclamó, la PK duplicada se traduce a `EventoYaProcesadoException` y el listener confirma el mensaje sin reprocesar. La deduplicación es duradera y compartida entre todas las réplicas, sin alterar el contrato del Punto 45. Coberturas en `EventosListenerTest` y `GestorEventosLogisticaTest`.
+
 - **55.** El catch-all del `GlobalExceptionHandler` convertía errores de cliente en 500 y filtraba internals - agregados handlers para `HttpMessageNotReadableException` y `MethodArgumentTypeMismatchException` (400), `HttpRequestMethodNotSupportedException` (405) y `NoResourceFoundException` (404), y el catch-all ahora responde un mensaje genérico y loguea el detalle.
 
 - **38.** Los listados devuelven la colección entera: falta paginación - Se sumó paginación mediante `Pageable` (`@PageableDefault(page = 0, size = 10)`) y retorno de `Page<DTO>` en los 5 listados principales (`GET /api/donaciones`, `GET /api/donaciones/formularios`, `GET /api/donaciones/pendientes`, `GET /api/personas`, `GET /api/entidades`), implementando `findByActivoTrue` y `findByActivaTrue` en los repositorios Spring Data JPA para paginación a nivel SQL. Se adaptó el cliente consumidor en `front-service` (`DonacionesClient` mediante `PageResponse`) y los scripts de la colección de Postman para procesar tanto respuestas paginadas (`content`) como listas planas.
@@ -647,7 +612,7 @@ Lanzar `IllegalArgumentException` o `EntityNotFoundException` cuando `buscarPorI
 
 - **46.** `PUT /api/admins/{id}` insertaba un admin nuevo en cada modificación - `AdminService` reutiliza la entidad original y `RepositorioAdministradores.actualizar` fuerza `idOriginal` antes de `save()`.
 
-- **45.** `EventosListener`: transacción y requeue en hot loop - aislada la transacción en `GestorEventosLogistica`, configurado retry/backoff en `application.properties` con `default-requeue-rejected=false`, y cursor `ultimoIdProcesado` actualizado solo tras commit exitoso.
+- **45.** `EventosListener`: transacción y requeue en hot loop - aislada la transacción en `GestorEventosLogistica`, configurado retry/backoff en `application.properties` con `default-requeue-rejected=false`, y la deduplicación quedó persistida en la tabla `eventos_logistica_procesados` (ver 75), que reemplazó al cursor `ultimoIdProcesado`.
 
 - **44.** Los schedulers corrían sin transacción (LazyInitializationException) - `@Transactional` agregado en `AsignacionScheduler.ejecutarAsignacion`, `ActividadDonanteScheduler.revisarActividadDonantes` y `DonanteService.revisarActividades`.
 

@@ -15,7 +15,9 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.EstrategiaNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.EventoYaProcesadoException;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEventosProcesados;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -35,20 +38,25 @@ public class GestorEventosLogistica {
   private final RepositorioDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
+  private final RepositorioEventosProcesados repoEventosProcesados;
   private final ObjectMapper objectMapper;
 
   public GestorEventosLogistica(RepositorioDonaciones repositorioDonaciones,
                                 FabricaEstrategiasNotificacion fabricaEstrategias,
                                 IncentivosClient incentivosClient,
+                                RepositorioEventosProcesados repoEventosProcesados,
                                 ObjectMapper objectMapper) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
+    this.repoEventosProcesados = repoEventosProcesados;
     this.objectMapper = objectMapper;
   }
 
   @Transactional(rollbackFor = Exception.class)
   public void procesarEvento(EventoLogisticaDTO evento, List<MedioDeContacto> contactosAdministradores) {
+    reclamarEvento(evento.getId());
+
     switch (evento.getTipoEvento()) {
       case "INICIO_RUTA":
         manejarInicioRuta(evento);
@@ -64,6 +72,22 @@ public class GestorEventosLogistica {
         break;
       default:
         System.out.println("Evento de logística desconocido: " + evento.getTipoEvento());
+    }
+  }
+
+  /**
+   * Inserta la fila de deduplicación al comienzo de esta transacción.
+   *
+   * <p>Si otra réplica ya reclamó el evento, la violación de clave primaria se traduce a
+   * {@link EventoYaProcesadoException}: el listener la confirma sin reprocesar. Cualquier
+   * otra falla de base de datos durante el procesamiento se propaga como está para que el
+   * broker reintente.
+   */
+  private void reclamarEvento(Long idEvento) {
+    try {
+      repoEventosProcesados.reclamar(idEvento);
+    } catch (DataIntegrityViolationException carrera) {
+      throw new EventoYaProcesadoException(idEvento, carrera);
     }
   }
 
