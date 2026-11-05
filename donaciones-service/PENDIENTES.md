@@ -14,17 +14,18 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 | 3  | 63    | Media     | `models.entities` | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada |
 | 4  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
 | 5  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
-| 6  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
-| 7  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
-| 8  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
-| 9  | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
-| 10 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
-| 11 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
-| 12 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
-| 13 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
-| 14 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
-| 15 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
-| 16 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
+| 6  | 75    | Media     | `models.entities` | `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar direcciones con una API gratuita |
+| 7  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
+| 8  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
+| 9  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
+| 10 | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
+| 11 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
+| 12 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
+| 13 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
+| 14 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
+| 15 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
+| 16 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
+| 17 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
 
 
 ---
@@ -235,6 +236,56 @@ Cualquier corrida programada donde al menos una donación sufra un error de inte
 ### Propuesta de arreglo
 
 Remover `@Transactional` del método del scheduler y encapsular el procesamiento de cada donación individual en una transacción independiente mediante `TransactionTemplate` o un método de servicio con `@Transactional(propagation = Propagation.REQUIRES_NEW)`.
+
+
+---
+
+
+## 75. `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar las direcciones con una API gratuita
+
+**Estado:** abierto
+
+**Severidad:** media
+
+**Paquete:** `models.entities`
+
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/direccion/Direccion.java` (líneas 97-103), `.../dto/DireccionDTO.java`, `.../services/EntidadBeneficiariaService.java` (`registrarEntidad` y `actualizarEntidad`), `.../services/DonanteService.java` (`resolverCiudad` y los métodos que persisten donantes), `../logisticas-service/.../dto/entrega/DireccionDTO.java`, `../logisticas-service/.../models/entities/Direccion/Direccion.java`
+
+### Qué pasa
+
+`Direccion` no guarda coordenadas: solo tiene calle, altura, piso, departamento y `Ciudad`. Los dos getters que deberían resolverlas devuelven un string de relleno:
+
+```java
+// Pendiente: requeriría integración con una API externa de geolocalización.
+public String getLatitud() {
+  return "INSERTAR CONTENIDO A DEVOLVER";
+}
+
+public String getLongitud() {
+  return "INSERTAR CONTENIDO A DEVOLVER";
+}
+```
+
+No es un problema de formato: cualquier consumidor que llame a esos métodos recibe un texto que no es una coordenada. Y como `DireccionDTO` tampoco tiene campos `latitud`/`longitud`, aunque se geocodificara en `donaciones-service` las coordenadas no llegarían a `logisticas-service` ni al frontend.
+
+### Cómo se dispara
+
+Cualquier intento de ubicar una entidad beneficiaria, un donante o una parada en un mapa, o de calcular una ruta por calles. Hoy el bug queda latente porque ningún endpoint expone esos getters; aparece en cuanto se conecta el mapa o el ruteo.
+
+### Propuesta de arreglo
+
+1. Agregar `Double latitud` y `Double longitud` a `Direccion` (nullable: las filas viejas no tienen coordenadas). Reemplazar los getters placeholder por los generados por Lombok o por getters que devuelvan esos campos, sin hacer I/O.
+2. Crear un `GeocodingService` en `donaciones-service` que use **Georef Argentina**, la API gratuita del Estado y sin API key:
+   - `GET https://apis.datos.gob.ar/georef/api/direcciones`
+   - parámetros: `direccion` (calle + altura), `provincia` y `localidad`
+   - respuesta: `direcciones[0].ubicacion.lat` y `direcciones[0].ubicacion.lon` (WGS84)
+   - si `direcciones` viene vacío, devolver `null` y loguear un warning; no romper el alta.
+3. Geocodificar en el alta/actualización, no en los getters: llamar al servicio en `EntidadBeneficiariaService.registrarEntidad`, `actualizarEntidad` y en los métodos de `DonanteService` que persisten una `Direccion`, después de `resolverCiudad` y antes de guardar. Los getters de una entidad JPA deben ser puros.
+4. Persistir las coordenadas y propagarlas: agregar `latitud`/`longitud` a `DireccionDTO` de `donaciones-service`, mapearlas en `from`/`toDomain`, y agregarlas también al `DireccionDTO` y al `Direccion` de `logisticas-service` para que las paradas puedan dibujarse.
+5. Poner timeout y cachear: no llamar a Georef en cada lectura. Una vez persistidas, las coordenadas se leen de la base. Para las filas existentes, hacer una migración/backfill único, no un geocoding por request.
+6. Agregar tests con `GeocodingService` mockeado: dirección encontrada, dirección sin resultado (se guarda `null`), y round-trip de `DireccionDTO` con lat/lon.
+
+Georef cubre direcciones de Argentina y devuelve la coordenada de la cuadra/calle, no el punto exacto del portal; para el TP alcanza. Si en el futuro se necesita cobertura fuera del país, se puede evaluar Nominatim (OpenStreetMap), pero exige `User-Agent`, máximo aproximado de 1 request por segundo y cachear resultados.
 
 
 ---

@@ -63,24 +63,6 @@
         urgent: { label: "Urgente", color: "#b45309" }
     };
 
-    // El proveedor de tiles se puede configurar desde application.properties /
-    // variables de entorno (MAPA_TILES_URL y MAPA_ATTRIBUTION).
-    const DEFAULT_TILES_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-    const DEFAULT_ATTRIBUTION = "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
-    const DEFAULT_CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-    function metaContent(name) {
-        const tag = document.querySelector(`meta[name="${name}"]`);
-        const value = tag ? tag.getAttribute("content") : "";
-        return value && value.trim() ? value.trim() : "";
-    }
-
-    const TILES_URL = metaContent("map-tiles-url") || DEFAULT_TILES_URL;
-    const TILES_ATTRIBUTION = TILES_URL.includes("cartocdn")
-        ? DEFAULT_CARTO_ATTRIBUTION
-        : (metaContent("map-attribution") || DEFAULT_ATTRIBUTION);
-    const TILES_MAX_NATIVE_ZOOM = TILES_URL.includes("cartocdn") ? 19 : 16;
-
     const INFO = {
         quienes: {
             eyebrow: "Quiénes somos",
@@ -322,30 +304,23 @@
 
     /* ----------------------------- Mapa con Leaflet ----------------------------- */
     function initMap() {
-        map = L.map("map", {
+        map = window.DDSIMap.create({
+            container: "map",
             center: MAP_CENTER,
             zoom: 13,
-            zoomControl: false,
-            attributionControl: true,
-            scrollWheelZoom: false,
             minZoom: 11,
             maxZoom: 18,
-            zoomSnap: 0.25,
-            zoomDelta: 0.5
+            scrollWheelZoom: false,
+            zoomControl: true,
+            zoomControlPosition: "bottomright"
         });
 
-        map.setView(MAP_CENTER, 13);
+        if (!map) {
+            initFallbackMap();
+            return;
+        }
 
-        // Base clara y sin etiquetas: ideal para superponer los puntos de la red.
-        L.tileLayer(TILES_URL, {
-            maxZoom: 18,
-            maxNativeZoom: TILES_MAX_NATIVE_ZOOM,
-            subdomains: "abcd",
-            attribution: TILES_ATTRIBUTION
-        }).addTo(map);
-
-        L.control.zoom({ position: "bottomright" }).addTo(map);
-
+        // Las capas propias del landing van encima del mapa base.
         // Marcadores de donaciones.
         DONATIONS.forEach((donation, index) => {
             const icon = L.divIcon({
@@ -519,7 +494,7 @@
         renderList();
         initModal();
 
-        if (window.L && typeof window.L.map === "function") {
+        if (window.DDSIMap && window.DDSIMap.isAvailable()) {
             initMap();
         } else {
             initFallbackMap();

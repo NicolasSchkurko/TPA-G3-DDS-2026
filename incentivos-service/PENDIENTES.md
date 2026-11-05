@@ -19,14 +19,15 @@ de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
 | 8 | 52 | Media | `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia |
 | 9 | 55 | Media | `PerfilService.actualizarPerfilImpacto` reintenta en bucle cerrado (tight spin loop) sin backoff ni jitter ante colisión optimista |
 | 10 | 56 | Media | `buscarPerfilesConMisionQueRequiereConstancia` combina `JOIN FETCH` con `Pageable`, arriesgando paginación en memoria |
-| 11 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
-| 12 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
-| 13 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
-| 14 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
-| 15 | 57 | Baja | `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler |
-| 16 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 17 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
-| 18 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
+| 11 | 58 | Media | No existe el algoritmo de donaciones destacadas: últimas N entregadas que completaron una misión |
+| 12 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
+| 13 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
+| 14 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
+| 15 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
+| 16 | 57 | Baja | `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler |
+| 17 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 18 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
+| 19 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
 
 El punto 1 requiere una decisión del equipo para acordar una identidad compartida entre servicios.
 El punto 10 queda documentado pero no es relevante: el equipo decidió deliberadamente contar insignias.
@@ -821,6 +822,53 @@ Cada ejecución diaria del scheduler de misiones (`MisionesScheduler.evaluarProg
 ### Propuesta de arreglo
 
 Configurar la consulta base sin `JOIN FETCH` y con `countQuery` explícito, utilizando `@EntityGraph(attributePaths = {"progresoMisionActual", "progresoMisionActual.mision", "progresoMisionActual.mision.reglaDeProgreso"})` para hidratar las relaciones sin corromper el cálculo de paginación de SQL.
+
+---
+
+## 58. No existe el algoritmo de donaciones destacadas: últimas N entregadas que completaron una misión
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/models/repositories/SpringRepositories/RepositorioDonaciones.java`, `.../services/MetricasService.java` o un `DestacadasService` nuevo, `.../controllers/` (endpoint nuevo), `../front-service/src/main/resources/templates/landing.html` (sidebar `Donaciones destacadas`), `../front-service/src/main/resources/static/js/landing.js` (array `DONATIONS` de ejemplo)
+
+### Qué pasa
+
+El landing muestra una lista fija de cinco donaciones de ejemplo en `landing.js` (`DONATIONS`). No hay ningún algoritmo que consulte las donaciones reales. El dato necesario ya existe en `incentivos-service`: `ImpactoDonacion` guarda `fechaEntrega`, `estado` y `completMision` (se pone en `true` cuando esa donación completó la misión vigente del donante). Pero no hay query, servicio ni endpoint que devuelva “las últimas N donaciones entregadas que completaron una misión”.
+
+La definición funcional es:
+
+- solo donaciones **entregadas** (`estado = "ENTREGADA"`, que es el valor que manda `IncentivosDonacionDTO`; **no** `ENTREGADO`, que es el nombre del enum local de donaciones);
+- solo donaciones que **completaron una misión** (`completMision = true`);
+- ordenadas por `fechaEntrega` descendente;
+- limitadas a N, con **N configurable** (por defecto 30; el número puede variar).
+
+### Cómo se dispara
+
+Abrir el landing y ver el sidebar “Donaciones destacadas”. Hoy muestra datos de ejemplo; cuando se conecte a datos reales no hay endpoint al que llamar.
+
+### Propuesta de arreglo
+
+1. Agregar una query en `RepositorioDonaciones`:
+   ```java
+   @Query("""
+       SELECT d FROM ImpactoDonacion d
+       WHERE d.completMision = true
+         AND d.estado = 'ENTREGADA'
+         AND d.fechaEntrega IS NOT NULL
+       ORDER BY d.fechaEntrega DESC, d.idDonacion DESC
+       """)
+   List<ImpactoDonacion> buscarDestacadas(Pageable pageable);
+   ```
+   El desempate por `idDonacion` mantiene el orden estable cuando dos donaciones comparten `fechaEntrega`. Ojo: el filtro correcto es `ENTREGADA`, no `ENTREGADO`; ese último es el nombre del enum local de `donaciones-service` y no viaja así al impacto de incentivos.
+2. Crear un `DestacadasService` (o un método en `MetricasService`) que reciba el límite, valide `1 <= limite <= 100`, use `PageRequest.of(0, limite)` y mapee a un DTO público sin datos personales: `idDonacion`, `fechaEntrega`, `cantidadBienes`, `categoria`, `subCategoria`, `entidadBeneficiaria`. No exponer `idUsuario` ni el nombre del donante.
+3. Exponer `GET /api/donaciones/destacadas?limite=30` en `incentivos-service`, público y de solo lectura. Si no hay resultados, devolver `200` con lista vacía. El límite por defecto sale de una property, por ejemplo `incentivos.destacadas.limite=30`.
+4. Cachear la respuesta unos minutos (`@Cacheable` o `Cache-Control`) porque el landing la pide seguido y solo cambia cuando se entrega una donación que completa misión.
+5. En `front-service`, hacer que el landing consuma el endpoint por el BFF (no desde el navegador si se quiere evitar CORS/acoplamiento) y reemplace el array `DONATIONS` de ejemplo. Renderizar la lista server-side con Thymeleaf es lo más liviano; el mapa puede seguir usando los marcadores cuando existan coordenadas (pendientes 75 de donaciones y 69 de logística).
+6. Tests: solo entregadas, solo con `completMision = true`, orden descendente, límite configurado, menos resultados que el límite y lista vacía.
+
+### Ojo con los datos viejos
+
+`completMision` tiene default `false`. Las filas de `impacto_donacion` anteriores a ese campo no van a aparecer como destacadas aunque hayan completado una misión. Si se quieren incluir, hay que hacer un backfill/recalculo único; si no, el algoritmo solo empieza a mostrar donaciones nuevas.
 
 ---
 

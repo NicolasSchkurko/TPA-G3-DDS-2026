@@ -24,12 +24,6 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
-    @Value("${servicio.mapa.tiles-url:}")
-    private String mapTilesUrl;
-
-    @Value("${servicio.mapa.attribution:}")
-    private String mapAttribution;
-
     public HomeController(DonacionesClient donacionesClient) {
         this.donacionesClient = donacionesClient;
     }
@@ -52,30 +46,8 @@ public class HomeController {
      * aunque el backend no esté levantado.
      */
     @GetMapping({"/", "/landing"})
-    public String landing(Model model) {
-        // Si no se configura un proveedor de tiles, el JS usa Esri por defecto.
-        model.addAttribute("mapTilesUrl", cleanConfigValue(mapTilesUrl));
-        model.addAttribute("mapAttribution", cleanConfigValue(mapAttribution));
+    public String landing() {
         return "landing";
-    }
-
-    /**
-     * Los .env suelen escribir los valores entre comillas. Spring los lee como
-     * properties, así que las sacamos acá antes de pasarlos al template.
-     */
-    private static String cleanConfigValue(String value) {
-        if (value == null) {
-            return "";
-        }
-        String cleaned = value.trim();
-        if (cleaned.length() >= 2) {
-            char first = cleaned.charAt(0);
-            char last = cleaned.charAt(cleaned.length() - 1);
-            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
-                cleaned = cleaned.substring(1, cleaned.length() - 1).trim();
-            }
-        }
-        return cleaned;
     }
 
     @GetMapping("/panel")

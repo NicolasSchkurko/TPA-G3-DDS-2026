@@ -25,11 +25,13 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 11 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
 | 12 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
 | 13 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
-| 14 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
-| 15 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 16 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
-| 17 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
-| 18 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
+| 14 | 69 | Media | La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa |
+| 15 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
+| 16 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 17 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
+| 18 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
+| 19 | 70 | Baja | El planificador simulado podría usar OSRM para matriz/trazado y una heurística local para la asignación |
+| 20 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
@@ -269,6 +271,37 @@ Persistir el estado de carga acumulado de los camiones tras la asignación, o de
 
 ---
 
+## 69. La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `models/entities/Ruta/Ruta.java`, `models/entities/Parada/Parada.java`, `services/PlanificadorRutasService.java` (`procesarCallbackRutas`), `controllers/RutaController.java`, `dto/rutas/RutaDTO.java`, `dto/entrega/DireccionDTO.java`, `models/entities/Direccion/Direccion.java`, `models/gestores/GestorPublicacionEventos.java:51`
+
+### Qué pasa
+
+`Ruta` guarda las `paradas` y un `urlSeguimiento`, pero no guarda el trazado que sigue el camión por las calles. `Parada` guarda una `Direccion` sin latitud/longitud, y `DireccionDTO` tampoco transporta coordenadas. A su vez, el callback del planificador solo acepta un `Map<patente, List<UUID idDonacion>>`; aunque el proveedor externo devuelva una geometría, `procesarCallbackRutas` la descarta.
+
+`RutaController` expone `GET /api/rutas/{id}` con las paradas, pero no existe ningún endpoint que devuelva un GeoJSON o un `LineString`. `urlSeguimiento` es solo un enlace armado en `GestorPublicacionEventos`; no reemplaza la geometría de la ruta.
+
+### Cómo se dispara
+
+Cualquier intento del front de mostrar una ruta en el mapa. Sin coordenadas ni polyline, el navegador solo podría dibujar líneas rectas entre paradas, y ni siquiera eso porque las paradas tampoco tienen lat/lon.
+
+### Propuesta de arreglo
+
+1. Al planificar o recibir el callback, obtener el trazado real por calles con un motor de ruteo (OSRM/ORS o el mismo proveedor externo) usando las paradas en orden. Guardar por ruta:
+   - `List<Coordenada>` o GeoJSON `LineString`;
+   - `distanciaMetros`, `duracionSegundos`, `provider`, `fechaCalculo`.
+   Se puede embeber en `Ruta` o usar una colección `trazado_ruta` separada; una polyline típica entra cómodamente en el límite de 16 MB de Mongo.
+   También hay que guardar `latitud`/`longitud` en `Direccion`/`Parada` (depende del pendiente 75 de `donaciones-service`).
+2. Exponer `GET /api/rutas/{id}/geojson` (o `/trazado`) con `Content-Type: application/geo+json` y `Cache-Control`/`ETag`. Si la ruta todavía no tiene geometría, devolver 404 o 204; no recalcularla en el request.
+3. Hacer que `front-service` actúe de BFF: proxy del endpoint y el navegador solo hace `fetch` + `DDSIMap.addGeoJson`. La API key del proveedor queda siempre en el backend.
+4. Cachear por firma de paradas ordenadas para no recalcular; invalidar si cambia una parada, el camión o la fecha. Manejar el fallo del proveedor con reintento/fallback sin romper la creación de la ruta.
+5. Normalizar la respuesta a GeoJSON en el backend (no guardar el JSON crudo del proveedor) para que el front no dependa de HERE/TomTom/OSRM.
+6. Tests: ruta con geometría, ruta sin geometría (204/404) y callback que no descarte el trazado si el proveedor lo manda.
+
+---
+
 ## 62. `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer`
 
 **Estado:** abierto  
@@ -365,6 +398,43 @@ Refactorizar gestores para que contengan exclusivamente lógica de dominio y pol
 ### Propuesta de arreglo
 
 Renombrar los paquetes a minúsculas (`rabbitmq`, `scheduler`) y ubicarlos bajo convenciones estándar (`config`, `scheduler`, `messaging`).
+
+---
+
+## 70. El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local
+
+**Estado:** abierto  
+**Severidad:** baja  
+**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java`, `.../ProveedorRutasExternoHttp.java`, `config/LogisticaConfig.java`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java`, `services/PlanificadorRutasService.java`
+
+### Qué pasa
+
+Hoy `LogisticaConfig` registra `ProveedorRutasExternoSimulado`, que agrupa las entregas por ciudad y las asigna a camiones por capacidad, pero no usa la red vial. OSRM puede resolver la matriz de distancias/tiempos y el trazado por calles, aunque no puede hacer por sí solo la asignación de múltiples camiones con capacidad. No existe una implementación local que combine ambas partes.
+
+### Propuesta
+
+Crear `ProveedorRutasExternoOsrm implements ProveedorRutasExterno`:
+
+1. Obtener lat/lon de cada parada (depende del pendiente 75 de `donaciones-service`).
+2. Pedir a OSRM `/table` la matriz de duraciones/distancias.
+3. Resolver la asignación con una heurística Java simple: vecino más cercano + capacidad de peso/volumen, trabajando sobre copias de los `Camion` para no mutar los documentos de Mongo antes de persistir.
+4. Pedir a OSRM `/route` por cada camión para obtener el `LineString` por calles.
+5. Guardar el trazado (pendiente 69) y disparar el callback actual con `Map<patente, List<UUID>>`.
+
+Elegir la implementación por property en `LogisticaConfig`, por ejemplo `planificador.proveedor=osrm|simulado`.
+
+No hace falta sumar VROOM ni otro microservicio: OSRM queda como infraestructura y la clase local cubre lo que OSRM no hace. Si más adelante se necesita optimización real (ventanas de tiempo, prioridades, múltiples depósitos), se reemplaza solo esta clase por un adaptador a VROOM.
+
+### Puntos finos
+
+- OSRM necesita un origen: hoy `Camion` no tiene dirección base. Definir un depósito global por property o agregar lat/lon al camión.
+- `/table` tiene límite de coordenadas (`--max-table-size`, 100 por defecto); configurarlo o partir el lote.
+- Si OSRM no responde, mantener el simulador como fallback o dejar la planificación para la próxima corrida.
+- Abstraer el cliente OSRM detrás de una interfaz para poder mockear la matriz en los tests.
+
+### Por qué es baja
+
+Es una mejora de calidad y realismo, no un bug: el simulador actual permite cumplir el flujo de planificación. Se implementa si sobra tiempo.
 
 ---
 
