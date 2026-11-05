@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.config;
 
 import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.CustomExchange;
+import java.util.Collections;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -59,6 +61,17 @@ public class RabbitMQConfig {
      * servicio lo usa para consumir. Un exchange es un punto de encuentro: ninguno de los dos
      * tiene que saber el nombre de la cola del otro.
      */
+    /**
+     * Punto 50: Declarar el CustomExchange consistent-hash para que donaciones-service
+     * pueda publicar entregas incluso si logisticas-service aún no ha iniciado.
+     */
+    @Bean
+    public CustomExchange exchangeIntegracionHash() {
+        return new CustomExchange(EXCHANGE_INTEGRACION_HASH,
+                "x-consistent-hash", true, false,
+                Collections.singletonMap("hash-header", HEADER_PARTICION));
+    }
+
     @Bean
     public TopicExchange exchangeEventos() {
         return new TopicExchange(EXCHANGE_EVENTOS, true, false);

@@ -9,6 +9,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,18 +38,16 @@ public class EntidadBeneficiariaController {
     })
 
     @GetMapping
-    public ResponseEntity<List<EntidadBeneficiariaDTO>> obtenerTodas() {
-        return ResponseEntity.ok(service.obtenerTodas());
+    public ResponseEntity<Page<EntidadBeneficiariaDTO>> obtenerTodas(
+        @PageableDefault(page = 0, size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(service.obtenerTodas(pageable));
     }
 
     @Operation(summary = "Ver entidad por id", description = "permite buscar y obtener una entidad en base a su id")
     @GetMapping("/{id}")
     public ResponseEntity<EntidadBeneficiariaDTO> obtenerEntidad(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.obtenerEntidadPorId(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.obtenerEntidadPorId(id));
     }
 
     @Operation(summary = "Crear una Entidad", description = "permite registrar una nueva entidad")
@@ -62,13 +63,9 @@ public class EntidadBeneficiariaController {
 
     @Operation(summary = "actualizar entidad", description = "permite actualizar una entidad buscandola por su id")
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarEntidad(@PathVariable UUID id, @RequestBody EntidadBeneficiariaDTO dto) {
-        try {
-            EntidadBeneficiariaDTO actualizada = service.actualizarEntidad(id, dto);
-            return ResponseEntity.ok(actualizada);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<EntidadBeneficiariaDTO> actualizarEntidad(@PathVariable UUID id, @RequestBody EntidadBeneficiariaDTO dto) {
+        EntidadBeneficiariaDTO actualizada = service.actualizarEntidad(id, dto);
+        return ResponseEntity.ok(actualizada);
     }
 
     @Operation(summary = "eliminar entidad")

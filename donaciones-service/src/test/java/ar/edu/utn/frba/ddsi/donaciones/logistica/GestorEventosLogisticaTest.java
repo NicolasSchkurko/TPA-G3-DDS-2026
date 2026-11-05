@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.logistica;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.EventoYaProcesadoException;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -13,12 +14,15 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEventosProcesados;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -28,6 +32,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class GestorEventosLogisticaTest {
@@ -35,6 +40,7 @@ public class GestorEventosLogisticaTest {
   private RepositorioDonaciones repositorioDonaciones;
   private FabricaEstrategiasNotificacion fabricaEstrategias;
   private IncentivosClient incentivosClient;
+  private RepositorioEventosProcesados repoEventosProcesados;
   private ObjectMapper objectMapper;
   private GestorEventosLogistica gestor;
 
@@ -43,12 +49,14 @@ public class GestorEventosLogisticaTest {
     repositorioDonaciones = mock(RepositorioDonaciones.class);
     fabricaEstrategias = mock(FabricaEstrategiasNotificacion.class);
     incentivosClient = mock(IncentivosClient.class);
+    repoEventosProcesados = mock(RepositorioEventosProcesados.class);
     objectMapper = new ObjectMapper();
 
     gestor = new GestorEventosLogistica(
         repositorioDonaciones,
         fabricaEstrategias,
         incentivosClient,
+        repoEventosProcesados,
         objectMapper
     );
   }
@@ -182,5 +190,45 @@ public class GestorEventosLogisticaTest {
     } finally {
       TransactionSynchronizationManager.clear();
     }
+  }
+
+  @Test
+  @DisplayName("Punto 75: procesarEvento reclama la fila de deduplicación antes de tocar las donaciones")
+  void procesarEvento_reclamaElEventoAntesDeProcesar() {
+    UUID idDonacion = UUID.randomUUID();
+    Donacion donacion = new Donacion();
+    donacion.setId(idDonacion);
+    donacion.actualizarEstado(Estado.ASIGNADO, "Asignado previamente");
+
+    when(repositorioDonaciones.obtenerPorId(idDonacion)).thenReturn(Optional.of(donacion));
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(301L);
+    evento.setTipoEvento("REINGRESO_DEPOSITO");
+    evento.setReferenciaId(idDonacion.toString());
+
+    gestor.procesarEvento(evento, Collections.emptyList());
+
+    InOrder orden = inOrder(repoEventosProcesados, repositorioDonaciones);
+    orden.verify(repoEventosProcesados).reclamar(301L);
+    orden.verify(repositorioDonaciones).obtenerPorId(idDonacion);
+  }
+
+  @Test
+  @DisplayName("Punto 75: si otra instancia ya reclamó el evento, no se procesa y se lanza EventoYaProcesadoException")
+  void procesarEvento_siElEventoYaFueReclamado_noProcesa() {
+    long id = 302L;
+    doThrow(new DataIntegrityViolationException("Duplicate entry for key (id_evento)"))
+        .when(repoEventosProcesados).reclamar(id);
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(id);
+    evento.setTipoEvento("REINGRESO_DEPOSITO");
+    evento.setReferenciaId(UUID.randomUUID().toString());
+
+    assertThrows(EventoYaProcesadoException.class,
+        () -> gestor.procesarEvento(evento, Collections.emptyList()));
+
+    verifyNoInteractions(repositorioDonaciones);
   }
 }

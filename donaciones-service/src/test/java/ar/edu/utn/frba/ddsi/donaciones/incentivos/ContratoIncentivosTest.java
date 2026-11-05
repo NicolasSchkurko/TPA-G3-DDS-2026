@@ -22,6 +22,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEventosProcesados;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
@@ -236,6 +237,7 @@ public class ContratoIncentivosTest {
                 repositorioDonaciones,
                 mock(FabricaEstrategiasNotificacion.class),
                 incentivosClient,
+                mock(RepositorioEventosProcesados.class),
                 new com.fasterxml.jackson.databind.ObjectMapper()
         );
 

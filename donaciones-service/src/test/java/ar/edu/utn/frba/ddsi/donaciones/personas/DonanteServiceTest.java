@@ -18,6 +18,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import java.lang.reflect.Field;
+import java.util.Map;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.ReporteImportacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
+
 import org.springframework.web.client.RestClientException;
 
 import java.util.List;
@@ -191,5 +196,79 @@ public class DonanteServiceTest {
     assertNull(direccion.getDepartamento());
     assertEquals(0, direccion.getPiso());
     assertEquals(ciudad, direccion.getCiudad()); // catálogo geográfico preservado
+  }
+
+  @Test
+  @DisplayName("Punto 52: crearPersona() persiste localmente Persona y Donante antes de notificar y llamar a incentivos")
+  void crearPersona_persisteLocalmentePrimero_luegoNotificaEIncentivos() {
+    PersonaDonanteDTO dto = new PersonaDonanteDTO();
+    dto.setTipoPersona("HUMANA");
+    dto.setNombre("Mario");
+    dto.setApellido("Bros");
+    dto.setEdad(35);
+    dto.setNumeroDeDocumento(11223344);
+    dto.setGenero("HOMBRE");
+
+    PersonaDonanteDTO creado = donanteService.crearPersona(dto);
+
+    assertNotNull(creado);
+    InOrder inOrder = inOrder(repositorioPersonas, repositorioDonantes, incentivosClient, fabricaEstrategias);
+    inOrder.verify(repositorioPersonas).registrarPersona(any());
+    inOrder.verify(repositorioDonantes).guardar(any());
+    inOrder.verify(incentivosClient).peticionCrearPerfil(any());
+    inOrder.verify(fabricaEstrategias).ejecutar(eq(TipoEventoNotificacion.REGISTRO_PERSONA), any());
+  }
+
+  @Test
+  @DisplayName("Punto 52: Si la persistencia local falla, nunca llama a incentivos ni notifica")
+  void crearPersona_siPersistenciaLocalFalla_noLlamaAIncentivosNiNotifica() {
+    PersonaDonanteDTO dto = new PersonaDonanteDTO();
+    dto.setTipoPersona("HUMANA");
+    dto.setNombre("Mario");
+    dto.setApellido("Bros");
+
+    doThrow(new IllegalArgumentException("Error simulado de base de datos"))
+        .when(repositorioDonantes).guardar(any());
+
+    assertThrows(IllegalArgumentException.class, () -> donanteService.crearPersona(dto));
+
+    verify(incentivosClient, never()).peticionCrearPerfil(any());
+    verify(fabricaEstrategias, never()).ejecutar(any(), any());
+  }
+
+  @Test
+  @DisplayName("Punto 72: buscarPorNombre() delega en repositorioDonantes.buscarPorNombre y no escanea en memoria")
+  void buscarPorNombre_delegaEnRepositorio_sinEscanearTodaLaTabla() {
+    Donante activo = new Donante();
+    activo.setPersona(new Humana("Carlos", "Gomez", 30, 12345678, Genero.HOMBRE));
+
+    when(repositorioDonantes.buscarPorNombre("Carlos Gomez")).thenReturn(Optional.of(activo));
+
+    PersonaDonanteDTO resultado = donanteService.buscarPorNombre("Carlos Gomez");
+
+    assertNotNull(resultado);
+    assertEquals("Carlos Gomez", resultado.getNombre() + " " + resultado.getApellido());
+    verify(repositorioDonantes).buscarPorNombre("Carlos Gomez");
+    verify(repositorioDonantes, never()).obtenerTodos();
+  }
+
+  @Test
+  @DisplayName("Punto 73: reportesImportacion está acotado por LRU y no supera MAX_REPORTES para evitar fugas de memoria")
+  void reportesImportacion_acotadoPorLRU_evitaFugaDeMemoria() throws Exception {
+    Field field = DonanteService.class.getDeclaredField("reportesImportacion");
+    field.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<UUID, ReporteImportacionDTO> map = (Map<UUID, ReporteImportacionDTO>) field.get(donanteService);
+
+    UUID primerId = UUID.randomUUID();
+    map.put(primerId, ReporteImportacionDTO.enProgreso(primerId));
+
+    for (int i = 0; i < 105; i++) {
+      UUID id = UUID.randomUUID();
+      map.put(id, ReporteImportacionDTO.enProgreso(id));
+    }
+
+    assertEquals(100, map.size());
+    assertNull(map.get(primerId));
   }
 }

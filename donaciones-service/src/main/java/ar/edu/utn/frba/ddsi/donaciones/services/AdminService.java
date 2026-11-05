@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import jakarta.persistence.EntityNotFoundException;
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
@@ -17,7 +18,8 @@ public class AdminService {
     private final RepositorioAdministradores repositorioAdministradores;
     private final RepositorioPersonas repositorioPersonas;
 
-    public AdminService(RepositorioAdministradores repositorioAdministradores, RepositorioPersonas repositorioPersonas) {
+    public AdminService(RepositorioAdministradores repositorioAdministradores,
+                        RepositorioPersonas repositorioPersonas) {
         this.repositorioAdministradores = repositorioAdministradores;
         this.repositorioPersonas = repositorioPersonas;
     }
@@ -28,12 +30,10 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-public AdminDTO getAdminPorId(UUID id) {
-    // orElseThrow y no get(): sobre el Optional vacío esto era un 500 en vez del 404 del
-    // controller, y afectaba al chequeo de admins que hace incentivos-service.
-    Administrador admin = repositorioAdministradores.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No se encontro el administrador con ID: " + id));
+    public AdminDTO getAdminPorId(UUID id) {
+        Administrador admin = repositorioAdministradores.buscarPorId(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No se encontró el administrador con ID: " + id));
         return AdminDTO.from(admin);
     }
 
@@ -53,11 +53,11 @@ public AdminDTO getAdminPorId(UUID id) {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminDTO actualizarAdmin(UUID id, AdminDTO dto) {
+        Administrador datosNuevos = dto.toDomain();
         Administrador existente = repositorioAdministradores.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new EntityNotFoundException(
                         "No se encontró el administrador con ID: " + id));
 
-        Administrador datosNuevos = dto.toDomain();
         if (existente.getHumano() != null && datosNuevos.getHumano() != null) {
             repositorioPersonas.modificarPersona(existente.getHumano().getId(), datosNuevos.getHumano());
         } else if (datosNuevos.getHumano() != null) {
@@ -69,13 +69,11 @@ public AdminDTO getAdminPorId(UUID id) {
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 
         repositorioAdministradores.actualizar(id, existente);
-        System.out.println("Administrador actualizado con éxito.");
         return AdminDTO.from(existente);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void eliminarAdmin(UUID id) {
         repositorioAdministradores.eliminarPorId(id);
-        System.out.println("Administrador dado de baja (si existía).");
     }
-
 }

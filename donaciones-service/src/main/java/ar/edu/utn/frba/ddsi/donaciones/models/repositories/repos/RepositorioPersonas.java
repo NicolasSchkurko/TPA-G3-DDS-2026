@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,10 +91,20 @@ public class RepositorioPersonas {
             ph.setGenero(phNuevos.getGenero());
         }
 
-        // Lógica propia de dominio extraída del Controller/Service
+        // Lógica propia de dominio extraída del Controller/Service (Punto 41: soporte completo de Jurídica)
         if (existente instanceof Juridica pj && datosNuevos instanceof Juridica pjNuevos) {
             pj.setRazonSocial(pjNuevos.getRazonSocial());
             pj.setCuit(pjNuevos.getCuit());
+            pj.setRubro(pjNuevos.getRubro());
+            pj.setTipoJuridico(pjNuevos.getTipoJuridico());
+            if (pjNuevos.getRepresentantes() != null) {
+                if (pj.getRepresentantes() != null) {
+                    pj.getRepresentantes().clear();
+                    pj.getRepresentantes().addAll(pjNuevos.getRepresentantes());
+                } else {
+                    pj.setRepresentantes(new ArrayList<>(pjNuevos.getRepresentantes()));
+                }
+            }
         }
 
         try {

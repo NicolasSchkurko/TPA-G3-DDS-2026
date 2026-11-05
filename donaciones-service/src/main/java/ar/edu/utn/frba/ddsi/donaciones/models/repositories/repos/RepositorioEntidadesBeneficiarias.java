@@ -7,6 +7,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -34,6 +36,10 @@ public class RepositorioEntidadesBeneficiarias {
 
     public List<EntidadBeneficiaria> obtenerTodas() {
         return jpaRepository.findAll();
+    }
+
+    public Page<EntidadBeneficiaria> obtenerTodasActivas(Pageable pageable) {
+        return jpaRepository.findByActivaTrue(pageable);
     }
 
     public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {

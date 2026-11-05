@@ -7,6 +7,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -35,8 +37,20 @@ public class RepositorioDonantes {
     return jpaRepository.findAll();
   }
 
+  public Page<Donante> obtenerTodosActivos(Pageable pageable) {
+    return jpaRepository.findByActivoTrue(pageable);
+  }
+
   public Optional<Donante> buscarPorId(UUID id) {
     return jpaRepository.findById(id);
+  }
+
+  public Optional<Donante> buscarPorNombre(String nombre) {
+    if (nombre == null || nombre.isBlank()) {
+      return Optional.empty();
+    }
+    List<Donante> resultados = jpaRepository.buscarPorNombreActivo(nombre.trim());
+    return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
   }
 
   public void actualizar(UUID idOriginal, Donante donanteActualizado) {

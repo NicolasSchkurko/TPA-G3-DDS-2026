@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -11,4 +13,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * cuando el repositorio era en memoria (guardar, obtenerTodas, buscarPorId, actualizar, eliminarPorId).
  */
 public interface EntidadBeneficiariaJpaRepository extends JpaRepository<EntidadBeneficiaria, UUID> {
+    Page<EntidadBeneficiaria> findByActivaTrue(Pageable pageable);
 }

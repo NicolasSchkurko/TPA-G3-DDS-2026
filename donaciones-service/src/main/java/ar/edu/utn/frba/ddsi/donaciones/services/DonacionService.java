@@ -23,8 +23,14 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,6 +41,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DonacionService {
+  private static final Logger log = LoggerFactory.getLogger(DonacionService.class);
+
   private final GestorAsignaciones gestorAsignaciones;
   private final GestorFormulario gestorFormulario;
   private final GestorMatchmaking gestorMatchmaking;
@@ -75,6 +83,10 @@ public class DonacionService {
                            .map(DonacionDTO::from).collect(Collectors.toList());
   }
 
+  public Page<DonacionDTO> obtenerTodas(Pageable pageable) {
+    return repositorioDonaciones.obtenerTodos(pageable).map(DonacionDTO::from);
+  }
+
   public DonacionDTO obtenerPorId(UUID id) {
     return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new EntityNotFoundException("No se encontró la donación con ID: " + id)));
   }
@@ -102,6 +114,10 @@ public class DonacionService {
   public List<FormularioResumenDTO> obtenerFormularios() {
     return repositorioFormularios.obtenerTodos().stream()
                            .map(FormularioResumenDTO::from).collect(Collectors.toList());
+  }
+
+  public Page<FormularioResumenDTO> obtenerFormularios(Pageable pageable) {
+    return repositorioFormularios.obtenerTodos(pageable).map(FormularioResumenDTO::from);
   }
 
   @Transactional(rollbackFor = Exception.class)
@@ -169,6 +185,10 @@ public class DonacionService {
                             .map(ResultadoMatchmakingDTO::from).collect(Collectors.toList());
   }
 
+  public Page<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking(Pageable pageable) {
+    return repositorioDeResultadosMatchmaking.findAll(pageable).map(ResultadoMatchmakingDTO::from);
+  }
+
   @Transactional(rollbackFor = Exception.class)
   public void asignarPropuesta(UUID donacionId, Integer posicion) {
     PropuestaAsignacion propuestaAsignacion = gestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion(donacionId, posicion);
@@ -177,9 +197,27 @@ public class DonacionService {
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
 
-    // A partir de acá la donación le corresponde a logística, por broker (el enunciado lo pide).
-    // Va después del cambio de estado a propósito: si la publicación falla, la excepción sube.
-    publicarEntregaALogistica(donacionId);
+    // Punto 50: La publicación a logística va después del commit de la base de datos local
+    // (afterCommit) para no mandar mensajes por un estado no confirmado ni revertir la asignación
+    // si el broker falla temporalmente.
+    Runnable publicarLogistica = () -> {
+      try {
+        publicarEntregaALogistica(donacionId);
+      } catch (Exception e) {
+        log.error("No se pudo publicar la entrega a logística para la donación {}: {}", donacionId, e.getMessage(), e);
+      }
+    };
+
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          publicarLogistica.run();
+        }
+      });
+    } else {
+      publicarLogistica.run();
+    }
   }
 
   /** Publica el item de entrega: los ids de donación, los bienes agregados por unidad y la

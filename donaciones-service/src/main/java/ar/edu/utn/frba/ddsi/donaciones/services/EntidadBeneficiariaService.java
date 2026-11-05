@@ -1,5 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.services;
 
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
@@ -46,9 +50,13 @@ public class EntidadBeneficiariaService {
                 .collect(Collectors.toList());
     }
 
+    public Page<EntidadBeneficiariaDTO> obtenerTodas(Pageable pageable) {
+        return repositorioEntidadesBeneficiarias.obtenerTodasActivas(pageable).map(EntidadBeneficiariaDTO::from);
+    }
+
     public EntidadBeneficiariaDTO obtenerEntidadPorId(UUID id) {
-        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
-        if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró la entidad con ID: " + id));
         return EntidadBeneficiariaDTO.from(entidad);
     }
 
@@ -65,8 +73,8 @@ public class EntidadBeneficiariaService {
     public EntidadBeneficiariaDTO actualizarEntidad(UUID id, EntidadBeneficiariaDTO dto) {
         Ciudad ciudad = resolverCiudad(dto.getDireccion());
         EntidadBeneficiaria entidadActualizada = dto.toDomain(ciudad);
-        EntidadBeneficiaria existente = repositorioEntidadesBeneficiarias.buscarPorId(id).orElse(null);
-        if (existente == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + id);
+        EntidadBeneficiaria existente = repositorioEntidadesBeneficiarias.buscarPorId(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró la entidad con ID: " + id));
 
         if (existente.getPersonaJuridica() != null && entidadActualizada.getPersonaJuridica() != null) {
             repositorioPersonas.modificarPersona(existente.getPersonaJuridica().getId(), entidadActualizada.getPersonaJuridica());
