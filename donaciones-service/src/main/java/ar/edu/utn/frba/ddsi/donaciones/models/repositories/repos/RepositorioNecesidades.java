@@ -25,17 +25,20 @@ public class RepositorioNecesidades {
     this.repositorioDonaciones = repositorioDonaciones;
   }
 
-  public void guardar(Necesidad necesidad) {
-    if (necesidad != null) {
-      // Aseguramos que tenga un ID si no se inicializó en su constructor
-      if (necesidad.getId() == null) {
-        necesidad.setId(UUID.randomUUID());
-      }
-      if (buscarPorId(necesidad.getId()).isPresent()) {
-        throw new IllegalArgumentException("Ya existe un Necesidad con el ID: " + necesidad.getId());
-      }
-      jpaRepository.save(necesidad);
+  public Necesidad guardar(Necesidad necesidad) {
+    if (necesidad == null) {
+      return null;
     }
+    // Aseguramos que tenga un ID si no se inicializó en su constructor
+    if (necesidad.getId() == null) {
+      necesidad.setId(UUID.randomUUID());
+    }
+    if (buscarPorId(necesidad.getId()).isPresent()) {
+      throw new IllegalArgumentException("Ya existe un Necesidad con el ID: " + necesidad.getId());
+    }
+    // save() con ID ya asignado usa merge(): devuelve la instancia MANEJADA por la sesión.
+    // Hay que usar ese return, no el objeto original, o quedan dos instancias con el mismo ID.
+    return jpaRepository.save(necesidad);
   }
 
   public List<Necesidad> obtenerTodos() {

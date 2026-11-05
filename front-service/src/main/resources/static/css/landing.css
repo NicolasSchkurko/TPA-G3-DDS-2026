@@ -1,0 +1,915 @@
+/* =========================================================
+   DDSI · Landing
+   Modo claro — Acento #1B7838 · Dominante #FFFFFF
+   Secundario #8A8A8A · Texto #000000 · Tipografía Roboto
+   ========================================================= */
+
+:root {
+    --accent: #1b7838;
+    --accent-dark: #155f2d;
+    --accent-soft: #eef5f0;
+
+    --white: #ffffff;
+    --ink: #0f1210;
+    --ink-2: #333b34;
+    --muted: #5b635c;
+    --muted-2: #6b726c;
+
+    --line: #e1e5e0;
+    --line-strong: #cdd4ce;
+    --map-bg: #f0f2ee;
+
+    --status-delivered: #1b7838;
+    --status-transit: #6b7280;
+    --status-urgent: #b45309;
+
+    --nav-h: 64px;
+    --footer-h: 44px;
+    --sidebar-w: 380px;
+    --radius: 4px;
+
+    --font: "Public Sans", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body.landing {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--ink);
+    background: var(--white);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+body.landing a {
+    text-decoration: none;
+}
+
+::selection {
+    background: #d9ebe0;
+    color: var(--ink);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Sprite de iconos inline (sin fuente de iconos externa) */
+.icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    vertical-align: -0.125em;
+    fill: currentColor;
+}
+
+/* ---------------- Navegación ---------------- */
+.site-nav {
+    flex: 0 0 var(--nav-h);
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 0 28px;
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    z-index: 30;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    color: var(--ink);
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.brand-mark svg {
+    width: 17px;
+    height: 17px;
+}
+
+.brand-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.brand-sub {
+    padding-left: 10px;
+    border-left: 1px solid var(--line);
+    color: var(--muted-2);
+    font-size: 12px;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin: 0 auto;
+}
+
+.nav-links a {
+    padding: 5px 0;
+    border-bottom: 1px solid transparent;
+    color: var(--muted);
+    font-size: 13.5px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-links a:hover {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+}
+
+.nav-login {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nav-login .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.nav-login:hover {
+    border-color: var(--ink);
+    background: #f7f8f6;
+}
+
+/* ---------------- Layout principal ---------------- */
+.landing-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+}
+
+/* ---------------- Barra lateral ---------------- */
+.sidebar {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 34px 28px 24px;
+    overflow-y: auto;
+    background: var(--white);
+    border-right: 1px solid var(--line);
+    scrollbar-width: thin;
+    scrollbar-color: #c7cec8 transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #c7cec8;
+    border: 2px solid var(--white);
+    border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-intro h1 {
+    margin: 0;
+    max-width: 12ch;
+    color: var(--ink);
+    font-size: clamp(28px, 2.4vw, 36px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+}
+
+.sidebar-intro p {
+    margin: 14px 0 22px;
+    max-width: 36ch;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.sidebar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ---------------- Botones ---------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #ffffff;
+}
+
+.btn-secondary {
+    background: var(--white);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+.btn-secondary:hover {
+    border-color: var(--ink);
+}
+
+/* ---------------- Lista de donaciones ---------------- */
+.sidebar-section {
+    margin-top: 30px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+}
+
+.section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.section-head h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.section-head span {
+    color: var(--muted-2);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.donation-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.donation-card {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.donation-card:hover {
+    background: #f7f9f7;
+}
+
+.donation-card.is-active {
+    background: #f1f6f2;
+}
+
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--muted);
+    transition: color 0.15s ease;
+}
+
+.card-icon .icon {
+    width: 16px;
+    height: 16px;
+}
+
+.donation-card:hover .card-icon,
+.donation-card.is-active .card-icon {
+    color: var(--accent);
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.card-title {
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.card-meta {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.row-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--status-delivered);
+}
+
+.row-status.transit .status-dot {
+    background: var(--status-transit);
+}
+
+.row-status.urgent .status-dot {
+    background: var(--status-urgent);
+}
+
+.row-status.urgent {
+    color: var(--status-urgent);
+}
+
+.panel-noscript {
+    margin: 8px 0 0;
+    color: var(--muted-2);
+    font-size: 12px;
+}
+
+.sidebar-note {
+    margin: auto 0 0;
+    padding-top: 22px;
+    color: var(--muted-2);
+    font-size: 12px;
+}
+
+/* ---------------- Mapa ---------------- */
+.map-pane {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--map-bg);
+}
+
+#map {
+    position: absolute;
+    inset: 0;
+    background: var(--map-bg);
+}
+
+.map-legend {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--status-delivered);
+}
+
+.legend-dot.transit {
+    background: var(--status-transit);
+}
+
+.legend-dot.urgent {
+    background: var(--status-urgent);
+}
+
+.map-caption {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    z-index: 500;
+    margin: 0;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+/* ---------------- Footer ---------------- */
+.site-footer {
+    flex: 0 0 var(--footer-h);
+    height: var(--footer-h);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 28px;
+    border-top: 1px solid var(--line);
+    background: var(--white);
+    color: var(--muted-2);
+    font-size: 12px;
+}
+
+.site-footer nav {
+    display: flex;
+    gap: 18px;
+}
+
+.site-footer a {
+    color: var(--muted);
+}
+
+.site-footer a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ---------------- Modal ---------------- */
+.info-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.info-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.info-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 18, 16, 0.36);
+}
+
+.info-card {
+    position: relative;
+    width: min(520px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 30px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--white);
+    box-shadow: 0 20px 60px rgba(15, 18, 16, 0.18);
+    transform: translateY(8px);
+    transition: transform 0.2s ease;
+}
+
+.info-modal.is-open .info-card {
+    transform: none;
+}
+
+.info-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.info-close:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+}
+
+.info-card h2 {
+    margin: 0 0 12px;
+    padding-right: 28px;
+    color: var(--ink);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.info-body {
+    color: var(--ink-2);
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.info-body p {
+    margin: 0 0 12px;
+}
+
+.info-body ul {
+    margin: 0 0 12px;
+    padding-left: 18px;
+}
+
+.info-body li {
+    margin-bottom: 4px;
+}
+
+.info-body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* =========================================================
+   Leaflet
+   ========================================================= */
+.leaflet-container {
+    font-family: inherit;
+    background: var(--map-bg);
+}
+
+.leaflet-tile-pane {
+    filter: saturate(0.72) contrast(0.98);
+}
+
+.leaflet-control-attribution {
+    padding: 2px 6px !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: var(--muted-2) !important;
+    font-size: 9px !important;
+}
+
+.leaflet-control-attribution a {
+    color: var(--muted-2) !important;
+}
+
+.leaflet-control-zoom {
+    margin-right: 16px !important;
+    margin-bottom: 44px !important;
+    overflow: hidden;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: none !important;
+}
+
+.leaflet-control-zoom a {
+    width: 30px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+    background: var(--white) !important;
+    border-color: var(--line) !important;
+    color: var(--ink) !important;
+    font-size: 16px !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: #f3f5f2 !important;
+}
+
+/* Marcadores */
+.donation-marker {
+    background: transparent;
+    border: none;
+}
+
+.marker-wrap {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.marker-dot {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--marker-color, var(--accent));
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--marker-color, var(--accent));
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.marker-dot .icon {
+    width: 12px;
+    height: 12px;
+}
+
+.donation-marker:hover .marker-dot,
+.donation-marker.is-active .marker-dot {
+    transform: scale(1.12);
+    background: var(--marker-color, var(--accent));
+    color: var(--white);
+}
+
+/* Popups */
+.leaflet-popup-content-wrapper {
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(15, 18, 16, 0.12);
+}
+
+.leaflet-popup-content {
+    margin: 14px 16px;
+    min-width: 190px;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+.leaflet-popup-tip {
+    box-shadow: none;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+    color: var(--muted-2);
+}
+
+.popup-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.popup-title {
+    margin: 6px 0 2px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.popup-meta {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.popup-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    color: var(--accent) !important;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.popup-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ---------------- Fallback sin Leaflet ---------------- */
+.map-fallback {
+    background: var(--map-bg);
+}
+
+.fallback-streets {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.fallback-streets path {
+    fill: none;
+    stroke: #d9dfd8;
+    stroke-width: 7;
+    stroke-linecap: round;
+}
+
+.fallback-streets path.avenue {
+    stroke: #cdd6cc;
+    stroke-width: 15;
+}
+
+.fallback-marker {
+    position: absolute;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    transform: translate(-50%, -50%);
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.fallback-marker.is-active .marker-dot {
+    transform: scale(1.12);
+}
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-w: 340px;
+    }
+
+    .sidebar {
+        padding: 28px 22px 20px;
+    }
+}
+
+@media (max-width: 860px) {
+    body.landing {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    .site-nav {
+        position: sticky;
+        top: 0;
+        flex: 0 0 58px;
+        height: 58px;
+        padding: 0 18px;
+        gap: 16px;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .brand-sub {
+        display: none;
+    }
+
+    .landing-shell {
+        display: block;
+    }
+
+    .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        overflow: visible;
+        padding: 26px 18px 22px;
+    }
+
+    .sidebar-intro h1 {
+        max-width: none;
+        font-size: 28px;
+    }
+
+    .map-pane {
+        height: 58vh;
+        min-height: 380px;
+    }
+
+    .site-footer {
+        height: 48px;
+        flex-basis: 48px;
+        padding: 0 18px;
+    }
+
+    .map-legend {
+        top: 12px;
+        right: 12px;
+        gap: 10px;
+    }
+
+    .map-caption {
+        left: 12px;
+        bottom: 12px;
+    }
+
+    .sidebar-note {
+        margin-top: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar-actions .btn {
+        flex: 1;
+    }
+
+    .donation-card {
+        grid-template-columns: 22px minmax(0, 1fr);
+    }
+
+    .row-status {
+        grid-column: 2;
+        margin-top: 2px;
+    }
+
+    .map-legend {
+        max-width: 210px;
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

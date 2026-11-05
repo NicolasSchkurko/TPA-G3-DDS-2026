@@ -100,9 +100,9 @@ public class EntidadBeneficiariaService {
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
         SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
         Necesidad necesidad = dto.toDomain(subcategoria);
-        crearNecesidad(necesidad);
-        repositorioEntidadesBeneficiarias.agregarNecesidadAEntidad(idEntidad, necesidad);
-        return NecesidadDTO.from(necesidad);
+        Necesidad necesidadPersistida = crearNecesidad(necesidad);
+        repositorioEntidadesBeneficiarias.agregarNecesidadAEntidad(idEntidad, necesidadPersistida);
+        return NecesidadDTO.from(necesidadPersistida);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -168,12 +168,14 @@ public class EntidadBeneficiariaService {
         return repositorioCiudades.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
     }
 
-    private void crearNecesidad(Necesidad nuevoNecesidad) {
+    private Necesidad crearNecesidad(Necesidad nuevoNecesidad) {
         try {
-            repositorioNecesidades.guardar(nuevoNecesidad);
-            System.out.println("Necesidad registrada con éxito con ID: " + nuevoNecesidad.getId());
+            Necesidad persistida = repositorioNecesidades.guardar(nuevoNecesidad);
+            System.out.println("Necesidad registrada con éxito con ID: " + persistida.getId());
+            return persistida;
         } catch (IllegalArgumentException e) {
             System.err.println("Error al registrar Necesidad: " + e.getMessage());
+            return nuevoNecesidad;
         }
     }
 }

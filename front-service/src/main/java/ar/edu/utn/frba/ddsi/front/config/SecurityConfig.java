@@ -21,12 +21,12 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/login").permitAll()
+                .requestMatchers("/", "/landing", "/login").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .defaultSuccessUrl("/panel", true)
                 .failureUrl("/login?error=true")
                 .permitAll()
             )
