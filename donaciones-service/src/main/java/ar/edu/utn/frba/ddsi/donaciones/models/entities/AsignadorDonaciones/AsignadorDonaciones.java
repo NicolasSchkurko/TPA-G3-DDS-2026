@@ -49,10 +49,6 @@ public class AsignadorDonaciones {
 
         for (Donacion donacion : todasLasDonaciones) {
             try {
-                if (donacion != null && donacion.getId() != null) {
-                    repositorioDeResultadosMatchmaking.findByDonacionId(donacion.getId())
-                            .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
-                }
                 procesarMatchmaking(donacion, todasLasEntidades);
             } catch (Exception e) {
                 System.err.println("Error al procesar matchmaking para la donación " + donacion.getId() + ": " + e.getMessage());
@@ -67,6 +63,11 @@ public class AsignadorDonaciones {
      * 3. Si NO hay intersección, devuelve las propuestas originales intactas.
      */
     public void procesarMatchmaking(Donacion donacion, List<EntidadBeneficiaria> todasLasEntidades) {
+        if (donacion != null && donacion.getId() != null) {
+            repositorioDeResultadosMatchmaking.findByDonacionId(donacion.getId())
+                    .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
+        }
+
         validarAlgoritmosConfigurados();
 
         // 1. Ejecutar todos los algoritmos devolviendo una única lista plana

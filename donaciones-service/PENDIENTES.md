@@ -9,8 +9,6 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 | #  | Punto | Severidad | Paquete | Por qué está acá |
 |----|-------|-----------|---------|------------------|
-| 1  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 2  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
 | 3  | 75    | Media     | `models.entities` | `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar direcciones con una API gratuita |
 | 4  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
 | 5  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
@@ -29,48 +27,6 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 
 
-
-
-## 74. `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/sheduler/AsignacionScheduler.java` (línea 37), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 51-57)
-
-### Qué pasa
-
-`AsignacionScheduler.ejecutarAsignacion()` está anotado con `@Transactional(rollbackFor = Exception.class)`. Dentro, `AsignadorDonaciones.ejecutarMatchmakingBatch` recorre las donaciones en un bucle `for` con un `try / catch`:
-
-```java
-for (Donacion donacion : todasLasDonaciones) {
-
-    try {
-
-        procesarMatchmaking(donacion, todasLasEntidades);
-
-    } catch (Exception e) {
-
-        System.err.println("Error al procesar matchmaking para la donación...: " + e.getMessage());
-
-    }
-
-}
-```
-
-El comentario asume que aislar con `try/catch` permite continuar con el resto del lote si una donación falla. Sin embargo, al estar bajo una transacción única de Spring/Hibernate, si una donación dispara una excepción a nivel base de datos (por ejemplo, violación de clave única en `ResultadoMatchmaking` o constraint de FK), Hibernate marca la sesión y la transacción física como **rollback-only**. Cuando el scheduler termina, Spring intenta hacer commit y arroja `UnexpectedRollbackException`, descartando todas las asignaciones exitosas del lote completo.
-
-### Cómo se dispara
-
-Cualquier corrida programada donde al menos una donación sufra un error de integridad o colisión en base de datos.
-
-### Propuesta de arreglo
-
-Remover `@Transactional` del método del scheduler y encapsular el procesamiento de cada donación individual en una transacción independiente mediante `TransactionTemplate` o un método de servicio con `@Transactional(propagation = Propagation.REQUIRES_NEW)`.
-
-
----
 
 
 ## 75. `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar las direcciones con una API gratuita
@@ -579,6 +535,7 @@ Un bullet por arreglo; el número es el ID estable del punto original («sin ID�
 
 - **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
 - **64.** `ResultadoMatchmaking` colisionaba al re-matchear: el reemplazo se hace al inicio del bucle de `ejecutarMatchmakingBatch` (borra el previo antes de procesar), `eliminarResultado` ahora hace `flush`, y `guardar` es un save puro. Cubierto por `RepositorioDeResultadosMatchmakingTest` y `AsignadorDonacionesReMatchmakingTest`.
+- **74.** `AsignacionScheduler` transaccionaba todo el lote junto: un fallo en una donación tumbaba el batch por rollback-only — `DonacionService.ejecutarMatchmakingADemanda` ahora procesa cada donación dentro de un `TransactionTemplate` con `PROPAGATION_REQUIRES_NEW`, así un error de integridad solo revierte esa donación; el scheduler mantiene su `@Transactional` (punto 44) para la lectura inicial.
 - **42.** Estados del enunciado: se agregaron `LISTA_PARA_ENTREGAR` y `ENTREGA_FALLIDA` al enum; `manejarEntregaFallida` registra `ENTREGA_FALLIDA`, `REINGRESO_DEPOSITO` vuelve a `EN_DEPOSITO`, y `asignarPropuesta` deja el estado final en `LISTA_PARA_ENTREGAR`.
 - **62.** `fechaEntrega` prematura en depósito: `SegmentadorDonaciones` la deja en `null` (se setea al entregar) y `SubAtendidos` filtra por `Estado.ENTREGADO`.
 - **63.** Fallback de matchmaking sin intersección: se renumeran las posiciones secuencialmente para evitar asignar la propuesta equivocada.

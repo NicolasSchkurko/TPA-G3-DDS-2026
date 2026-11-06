@@ -30,7 +30,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorFormulario;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioBienes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioBienes;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
 
@@ -267,8 +268,10 @@ repoResultados,
 
 mock(RepositorioBienes.class),
 
-productor
-
+productor,
+
+mock(PlatformTransactionManager.class)
+
 );
 
 service.asignarPropuesta(donacionId, 1);
@@ -389,8 +392,10 @@ repoResultados,
 
 mock(RepositorioBienes.class),
 
-productor
-
+productor,
+
+mock(PlatformTransactionManager.class)
+
 );
 
 org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> service.asignarPropuesta(donacionId, 1));
