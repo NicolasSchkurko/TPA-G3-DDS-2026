@@ -78,7 +78,7 @@ public class PersonaDonanteDTO {
     PersonaDonanteDTO dto = new PersonaDonanteDTO();
     dto.setId(entidad.getId());
     dto.setActivo(entidad.isActivo());
-    dto.setDireccion(DireccionDTO.from(entidad.getDireccion()));
+    dto.setDireccion(DireccionDTO.fromSinCoordenadas(entidad.getDireccion()));
 
     if (entidad.getPersona() == null) {
       return dto;

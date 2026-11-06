@@ -227,7 +227,9 @@ public class RutaService {
             direccion.getDepartamento(),
             direccion.getCiudad().getNombre(),
             direccion.getCiudad().getProvincia().getNombre(),
-            direccion.getCiudad().getProvincia().getPais().getNombre()
+            direccion.getCiudad().getProvincia().getPais().getNombre(),
+            direccion.getLatitud(),
+            direccion.getLongitud()
     );
   }
 

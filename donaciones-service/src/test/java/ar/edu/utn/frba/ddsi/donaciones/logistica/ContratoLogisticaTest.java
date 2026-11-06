@@ -190,8 +190,14 @@ public String departamento;
 
 @NotBlank public String provincia;
 
-@NotBlank public String pais;
-
+@NotBlank public String pais;
+
+/** Punto 75: coordenadas opcionales; logística las usa para las paradas. */
+
+public Double latitud;
+
+public Double longitud;
+
 }
 
 @Test
