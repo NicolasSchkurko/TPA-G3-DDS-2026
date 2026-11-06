@@ -395,8 +395,9 @@ productor
 
 org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> service.asignarPropuesta(donacionId, 1));
 
-verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("ASIGNADO"), any());
-
+verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("ASIGNADO"), any());
+verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("LISTA_PARA_ENTREGAR"), any());
+
 }
 
 }

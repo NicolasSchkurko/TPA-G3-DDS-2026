@@ -81,6 +81,9 @@ public class AsignadorDonaciones {
         } else {
             // Si no hay intersección, ordenar por posición original y devolverlas nativas
             todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
+            for (int i = 0; i < todasLasPropuestas.size(); i++) {
+                todasLasPropuestas.get(i).setPosicion(i + 1);
+            }
             resultadoFinal = todasLasPropuestas;
         }
 

@@ -9,152 +9,26 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 | #  | Punto | Severidad | Paquete | Por qué está acá |
 |----|-------|-----------|---------|------------------|
-| 1  | 42    | Media     | `models.entities` | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados |
-| 2  | 62    | Media     | `models.entities` | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real |
-| 3  | 63    | Media     | `models.entities` | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada |
-| 4  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 5  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
-| 6  | 75    | Media     | `models.entities` | `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar direcciones con una API gratuita |
-| 7  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
-| 8  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
-| 9  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
-| 10 | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
-| 11 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
-| 12 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
-| 13 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
-| 14 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
-| 15 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
-| 16 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
-| 17 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
+| 1  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
+| 2  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
+| 3  | 75    | Media     | `models.entities` | `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar direcciones con una API gratuita |
+| 4  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
+| 5  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
+| 6  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
+| 7  | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
+| 8  | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
+| 9  | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
+| 10 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
+| 11 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
+| 12 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
+| 13 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
+| 14 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
 
 
 ---
 
 
-## 42. Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados
 
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Estado.java`, `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorEventosLogistica.java` (`manejarEntregaFallida`)
-
-### Qué pasa
-
-El enunciado pide trazar: "En depósito", "Asignación realizada", "Lista para entregar", "En traslado", "Entregada", "Entrega fallida" y "Vencida". El enum hoy es `EN_DEPOSITO`, `PENDIENTE_ASIGNACION`, `EN_TRASLADO`, `ASIGNADO`, `ENTREGADO`, `VENCIDO`, y cubre 5 de 7:
-
-- **"Lista para entregar"** no tiene valor que lo represente: entre `ASIGNADO` y `EN_TRASLADO` el estado de la donación no cambia.
-
-- **"Entrega fallida"** no es un estado: `manejarEntregaFallida` devuelve la donación a `EN_DEPOSITO` con una justificación (queda registrado en el historial).
-
-La auditoría/trazabilidad persistente sí existe: `Donacion` guarda el historial de estados en la tabla `donacion_historial_estados` (`@ElementCollection`).
-
-### Propuesta
-
-Definir el mapeo con el equipo: agregar `LISTA_PARA_ENTREGAR` (al planificar la ruta) y/o `ENTREGA_FALLIDA` como valores del enum, o documentar que `ASIGNADO` cubre "lista para entregar" y que la fallida vuelve a depósito a propósito.
-
-
----
-
-
-## 62. `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java` (líneas 62-74), `.../models/entities/Donaciones/Donacion.java` (líneas 114-116), `.../models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java` (líneas 64-70)
-
-### Qué pasa
-
-Al registrar un formulario de donación, `SegmentadorDonaciones.crearDonacion` asigna la fecha del formulario directamente al campo `fechaEntrega` de cada segmento creado:
-
-```java
-return new Donacion(
-
-    donante,
-
-    null,
-
-    "Segmento de donación: " + sub.getNombre(),
-
-    bienesDelGrupo,
-
-    Estado.EN_DEPOSITO,
-
-    sub,
-
-    fechaEntrega // <-- Recibe formulario.getFechaRealizacion()
-
-);
-```
-
-Esto genera dos inconsistencias graves:
-
-1. `SubAtendidos.cantidadDonacionesUltimoTrimestre` cuenta donaciones recibidas filtrando por `d.getFechaEntrega() != null && d.getFechaEntrega().isAfter(haceUnTrimestre)`, **sin validar `d.getEstado() == Estado.ENTREGADO`**. Cualquier donación en depósito o en traslado ya suma como donación entregada para la entidad, penalizándola en el ranking injustamente.
-
-2. En `Donacion.actualizarEstado`:
-
-   `if (nuevoEstado == Estado.ENTREGADO && this.fechaEntrega == null) { this.fechaEntrega = LocalDate.now(); }`
-
-   Como `this.fechaEntrega` ya fue poblada en la creación, esta condición nunca se cumple. La fecha de entrega real nunca se registra y queda congelada con la fecha de carga del formulario, distorsionando las ventanas de `NecesidadRecurrente.cantidadRecibidaEnPeriodo`.
-
-### Cómo se dispara
-
-Crear una donación vía `POST /api/donaciones/formulario` y consultar el ranking de matchmaking o el cálculo de `SubAtendidos` antes de que la donación haya sido entregada.
-
-### Propuesta de arreglo
-
-Instanciar la donación con `fechaEntrega = null` en `SegmentadorDonaciones.crearDonacion`, y verificar `d.getEstado() == Estado.ENTREGADO` en `SubAtendidos.cantidadDonacionesUltimoTrimestre`.
-
-
----
-
-
-## 63. Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 78-85), `.../models/gestores/GestorMatchmaking.java` (líneas 29-39)
-
-### Qué pasa
-
-En `AsignadorDonaciones.procesarMatchmaking`, si no hay intersección entre algoritmos (`huboCoincidenciaTotal == false`), se ejecuta:
-
-```java
-todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
-
-resultadoFinal = todasLasPropuestas;
-```
-
-A diferencia de la rama con intersección (donde se reasigna `setPosicion(i + 1)`), en esta rama cada algoritmo aportó propuestas numeradas `1..N`. La lista resultante contiene múltiples elementos con `posicion == 1`, múltiples con `posicion == 2`, etc.
-
-`GestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion` asume que el parámetro `posicion` recibido en `POST /donaciones/asignar` corresponde al índice de la lista:
-
-```java
-PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion - 1);
-```
-
-Si el operador visualiza en la interfaz una propuesta con posición 2 (proveniente de `CompatibilidadSemantica`) y envía `posicionPropuesta = 2`, el código accede al índice 1 de la lista, que corresponde a la propuesta de `SubAtendidos` (cuya posición original era 1). El sistema aprueba y asigna una propuesta completamente distinta a la seleccionada.
-
-### Cómo se dispara
-
-1. Se corre matchmaking para una donación donde `CompatibilidadSemantica` y `SubAtendidos` recomiendan entidades distintas (`huboCoincidenciaTotal = false`).
-
-2. `GET /donaciones/pendientes` devuelve la lista con posiciones repetidas (`1, 1, 2, 2...`).
-
-3. Se invoca `POST /donaciones/asignar` con `posicionPropuesta = 2`.
-
-4. Se asigna la entidad del índice 1 (que tiene posición 1 de otro algoritmo) en lugar de la elegida.
-
-### Propuesta de arreglo
-
-Renumerar secuencialmente las posiciones de `resultadoFinal` (`setPosicion(i + 1)`) en la rama `else` de `AsignadorDonaciones.procesarMatchmaking`, o permitir seleccionar la propuesta por un identificador unívoco (ID de necesidad/entidad).
-
-
----
 
 
 ## 64. Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking`
@@ -746,4 +620,6 @@ Un bullet por arreglo; el número es el ID estable del punto original («sin ID�
 - **Rabbit (sin ID).** Dos bindings ataban al exchange equivocado y usaban comodines `.#` — cada servicio declara lo suyo con la clave exacta.
 
 - **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
-
+- **42.** Estados del enunciado: se agregaron `LISTA_PARA_ENTREGAR` y `ENTREGA_FALLIDA` al enum; `manejarEntregaFallida` registra `ENTREGA_FALLIDA`, `REINGRESO_DEPOSITO` vuelve a `EN_DEPOSITO`, y `asignarPropuesta` deja el estado final en `LISTA_PARA_ENTREGAR`.
+- **62.** `fechaEntrega` prematura en depósito: `SegmentadorDonaciones` la deja en `null` (se setea al entregar) y `SubAtendidos` filtra por `Estado.ENTREGADO`.
+- **63.** Fallback de matchmaking sin intersección: se renumeran las posiciones secuencialmente para evitar asignar la propuesta equivocada.

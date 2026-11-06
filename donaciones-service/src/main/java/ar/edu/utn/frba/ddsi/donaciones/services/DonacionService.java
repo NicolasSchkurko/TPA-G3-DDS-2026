@@ -196,6 +196,10 @@ public class DonacionService {
     gestorAsignaciones.asignarPropuesta(donacion, propuestaAsignacion);
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
+    // "Lista para entregar": la asignación se aprobó y el item de entrega ya se publicó a
+    // logística, así que la donación está lista para ser entregada. Se registra como un
+    // segundo estado (trazabilidad del enunciado) y es el que queda como estado final.
+    gestorAsignaciones.cambiarEstado(donacion.getId(), "LISTA_PARA_ENTREGAR", "Lista para entregar");
 
     // Punto 50: La publicación a logística va después del commit de la base de datos local
     // (afterCommit) para no mandar mensajes por un estado no confirmado ni revertir la asignación
