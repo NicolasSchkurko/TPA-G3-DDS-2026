@@ -46,10 +46,13 @@ public class AsignadorDonaciones {
         if (todasLasDonaciones == null || todasLasEntidades == null) {
             return;
         }
-        // Aislado por donación: si una falla (p.ej. un resultado de matchmaking duplicado), el
-        // resto del lote tiene que seguir procesándose en vez de abortar el batch entero.
+
         for (Donacion donacion : todasLasDonaciones) {
             try {
+                if (donacion != null && donacion.getId() != null) {
+                    repositorioDeResultadosMatchmaking.findByDonacionId(donacion.getId())
+                            .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
+                }
                 procesarMatchmaking(donacion, todasLasEntidades);
             } catch (Exception e) {
                 System.err.println("Error al procesar matchmaking para la donación " + donacion.getId() + ": " + e.getMessage());

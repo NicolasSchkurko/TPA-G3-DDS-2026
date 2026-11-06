@@ -35,9 +35,6 @@ public class RepositorioDeResultadosMatchmaking {
         if (resultado == null || resultado.getDonacion() == null || resultado.getDonacion().getId() == null) {
             throw new IllegalArgumentException("El resultado de matchmaking debe tener una donación con ID válido.");
         }
-        if (findByDonacionId(resultado.getDonacion().getId()).isPresent()) {
-            throw new IllegalArgumentException("Ya existe un resultado de matchmaking para la donación: " + resultado.getDonacion().getId());
-        }
         jpaRepository.save(resultado);
     }
 
@@ -47,6 +44,7 @@ public class RepositorioDeResultadosMatchmaking {
 
     public void eliminarResultado(ResultadoMatchmaking resultadoAEliminar) {
         jpaRepository.delete(resultadoAEliminar);
+        jpaRepository.flush();
     }
 
     public Optional<ResultadoMatchmaking> findByDonacionId(UUID donacionId) {

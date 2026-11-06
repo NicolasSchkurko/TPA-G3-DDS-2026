@@ -31,48 +31,6 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 
 
-## 64. Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking`
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDeResultadosMatchmaking.java` (líneas 28-36), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 178-192), `.../models/gestores/GestorEventosLogistica.java` (líneas 131 y 151)
-
-### Qué pasa
-
-Cuando una donación pasa por matchmaking, se persiste un `ResultadoMatchmaking` en la base de datos. Si la donación reingresa a depósito (por entrega fallida en `GestorEventosLogistica.manejarEntregaFallida` / `manejarReingresoDeposito`, o por reseteo manual de estado a `EN_DEPOSITO`), el `ResultadoMatchmaking` anterior no se elimina (únicamente se borra en `DonacionService.asignarPropuesta`).
-
-Al volver a correr el matchmaking (`AsignacionScheduler` o `POST /matchmaking/ejecutar`), `buscarDonacionesSinAsignar()` incluye la donación en `EN_DEPOSITO`. Pero al persistir el nuevo resultado, `RepositorioDeResultadosMatchmaking.guardar` valida:
-
-```java
-if (findByDonacionId(resultado.getDonacion().getId()).isPresent()) {
-
-    throw new IllegalArgumentException("Ya existe un resultado de matchmaking para la donación: " + resultado.getDonacion().getId());
-
-}
-```
-
-La excepción es capturada en `AsignadorDonaciones.ejecutarMatchmakingBatch`, imprimiendo el error en consola y omitiendo la donación. La donación queda varada en `EN_DEPOSITO` permanentemente sin poder generar propuestas nuevas, y `GET /donaciones/pendientes` sigue sirviendo las propuestas obsoletas del ciclo anterior.
-
-### Cómo se dispara
-
-1. Una donación es asignada y enviada a entrega.
-
-2. La entrega falla (`ENTREGA_FALLIDA`) o la donación reingresa a depósito (`REINGRESO_DEPOSITO`).
-
-3. El scheduler de matchmaking intenta procesar la donación.
-
-4. Falla con `IllegalArgumentException` por clave única duplicada y nunca más se vuelve a procesar.
-
-### Propuesta de arreglo
-
-En `AsignadorDonaciones.registrarDonacionPendienteDeAprobacion` (o en `RepositorioDeResultadosMatchmaking`), borrar o actualizar el resultado previo si ya existía para esa donación antes de insertar el nuevo.
-
-
----
-
-
 ## 74. `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only
 
 **Estado:** abierto
@@ -620,6 +578,7 @@ Un bullet por arreglo; el número es el ID estable del punto original («sin ID�
 - **Rabbit (sin ID).** Dos bindings ataban al exchange equivocado y usaban comodines `.#` — cada servicio declara lo suyo con la clave exacta.
 
 - **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
+- **64.** `ResultadoMatchmaking` colisionaba al re-matchear: el reemplazo se hace al inicio del bucle de `ejecutarMatchmakingBatch` (borra el previo antes de procesar), `eliminarResultado` ahora hace `flush`, y `guardar` es un save puro. Cubierto por `RepositorioDeResultadosMatchmakingTest` y `AsignadorDonacionesReMatchmakingTest`.
 - **42.** Estados del enunciado: se agregaron `LISTA_PARA_ENTREGAR` y `ENTREGA_FALLIDA` al enum; `manejarEntregaFallida` registra `ENTREGA_FALLIDA`, `REINGRESO_DEPOSITO` vuelve a `EN_DEPOSITO`, y `asignarPropuesta` deja el estado final en `LISTA_PARA_ENTREGAR`.
 - **62.** `fechaEntrega` prematura en depósito: `SegmentadorDonaciones` la deja en `null` (se setea al entregar) y `SubAtendidos` filtra por `Estado.ENTREGADO`.
 - **63.** Fallback de matchmaking sin intersección: se renumeran las posiciones secuencialmente para evitar asignar la propuesta equivocada.

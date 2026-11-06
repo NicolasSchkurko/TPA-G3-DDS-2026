@@ -196,14 +196,8 @@ public class DonacionService {
     gestorAsignaciones.asignarPropuesta(donacion, propuestaAsignacion);
     eliminarResultadoMatchmaking(donacion.getId());
     gestorAsignaciones.cambiarEstado(donacion.getId(), "ASIGNADO", "Donacion Asignada");
-    // "Lista para entregar": la asignación se aprobó y el item de entrega ya se publicó a
-    // logística, así que la donación está lista para ser entregada. Se registra como un
-    // segundo estado (trazabilidad del enunciado) y es el que queda como estado final.
     gestorAsignaciones.cambiarEstado(donacion.getId(), "LISTA_PARA_ENTREGAR", "Lista para entregar");
 
-    // Punto 50: La publicación a logística va después del commit de la base de datos local
-    // (afterCommit) para no mandar mensajes por un estado no confirmado ni revertir la asignación
-    // si el broker falla temporalmente.
     Runnable publicarLogistica = () -> {
       try {
         publicarEntregaALogistica(donacionId);
@@ -233,14 +227,9 @@ public class DonacionService {
 
     EntidadBeneficiaria entidad = donacion.getEntidad();
     if (entidad == null || entidad.getDireccion() == null) {
-      // Sin entidad asignada todavia no hay donde entregar. No es un error: el matchmaking
-      // puede haber asignado solo el estado y la entidad viene en un paso posterior.
       return;
     }
 
-    // Bien guarda 'peso' y 'unidadUtilizada'; el DTO de transporte los llama cantidad y
-    // unidadDeMedida. Se suma por unidad: logística guarda UN ItemEntrega por donación con un
-    // solo par cantidad+unidad, y su dedupe descartaría los bienes 2..N (punto 31).
     Map<UnidadDeMedida, Integer> cantidadesPorUnidad = new LinkedHashMap<>();
     donacion.getBienes().forEach(b ->
             cantidadesPorUnidad.merge(b.getUnidadUtilizada(),
@@ -248,18 +237,12 @@ public class DonacionService {
 
     List<BienDTO> bienes = new ArrayList<>();
     List<UUID> idsParaLogistica = new ArrayList<>();
-    // Un id de donación por entrada: el receptor exige bienes.size() == idsDonaciones.size()
-    // (punto 27) y ProductorLogistica particiona por el menor de los ids, que con id repetido
-    // sigue siendo estable.
+
     cantidadesPorUnidad.forEach((unidad, cantidad) -> {
-        // Unidad null es el punto 38 (UNIDADES en el formulario se mapea a null): el receptor
-        // lo rechaza con un warn visible en vez de un 500 sin contexto.
         bienes.add(new BienDTO(cantidad, unidad != null ? unidad.name() : null));
         idsParaLogistica.add(donacion.getId());
     });
 
-    // La dirección viaja con el id de la entidad: logística resuelve el destino con
-    // findById(idEntidad) y sin él descarta el mensaje (contrato, punto 27 de PENDIENTES.md).
     DireccionDTO direccionEntidad = DireccionDTO.from(entidad.getDireccion());
     direccionEntidad.setIdEntidad(entidad.getId());
 
@@ -272,16 +255,12 @@ public class DonacionService {
     productorLogistica.publicarDonacionAsignada(entrega);
   }
 
-  // Resuelve (o crea) la SubcategoriaBien del catálogo compartido ANTES de construir el Bien,
-  // mismo patrón que usamos para Necesidad, para no romper merge() ni duplicar el catálogo.
+
   private Bien resolverBien(BienResumenDTO dto) {
     SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
     return dto.toDomain(subcategoria);
   }
 
-  // dto.toDomain() tira IllegalArgumentException en vez de devolver null (ver BienResumenDTO):
-  // acá se agrega el índice del item para que el 400 resultante diga cuál de la lista está mal,
-  // en vez de dejar que un bien sin tipoBien llegue como null a la segmentación (NPE/500).
   private List<Bien> resolverBienes(List<BienResumenDTO> bienesDto) {
     List<Bien> resultado = new ArrayList<>();
     for (int i = 0; i < bienesDto.size(); i++) {
