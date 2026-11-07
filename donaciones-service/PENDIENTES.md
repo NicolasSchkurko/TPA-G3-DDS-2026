@@ -20,6 +20,7 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 | 12 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
 | 13 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
 | 14 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
+| 15 | 76    | Baja      | `models.gestores` | Revisar y reordenar la implementación de Georef en `GestorGeoref` (cliente, batching, persistencia y sincronización con la transacción) |
 
 
 ---
@@ -363,6 +364,27 @@ Lanzar `IllegalArgumentException` o `EntityNotFoundException` cuando `buscarPorI
 
 ---
 
+
+## 76. Revisar y reordenar la implementación de Georef en `GestorGeoref`
+
+**Estado:** abierto
+
+**Severidad:** baja
+
+**Paquete:** `models.gestores`
+
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorGeoref.java`, `.../models/sheduler/GeocodingScheduler.java`, `.../clients/GeorefClient.java`
+
+### Qué pasa
+
+`GestorGeoref` concentra cliente HTTP, deduplicación, lotes, persistencia con `TransactionTemplate`, sincronización `afterCommit` y reglas de actualización. Conviene revisar la partición entre `GestorGeoref` y `GeorefClient`/repositorio para que el gestor coordine y las otras capas queden más acotadas.
+
+### Propuesta de arreglo
+
+1. Revisar qué responsabilidades quedan en `GestorGeoref` y cuáles deberían delegarse.
+2. Alinear con el flujo `controller -> service -> gestores -> dominio`.
+
+---
 
 ## Corregidos
 
