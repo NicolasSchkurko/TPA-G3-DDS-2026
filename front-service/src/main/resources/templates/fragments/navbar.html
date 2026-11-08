@@ -47,6 +47,9 @@
 
                 <!-- Usuario autenticado y botón de salir -->
                 <div class="d-flex align-items-center gap-3">
+                    <a sec:authorize="!isAuthenticated()" th:href="@{/register}" class="btn btn-brand btn-sm">
+                        <i class="bi bi-person-plus me-1"></i>Registrarse
+                    </a>
                     <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="btn btn-brand btn-sm">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Ingresar
                     </a>
