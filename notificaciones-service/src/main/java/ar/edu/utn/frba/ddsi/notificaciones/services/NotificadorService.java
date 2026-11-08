@@ -17,8 +17,8 @@ public class NotificadorService {
         this.gestorNotificaciones = gestorNotificaciones;
     }
 
-    public void procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO) {
-        gestorNotificaciones.enviarSolicitudDeNotificacion(
+    public Notificacion procesarSolicitudDeNotificacion(SolicitudNotificacionDTO solicitudNotificacionDTO) {
+        return gestorNotificaciones.guardarYEnviarSolicitud(
                 solicitudNotificacionDTO.getIdSolicitud(),
                 solicitudNotificacionDTO.getMedioDeContacto(),
                 solicitudNotificacionDTO.getDireccionDeContacto(),

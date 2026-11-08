@@ -45,19 +45,19 @@ public class NotificadorController {
                     "El sistema valida la estructura y acepta la petición para ser procesada en segundo plano por el motor de notificaciones."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "Solicitud aceptada y encolada con éxito para su procesamiento"),
+            @ApiResponse(responseCode = "201", description = "Notificación creada y encolada para su procesamiento"),
             @ApiResponse(responseCode = "400", description = "Error de validación en los datos de la solicitud (cuerpo malformado o faltan campos obligatorios)")
     })
     @PostMapping
-    public ResponseEntity<String> recibirSolicitudNotificacion(
+    public ResponseEntity<NotificacionDTO> recibirSolicitudNotificacion(
             @Valid @RequestBody SolicitudNotificacionDTO dto) {
         log.info("[HTTP] POST /api/notificaciones | medio='{}', destino='{}', asunto='{}'",
                 dto.getMedioDeContacto(), dto.getDireccionDeContacto(), dto.getAsuntoMensaje());
 
-        notificadorService.procesarSolicitudDeNotificacion(dto);
+        Notificacion notificacion = notificadorService.procesarSolicitudDeNotificacion(dto);
 
-        log.info("[HTTP] Solicitud aceptada (202) para '{}'", dto.getDireccionDeContacto());
-        return new ResponseEntity<>("solicitud procesada con éxito", HttpStatus.ACCEPTED);
+        log.info("[HTTP] Notificación creada (201) para '{}'", dto.getDireccionDeContacto());
+        return ResponseEntity.status(HttpStatus.CREATED).body(notificacionMapper.notificacionDTO(notificacion));
     }
 
     @Operation(summary = "Ver notificacion por id")

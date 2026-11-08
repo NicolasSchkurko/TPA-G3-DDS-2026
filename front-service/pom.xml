@@ -31,6 +31,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- Login OIDC delegado a Keycloak -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+
         <!-- Thymeleaf Extras Spring Security 6 -->
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>

@@ -14,6 +14,24 @@ services:
 
   # --- Infraestructura ---
 
+  # Keycloak para desarrollo local. El realm ddsi importa roles y cuentas de prueba
+  # desde docker/keycloak/realm-ddsi.json al crear el volumen por primera vez.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "8180:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-only}
+      # Issuer y URLs del navegador deben usar el host que abre la persona.
+      KC_HOSTNAME: http://localhost:8180
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./docker/keycloak/realm-ddsi.json:/opt/keycloak/data/import/realm-ddsi.json:ro
+
   # Credenciales simples solo para el entorno local de demostración. No reutilizar
   # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
   mysql:
@@ -213,8 +231,22 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       LOGISTICAS_URL: http://logisticas-service:8086/api
+      KEYCLOAK_CLIENT_ID: front-service
+      KEYCLOAK_CLIENT_SECRET: front-service-dev-secret
+      # La app usa endpoints internos para backchannel y el issuer público en los tokens.
+      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ddsi
+      KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/auth
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/token
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/certs
+      KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/userinfo
+      KEYCLOAK_LOGOUT_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/logout
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:8080/
+    depends_on:
+      keycloak:
+        condition: service_started
 
 volumes:
+  keycloak-data:
   mysql-data:
   rabbit-data:
   mongodb-data:

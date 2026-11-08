@@ -25,14 +25,23 @@
                     <li class="nav-item">
                         <a class="nav-link" th:href="@{/}"><i class="bi bi-house me-1"></i>Inicio</a>
                     </li>
-                    <li class="nav-item">
+                    <li sec:authorize="hasRole('ADMIN')" class="nav-item">
                         <a class="nav-link" th:href="@{/panel}"><i class="bi bi-grid-1x2 me-1"></i>Panel</a>
                     </li>
-                    <li class="nav-item">
+                    <li sec:authorize="hasRole('ADMIN')" class="nav-item">
                         <a class="nav-link" th:href="@{/donaciones}"><i class="bi bi-gift me-1"></i>Donaciones</a>
                     </li>
-                    <li class="nav-item">
+                    <li sec:authorize="hasRole('ADMIN')" class="nav-item">
                         <a class="nav-link" th:href="@{/donaciones/donantes}"><i class="bi bi-people me-1"></i>Donantes</a>
+                    </li>
+                    <li sec:authorize="hasRole('DONANTE')" class="nav-item">
+                        <a class="nav-link" th:href="@{/donante}"><i class="bi bi-person-heart me-1"></i>Mi espacio</a>
+                    </li>
+                    <li sec:authorize="hasRole('CHOFER')" class="nav-item">
+                        <a class="nav-link" th:href="@{/chofer}"><i class="bi bi-truck me-1"></i>Mis rutas</a>
+                    </li>
+                    <li sec:authorize="hasRole('ENTIDAD')" class="nav-item">
+                        <a class="nav-link" th:href="@{/entidad}"><i class="bi bi-building me-1"></i>Mi entidad</a>
                     </li>
                 </ul>
 
@@ -42,7 +51,9 @@
                         <i class="bi bi-person-circle me-1"></i>
                         <span class="fw-semibold" sec:authentication="name">Usuario</span>
                         <span sec:authorize="hasRole('ADMIN')" class="badge bg-danger ms-1">ADMIN</span>
-                        <span sec:authorize="!hasRole('ADMIN')" class="badge bg-secondary ms-1">USER</span>
+                        <span sec:authorize="hasRole('DONANTE')" class="badge bg-secondary ms-1">DONANTE</span>
+                        <span sec:authorize="hasRole('CHOFER')" class="badge bg-info ms-1">CHOFER</span>
+                        <span sec:authorize="hasRole('ENTIDAD')" class="badge bg-success ms-1">ENTIDAD</span>
                     </div>
 
                     <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="btn btn-brand btn-sm">
