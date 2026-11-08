@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -33,6 +34,9 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
                         "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
+                .requestMatchers(HttpMethod.GET, "/donaciones/{id}").permitAll()
                 .requestMatchers("/panel", "/donaciones/**", "/donantes/**", "/admin/**").hasRole("ADMIN")
                 .requestMatchers("/donante/**").hasRole("DONANTE")
                 .requestMatchers("/chofer/**").hasRole("CHOFER")
