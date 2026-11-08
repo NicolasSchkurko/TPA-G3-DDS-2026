@@ -1,17 +1,25 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Collections;
+import java.util.Map;
 
 @Controller
 public class HomeController {
+
+    private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
     private final DonacionesClient donacionesClient;
 
@@ -42,6 +50,31 @@ public class HomeController {
             model.addAttribute("msg", "Has cerrado sesión correctamente.");
         }
         return "login";
+    }
+
+    @GetMapping("/register")
+    public String register() {
+        return "register";
+    }
+
+    @PostMapping("/register")
+    public String register(@RequestParam Map<String, String> form, Model model) {
+        try {
+            donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
+            model.addAttribute("msg", "Los datos del perfil se registraron correctamente. El acceso al portal se administra desde Keycloak.");
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+        } catch (RestClientResponseException e) {
+            log.warn("Donaciones rechazó el registro con estado {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            String error = e.getResponseBodyAsString();
+            model.addAttribute("error", error.isBlank()
+                    ? "El servicio de Donaciones no pudo completar el registro."
+                    : error);
+        } catch (ResourceAccessException e) {
+            log.error("No se pudo conectar con el servicio de Donaciones para registrar el usuario: {}", e.getMessage());
+            model.addAttribute("error", "No se pudo conectar con el servicio de Donaciones. Intentá nuevamente más tarde.");
+        }
+        return "register";
     }
 
     /**
