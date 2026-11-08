@@ -32,48 +32,37 @@ services:
       timeout: 5s
       retries: 12
 
-  # RabbitMQ local DESHABILITADO: los servicios usan el broker de Railway (RABBITMQ_* en cada
-  # `<servicio>/.env`). Para volver a local: descomentar este bloque y volver a poner los
-  # RABBITMQ_* (rabbitmq / 5672 / guest) en el `environment:` de cada servicio.
-  #
-  # Ojo: el exchange consistent-hash que usa logistica es un plugin y hay que habilitarlo en el
-  # broker (en este bloque lo hace el Dockerfile de ./docker/rabbitmq). En Railway tambien:
-  # `rabbitmq-plugins enable rabbitmq_consistent_hash_exchange`.
-  #
-  # rabbitmq:
-  #   build: ./docker/rabbitmq
-  #   container_name: tpa-rabbitmq
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"   # consola web de administración
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: guest
-  #     RABBITMQ_DEFAULT_PASS: guest
-  #   volumes:
-  #     - rabbit-data:/var/lib/rabbitmq
-  #   healthcheck:
-  #     test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 12
+  # Broker local. Usa un usuario propio porque RabbitMQ limita `guest` a conexiones locales.
+  rabbitmq:
+    build: ./docker/rabbitmq
+    container_name: tpa-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: tpa
+      RABBITMQ_DEFAULT_PASS: tpa-local
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
-    #n8n:
-    # image: n8nio/n8n:latest
-    #  container_name: tpa-n8n
-        # ports:
-      #    - "5679:5678"
-      #   environment:
-      #  N8N_HOST: localhost
-      #  N8N_PORT: 5678
-      #  N8N_PROTOCOL: http
-      # N8N_EDITOR_BASE_URL: http://localhost:5679/
-      # WEBHOOK_URL: http://localhost:5679/
-      # N8N_SECURE_COOKIE: "false"
-      # GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
-      #TZ: America/Argentina/Buenos_Aires
-        # volumes:
-    #   - n8n-data:/home/node/.n8n
-    # restart: unless-stopped
+  mongodb:
+    image: mongo:7
+    container_name: tpa-mongodb
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]}).ok }"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   # --- Servicios de dominio ---
   #
@@ -92,14 +81,19 @@ services:
     env_file:
       - ./notificaciones-service/.env
     ports:
-      - "8083"
+      - "8083:8083"
     environment:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   incentivos-service:
@@ -109,19 +103,24 @@ services:
     env_file:
       - ./incentivos-service/.env
     ports:
-      - "8082"
+      - "8082:8082"
     environment:
       SERVER_PORT: 8082
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      # Rabbit: lo define incentivos-service/.env (Railway).
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
     depends_on:
       mysql:
         condition: service_healthy
       notificaciones-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   # Es el broker de integración del enunciado: publica las donaciones asignadas para
   # logística y consume los eventos de trazabilidad para notificar.
@@ -132,16 +131,21 @@ services:
     env_file:
       - ./donaciones-service/.env
     ports:
-      - "8084"
+      - "8084:8084"
     environment:
       SERVER_PORT: 8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      # Rabbit: lo define donaciones-service/.env (Railway).
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # Compite por la cola compartida `logistica.integracion.queue`: para cumplir el
@@ -181,10 +185,20 @@ services:
     env_file:
       - ./logisticas-service/.env
     ports:
-      - "8086"
+      - "8086:8086"
     environment:
       SERVER_PORT: 8086
-      # DB_URL y Rabbit salen de logisticas-service/.env (ambos en Railway).
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
+      MONGODB_URI: mongodb://mongodb:27017/logistica?replicaSet=rs0
+      MONGODB_DB_NAME: logistica
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
 
 
   front-service:
@@ -202,5 +216,5 @@ services:
 
 volumes:
   mysql-data:
-  # rabbit-data:   # deshabilitado junto con el servicio rabbitmq (se usa Railway)
-  n8n-data:
+  rabbit-data:
+  mongodb-data:
