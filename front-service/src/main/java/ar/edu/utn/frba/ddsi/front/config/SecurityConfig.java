@@ -1,69 +1,71 @@
 package ar.edu.utn.frba.ddsi.front.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationSuccessHandler profileRedirectHandler,
+            GrantedAuthoritiesMapper keycloakAuthoritiesMapper,
+            @Value("${keycloak.client-id}") String clientId,
+            @Value("${keycloak.logout-uri}") String logoutUri,
+            @Value("${keycloak.post-logout-redirect-uri}") String postLogoutRedirectUri
+    ) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/", "/landing", "/login").permitAll()
+                .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
+                        "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers("/panel", "/donaciones/**", "/donantes/**", "/admin/**").hasRole("ADMIN")
+                .requestMatchers("/donante/**").hasRole("DONANTE")
+                .requestMatchers("/chofer/**").hasRole("CHOFER")
+                .requestMatchers("/entidad/**").hasRole("ENTIDAD")
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form
+            .exceptionHandling(exceptions -> exceptions.accessDeniedPage("/sin-acceso"))
+            .oauth2Login(oauth -> oauth
                 .loginPage("/login")
-                .defaultSuccessUrl("/panel", true)
-                .failureUrl("/login?error=true")
-                .permitAll()
+                .userInfoEndpoint(userInfo -> userInfo.userAuthoritiesMapper(keycloakAuthoritiesMapper))
+                .successHandler(profileRedirectHandler)
             )
-            .logout(logout -> logout
-                .logoutUrl("/logout")
-                .logoutSuccessUrl("/login?logout=true")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            );
+            .logout(logout -> logout.logoutSuccessHandler(new KeycloakLogoutSuccessHandler(
+                    clientId, logoutUri, postLogoutRedirectUri)));
 
         return http.build();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    /**
-     * Usuarios en memoria para desarrollo y pruebas del front.
-     * En producción o etapas posteriores se puede conectar con donaciones-service / base de datos.
-     */
-    @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(encoder.encode("admin123"))
-                .roles("ADMIN", "USER")
-                .build();
-
-        UserDetails donante = User.builder()
-                .username("donante")
-                .password(encoder.encode("donante123"))
-                .roles("USER")
-                .build();
-
-        return new InMemoryUserDetailsManager(admin, donante);
+    GrantedAuthoritiesMapper keycloakAuthoritiesMapper() {
+        return source -> {
+            List<GrantedAuthority> authorities = new ArrayList<>(source);
+            for (GrantedAuthority authority : source) {
+                if (!(authority instanceof OidcUserAuthority oidcAuthority)) continue;
+                Map<String, Object> realmAccess = oidcAuthority.getIdToken().getClaimAsMap("realm_access");
+                if (realmAccess == null || !(realmAccess.get("roles") instanceof Collection<?> roles)) continue;
+                for (Object role : roles) {
+                    if (role instanceof String roleName) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()));
+                    }
+                }
+            }
+            return authorities;
+        };
     }
 }

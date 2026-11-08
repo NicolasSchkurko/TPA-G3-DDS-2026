@@ -48,11 +48,20 @@ public class GestorNotificaciones {
                                               String direccionDeContacto,
                                               String asunto,
                                               String cuerpo) {
+        guardarYEnviarSolicitud(idSolicitud, tipoMedioDeContacto, direccionDeContacto, asunto, cuerpo);
+    }
+
+    @Transactional
+    public Notificacion guardarYEnviarSolicitud(String idSolicitud,
+                                              String tipoMedioDeContacto,
+                                              String direccionDeContacto,
+                                              String asunto,
+                                              String cuerpo) {
         if (idSolicitud != null && !idSolicitud.isBlank()) {
             if (repositorioNotificaciones.findByIdSolicitud(idSolicitud).isPresent()) {
                 log.info("[GESTOR] Solicitud idSolicitud='{}' ya procesada previamente, se omite por idempotencia",
                         idSolicitud);
-                return;
+                return repositorioNotificaciones.findByIdSolicitud(idSolicitud).orElseThrow();
             }
         }
 
@@ -76,6 +85,7 @@ public class GestorNotificaciones {
         } else {
             productorNotificaciones.enviar(notificacion);
         }
+        return notificacion;
     }
 
     public Notificacion crearNotificacion(String tipoMedioDeContacto,

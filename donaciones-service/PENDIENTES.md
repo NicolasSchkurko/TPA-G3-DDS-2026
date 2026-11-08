@@ -1,3 +1,13 @@
+## Revisión del enunciado hasta Entrega 6
+
+El backlog técnico detallado debajo se mantiene como lista de trabajo del servicio. Contrastado con
+E1-E5: existen dominio de donaciones, segmentación, necesidades, importación CSV, estados e historial,
+APIs REST y persistencia relacional. Siguen abiertos los riesgos ya enumerados, especialmente estados
+faltantes/trazabilidad, fecha real de entrega, consistencia del matchmaking, transacciones y notificación
+asíncrona. Para cerrar los entregables del TP también falta versionar diagramas de clases/ERD y contratos
+API actualizados (ver backlog raíz). E6 corresponde principalmente a `front-service`.
+
+---
 # Pendientes técnicos de donaciones-service
 
 Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo para

@@ -1,16 +1,17 @@
 package ar.edu.utn.frba.ddsi.front.dto;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class EntidadBeneficiariaDTO {
+
     private String razonSocial;
-    private String rubro;
-    private String tipoJuridico;
-    private String telefono;
-    private Boolean activa;
+
+    public String getRazonSocial() {
+        return razonSocial;
+    }
+
+    public void setRazonSocial(String razonSocial) {
+        this.razonSocial = razonSocial;
+    }
 }
