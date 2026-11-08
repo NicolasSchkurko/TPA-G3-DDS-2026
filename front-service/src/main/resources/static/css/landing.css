@@ -156,19 +156,38 @@ body.landing a {
     border-bottom-color: var(--ink);
 }
 
+.nav-register,
 .nav-login {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
     flex-shrink: 0;
     height: 34px;
     padding: 0 12px;
-    border: 1px solid var(--line-strong);
     border-radius: var(--radius);
-    color: var(--ink);
     font-size: 13px;
     font-weight: 500;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nav-register {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(27, 120, 56, 0.18);
+}
+
+.nav-register:hover,
+.nav-register:focus {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #ffffff;
+}
+
+.nav-login {
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
 }
 
 .nav-login .icon {

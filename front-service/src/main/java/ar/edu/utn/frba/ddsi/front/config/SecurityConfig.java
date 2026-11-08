@@ -6,7 +6,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -21,7 +20,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/", "/landing", "/login").permitAll()
+                .requestMatchers("/", "/landing", "/login", "/register").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -51,7 +50,7 @@ public class SecurityConfig {
      * En producción o etapas posteriores se puede conectar con donaciones-service / base de datos.
      */
     @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+    public InMemoryUserDetailsManager userDetailsService(PasswordEncoder encoder) {
         UserDetails admin = User.builder()
                 .username("admin")
                 .password(encoder.encode("admin123"))

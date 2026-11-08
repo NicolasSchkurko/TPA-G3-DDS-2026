@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrarse — DDSI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <style>
+        .register-card {
+            max-width: 760px;
+            margin: auto;
+        }
+
+        .register-card .card-body {
+            max-height: calc(100vh - 3rem);
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-light d-flex align-items-center min-vh-100 py-4">
+    <div class="container">
+        <div class="card shadow border-0 register-card">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <div class="bg-primary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 54px; height: 54px;">
+                        <i class="bi bi-person-plus fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold">DDSI — Crear cuenta</h4>
+                    <p class="text-muted small">Portal de Donaciones e Incentivos</p>
+                </div>
+
+                <div th:if="${error}" class="alert alert-danger d-flex align-items-center py-2" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span th:text="${error}">No se pudo completar el registro.</span>
+                </div>
+                <div th:if="${msg}" class="alert alert-success d-flex align-items-center py-2" role="status">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span th:text="${msg}">Registro realizado correctamente.</span>
+                </div>
+
+                <form th:action="@{/register}" method="post" id="registerForm">
+                    <div class="mb-4">
+                        <label for="tipoRegistro" class="form-label fw-semibold">Quiero registrarme como</label>
+                        <select class="form-select" id="tipoRegistro" name="tipoRegistro" required>
+                            <option value="">Seleccioná una opción</option>
+                            <option value="DONANTE">Donante</option>
+                            <option value="ADMIN">Administrador</option>
+                            <option value="ENTIDAD">Entidad beneficiaria</option>
+                        </select>
+                    </div>
+
+                    <div class="row registration-credentials mb-4" id="credentialsFields">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label for="username" class="form-label fw-semibold">Nombre de usuario</label>
+                            <input type="text" class="form-control" id="username" name="username"
+                                   autocomplete="username" minlength="3" maxlength="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password" class="form-label fw-semibold">Contraseña</label>
+                            <input type="password" class="form-control" id="password" name="password"
+                                   autocomplete="new-password" minlength="8">
+                            <div class="form-text">Debe tener al menos 8 caracteres.</div>
+                        </div>
+                    </div>
+                    <p class="form-text mb-4">Las cuentas de acceso se conservan mientras el servicio front está en ejecución.</p>
+
+                    <section class="registration-fields d-none" data-registration="DONANTE">
+                        <h5 class="fw-semibold mb-3">Datos del donante</h5>
+                        <div class="mb-3">
+                            <label for="tipoPersona" class="form-label">Tipo de persona</label>
+                            <select class="form-select" id="tipoPersona" name="tipoPersona">
+                                <option value="HUMANA">Persona humana</option>
+                                <option value="JURIDICA">Persona jurídica</option>
+                            </select>
+                        </div>
+
+                        <div data-persona="HUMANA">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="donanteNombre" class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" id="donanteNombre" name="nombre" autocomplete="given-name">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="donanteApellido" class="form-label">Apellido</label>
+                                    <input type="text" class="form-control" id="donanteApellido" name="apellido" autocomplete="family-name">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteEdad" class="form-label">Edad</label>
+                                    <input type="number" class="form-control" id="donanteEdad" name="edad" min="1">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteDocumento" class="form-label">Número de documento</label>
+                                    <input type="number" class="form-control" id="donanteDocumento" name="numeroDeDocumento" min="1">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteGenero" class="form-label">Género</label>
+                                    <select class="form-select" id="donanteGenero" name="genero">
+                                        <option value="MUJER">Mujer</option>
+                                        <option value="HOMBRE">Hombre</option>
+                                        <option value="OTRO" selected>Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-persona="JURIDICA" class="d-none">
+                            <div class="mb-3">
+                                <label for="donanteRazonSocial" class="form-label">Razón social</label>
+                                <input type="text" class="form-control" id="donanteRazonSocial" name="razonSocial">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteRubro" class="form-label">Rubro</label>
+                                    <input type="text" class="form-control" id="donanteRubro" name="rubro">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteCuit" class="form-label">CUIT</label>
+                                    <input type="text" class="form-control" id="donanteCuit" name="cuit">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="donanteTipoJuridico" class="form-label">Tipo jurídico</label>
+                                    <select class="form-select" id="donanteTipoJuridico" name="tipoJuridico">
+                                        <option value="ONG">ONG</option>
+                                        <option value="GUBERNAMENTAL">Gubernamental</option>
+                                        <option value="EMPRESA">Empresa</option>
+                                        <option value="INSTITUCION">Institución</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-semibold mt-2">Medio de contacto (opcional)</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="donanteTipoContacto" class="form-label">Tipo</label>
+                                <select class="form-select" id="donanteTipoContacto" name="tipoContacto">
+                                    <option value="EMAIL">Correo electrónico</option>
+                                    <option value="TELEFONO">Teléfono</option>
+                                    <option value="WHATSAPP">WhatsApp</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="donanteValorContacto" class="form-label">Correo o número</label>
+                                <input type="text" class="form-control" id="donanteValorContacto" name="valorContacto" autocomplete="email">
+                            </div>
+                        </div>
+                        <h6 class="fw-semibold mt-2">Dirección</h6>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="donanteCalle" class="form-label">Calle</label>
+                                <input type="text" class="form-control" id="donanteCalle" name="calleUno" autocomplete="address-line1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="donanteAltura" class="form-label">Altura</label>
+                                <input type="number" class="form-control" id="donanteAltura" name="altura" min="1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="donantePiso" class="form-label">Piso</label>
+                                <input type="number" class="form-control" id="donantePiso" name="piso" min="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="donanteDepartamento" class="form-label">Departamento</label>
+                                <input type="text" class="form-control" id="donanteDepartamento" name="departamento">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="donanteCiudad" class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" id="donanteCiudad" name="ciudad" autocomplete="address-level2">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="donanteProvincia" class="form-label">Provincia</label>
+                                <input type="text" class="form-control" id="donanteProvincia" name="provincia" autocomplete="address-level1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="donantePais" class="form-label">País</label>
+                                <input type="text" class="form-control" id="donantePais" name="pais" value="Argentina" autocomplete="country-name">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="registration-fields d-none" data-registration="ADMIN">
+                        <h5 class="fw-semibold mb-3">Datos del administrador</h5>
+                        <div class="mb-3">
+                            <label for="nombreAMostrar" class="form-label">Nombre a mostrar</label>
+                            <input type="text" class="form-control" id="nombreAMostrar" name="nombreAMostrar">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="adminNombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="adminNombre" name="nombre">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="adminApellido" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="adminApellido" name="apellido">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="adminEdad" class="form-label">Edad</label>
+                                <input type="number" class="form-control" id="adminEdad" name="edad" min="1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="adminDocumento" class="form-label">Número de documento</label>
+                                <input type="number" class="form-control" id="adminDocumento" name="numeroDeDocumento" min="1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="adminGenero" class="form-label">Género</label>
+                                <select class="form-select" id="adminGenero" name="genero">
+                                    <option value="MUJER">Mujer</option>
+                                    <option value="HOMBRE">Hombre</option>
+                                    <option value="OTRO" selected>Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <h6 class="fw-semibold mt-2">Medio de contacto</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="adminTipoContacto" class="form-label">Tipo</label>
+                                <select class="form-select" id="adminTipoContacto" name="tipoContacto">
+                                    <option value="EMAIL">Correo electrónico</option>
+                                    <option value="TELEFONO">Teléfono</option>
+                                    <option value="WHATSAPP">WhatsApp</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="adminValorContacto" class="form-label">Correo o número</label>
+                                <input type="text" class="form-control" id="adminValorContacto" name="valorContacto" autocomplete="email">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="registration-fields d-none" data-registration="ENTIDAD">
+                        <h5 class="fw-semibold mb-3">Datos de la entidad beneficiaria</h5>
+                        <div class="mb-3">
+                            <label for="entidadRazonSocial" class="form-label">Razón social</label>
+                            <input type="text" class="form-control" id="entidadRazonSocial" name="razonSocial">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadRubro" class="form-label">Rubro</label>
+                                <input type="text" class="form-control" id="entidadRubro" name="rubro">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadCuit" class="form-label">CUIT</label>
+                                <input type="text" class="form-control" id="entidadCuit" name="cuit">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadTipoJuridico" class="form-label">Tipo jurídico</label>
+                                <select class="form-select" id="entidadTipoJuridico" name="tipoJuridico">
+                                    <option value="ONG">ONG</option>
+                                    <option value="GUBERNAMENTAL">Gubernamental</option>
+                                    <option value="EMPRESA">Empresa</option>
+                                    <option value="INSTITUCION">Institución</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entidadTelefono" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel">
+                        </div>
+                        <h6 class="fw-semibold mt-2">Dirección</h6>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="entidadCalle" class="form-label">Calle</label>
+                                <input type="text" class="form-control" id="entidadCalle" name="calleUno" autocomplete="address-line1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadAltura" class="form-label">Altura</label>
+                                <input type="number" class="form-control" id="entidadAltura" name="altura" min="1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadPiso" class="form-label">Piso</label>
+                                <input type="number" class="form-control" id="entidadPiso" name="piso" min="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadDepartamento" class="form-label">Departamento</label>
+                                <input type="text" class="form-control" id="entidadDepartamento" name="departamento">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="entidadCiudad" class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" id="entidadCiudad" name="ciudad" autocomplete="address-level2">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="entidadProvincia" class="form-label">Provincia</label>
+                                <input type="text" class="form-control" id="entidadProvincia" name="provincia" autocomplete="address-level1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="entidadPais" class="form-label">País</label>
+                                <input type="text" class="form-control" id="entidadPais" name="pais" value="Argentina" autocomplete="country-name">
+                            </div>
+                        </div>
+                    </section>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-person-check me-1"></i> Registrarme
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top text-center">
+                    <small class="text-muted">¿Ya tenés cuenta? <a th:href="@{/login}" class="text-decoration-none fw-semibold">Ingresá</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const registrationType = document.getElementById("tipoRegistro");
+        const personType = document.getElementById("tipoPersona");
+        const formSections = document.querySelectorAll(".registration-fields");
+
+        function updateRequiredFields() {
+            const hasRegistrationType = registrationType.value !== "";
+            document.querySelectorAll("#credentialsFields input").forEach((field) => {
+                field.required = hasRegistrationType;
+                field.disabled = !hasRegistrationType;
+            });
+
+            formSections.forEach((section) => {
+                const active = section.dataset.registration === registrationType.value;
+                section.classList.toggle("d-none", !active);
+                section.querySelectorAll("input, select").forEach((field) => {
+                    field.required = active && field.dataset.required === "true";
+                    field.disabled = !active;
+                });
+            });
+
+            const donorSection = document.querySelector('[data-registration="DONANTE"]');
+            if (donorSection) {
+                const selectedPerson = personType.value;
+                donorSection.querySelectorAll("[data-persona]").forEach((group) => {
+                    const active = registrationType.value === "DONANTE" && group.dataset.persona === selectedPerson;
+                    group.classList.toggle("d-none", !active);
+                    group.querySelectorAll("input, select").forEach((field) => {
+                        field.required = registrationType.value === "DONANTE"
+                            && active
+                            && field.dataset.required === "true";
+                        field.disabled = !active;
+                    });
+                });
+            }
+        }
+
+        document.querySelectorAll(".registration-fields input, .registration-fields select").forEach((field) => {
+            field.dataset.required = ["nombre", "apellido", "edad", "numeroDeDocumento", "genero",
+                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar", "calleUno",
+                "altura", "ciudad", "provincia", "pais"].includes(field.name) ? "true" : "false";
+        });
+
+        document.querySelectorAll('[data-registration="ADMIN"] select[name="tipoContacto"], [data-registration="ADMIN"] input[name="valorContacto"]').forEach((field) => {
+            field.dataset.required = "true";
+        });
+
+        registrationType.addEventListener("change", updateRequiredFields);
+        personType.addEventListener("change", updateRequiredFields);
+        updateRequiredFields();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

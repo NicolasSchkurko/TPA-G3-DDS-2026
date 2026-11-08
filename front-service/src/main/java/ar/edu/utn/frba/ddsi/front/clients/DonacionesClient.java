@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -63,6 +65,105 @@ public class DonacionesClient {
         } catch (Exception e) {
             log.error("Error al obtener donantes desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    public void registrarUsuario(String tipoRegistro, Map<String, String> datos) {
+        if (tipoRegistro == null || tipoRegistro.isBlank()) {
+            throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
+        }
+
+        Map<String, Object> payload;
+        String endpoint;
+
+        switch (tipoRegistro) {
+            case "ADMIN" -> {
+                requerir(datos, "nombreAMostrar", "nombre", "apellido", "edad", "numeroDeDocumento",
+                        "genero", "tipoContacto", "valorContacto");
+                payload = new LinkedHashMap<>();
+                copiarCamposAObjeto(datos, payload, "nombreAMostrar", "nombre", "apellido", "edad",
+                        "numeroDeDocumento", "genero");
+                payload.put("medioDeContacto", contacto(datos));
+                endpoint = "/api/admins";
+            }
+            case "DONANTE" -> {
+                String tipoPersona = datos.get("tipoPersona");
+                if (!"HUMANA".equals(tipoPersona) && !"JURIDICA".equals(tipoPersona)) {
+                    throw new IllegalArgumentException("Seleccioná un tipo de persona válido.");
+                }
+                requerir(datos, "calleUno", "altura", "ciudad", "provincia", "pais");
+                payload = new LinkedHashMap<>();
+                payload.put("tipoPersona", tipoPersona);
+                if ("HUMANA".equals(tipoPersona)) {
+                    requerir(datos, "nombre", "apellido", "edad", "numeroDeDocumento", "genero");
+                    copiarCamposAObjeto(datos, payload, "nombre", "apellido", "edad", "numeroDeDocumento", "genero");
+                } else {
+                    requerir(datos, "razonSocial", "rubro", "cuit", "tipoJuridico");
+                    copiarCamposAObjeto(datos, payload, "razonSocial", "rubro", "cuit", "tipoJuridico");
+                }
+                Map<String, String> medio = contactoOpcional(datos);
+                if (medio != null) {
+                    payload.put("medioPredeterminado", medio);
+                    payload.put("mediosDeContacto", List.of(medio));
+                }
+                payload.put("direccion", direccion(datos));
+                endpoint = "/api/personas";
+            }
+            case "ENTIDAD" -> {
+                requerir(datos, "razonSocial", "rubro", "cuit", "tipoJuridico",
+                        "calleUno", "altura", "ciudad", "provincia", "pais");
+                payload = new LinkedHashMap<>();
+                copiarCamposAObjeto(datos, payload, "razonSocial", "rubro", "cuit", "tipoJuridico", "telefono");
+                payload.put("direccion", direccion(datos));
+                endpoint = "/api/entidades";
+            }
+            default -> throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
+        }
+
+        restClient.post()
+                .uri(baseUrl + endpoint)
+                .body(payload)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private static Map<String, String> contacto(Map<String, String> datos) {
+        return Map.of("tipo", datos.get("tipoContacto"), "valor", datos.get("valorContacto"));
+    }
+
+    private static Map<String, String> contactoOpcional(Map<String, String> datos) {
+        String tipo = datos.get("tipoContacto");
+        String valor = datos.get("valorContacto");
+        if ((tipo == null || tipo.isBlank()) && (valor == null || valor.isBlank())) {
+            return null;
+        }
+        if (tipo == null || tipo.isBlank() || valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException("Completá el tipo y el valor del medio de contacto.");
+        }
+        return contacto(datos);
+    }
+
+    private static Map<String, Object> direccion(Map<String, String> datos) {
+        Map<String, Object> direccion = new LinkedHashMap<>();
+        copiarCamposAObjeto(datos, direccion, "calleUno", "calleDos", "altura", "piso", "departamento",
+                "ciudad", "provincia", "pais");
+        return direccion;
+    }
+
+    private static void copiarCamposAObjeto(Map<String, String> origen, Map<String, Object> destino, String... campos) {
+        for (String campo : campos) {
+            String valor = origen.get(campo);
+            if (valor != null && !valor.isBlank()) {
+                destino.put(campo, valor);
+            }
+        }
+    }
+
+    private static void requerir(Map<String, String> datos, String... campos) {
+        for (String campo : campos) {
+            if (datos.get(campo) == null || datos.get(campo).isBlank()) {
+                throw new IllegalArgumentException("Completá todos los campos obligatorios.");
+            }
         }
     }
 }
