@@ -9,6 +9,7 @@ public class NotificacionMapper {
     public NotificacionDTO notificacionDTO(Notificacion notificacion) {
         NotificacionDTO notificacionDTO = new NotificacionDTO();
 
+        notificacionDTO.setId(notificacion.getId().toString());
         notificacionDTO.setAsunto(notificacion.getMensaje().getAsunto());
         notificacionDTO.setCuerpo(notificacion.getMensaje().getCuerpo());
         notificacionDTO.setDireccionDeContacto(notificacion.getDireccionDeContacto());

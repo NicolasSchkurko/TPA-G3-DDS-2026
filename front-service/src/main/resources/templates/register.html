@@ -51,20 +51,7 @@
                         </select>
                     </div>
 
-                    <div class="row registration-credentials mb-4" id="credentialsFields">
-                        <div class="col-md-6 mb-3 mb-md-0">
-                            <label for="username" class="form-label fw-semibold">Nombre de usuario</label>
-                            <input type="text" class="form-control" id="username" name="username"
-                                   autocomplete="username" minlength="3" maxlength="50">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="password" class="form-label fw-semibold">Contraseña</label>
-                            <input type="password" class="form-control" id="password" name="password"
-                                   autocomplete="new-password" minlength="8">
-                            <div class="form-text">Debe tener al menos 8 caracteres.</div>
-                        </div>
-                    </div>
-                    <p class="form-text mb-4">Las cuentas de acceso se conservan mientras el servicio front está en ejecución.</p>
+                    <p class="form-text mb-4">El acceso al portal se gestiona mediante Keycloak. Este formulario registra los datos del perfil en Donaciones.</p>
 
                     <section class="registration-fields d-none" data-registration="DONANTE">
                         <h5 class="fw-semibold mb-3">Datos del donante</h5>
@@ -312,12 +299,6 @@
         const formSections = document.querySelectorAll(".registration-fields");
 
         function updateRequiredFields() {
-            const hasRegistrationType = registrationType.value !== "";
-            document.querySelectorAll("#credentialsFields input").forEach((field) => {
-                field.required = hasRegistrationType;
-                field.disabled = !hasRegistrationType;
-            });
-
             formSections.forEach((section) => {
                 const active = section.dataset.registration === registrationType.value;
                 section.classList.toggle("d-none", !active);

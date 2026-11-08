@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -164,6 +166,34 @@ public class DonacionesClient {
             if (datos.get(campo) == null || datos.get(campo).isBlank()) {
                 throw new IllegalArgumentException("Completá todos los campos obligatorios.");
             }
+        }
+    }
+
+    public List<EntidadBeneficiariaDTO> obtenerEntidades() {
+        try {
+            int pageSize = 100;
+            PageResponse<EntidadBeneficiariaDTO> page = restClient.get()
+                    .uri(baseUrl + "/api/entidades?page=0&size={size}", pageSize)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<EntidadBeneficiariaDTO>>() {});
+            if (page == null) {
+                return Collections.emptyList();
+            }
+
+            List<EntidadBeneficiariaDTO> entidades = new ArrayList<>(page.getContent());
+            for (int pageNumber = 1; pageNumber < page.getTotalPages(); pageNumber++) {
+                PageResponse<EntidadBeneficiariaDTO> nextPage = restClient.get()
+                        .uri(baseUrl + "/api/entidades?page={page}&size={size}", pageNumber, pageSize)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<PageResponse<EntidadBeneficiariaDTO>>() {});
+                if (nextPage != null) {
+                    entidades.addAll(nextPage.getContent());
+                }
+            }
+            return entidades;
+        } catch (Exception e) {
+            log.error("Error al obtener entidades desde {}: {}", baseUrl, e.getMessage());
+            return Collections.emptyList();
         }
     }
 }

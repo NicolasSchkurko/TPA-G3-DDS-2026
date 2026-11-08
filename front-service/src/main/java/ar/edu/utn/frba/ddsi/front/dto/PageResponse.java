@@ -7,6 +7,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PageResponse<T> {
     private List<T> content = new ArrayList<>();
+    private int totalPages;
 
     public PageResponse() {
     }
@@ -21,5 +22,13 @@ public class PageResponse<T> {
 
     public void setContent(List<T> content) {
         this.content = content != null ? content : new ArrayList<>();
+    }
+
+    public int getTotalPages() {
+        return totalPages;
+    }
+
+    public void setTotalPages(int totalPages) {
+        this.totalPages = totalPages;
     }
 }

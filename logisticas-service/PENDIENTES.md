@@ -1,3 +1,13 @@
+## Revisión del enunciado hasta Entrega 6
+
+La logística implementa flota, choferes, entregas, rutas, callback de planificación, eventos y persistencia
+MongoDB, consistente con E3-E5. Se mantienen abajo los riesgos técnicos vigentes; priorizar los de
+serialización HTTP externa, tolerancia a fallas del proveedor/broker, concurrencia distribuida y trazado
+real de rutas. E3 también solicita documentación de APIs (Postman y Swagger/OpenAPI); hay colección
+Postman, pero no se encontró configuración OpenAPI versionada. E6 requiere que el front consuma estos
+flujos con autenticación; actualmente no hay cliente de logística en `front-service`.
+
+---
 # Pendientes técnicos de `logisticas-service`
 
 Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo para
