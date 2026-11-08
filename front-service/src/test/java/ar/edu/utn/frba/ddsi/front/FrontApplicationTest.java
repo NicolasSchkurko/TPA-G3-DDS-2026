@@ -41,6 +41,15 @@ class FrontApplicationTest {
     }
 
     @Test
+    void termsPageIsPublicAndRendersLegalSections() throws Exception {
+        mockMvc.perform(get("/terminos"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Términos y condiciones")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Política de privacidad")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/terminos.css")));
+    }
+
+    @Test
     void donationDetailIsPublicAndShowsUnassignedEntity() throws Exception {
         mockMvc.perform(get("/donaciones/{id}", DONATION_ID))
                 .andExpect(status().isOk())
