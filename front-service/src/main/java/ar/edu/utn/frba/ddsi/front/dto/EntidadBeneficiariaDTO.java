@@ -1,17 +1,23 @@
 package ar.edu.utn.frba.ddsi.front.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
+import java.util.UUID;
+
+/** DTO de lectura para las entidades devueltas por donaciones-service. */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class EntidadBeneficiariaDTO {
-
     private String razonSocial;
-
-    public String getRazonSocial() {
-        return razonSocial;
-    }
-
-    public void setRazonSocial(String razonSocial) {
-        this.razonSocial = razonSocial;
-    }
+    private String rubro;
+    private String cuit;
+    private String tipoJuridico;
+    private String telefono;
+    private UUID id;
+    private Boolean activa;
 }
