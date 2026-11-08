@@ -157,7 +157,8 @@ body.landing a {
 }
 
 .nav-register,
-.nav-login {
+.nav-login,
+.nav-profile {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -190,7 +191,21 @@ body.landing a {
     color: var(--ink);
 }
 
-.nav-login .icon {
+.nav-profile {
+    background: #eaf4ed;
+    border: 1px solid #eaf4ed;
+    color: #237a3b;
+}
+
+.nav-profile:hover,
+.nav-profile:focus {
+    background: #dceee1;
+    border-color: #dceee1;
+    color: #1b6530;
+}
+
+.nav-login .icon,
+.nav-profile .icon {
     width: 13px;
     height: 13px;
 }

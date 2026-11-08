@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,9 +67,21 @@
             <a href="#" data-info="contacto">Contactanos</a>
         </nav>
 
-        <a class="nav-register" href="/register" th:href="@{/register}">Registrarse</a>
-        <a class="nav-login" href="/login" th:href="@{/login}">
+        <a sec:authorize="!isAuthenticated()" class="nav-register" href="/register" th:href="@{/register}">Registrarse</a>
+        <a sec:authorize="!isAuthenticated()" class="nav-login" href="/login" th:href="@{/login}">
             Ingresar <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+        </a>
+        <a sec:authorize="hasRole('ADMIN')" class="nav-profile" th:href="@{/panel}">
+            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Administrador
+        </a>
+        <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante}">
+            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Donante
+        </a>
+        <a sec:authorize="hasRole('CHOFER')" class="nav-profile" th:href="@{/chofer}">
+            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Chofer
+        </a>
+        <a sec:authorize="hasRole('ENTIDAD')" class="nav-profile" th:href="@{/entidad}">
+            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Entidad
         </a>
     </header>
 
