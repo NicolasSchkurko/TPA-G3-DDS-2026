@@ -86,7 +86,7 @@ public class HomeController {
         boolean esDonante = authentication != null
                 && authentication.isAuthenticated()
                 && authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_USER"))
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_DONANTE"))
                 && authentication.getAuthorities().stream()
                 .noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         model.addAttribute("esDonante", esDonante);
