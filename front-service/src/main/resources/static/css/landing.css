@@ -520,6 +520,163 @@ body.landing a {
     text-underline-offset: 2px;
 }
 
+/* ---------------- Búsqueda de entidades ---------------- */
+.entity-search-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--ink-2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.entity-search-trigger:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.entity-search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: grid;
+    place-items: start center;
+    padding: min(12vh, 100px) 16px 24px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.entity-search-modal.is-open {
+    visibility: visible;
+    opacity: 1;
+}
+
+.entity-search-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(15, 18, 16, 0.45);
+}
+
+.entity-search-dialog {
+    position: relative;
+    width: min(640px, 100%);
+    max-height: 78vh;
+    overflow-y: auto;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--white);
+    box-shadow: 0 20px 60px rgba(15, 18, 16, 0.22);
+}
+
+.entity-search-dialog h2 {
+    margin: 0 36px 18px 0;
+    font-size: 1.25rem;
+}
+
+.entity-search-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--muted);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.entity-search-input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    color: var(--ink);
+    font: inherit;
+}
+
+.entity-search-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 10px;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.entity-search-toolbar span {
+    margin-right: auto;
+    color: var(--ink-2);
+    font-weight: 600;
+}
+
+.entity-search-toolbar select {
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--ink);
+    font: inherit;
+}
+
+.entity-search-results {
+    display: grid;
+    gap: 8px;
+}
+
+.entity-search-result {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.entity-search-result h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.entity-search-result[hidden],
+.entity-search-empty[hidden] {
+    display: none;
+}
+
+.entity-search-empty {
+    margin: 0;
+    padding: 14px 0;
+    color: var(--muted);
+}
+
+.entity-search-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+body.entity-search-open {
+    overflow: hidden;
+}
+
 /* ---------------- Modal ---------------- */
 .info-modal {
     position: fixed;

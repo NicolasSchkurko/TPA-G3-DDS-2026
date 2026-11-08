@@ -80,6 +80,11 @@
                     <a class="btn btn-primary" href="/donaciones" th:href="@{/donaciones}">Donar</a>
                     <a class="btn btn-secondary" href="/donaciones" th:href="@{/donaciones}">Ver donaciones</a>
                 </div>
+                <button class="entity-search-trigger" id="openEntitySearch" type="button"
+                        th:if="${esDonante}" aria-haspopup="dialog" aria-controls="entitySearchModal">
+                    <span>Buscar entidades beneficiarias</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                </button>
             </div>
 
             <section class="sidebar-section" aria-labelledby="destacadas-title">
@@ -142,7 +147,43 @@
         </div>
     </div>
 
+    <div class="entity-search-modal" id="entitySearchModal" aria-hidden="true" th:if="${esDonante}">
+        <button class="entity-search-backdrop" type="button" data-close-entity-search
+                aria-label="Cerrar búsqueda"></button>
+        <section class="entity-search-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="entitySearchTitle">
+            <button class="entity-search-close" type="button" data-close-entity-search
+                    aria-label="Cerrar">&times;</button>
+            <h2 id="entitySearchTitle">Entidades beneficiarias</h2>
+            <label class="entity-search-visually-hidden" for="entitySearchInput">Filtrar por nombre</label>
+            <input class="entity-search-input" type="search" id="entitySearchInput"
+                   placeholder="Filtrar por nombre..." autocomplete="off">
+
+            <div class="entity-search-toolbar">
+                <span>Listado de entidades</span>
+                <label for="entitySortOrder">Ordenar por</label>
+                <select id="entitySortOrder">
+                    <option value="asc">Nombre (A-Z)</option>
+                    <option value="desc">Nombre (Z-A)</option>
+                </select>
+            </div>
+
+            <div class="entity-search-results" id="entitySearchResults" aria-live="polite">
+                <p class="entity-search-empty" id="entitySearchEmpty" hidden>
+                    No se encontraron entidades.
+                </p>
+                <article class="entity-search-result"
+                         th:each="entidad : ${entidades}"
+                         th:attr="data-search=${entidad.razonSocial ?: ''},
+                                  data-name=${entidad.razonSocial ?: ''}">
+                    <h3 th:text="${entidad.razonSocial}">Nombre de la entidad</h3>
+                </article>
+            </div>
+        </section>
+    </div>
+
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
     <script src="/js/landing.js" th:src="@{/js/landing.js}"></script>
+    <script th:src="@{/js/entity-search.js}"></script>
 </body>
 </html>

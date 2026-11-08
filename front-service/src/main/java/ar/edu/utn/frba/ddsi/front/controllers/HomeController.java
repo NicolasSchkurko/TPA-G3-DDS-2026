@@ -2,10 +2,13 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.Collections;
 
 @Controller
 public class HomeController {
@@ -46,7 +49,17 @@ public class HomeController {
      * aunque el backend no esté levantado.
      */
     @GetMapping({"/", "/landing"})
-    public String landing() {
+    public String landing(Authentication authentication, Model model) {
+        boolean esDonante = authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_USER"))
+                && authentication.getAuthorities().stream()
+                .noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("esDonante", esDonante);
+        model.addAttribute("entidades", esDonante
+                ? donacionesClient.obtenerEntidades()
+                : Collections.emptyList());
         return "landing";
     }
 
