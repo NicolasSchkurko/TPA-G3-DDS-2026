@@ -20,18 +20,96 @@
     </header>
 
     <main class="map-main">
+        <aside class="donor-sidebar" id="donorInfoPanel" aria-label="Historial de donaciones">
+            <header class="sidebar-heading">
+                <div>
+                    <p class="sidebar-eyebrow">Mi actividad</p>
+                    <h1>Historial Donaciones</h1>
+                </div>
+                <span class="history-count" id="historyCount"
+                      th:text="${#lists.size(historialDonaciones)}">0</span>
+            </header>
+
+            <div class="history-controls">
+                <label class="visually-hidden" for="historySearch">Buscar en el historial</label>
+                <div class="history-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="historySearch" type="search" placeholder="Buscar donación..."
+                           autocomplete="off">
+                </div>
+                <div class="history-control-row">
+                    <label class="visually-hidden" for="historyStatus">Filtrar por estado</label>
+                    <select id="historyStatus" aria-label="Filtrar por estado">
+                        <option value="">Todos los estados</option>
+                        <option value="EN_DEPOSITO">En depósito</option>
+                        <option value="PENDIENTE_ASIGNACION">Pendiente</option>
+                        <option value="ASIGNADO">Asignada</option>
+                        <option value="LISTA_PARA_ENTREGAR">Lista para entregar</option>
+                        <option value="EN_TRASLADO">En traslado</option>
+                        <option value="ENTREGADO">Entregada</option>
+                        <option value="ENTREGA_FALLIDA">Entrega fallida</option>
+                        <option value="VENCIDO">Vencida</option>
+                    </select>
+                    <label class="visually-hidden" for="historySort">Ordenar historial</label>
+                    <select id="historySort" aria-label="Ordenar historial">
+                        <option value="newest">Más recientes</option>
+                        <option value="oldest">Más antiguas</option>
+                        <option value="name">Nombre</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="in-progress-button" id="toggleInProgress" type="button"
+                    aria-pressed="false">
+                <i class="bi bi-truck" aria-hidden="true"></i>
+                <span>Ver entregas en proceso</span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </button>
+
+            <p class="history-filter-notice" id="historyFilterNotice" aria-live="polite"></p>
+            <section class="history-list" id="historyList" aria-label="Donaciones anteriores">
+                <button class="history-card" type="button"
+                        th:each="donacion : ${historialDonaciones}"
+                        th:attr="data-id=${donacion.id},
+                                 data-name=${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'},
+                                 data-category=${donacion.categoriaBienName ?: ''},
+                                 data-subcategory=${donacion.subcategoriaName ?: ''},
+                                 data-status=${donacion.estado ?: 'N/A'},
+                                 data-entity=${donacion.entidadBeneficiaria ?: ''},
+                                 data-date=${donacion.fechaEntrega != null ? donacion.fechaEntrega : ''}">
+                    <span class="history-card-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                    <span class="history-card-content">
+                        <span class="history-card-title"
+                              th:text="${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'}">Donación</span>
+                        <span class="history-card-meta">
+                            <span th:text="${donacion.entidadBeneficiaria ?: 'Destino pendiente'}">Entidad</span>
+                            <span aria-hidden="true"> · </span>
+                            <span th:text="${donacion.fechaEntrega != null ? donacion.fechaEntrega : 'Sin fecha'}">Fecha</span>
+                        </span>
+                        <span class="history-card-status"
+                              th:classappend="${'status-' + #strings.toLowerCase(donacion.estado ?: 'na')}"
+                              th:text="${#strings.replace(donacion.estado ?: 'N/A', '_', ' ')}">Estado</span>
+                    </span>
+                    <i class="bi bi-chevron-right history-card-arrow" aria-hidden="true"></i>
+                </button>
+                <p class="history-empty" id="historyEmpty"
+                   th:if="${#lists.isEmpty(historialDonaciones)}">
+                    Todavía no hay donaciones en tu historial.
+                </p>
+                <p class="history-empty" id="historyNoResults" hidden>
+                    No se encontraron donaciones con esos filtros.
+                </p>
+            </section>
+        </aside>
+
+        <button class="map-corner-toggle map-corner-toggle-left" id="toggleDonorInfo"
+                type="button" aria-expanded="true" aria-controls="donorInfoPanel"
+                aria-label="Ocultar historial de donaciones">
+            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
         <section class="beneficiary-map" aria-label="Mapa de entidades beneficiarias">
             <div id="beneficiaryMap" class="ddsi-map" role="application"
                  aria-label="Mapa interactivo de entidades beneficiarias"></div>
-            <button class="map-corner-toggle map-corner-toggle-left" id="toggleDonorInfo"
-                    type="button" aria-expanded="false" aria-controls="donorInfoPanel"
-                    aria-label="Abrir información del donante">
-                <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            </button>
-            <aside class="map-drawer map-drawer-left" id="donorInfoPanel" aria-hidden="true">
-                <h2>Información del donante</h2>
-                <p>En esta sección estará disponible la información de tu perfil.</p>
-            </aside>
             <button class="map-corner-toggle map-corner-toggle-right" id="toggleMapOptions"
                     type="button" aria-expanded="false" aria-controls="mapOptionsPanel"
                     aria-label="Abrir opciones del mapa">
@@ -42,10 +120,10 @@
                 <p>Más funcionalidades estarán disponibles próximamente.</p>
             </aside>
             <button class="entities-button" id="openEntities" type="button"
-                    aria-haspopup="dialog" aria-controls="entitiesDialog"
-                    th:attr="data-geocode-url-prefix=@{/donante/entidades/}">
+                    aria-haspopup="dialog" aria-controls="entitiesDialog">
                 Entidades beneficiarias
             </button>
+            <p class="map-selection-notice" id="mapSelectionNotice" aria-live="polite"></p>
             <p class="map-notice">Seleccioná una entidad para ver su ubicación y sus datos.
                 Geocodificación: <a href="https://www.openstreetmap.org/copyright"
                                     target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>.

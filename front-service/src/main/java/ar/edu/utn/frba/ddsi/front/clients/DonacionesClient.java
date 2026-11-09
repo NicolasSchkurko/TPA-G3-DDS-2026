@@ -34,11 +34,26 @@ public class DonacionesClient {
 
     public List<DonacionDTO> obtenerTodasLasDonaciones() {
         try {
+            int pageSize = 100;
             PageResponse<DonacionDTO> page = restClient.get()
-                    .uri(baseUrl + "/api/donaciones")
+                    .uri(baseUrl + "/api/donaciones?page=0&size={size}", pageSize)
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<DonacionDTO>>() {});
-            return page != null ? page.getContent() : Collections.emptyList();
+            if (page == null) {
+                return Collections.emptyList();
+            }
+
+            List<DonacionDTO> donaciones = new ArrayList<>(page.getContent());
+            for (int pageNumber = 1; pageNumber < page.getTotalPages(); pageNumber++) {
+                PageResponse<DonacionDTO> nextPage = restClient.get()
+                        .uri(baseUrl + "/api/donaciones?page={page}&size={size}", pageNumber, pageSize)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<PageResponse<DonacionDTO>>() {});
+                if (nextPage != null) {
+                    donaciones.addAll(nextPage.getContent());
+                }
+            }
+            return donaciones;
         } catch (Exception e) {
             log.error("Error al obtener donaciones desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();
@@ -197,10 +212,4 @@ public class DonacionesClient {
         }
     }
 
-    public EntidadBeneficiariaDTO geocodificarEntidad(UUID id) {
-        return restClient.post()
-                .uri(baseUrl + "/api/entidades/{id}/geocodificacion", id)
-                .retrieve()
-                .body(EntidadBeneficiariaDTO.class);
-    }
 }

@@ -42,13 +42,26 @@ public class Direccion {
 
     private Ciudad ciudad;
 
+    /** Coordenadas WGS84 que llegan desde donaciones-service (Punto 75). */
+    @Field(name = "latitud")
+    private Double latitud;
+
+    @Field(name = "longitud")
+    private Double longitud;
+
     public Direccion(String calle1, String calle2, Integer altura, Integer piso, String departamento, String nombreCiudad, String nombreProvincia, String nombrePais){
+        this(calle1, calle2, altura, piso, departamento, nombreCiudad, nombreProvincia, nombrePais, null, null);
+    }
+
+    public Direccion(String calle1, String calle2, Integer altura, Integer piso, String departamento, String nombreCiudad, String nombreProvincia, String nombrePais, Double latitud, Double longitud){
         this.idDireccion = UUID.randomUUID();
         this.calle1 = calle1;
         this.calle2 = calle2;
         this.altura = altura;
         this.piso = piso;
         this.departamento = departamento;
+        this.latitud = latitud;
+        this.longitud = longitud;
         Pais pais = new Pais();
         pais.setNombre(nombrePais);
         Provincia provincia = new Provincia();

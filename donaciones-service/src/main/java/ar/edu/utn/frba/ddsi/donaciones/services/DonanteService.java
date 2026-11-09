@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.LectorCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.PersonaDonanteFilaConverter;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
@@ -64,6 +65,7 @@ public class DonanteService {
   private final RepositorioDonantes repositorioDonantes;
   private final RepositorioDonaciones repositorioDonaciones;
   private final RepositorioFormularios repositorioFormularios;
+  private final GestorGeoref gestorGeoref;
 
   private static final int MAX_REPORTES = 100;
 
@@ -87,7 +89,21 @@ public class DonanteService {
                         RepositorioDonantes repositorioDonantes,
                         ExecutorService executorImportacion) {
     this(repositorioPersonas, repositorioCiudades, fabricaEstrategias, incentivosClient,
-         repositorioDonantes, null, null, executorImportacion);
+         repositorioDonantes, null, null, new GestorGeoref(null, false), executorImportacion);
+  }
+
+  /** Constructor de conveniencia para tests que no ejercitan geocoding. */
+  public DonanteService(RepositorioPersonas repositorioPersonas,
+                        RepositorioCiudades repositorioCiudades,
+                        FabricaEstrategiasNotificacion fabricaEstrategias,
+                        IncentivosClient incentivosClient,
+                        RepositorioDonantes repositorioDonantes,
+                        RepositorioDonaciones repositorioDonaciones,
+                        RepositorioFormularios repositorioFormularios,
+                        ExecutorService executorImportacion) {
+    this(repositorioPersonas, repositorioCiudades, fabricaEstrategias, incentivosClient,
+         repositorioDonantes, repositorioDonaciones, repositorioFormularios,
+         new GestorGeoref(null, false), executorImportacion);
   }
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -98,6 +114,7 @@ public class DonanteService {
                         RepositorioDonantes repositorioDonantes,
                         RepositorioDonaciones repositorioDonaciones,
                         RepositorioFormularios repositorioFormularios,
+                        GestorGeoref gestorGeoref,
                         ExecutorService executorImportacion) {
     this.repositorioPersonas = repositorioPersonas;
     this.repositorioCiudades = repositorioCiudades;
@@ -106,6 +123,7 @@ public class DonanteService {
     this.repositorioDonantes = repositorioDonantes;
     this.repositorioDonaciones = repositorioDonaciones;
     this.repositorioFormularios = repositorioFormularios;
+    this.gestorGeoref = gestorGeoref;
     this.executorImportacion = executorImportacion;
   }
 
@@ -113,6 +131,7 @@ public class DonanteService {
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
     Ciudad ciudad = resolverCiudad(dto.getDireccion());
     Donante nuevoDonante = dto.toDomain(ciudad);
+    gestorGeoref.geocodificarAlta(nuevoDonante.getDireccion());
 
     // Punto 52: Persistir localmente primero en transacción
     if (nuevoDonante.getPersona() != null) {
@@ -198,10 +217,13 @@ public class DonanteService {
 
   @Transactional(rollbackFor = Exception.class)
   public PersonaDonanteDTO actualizarPersona(UUID id, PersonaDonanteDTO dto) {
-    Ciudad ciudad = resolverCiudad(dto.getDireccion());
-    Donante datosNuevos = dto.toDomain(ciudad);
     Donante existente = repositorioDonantes.buscarPorId(id)
         .orElseThrow(() -> new EntityNotFoundException("No se encontró persona con ID: " + id));
+
+    Ciudad ciudad = resolverCiudad(dto.getDireccion());
+    Donante datosNuevos = dto.toDomain(ciudad);
+    gestorGeoref.geocodificarActualizacion(datosNuevos.getDireccion(), existente.getDireccion());
+
     if (existente.getPersona() != null && datosNuevos.getPersona() != null) {
       repositorioPersonas.modificarPersona(existente.getPersona().getId(), datosNuevos.getPersona());
     }

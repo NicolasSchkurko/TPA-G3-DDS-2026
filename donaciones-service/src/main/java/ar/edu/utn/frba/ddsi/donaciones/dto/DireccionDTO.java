@@ -33,14 +33,30 @@ public class DireccionDTO {
         Pais p = new Pais(this.pais != null ? this.pais : "Argentina");
         Provincia prov = new Provincia(this.provincia != null ? this.provincia : "Buenos Aires", p);
         Ciudad c = new Ciudad(this.ciudad != null ? this.ciudad : "CABA", prov);
-        return new Direccion(this.calleUno, this.calleDos, this.altura, this.piso, this.departamento, c);
+        return conCoordenadas(new Direccion(this.calleUno, this.calleDos, this.altura, pisoSeguro(), this.departamento, c));
     }
 
     // Variante que recibe una Ciudad ya persistida/managed (resuelta vía RepositorioCiudades,
     // buscar-o-crear) en lugar de construir la cadena Pais/Provincia/Ciudad "al vuelo", que
     // rompía merge() por no estar cascadeada (ver Ciudad/Provincia/Pais sin cascade en Direccion).
     public Direccion toDomain(Ciudad ciudad) {
-        return new Direccion(this.calleUno, this.calleDos, this.altura, this.piso, this.departamento, ciudad);
+        return conCoordenadas(new Direccion(this.calleUno, this.calleDos, this.altura, pisoSeguro(), this.departamento, ciudad));
+    }
+
+    /** Indica si el request ya trae coordenadas (por ejemplo, elegidas en un mapa). */
+    public boolean tieneCoordenadas() {
+        return latitud != null && longitud != null;
+    }
+
+    private Direccion conCoordenadas(Direccion direccion) {
+        direccion.setLatitud(this.latitud);
+        direccion.setLongitud(this.longitud);
+        return direccion;
+    }
+
+    /** El piso es opcional en el request; el dominio lo modela como {@code int}. */
+    private int pisoSeguro() {
+        return this.piso != null ? this.piso : 0;
     }
 
     public static DireccionDTO from(Direccion dir) {
@@ -61,6 +77,20 @@ public class DireccionDTO {
                     dto.setPais(dir.getCiudad().getProvincia().getPais().getNombre());
                 }
             }
+        }
+        return dto;
+    }
+
+    /**
+     * Variante sin coordenadas para los datos de donantes que se devuelven al frontend. Las
+     * coordenadas de una dirección particular no se publican en los listados; logística las
+     * recibe por evento, no por este DTO.
+     */
+    public static DireccionDTO fromSinCoordenadas(Direccion dir) {
+        DireccionDTO dto = from(dir);
+        if (dto != null) {
+            dto.setLatitud(null);
+            dto.setLongitud(null);
         }
         return dto;
     }

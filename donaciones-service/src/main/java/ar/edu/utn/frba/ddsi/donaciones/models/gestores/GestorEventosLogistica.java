@@ -190,7 +190,7 @@ public class GestorEventosLogistica {
     UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
       String justificacion = evento.getJustificacion() != null ? evento.getJustificacion() : "Falla reportada en destino";
-      donacion.actualizarEstado(Estado.EN_DEPOSITO, justificacion);
+      donacion.actualizarEstado(Estado.ENTREGA_FALLIDA, justificacion);
       repositorioDonaciones.guardar(donacion);
 
       PayloadEntregaDTO payload = parsearPayloadEntrega(evento);

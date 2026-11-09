@@ -3,6 +3,7 @@
 
     let map = null;
     const markersByEntityId = new Map();
+    const markersByEntityName = new Map();
 
     function initMap() {
         if (!window.DDSIMap || !window.DDSIMap.isAvailable()) return;
@@ -60,7 +61,12 @@
             marker.bindPopup(content);
             markersByEntityId.set(id, marker);
         }
+        markersByEntityName.set(normalize(name), marker);
         return marker;
+    }
+
+    function normalize(value) {
+        return String(value || "").trim().toLocaleLowerCase();
     }
 
     function escapeHtml(value) {
@@ -109,53 +115,21 @@
             }
         }
 
-        async function selectEntity(card) {
+        function selectEntity(card) {
             const name = card.dataset.name || "La entidad";
-            let latitud = Number(card.dataset.lat);
-            let longitud = Number(card.dataset.lon);
             if (!map) {
                 if (message) message.textContent = "El mapa no está disponible en este momento.";
                 return;
             }
 
             if (!card.dataset.lat || !card.dataset.lon) {
-                if (message) message.textContent = `Buscando la ubicación de ${name}...`;
-                card.disabled = true;
-                try {
-                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-                    const headers = {};
-                    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
-                    const urlPrefix = trigger.dataset.geocodeUrlPrefix;
-                    if (!urlPrefix) throw new Error("No se configuró la ruta de geocodificación.");
-
-                    const response = await fetch(
-                        `${urlPrefix}${encodeURIComponent(card.dataset.id)}/geocodificacion`,
-                        { method: "POST", headers }
-                    );
-                    if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
-
-                    const entidad = await response.json();
-                    latitud = Number(entidad.direccion?.latitud);
-                    longitud = Number(entidad.direccion?.longitud);
-                    if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
-                        if (message) message.textContent =
-                            `No se encontró una ubicación para ${name}. Revisá que la dirección esté completa.`;
-                        return;
-                    }
-
-                    card.dataset.lat = String(latitud);
-                    card.dataset.lon = String(longitud);
-                } catch (error) {
-                    console.error("No se pudo obtener la ubicación de la entidad.", error);
-                    if (message) message.textContent =
-                        `No se pudo consultar la ubicación de ${name}. Intentá nuevamente.`;
-                    return;
-                } finally {
-                    card.disabled = false;
-                }
+                if (message) message.textContent =
+                    `${name} todavía no tiene coordenadas. El sistema las actualizará automáticamente cuando pueda geocodificar su dirección.`;
+                return;
             }
 
+            const latitud = Number(card.dataset.lat);
+            const longitud = Number(card.dataset.lon);
             const marker = addEntityMarker(card, latitud, longitud);
             if (!marker) {
                 if (message) message.textContent = `La ubicación de ${name} no es válida.`;
@@ -180,50 +154,176 @@
         filterEntities();
     }
 
+    function initDonationHistory() {
+        const layout = document.querySelector(".map-main");
+        const sidebarToggle = document.getElementById("toggleDonorInfo");
+        const list = document.getElementById("historyList");
+        const search = document.getElementById("historySearch");
+        const status = document.getElementById("historyStatus");
+        const sort = document.getElementById("historySort");
+        const inProgressToggle = document.getElementById("toggleInProgress");
+        const notice = document.getElementById("historyFilterNotice");
+        const mapNotice = document.getElementById("mapSelectionNotice");
+        if (!layout || !sidebarToggle || !list || !search || !status || !sort || !inProgressToggle) return;
+
+        const cards = Array.from(list.querySelectorAll(".history-card"));
+        const noResults = document.getElementById("historyNoResults");
+        const activeStatuses = new Set(["ASIGNADO", "LISTA_PARA_ENTREGAR", "EN_TRASLADO"]);
+        let showInProgress = false;
+
+        function focusDeliveries() {
+            const markers = cards
+                .filter((card) => activeStatuses.has(card.dataset.status))
+                .map((card) => markersByEntityName.get(normalize(card.dataset.entity)))
+                .filter(Boolean);
+            const uniqueMarkers = Array.from(new Set(markers));
+
+            if (uniqueMarkers.length === 0) {
+                if (mapNotice) {
+                    mapNotice.textContent =
+                        "No hay destinos de entregas en proceso con ubicaciones disponibles para mostrar.";
+                }
+                return;
+            }
+
+            if (mapNotice) {
+                mapNotice.textContent = uniqueMarkers.length === 1
+                    ? "Destino de una entrega en proceso."
+                    : `Destinos de ${uniqueMarkers.length} entregas en proceso.`;
+            }
+            if (uniqueMarkers.length === 1) {
+                const marker = uniqueMarkers[0];
+                map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 14), { duration: 0.6 });
+                window.setTimeout(() => marker.openPopup(), 650);
+            } else {
+                window.DDSIMap.fit(map, window.L.featureGroup(uniqueMarkers), [56, 56]);
+            }
+        }
+
+        function updateHistory() {
+            const query = normalize(search.value);
+            const selectedStatus = status.value;
+
+            cards.forEach((card) => {
+                const searchableText = normalize([
+                    card.dataset.name,
+                    card.dataset.category,
+                    card.dataset.subcategory,
+                    card.dataset.entity
+                ].join(" "));
+                const matchesQuery = searchableText.includes(query);
+                const matchesStatus = !selectedStatus || card.dataset.status === selectedStatus;
+                const matchesInProgress = !showInProgress || activeStatuses.has(card.dataset.status);
+                card.hidden = !(matchesQuery && matchesStatus && matchesInProgress);
+            });
+
+            cards.sort((first, second) => {
+                if (sort.value === "name") {
+                    return first.dataset.name.localeCompare(second.dataset.name, "es", { sensitivity: "base" });
+                }
+                const dateOrder = (first.dataset.date || "").localeCompare(second.dataset.date || "");
+                return sort.value === "oldest" ? dateOrder : -dateOrder;
+            }).forEach((card) => list.appendChild(card));
+
+            if (noResults) {
+                noResults.hidden = cards.length === 0 || cards.some((card) => !card.hidden);
+            }
+            if (notice) {
+                notice.textContent = showInProgress
+                    ? "Mostrando donaciones asignadas, listas para entregar o en traslado."
+                    : "";
+            }
+        }
+
+        sidebarToggle.addEventListener("click", () => {
+            const collapsed = layout.classList.toggle("sidebar-collapsed");
+            sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+            sidebarToggle.setAttribute("aria-label", collapsed
+                ? "Mostrar historial de donaciones"
+                : "Ocultar historial de donaciones");
+            sidebarToggle.querySelector("i").className = collapsed
+                ? "bi bi-chevron-right"
+                : "bi bi-chevron-left";
+            if (map) {
+                window.setTimeout(() => map.invalidateSize(), 220);
+            }
+        });
+
+        search.addEventListener("input", updateHistory);
+        status.addEventListener("change", updateHistory);
+        sort.addEventListener("change", updateHistory);
+        inProgressToggle.addEventListener("click", () => {
+            showInProgress = !showInProgress;
+            inProgressToggle.setAttribute("aria-pressed", String(showInProgress));
+            inProgressToggle.querySelector("span").textContent = showInProgress
+                ? "Ver todo mi historial"
+                : "Ver entregas en proceso";
+            updateHistory();
+            if (showInProgress && map) focusDeliveries();
+            if (!showInProgress && mapNotice) mapNotice.textContent = "";
+        });
+
+        cards.forEach((card) => {
+            card.addEventListener("click", () => {
+                const entityName = normalize(card.dataset.entity);
+                const marker = markersByEntityName.get(entityName);
+                if (!mapNotice) return;
+                if (!marker) {
+                    mapNotice.textContent = `No hay ubicación disponible para ${card.dataset.entity || "este destino"}.`;
+                    return;
+                }
+                mapNotice.textContent = `Destino: ${card.dataset.entity}.`;
+                map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 14), { duration: 0.6 });
+                window.setTimeout(() => marker.openPopup(), 650);
+            });
+        });
+
+        updateHistory();
+    }
+
     function initMapDrawers() {
         const controls = [
-            {
-                button: document.getElementById("toggleDonorInfo"),
-                panel: document.getElementById("donorInfoPanel")
-            },
             {
                 button: document.getElementById("toggleMapOptions"),
                 panel: document.getElementById("mapOptionsPanel")
             }
         ].filter((item) => item.button && item.panel);
 
-        function close(item) {
+        function close() {
+            const item = controls[0];
+            if (!item) return;
             item.button.setAttribute("aria-expanded", "false");
             item.panel.setAttribute("aria-hidden", "true");
             item.panel.classList.remove("is-open");
-            item.button.querySelector("i").className = item.button === controls[0].button
-                ? "bi bi-chevron-right"
-                : "bi bi-chevron-left";
+            item.button.querySelector("i").className = "bi bi-chevron-left";
         }
 
-        controls.forEach((item, index) => {
+        controls.forEach((item) => {
             item.button.addEventListener("click", () => {
                 const isOpen = item.button.getAttribute("aria-expanded") === "true";
-                controls.forEach(close);
-                if (!isOpen) {
+                if (isOpen) {
+                    close();
+                } else {
                     item.button.setAttribute("aria-expanded", "true");
                     item.panel.setAttribute("aria-hidden", "false");
                     item.panel.classList.add("is-open");
-                    item.button.querySelector("i").className = index === 0
-                        ? "bi bi-chevron-left"
-                        : "bi bi-chevron-right";
+                    item.button.querySelector("i").className = "bi bi-chevron-right";
                 }
             });
         });
 
         document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") controls.forEach(close);
+            if (event.key === "Escape" && controls[0]
+                    && controls[0].button.getAttribute("aria-expanded") === "true") {
+                close();
+            }
         });
     }
 
     function init() {
         initMap();
         initEntityDialog();
+        initDonationHistory();
         initMapDrawers();
     }
 
