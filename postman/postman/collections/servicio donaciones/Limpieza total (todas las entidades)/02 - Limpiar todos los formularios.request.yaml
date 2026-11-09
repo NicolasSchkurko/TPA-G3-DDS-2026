@@ -1,0 +1,27 @@
+$kind: http-request
+description: "Formulario.donante_id es FK no nula sin cascade REMOVE (ver comentario en Formulario.java): mientras quede algun formulario, el donante correspondiente no se puede borrar (409). Se limpia aca, antes de 'Limpiar todos los donantes'."
+url: "{{baseUrl}}/api/donaciones/formularios"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('obtiene la lista de formularios', function () { pm.response.to.have.status(200); });
+
+      const baseUrl = pm.collectionVariables.get('baseUrl');
+      const formulariosRaw = pm.response.json();
+      const formularios = Array.isArray(formulariosRaw) ? formulariosRaw : (formulariosRaw && formulariosRaw.content ? formulariosRaw.content : []);
+
+      if (Array.isArray(formularios)) {
+          formularios.forEach(function (formulario) {
+              pm.sendRequest({
+                  url: baseUrl + '/api/donaciones/formularios/' + formulario.id,
+                  method: 'DELETE'
+              }, function (err, res) {
+                  console.log('formulario ' + formulario.id + ' -> ' + (res ? res.code : err));
+              });
+          });
+      }
+
+      pm.test('dispara el borrado de ' + formularios.length + ' formulario(s)', function () { pm.expect(true).to.be.true; });
+    language: text/javascript
+order: 2000

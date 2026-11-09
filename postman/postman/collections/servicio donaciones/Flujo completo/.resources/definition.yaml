@@ -1,0 +1,3 @@
+$kind: collection
+description: Correr en orden (de arriba hacia abajo), con el Collection Runner o request por request. Crea todo lo que necesita y lo borra al final, asi se puede repetir sin acumular datos de prueba.
+order: 1000

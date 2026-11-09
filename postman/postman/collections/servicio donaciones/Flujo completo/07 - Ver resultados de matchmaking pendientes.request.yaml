@@ -1,0 +1,36 @@
+$kind: http-request
+description: Busca dentro de la lista el resultado que corresponde a la donacion del paso 05, y dentro de sus propuestasOrdenadas la que apunta a la entidad del paso 03, para guardar su 'posicion' real (no asumir que siempre es 1).
+url: "{{baseUrl}}/api/donaciones/pendientes"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('devuelve los resultados de matchmaking pendientes', function () { pm.response.to.have.status(200); });
+
+      const resultadosRaw = pm.response.json();
+      const resultados = Array.isArray(resultadosRaw) ? resultadosRaw : (resultadosRaw && resultadosRaw.content ? resultadosRaw.content : []);
+      const donacionId = pm.collectionVariables.get('donacionId');
+      const entidadId = pm.collectionVariables.get('entidadId');
+
+      const resultado = Array.isArray(resultados)
+          ? resultados.find(function (r) { return r.donacion && r.donacion.id === donacionId; })
+          : undefined;
+
+      pm.test('la donacion creada tiene un resultado de matchmaking pendiente', function () {
+          pm.expect(resultado).to.not.be.undefined;
+      });
+
+      if (resultado) {
+          const propuestas = resultado.propuestasOrdenadas || [];
+          const propuesta = propuestas.find(function (p) { return p.entidad && p.entidad.id === entidadId; }) || propuestas[0];
+
+          pm.test('hay al menos una propuesta de asignacion', function () {
+              pm.expect(propuesta).to.not.be.undefined;
+          });
+
+          if (propuesta) {
+              pm.collectionVariables.set('posicionPropuesta', propuesta.posicion);
+          }
+      }
+    language: text/javascript
+order: 7000

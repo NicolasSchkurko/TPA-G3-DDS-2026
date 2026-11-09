@@ -1,0 +1,31 @@
+$kind: http-request
+description: "registrarEntidad() no busca por cuit, siempre crea una fila nueva: antes el cuit estaba fijo en '20-12345678-9', por lo que a simple vista cada corrida 'parecia' la misma entidad. Ahora es random para que cada corrida se vea claramente distinta. OJO: igual que en 'Crear donante', hay que mandar 'piso' siempre porque Direccion.piso es un int primitivo y el unboxing de un piso null tira NPE (500)."
+url: "{{baseUrl}}/api/entidades"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "razonSocial": "{{$randomCompanyName}}",
+      "rubro": "Comedor comunitario",
+      "tipoJuridico": "ONG",
+      "cuit": "30-{{$randomInt}}-{{$randomInt}}",
+      "telefono": "{{$randomPhoneNumber}}",
+      "direccion": {
+        "calleUno": "{{$randomStreetName}}",
+        "altura": 789,
+        "piso": 1,
+        "ciudad": "CABA",
+        "provincia": "Buenos Aires",
+        "pais": "Argentina"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea la entidad', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) { pm.collectionVariables.set('entidadId', pm.response.json().id); }
+    language: text/javascript
+order: 3000

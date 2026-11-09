@@ -26,6 +26,8 @@ public class DireccionDTO {
     private String ciudad;
     private String provincia;
     private String pais;
+    private Double latitud;
+    private Double longitud;
 
     public Direccion toDomain() {
         Pais p = new Pais(this.pais != null ? this.pais : "Argentina");
@@ -49,6 +51,8 @@ public class DireccionDTO {
         dto.setAltura(dir.getAltura());
         dto.setPiso(dir.getPiso());
         dto.setDepartamento(dir.getDepartamento());
+        dto.setLatitud(dir.getLatitud());
+        dto.setLongitud(dir.getLongitud());
         if (dir.getCiudad() != null) {
             dto.setCiudad(dir.getCiudad().getNombre());
             if (dir.getCiudad().getProvincia() != null) {

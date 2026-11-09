@@ -26,6 +26,8 @@ public class Direccion {
   private Integer altura;
   private int piso;
   private String departamento;
+  private Double latitud;
+  private Double longitud;
 
   @ManyToOne
   @JoinColumn(name = "ciudad_id", referencedColumnName = "id")
@@ -92,14 +94,6 @@ public class Direccion {
             departamento,
             ciudad.getDireccion()
     );
-  }
-
-  // Pendiente: requeriría integración con una API externa de geolocalización.
-  public String getLatitud() {
-    return "INSERTAR CONTENIDO A DEVOLVER";
-  }
-  public String getLongitud() {
-    return "INSERTAR CONTENIDO A DEVOLVER";
   }
 
   // No hay todavía una condición de negocio que lo decida.

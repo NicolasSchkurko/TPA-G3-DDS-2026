@@ -15,6 +15,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
+import ar.edu.utn.frba.ddsi.donaciones.services.GeocodificacionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ public class EntidadBeneficiariaServiceTest {
     private RepositorioCiudades repositorioCiudades;
     private RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
     private RepositorioNecesidades repositorioNecesidades;
+    private GeocodificacionService geocodificacionService;
     private EntidadBeneficiariaService service;
 
     @BeforeEach
@@ -43,13 +45,15 @@ public class EntidadBeneficiariaServiceTest {
         repositorioCiudades = mock(RepositorioCiudades.class);
         repositorioEntidadesBeneficiarias = mock(RepositorioEntidadesBeneficiarias.class);
         repositorioNecesidades = mock(RepositorioNecesidades.class);
+        geocodificacionService = mock(GeocodificacionService.class);
 
         service = new EntidadBeneficiariaService(
                 repositorioPersonas,
                 repositorioSubcategoriasDeBienes,
                 repositorioCiudades,
                 repositorioEntidadesBeneficiarias,
-                repositorioNecesidades
+                repositorioNecesidades,
+                geocodificacionService
         );
     }
 

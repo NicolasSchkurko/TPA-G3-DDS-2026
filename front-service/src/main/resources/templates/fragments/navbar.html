@@ -37,6 +37,9 @@
                     <li sec:authorize="hasRole('DONANTE')" class="nav-item">
                         <a class="nav-link" th:href="@{/donante}"><i class="bi bi-person-heart me-1"></i>Donante</a>
                     </li>
+                    <li sec:authorize="hasRole('DONANTE')" class="nav-item">
+                        <a class="nav-link" th:href="@{/donante/mapa}"><i class="bi bi-geo-alt me-1"></i>Mapa de entidades</a>
+                    </li>
                     <li sec:authorize="hasRole('CHOFER')" class="nav-item">
                         <a class="nav-link" th:href="@{/chofer}"><i class="bi bi-truck me-1"></i>Mis rutas</a>
                     </li>
