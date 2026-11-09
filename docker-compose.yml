@@ -233,6 +233,10 @@ services:
       LOGISTICAS_URL: http://logisticas-service:8086/api
       KEYCLOAK_CLIENT_ID: front-service
       KEYCLOAK_CLIENT_SECRET: front-service-dev-secret
+      KEYCLOAK_REALM: ddsi
+      KEYCLOAK_ADMIN_BASE_URI: http://keycloak:8080/admin
+      KEYCLOAK_REGISTRATION_CLIENT_ID: front-registration
+      KEYCLOAK_REGISTRATION_CLIENT_SECRET: front-registration-dev-secret
       # La app usa endpoints internos para backchannel y el issuer público en los tokens.
       KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ddsi
       KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/auth

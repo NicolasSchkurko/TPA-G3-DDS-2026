@@ -44,11 +44,32 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+    },
+    {
+      "clientId": "front-registration",
+      "name": "DDSI Registration Backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "front-registration-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "defaultClientScopes": ["kc-admin-api"]
         }
       ]
     }
   ],
   "users": [
+    {
+      "username": "service-account-front-registration",
+      "enabled": true,
+      "serviceAccountClientId": "front-registration",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-realm"]
+      }
+    },
     {
       "username": "admin",
       "enabled": true,
