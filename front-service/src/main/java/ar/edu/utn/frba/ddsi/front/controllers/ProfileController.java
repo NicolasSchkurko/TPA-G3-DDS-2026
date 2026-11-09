@@ -1,10 +1,13 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
 
 @Controller
 public class ProfileController {
@@ -21,8 +24,13 @@ public class ProfileController {
     }
 
     @GetMapping("/donante/mapa")
-    public String mapaDonante(Model model) {
+    public String mapaDonante(Authentication authentication, Model model) {
         model.addAttribute("entidades", donacionesClient.obtenerEntidades());
+        List<DonacionDTO> historial = donacionesClient.obtenerTodasLasDonaciones().stream()
+                .filter(donacion -> donacion.getDonanteName() != null
+                        && donacion.getDonanteName().equalsIgnoreCase(authentication.getName()))
+                .toList();
+        model.addAttribute("historialDonaciones", historial);
         return "donante/mapa";
     }
 
