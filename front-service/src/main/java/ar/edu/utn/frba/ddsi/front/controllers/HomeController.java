@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ public class HomeController {
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
     private final DonacionesClient donacionesClient;
+    private final KeycloakRegistrationClient keycloakRegistrationClient;
 
     @Value("${servicio.donaciones.url}")
     private String donacionesUrl;
@@ -35,8 +37,9 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
-    public HomeController(DonacionesClient donacionesClient) {
+    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
         this.donacionesClient = donacionesClient;
+        this.keycloakRegistrationClient = keycloakRegistrationClient;
     }
 
     @GetMapping("/login")
@@ -59,22 +62,54 @@ public class HomeController {
 
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model) {
+        String userId = null;
         try {
+            String role = rolParaTipoRegistro(form.get("tipoRegistro"));
+            String username = form.get("username");
+            String password = form.get("password");
+            if (username == null || username.trim().length() < 3 || password == null || password.length() < 8) {
+                throw new IllegalArgumentException("Ingresá un usuario de al menos 3 caracteres y una contraseña de al menos 8 caracteres.");
+            }
+            userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role);
             donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
-            model.addAttribute("msg", "Los datos del perfil se registraron correctamente. El acceso al portal se administra desde Keycloak.");
+            model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
         } catch (IllegalArgumentException e) {
+            eliminarCuentaSiCorresponde(userId);
             model.addAttribute("error", e.getMessage());
         } catch (RestClientResponseException e) {
-            log.warn("Donaciones rechazó el registro con estado {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            String error = e.getResponseBodyAsString();
-            model.addAttribute("error", error.isBlank()
-                    ? "El servicio de Donaciones no pudo completar el registro."
-                    : error);
+            eliminarCuentaSiCorresponde(userId);
+            log.warn("Un servicio rechazó el registro con estado {}", e.getStatusCode());
+            model.addAttribute("error", e.getStatusCode().value() == 409
+                    ? "Ya existe una cuenta o un perfil con esos datos. Revisalos e intentá nuevamente."
+                    : "No se pudo completar el registro. Revisá los datos e intentá nuevamente.");
         } catch (ResourceAccessException e) {
-            log.error("No se pudo conectar con el servicio de Donaciones para registrar el usuario: {}", e.getMessage());
-            model.addAttribute("error", "No se pudo conectar con el servicio de Donaciones. Intentá nuevamente más tarde.");
+            eliminarCuentaSiCorresponde(userId);
+            log.error("No se pudo conectar con Keycloak o Donaciones durante el registro: {}", e.getMessage());
+            model.addAttribute("error", "No se pudo conectar con los servicios de registro. Intentá nuevamente más tarde.");
+        } catch (Exception e) {
+            eliminarCuentaSiCorresponde(userId);
+            log.error("Error al crear cuenta en Keycloak o perfil en Donaciones", e);
+            model.addAttribute("error", "No se pudo crear la cuenta. Intentá nuevamente más tarde.");
         }
         return "register";
+    }
+
+    private static String rolParaTipoRegistro(String tipoRegistro) {
+        if (tipoRegistro == null) throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
+        return switch (tipoRegistro) {
+            case "DONANTE" -> "DONANTE";
+            case "ENTIDAD" -> "ENTIDAD";
+            default -> throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
+        };
+    }
+
+    private void eliminarCuentaSiCorresponde(String userId) {
+        if (userId == null) return;
+        try {
+            keycloakRegistrationClient.eliminarUsuario(userId);
+        } catch (Exception e) {
+            log.error("No se pudo revertir el alta de la cuenta de Keycloak {}", userId, e);
+        }
     }
 
     /**

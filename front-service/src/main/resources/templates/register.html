@@ -41,17 +41,27 @@
                 </div>
 
                 <form th:action="@{/register}" method="post" id="registerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label fw-semibold">Usuario</label>
+                            <input type="text" class="form-control" id="username" name="username" autocomplete="username" minlength="3" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label fw-semibold">Contraseña</label>
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" minlength="8" required>
+                            <div class="form-text">Debe tener al menos 8 caracteres.</div>
+                        </div>
+                    </div>
                     <div class="mb-4">
                         <label for="tipoRegistro" class="form-label fw-semibold">Quiero registrarme como</label>
                         <select class="form-select" id="tipoRegistro" name="tipoRegistro" required>
                             <option value="" disabled selected hidden>Seleccioná una opción</option>
                             <option value="DONANTE">Donante</option>
-                            <option value="ADMIN">Administrador</option>
                             <option value="ENTIDAD">Entidad beneficiaria</option>
                         </select>
                     </div>
 
-                    <p class="form-text mb-4">El acceso al portal se gestiona mediante Keycloak. Este formulario registra los datos del perfil en Donaciones.</p>
+                    <p class="form-text mb-4">Tu usuario, contraseña y permisos se guardan en forma segura en Keycloak.</p>
 
                     <section class="registration-fields d-none" data-registration="DONANTE">
                         <h5 class="fw-semibold mb-3">Datos del donante</h5>
