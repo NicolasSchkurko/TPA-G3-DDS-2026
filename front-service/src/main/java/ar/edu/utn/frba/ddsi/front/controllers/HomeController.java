@@ -70,7 +70,12 @@ public class HomeController {
             if (username == null || username.trim().length() < 3 || password == null || password.length() < 8) {
                 throw new IllegalArgumentException("Ingresá un usuario de al menos 3 caracteres y una contraseña de al menos 8 caracteres.");
             }
-            userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role);
+            String nombre = "HUMANA".equals(form.get("tipoPersona"))
+                    ? form.get("nombre") : form.get("razonSocial");
+            String apellido = "HUMANA".equals(form.get("tipoPersona")) ? form.get("apellido") : null;
+            String correo = "EMAIL".equals(form.get("tipoContacto")) ? form.get("valorContacto") : null;
+            userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role,
+                    nombre, apellido, correo);
             donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
             model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
         } catch (IllegalArgumentException e) {

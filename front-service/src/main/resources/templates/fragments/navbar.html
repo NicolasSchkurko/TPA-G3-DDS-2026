@@ -17,7 +17,8 @@
                 </span>
                 DonaTrack — Portal
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Abrir menú">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -34,12 +35,6 @@
                     <li sec:authorize="hasRole('ADMIN')" class="nav-item">
                         <a class="nav-link" th:href="@{/donaciones/donantes}"><i class="bi bi-people me-1"></i>Donantes</a>
                     </li>
-                    <li sec:authorize="hasRole('DONANTE')" class="nav-item">
-                        <a class="nav-link" th:href="@{/donante}"><i class="bi bi-person-heart me-1"></i>Donante</a>
-                    </li>
-                    <li sec:authorize="hasRole('DONANTE')" class="nav-item">
-                        <a class="nav-link" th:href="@{/donante/mapa}"><i class="bi bi-geo-alt me-1"></i>Mapa de entidades</a>
-                    </li>
                     <li sec:authorize="hasRole('CHOFER')" class="nav-item">
                         <a class="nav-link" th:href="@{/chofer}"><i class="bi bi-truck me-1"></i>Mis rutas</a>
                     </li>
@@ -55,6 +50,12 @@
                     </a>
                     <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="btn btn-brand btn-sm">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Ingresar
+                    </a>
+
+                    <a sec:authorize="hasRole('DONANTE')" th:href="@{/donante/perfil}"
+                       class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-person me-1" aria-hidden="true"></i>
+                        <span th:text="${nombreDonante ?: #authentication.name}">Mi perfil</span>
                     </a>
 
                     <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline m-0">

@@ -2,6 +2,9 @@
   "realm": "ddsi",
   "enabled": true,
   "displayName": "DDSI - Desarrollo local",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["es", "en"],
+  "defaultLocale": "es",
   "roles": {
     "realm": [
       { "name": "ADMIN", "description": "Administración de la plataforma" },
@@ -13,7 +16,7 @@
   "clients": [
     {
       "clientId": "front-service",
-      "name": "DDSI Web",
+      "name": "DonaTrack",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,

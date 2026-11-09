@@ -17,7 +17,7 @@ public class ProfileRedirectHandler implements AuthenticationSuccessHandler {
         String destination = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))
                 ? "/panel"
                 : authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DONANTE"))
-                    ? "/donante"
+                    ? "/donante/mapa"
                     : authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CHOFER"))
                         ? "/chofer"
                         : authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ENTIDAD"))

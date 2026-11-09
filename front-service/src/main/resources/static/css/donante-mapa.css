@@ -23,6 +23,13 @@ body {
     overflow: hidden;
 }
 
+.beneficiary-map-page > .app-navbar {
+    position: relative;
+    z-index: 1200;
+    flex: 0 0 auto;
+    margin-bottom: 0 !important;
+}
+
 .map-header {
     z-index: 500;
     display: flex;
