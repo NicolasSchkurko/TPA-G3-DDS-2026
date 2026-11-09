@@ -46,7 +46,7 @@ public class RepositorioDonaciones {
     }
 
     public List<Donacion> buscarEntregaPendiente() {
-        return jpaRepository.findByEstado(Estado.ASIGNADO);
+        return jpaRepository.findByEstado(Estado.LISTA_PARA_ENTREGAR);
     }
 
     public void guardarDonaciones(List<Donacion> donacionesFormulario) {

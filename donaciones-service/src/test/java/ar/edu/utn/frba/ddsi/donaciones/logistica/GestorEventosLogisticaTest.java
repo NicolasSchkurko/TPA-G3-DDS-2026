@@ -231,4 +231,28 @@ public class GestorEventosLogisticaTest {
 
     verifyNoInteractions(repositorioDonaciones);
   }
+
+  @Test
+  @DisplayName("Punto 42: ENTREGA_FALLIDA deja la donación en ENTREGA_FALLIDA (trazabilidad)")
+  void manejarEntregaFallida_dejaEstadoEntregaFallida() {
+    UUID idDonacion = UUID.randomUUID();
+    Donacion donacion = new Donacion();
+    donacion.setId(idDonacion);
+    donacion.actualizarEstado(Estado.EN_TRASLADO, "En viaje");
+
+    when(repositorioDonaciones.obtenerPorId(idDonacion)).thenReturn(Optional.of(donacion));
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(401L);
+    evento.setTipoEvento("ENTREGA_FALLIDA");
+    evento.setReferenciaId(idDonacion.toString());
+    evento.setJustificacion("No estaba el receptor");
+
+    gestor.procesarEvento(evento, Collections.emptyList());
+
+    ArgumentCaptor<Donacion> captor = ArgumentCaptor.forClass(Donacion.class);
+    verify(repositorioDonaciones, times(1)).guardar(captor.capture());
+    assertEquals(Estado.ENTREGA_FALLIDA, captor.getValue().getEstado(),
+        "la entrega fallida debe quedar como estado trazable, no volver directo a EN_DEPOSITO");
+  }
 }

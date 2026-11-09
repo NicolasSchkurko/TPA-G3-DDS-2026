@@ -118,7 +118,9 @@ public class EntregaService {
           dir.getDepartamento(),
           ciudad != null ? ciudad.getNombre() : null,
           provincia != null ? provincia.getNombre() : null,
-          pais != null ? pais.getNombre() : null
+          pais != null ? pais.getNombre() : null,
+          dir.getLatitud(),
+          dir.getLongitud()
       );
     }
     List<EventoLogisticaDTO> eventosDTO = item.get().getEventos() != null
@@ -286,6 +288,8 @@ public class EntregaService {
     direccion.setPiso(dto.getPiso());
     direccion.setDepartamento(dto.getDepartamento());
     direccion.setCiudad(ciudad);
+    direccion.setLatitud(dto.getLatitud());
+    direccion.setLongitud(dto.getLongitud());
 
     return repoDirecciones.save(direccion);
   }
@@ -458,12 +462,12 @@ public class EntregaService {
     return new Direccion(
         dto.getCalleUno(), dto.getCalleDos(), dto.getAltura(),
         dto.getPiso(), dto.getDepartamento(), dto.getCiudad(),
-        dto.getProvincia(), dto.getPais()
+        dto.getProvincia(), dto.getPais(), dto.getLatitud(), dto.getLongitud()
     );
   }
 
   private DireccionDTO convertirADireccionDTO(Entidad entidad){
-    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
+    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre(), entidad.getDireccionDestino().getLatitud(), entidad.getDireccionDestino().getLongitud());
   }
 
   private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){

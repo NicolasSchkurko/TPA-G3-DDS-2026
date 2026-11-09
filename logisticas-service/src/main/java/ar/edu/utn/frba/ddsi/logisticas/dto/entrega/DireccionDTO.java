@@ -17,6 +17,8 @@ public class DireccionDTO {
     private String ciudad;
     private String provincia;
     private String pais;
+    private Double latitud;
+    private Double longitud;
 
     public DireccionDTO(UUID idEntidad,
                         String calleUno,
@@ -27,6 +29,21 @@ public class DireccionDTO {
                         String ciudad,
                         String provincia,
                         String pais){
+        this(idEntidad, calleUno, calleDos, altura, piso, departamento,
+                ciudad, provincia, pais, null, null);
+    }
+
+    public DireccionDTO(UUID idEntidad,
+                        String calleUno,
+                        String calleDos,
+                        Integer altura,
+                        Integer piso,
+                        String departamento,
+                        String ciudad,
+                        String provincia,
+                        String pais,
+                        Double latitud,
+                        Double longitud){
         this.idEntidad = idEntidad;
         this.calleUno = calleUno;
         this.calleDos = calleDos;
@@ -36,5 +53,7 @@ public class DireccionDTO {
         this.ciudad = ciudad;
         this.provincia = provincia;
         this.pais = pais;
+        this.latitud = latitud;
+        this.longitud = longitud;
     }
 }

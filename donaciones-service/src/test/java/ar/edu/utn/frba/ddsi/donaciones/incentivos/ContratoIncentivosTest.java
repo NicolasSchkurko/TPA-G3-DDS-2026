@@ -10,6 +10,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -266,8 +267,8 @@ public class ContratoIncentivosTest {
     }
 
     @Test
-    @DisplayName("La fecha de realización del formulario queda como fechaEntrega de cada donación segmentada")
-    void fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada() {
+    @DisplayName("Punto 62: la fechaEntrega se deja null al segmentar y se setea recién al entregar")
+    void fechaEntrega_esNullAlSegmentar_ySeSeteaAlEntregar() {
         Donante donante = mock(Donante.class);
 
         SubcategoriaBien subcategoria = mock(SubcategoriaBien.class);
@@ -282,8 +283,11 @@ public class ContratoIncentivosTest {
 
         assertFalse(donaciones.isEmpty());
         for (Donacion donacion : donaciones) {
-            assertEquals(fechaRealizacion, donacion.getFechaEntrega(),
-                    "sin este valor, el reporte a incentivos sale con fecha nula (punto 10)");
+            assertEquals(null, donacion.getFechaEntrega(),
+                    "punto 62: la fecha de entrega no se conoce al crear la donación");
+            donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada en el test");
+            assertEquals(LocalDate.now(), donacion.getFechaEntrega(),
+                    "punto 62: al pasar a ENTREGADO se registra la fecha de entrega real");
         }
     }
 
