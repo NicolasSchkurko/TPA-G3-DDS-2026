@@ -1,13 +1,12 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
+import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.*;
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.UnidadDeMedida;
@@ -22,10 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -89,75 +89,28 @@ public class EntregaService {
   }
 
   // --- MÉTODOS CRUD BÁSICOS ---
-  public BienesDTO findAll() {
-      List<ItemEntrega> items = repoItemEntrega.findAll();
-      return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
+  public Page<BienDTO> findAll(Pageable pageable) {
+      return repoItemEntrega.findAll(pageable).map(item -> new BienDTO().aplicar(item));
   }
 
-  /**
-   * Un ítem de entrega por su id de donación. Devuelve el DTO y no la entidad: Jackson seguiría
-   * los getters de la entidad y entraría en ciclo al serializar.
-   */
   public BienDTO findById(UUID id) {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
     if (item.isEmpty()){
-      throw new IllegalArgumentException("Entrega no encontrada");
+      throw new RecursoNoEncontradoException("Entrega no encontrada");
     }
-    DireccionDTO direccionDTO = null;
-    if (item.get().getEntidadDestino() != null && item.get().getEntidadDestino().getDireccionDestino() != null) {
-      var dir = item.get().getEntidadDestino().getDireccionDestino();
-      var ciudad = dir.getCiudad();
-      var provincia = ciudad != null ? ciudad.getProvincia() : null;
-      var pais = provincia != null ? provincia.getPais() : null;
-      direccionDTO = new DireccionDTO(
-          item.get().getEntidadDestino().getIdEntidadBeneficiaria(),
-          dir.getCalle1(),
-          dir.getCalle2(),
-          dir.getAltura(),
-          dir.getPiso(),
-          dir.getDepartamento(),
-          ciudad != null ? ciudad.getNombre() : null,
-          provincia != null ? provincia.getNombre() : null,
-          pais != null ? pais.getNombre() : null
-      );
-    }
-    List<EventoLogisticaDTO> eventosDTO = item.get().getEventos() != null
-        ? item.get().getEventos().stream().map(evento -> new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson())).toList()
-        : List.of();
-
-    return new BienDTO(
-        item.get().getCantidad(),
-        item.get().getUnidad() != null ? item.get().getUnidad().toString() : null,
-        item.get().getEstado() != null ? item.get().getEstado().toString() : null,
-        item.get().getFechaCambioEstado(),
-        item.get().getFotoComprobante(),
-        direccionDTO,
-        eventosDTO
-    );
+    return new BienDTO().aplicar(item.get());
   }
 
-  /**
-   * Borra el item de entrega. El {@code findById} previo no evita nada: {@code deleteById} ya es
-   * no-op si no existe. Está para devolver el 404 que documenta el controller.
-   */
   public void delete(UUID id) {
     Optional<ItemEntrega> item = repoItemEntrega.findById(id);
     if(item.isEmpty()){
-      throw new IllegalArgumentException("Entrega no encontrada");
+      throw new RecursoNoEncontradoException("Entrega no encontrada");
     }
     repoItemEntrega.deleteById(id);
   }
 
   // --- MÉTODOS DE NEGOCIO ---
 
-  /**
- * Registra los items de entrega de una donacion que llega por el broker.
- *
- * <p>Es idempotente porque RabbitMQ es de entrega al menos una vez: la guarda de existencia por
- * {@code idDonacion} evita que una redelivery vuelva a pasar por {@code save()}, que como la
- * clave es natural sin {@code @GeneratedValue} siempre va por {@code merge()} y reescribiría la
- * fila con {@code estado = PENDIENTE}.
- */
   public void procesarPeticion(EntregaDTO request) {
     if (request == null) {
       throw new IllegalArgumentException("La petición no puede ser nula");
@@ -197,11 +150,6 @@ public class EntregaService {
             conteo[1]);
   }
 
-  /**
- * Resuelve la entidad beneficiaria en su propia transaccion, tolerando la carrera entre
- * instancias. Solo {@code Entidad} puede colisionar: es la única con clave natural, y su
- * {@code idEntidad} viene del mensaje.
- */
   private Entidad resolverEntidad(DireccionDTO dto) {
 
     if (dto == null) {
@@ -290,11 +238,6 @@ public class EntregaService {
     return repoDirecciones.save(direccion);
   }
 
-  /**
-   * Registra los items del mensaje en una sola transaccion.
-   *
-   * @return un arreglo con {registrados, repetidos}
-   */
   private int[] itemsEnUnaTransaccion(List<BienDTO> bienes, List<UUID> idsDonaciones,
                                       Entidad entidadDestino) {
     return enSuPropiaTransaccion(() -> {
@@ -327,12 +270,6 @@ public class EntregaService {
     });
   }
 
-  /**
- * Corre un bloque en una transaccion propia, independiente de la que tenga abierta el caller.
- *
- * <p>{@code REQUIRES_NEW} y no el {@code @Transactional} del metodo porque hace falta que el
- * rollback del catalogo <b>no</b> se lleve por delante los items.
- */
   private <T> T enSuPropiaTransaccion(java.util.function.Supplier<T> bloque) {
     org.springframework.transaction.support.TransactionTemplate plantilla =
             new org.springframework.transaction.support.TransactionTemplate(gestorTransacciones);
@@ -341,9 +278,6 @@ public class EntregaService {
     return plantilla.execute(estado -> bloque.get());
   }
 
-  /**
-   * Mapea el String recibido desde el DTO a la instancia estática correspondiente del dominio.
-   */
   private UnidadDeMedida mapearUnidadDeMedida(String unidadStr) {
     if (unidadStr == null) {
       throw new IllegalArgumentException("La unidad de medida no puede ser nula");
@@ -356,18 +290,10 @@ public class EntregaService {
       };
   }
 
-  /**
-   * Cambia el estado de un item. Es la unica via por la que el estado se mueve.
-   *
-   * <p>Transaccional porque publica el evento de trazabilidad y despues guarda el item: sin
-   * transaccion, un {@code save} fallado dejaba el evento afuera y donaciones-service se enteraba
-   * de una entrega que en la base no ocurrio. El {@code @Version} del {@code ItemEntrega} hace
-   * que dos operadores que confirmen la misma entrega al mismo tiempo no se pisen.
-   */
   @Transactional
   public void actualizarEstado(UUID idDonacion, ActualizacionEntregaDTO request) {
     ItemEntrega item = repoItemEntrega.findById(idDonacion)
-            .orElseThrow(() -> new IllegalArgumentException("Donación no encontrada con el ID proporcionado"));
+            .orElseThrow(() -> new RecursoNoEncontradoException("Donación no encontrada con el ID proporcionado"));
 
     if (request.getEstado() == null) {
       throw new IllegalArgumentException("El estado no puede ser nulo");
@@ -378,7 +304,7 @@ public class EntregaService {
         if(faltaTexto(request.getFotoUrl())) {
           throw new IllegalArgumentException("Se requiere una foto para confirmar la entrega exitosa.");
         }
-        Ruta rutaEntregada = repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaEntregada = repoRutas.findFirstByParadasItemsIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente a la donación " + idDonacion));
         repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, rutaEntregada, request.getFotoUrl()));
@@ -389,7 +315,7 @@ public class EntregaService {
         if(faltaTexto(request.getJustificacion())) {
           throw new IllegalArgumentException("Se requiere justificar el motivo por el cual falló la entrega.");
         }
-        Ruta rutaFallida = repoRutas.findByIdDonacion(item.getIdDonacion())
+        Ruta rutaFallida = repoRutas.findFirstByParadasItemsIdDonacion(item.getIdDonacion())
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró la ruta correspondiente a la donación " + idDonacion));
         repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaFallida(item, rutaFallida, request.getJustificacion()));
@@ -402,7 +328,7 @@ public class EntregaService {
                   + item.getEstado() + ").");
         }
         repoItemEntrega.save(gestorPublicacionEventos.publicarReingresoDeposito(item));
-        repoRutas.findByIdDonacion(item.getIdDonacion()).ifPresent(ruta -> sincronizarItemEnRuta(ruta, item));
+        repoRutas.findFirstByParadasItemsIdDonacion(item.getIdDonacion()).ifPresent(ruta -> sincronizarItemEnRuta(ruta, item));
         break;
 
       default:
@@ -435,45 +361,8 @@ public class EntregaService {
     return (elemento == null || elemento.trim().isEmpty());
   }
 
-  /**
-   * Ítems en estado NO_RECIBIDA, pendientes de revisión (reingreso a depósito
-   * o replanificación). El control de quién puede llamar a este endpoint
-   * es responsabilidad del front/capa de autorización, no de este servicio.
-   */
   public BienesDTO obtenerEntregasNoRecibidas() {
     List<ItemEntrega> items = repoItemEntrega.findByEstado(EstadoEntrega.NO_RECIBIDA);
-    return new BienesDTO(items.stream().map(ItemEntrega::getIdDonacion).toList() , convertirItemsADTO(items));
-  }
-
-  private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
-    return items.stream().map(this::convertirABienDTO).toList();
-  }
-
-  private BienDTO convertirABienDTO(ItemEntrega item){
-    return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
-  }
-
-  private Direccion convertirDireccionDTO(DireccionDTO dto) {
-    if (dto == null) return null;
-    return new Direccion(
-        dto.getCalleUno(), dto.getCalleDos(), dto.getAltura(),
-        dto.getPiso(), dto.getDepartamento(), dto.getCiudad(),
-        dto.getProvincia(), dto.getPais()
-    );
-  }
-
-  private DireccionDTO convertirADireccionDTO(Entidad entidad){
-    return new DireccionDTO(entidad.getIdEntidadBeneficiaria(), entidad.getDireccionDestino().getCalle1(), entidad.getDireccionDestino().getCalle2(), entidad.getDireccionDestino().getAltura(), entidad.getDireccionDestino().getPiso(), entidad.getDireccionDestino().getDepartamento(), entidad.getDireccionDestino().getCiudad().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(), entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre());
-  }
-
-  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
-    if(eventos != null){
-      return eventos.stream().map(this::convertirAEventoDTO).toList();
-    }
-    return new ArrayList<>();
-  }
-
-  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+    return new BienesDTO().aplicar(items);
   }
 }

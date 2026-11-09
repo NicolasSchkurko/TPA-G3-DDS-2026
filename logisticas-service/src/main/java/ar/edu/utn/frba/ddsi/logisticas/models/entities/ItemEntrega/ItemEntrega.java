@@ -24,20 +24,8 @@ public class ItemEntrega {
     @Field(name = "id_donacion")
     private UUID idDonacion;
 
-    /**
-     * Control de concurrencia optimista: el UPDATE lleva {@code WHERE version = ?} y si otra
-     * instancia escribió en el medio Hibernate tira {@code OptimisticLockingFailureException} en
-     * vez de pisar. Hace falta sobre todo porque {@code idDonacion} es clave natural, así que
-     * {@code save()} va siempre por {@code merge()}.
-     */
     @Version
     private Long version;
-
-    /**
-     * La parada a la que pertenece el ítem. Se ignora al serializar porque
-     * {@code item.parada} → {@code parada.ruta} → {@code ruta.paradas} vuelve al mismo objeto y
-     * Jackson reventaría con {@code StackOverflowError}.
-     */
 
     @Field(name = "cantidad")
     private Integer cantidad;
@@ -55,12 +43,6 @@ public class ItemEntrega {
 
     private Entidad entidadDestino;
 
-    /**
-     * Los eventos de trazabilidad de este ítem: el lado inverso de la relación.
-     *
-     * <p>El {@code cascade} es lo que hace que el ítem se pueda borrar: MySQL rechaza el
-     * {@code DELETE} de un ítem con eventos, así que el remove borra primero los hijos.
-     */
     private List<EventoLogistica> eventos;
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {

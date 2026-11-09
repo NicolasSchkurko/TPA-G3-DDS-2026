@@ -1,18 +1,9 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
-import ar.edu.utn.frba.ddsi.logisticas.dto.camion.CamionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.DireccionDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.ParadaDTO;
+import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutaDTO;
-import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutasDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Parada.Parada;
@@ -24,6 +15,8 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,13 +48,14 @@ public class RutaService {
   }
 
   // --- MÉTODOS CRUD ---
-  public RutasDTO findAll() {
-      return convertirARutasDTO(repoRutas.findAll());
+  public Page<RutaDTO> findAll(Pageable pageable) {
+      return repoRutas.findAll(pageable).map(ruta -> new RutaDTO().aplicar(ruta));
   }
 
   public RutaDTO findById(UUID idRuta) {
-    return convertirARutaDTO(repoRutas.findById(idRuta)
-            .orElseThrow(() -> new IllegalArgumentException("Ruta no encontrado")));
+    Ruta ruta = repoRutas.findById(idRuta)
+            .orElseThrow(() -> new RecursoNoEncontradoException("Ruta no encontrado"));
+    return new RutaDTO().aplicar(ruta);
   }
 
   // --- MÉTODOS DE NEGOCIO ---
@@ -89,7 +83,7 @@ public class RutaService {
 
   public Ruta obtenerRutaActualizada(UUID idRuta) {
     Ruta ruta = repoRutas.findById(idRuta)
-            .orElseThrow(() -> new NoSuchElementException(
+            .orElseThrow(() -> new RecursoNoEncontradoException(
                     "No existe la ruta con id " + idRuta
             ));
 
@@ -167,98 +161,10 @@ public class RutaService {
   /** La ruta del chofer filtrada por su estado actual. */
   private Ruta rutaDelChoferPorEstado(UUID idChofer, EstadoRuta estado) {
     Chofer chofer = repoChoferes.findById(idChofer)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    return repoRutas.findByChoferYEstado(chofer, estado)
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+    return repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(chofer.getIdChofer(), estado)
             .orElseThrow(() -> new IllegalStateException(
                     "No se encontró una ruta en estado " + estado + " para el chofer " + idChofer));
   }
 
-  private RutasDTO convertirARutasDTO(List<Ruta> rutas){
-    return new RutasDTO(rutas.stream().map(this::convertirARutaDTO).toList());
-  }
-
-  private RutaDTO convertirARutaDTO(Ruta ruta){
-    return new RutaDTO(
-            ruta.getIdRuta(),
-            convertirADTO(ruta.getCamionAsignado()),
-            ruta.getFechaProgramada(),
-            ruta.getEstado().toString(),
-            ruta.getUrlSeguimiento(),
-            convertirAParadasDTO(ruta.getParadas())
-    );
-  }
-
-  private CamionDTO convertirADTO(Camion camion){
-    if (camion == null) return null;
-    CamionDTO dto = new CamionDTO();
-    if (camion.getChofer() != null) {
-      dto.setIdChofer(camion.getChofer().getIdChofer());
-    }
-    dto.setPatente(camion.getPatente());
-    dto.setCapacidadVolumen(camion.getCapacidadVolumen());
-    dto.setAltura(camion.getAltura());
-    dto.setCapacidadCarga(camion.getCapacidadCarga());
-    dto.setDisponible(camion.getDisponible());
-    return dto;
-  }
-
-  private List<ParadaDTO> convertirAParadasDTO(List<Parada> paradas){
-    return paradas.stream().map(this::convertirAParadaDTO).toList();
-  }
-
-  private ParadaDTO convertirAParadaDTO(Parada parada){
-    return new ParadaDTO(convertirADireccionDTO(parada.getEntidadDestino()),
-            new BienesDTO(obtenerIdDonaciones(parada.getItems()), convertirItemsADTO(parada.getItems())));
-  }
-
-  /**
-   * Convierte la entidad a DTO, tolerando que no haya: una parada sin items devuelve {@code null}
-   * desde {@code getEntidadDestino()}, y sin este guardia la conversion tiraba NullPointerException.
-   */
-  private DireccionDTO convertirADireccionDTO(Entidad entidad){
-    if (entidad == null) return null;
-    Direccion direccion = entidad.getDireccionDestino();
-    return new DireccionDTO(
-            entidad.getIdEntidadBeneficiaria(),
-            direccion.getCalle1(),
-            direccion.getCalle2(),
-            direccion.getAltura(),
-            direccion.getPiso(),
-            direccion.getDepartamento(),
-            direccion.getCiudad().getNombre(),
-            direccion.getCiudad().getProvincia().getNombre(),
-            direccion.getCiudad().getProvincia().getPais().getNombre()
-    );
-  }
-
-  private List<BienDTO> convertirItemsADTO(List<ItemEntrega> items){
-    return items.stream().map(this::convertirABienDTO).toList();
-  }
-
-  private BienDTO convertirABienDTO(ItemEntrega item){
-    return new BienDTO(
-            item.getCantidad(),
-            item.getUnidad().getNombre(),
-            item.getEstado().toString(),
-            item.getFechaCambioEstado(),
-            item.getFotoComprobante(),
-            convertirADireccionDTO(item.getEntidadDestino()),
-            convertirEventosADTO(item.getEventos())
-    );
-  }
-
-  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
-    if(eventos != null){
-      return eventos.stream().map(this::convertirAEventoDTO).toList();
-    }
-    return new ArrayList<>();
-  }
-
-  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
-  }
-
-  private List<UUID> obtenerIdDonaciones(List<ItemEntrega> items){
-    return items.stream().map(ItemEntrega::getIdDonacion).toList();
-  }
 }

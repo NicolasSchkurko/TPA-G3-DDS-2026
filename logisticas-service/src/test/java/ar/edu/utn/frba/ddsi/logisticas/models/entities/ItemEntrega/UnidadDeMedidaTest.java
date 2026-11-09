@@ -49,7 +49,7 @@ class UnidadDeMedidaTest {
     @Mock private PlatformTransactionManager gestorTransacciones;
 
     @Test
-    @DisplayName("Punto 34: UnidadDeMedida no debe tener campo anotado con @Version para evitar bloqueos optimistas en instancias estáticas")
+    @DisplayName("UnidadDeMedida no debe tener campo anotado con @Version para evitar bloqueos optimistas en instancias estáticas")
     void noPoseeAnotacionVersion() {
         boolean tieneVersion = Arrays.stream(UnidadDeMedida.class.getDeclaredFields())
                 .anyMatch(f -> f.isAnnotationPresent(Version.class));
@@ -60,7 +60,7 @@ class UnidadDeMedidaTest {
     }
 
     @Test
-    @DisplayName("Punto 34: Las instancias estáticas deben tener identificadores deterministas estables entre reinicios")
+    @DisplayName("Las instancias estáticas deben tener identificadores deterministas estables entre reinicios")
     void instanciasEstaticasTienenIdentificadoresDeterministas() {
         UUID expectedUnidades = UUID.nameUUIDFromBytes("UNIDADES".getBytes(StandardCharsets.UTF_8));
         UUID expectedKg = UUID.nameUUIDFromBytes("KILOGRAMOS".getBytes(StandardCharsets.UTF_8));
@@ -80,7 +80,7 @@ class UnidadDeMedidaTest {
     }
 
     @Test
-    @DisplayName("Punto 34: EntregaService no debe persistir la unidad de medida estática en la base de datos por cada donación")
+    @DisplayName("EntregaService no debe persistir la unidad de medida estática en la base de datos por cada donación")
     void entregaServiceNoPersisteUnidadEstaticaEnCadaDonacion() {
         EntregaService service = new EntregaService(
                 repoItemEntrega, repoRutas, repoEntidades, repoDirecciones,

@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
+package ar.edu.utn.frba.ddsi.logisticas.scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
@@ -59,8 +59,7 @@ public class PlanificadorDeRutasScheduler {
 
     try {
       Set<UUID> idsItemsEnRutasActivas = (repoRutas != null)
-              ? repoRutas.findAll().stream()
-                  .filter(ruta -> ruta.getEstado() != null && ruta.getEstado() != EstadoRuta.FINALIZADA)
+              ? repoRutas.findByEstadoIn(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)).stream()
                   .flatMap(ruta -> ruta.obtenerTodosLosItems().stream())
                   .map(ItemEntrega::getIdDonacion)
                   .filter(Objects::nonNull)

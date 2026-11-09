@@ -21,14 +21,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Topología del broker de integración con donaciones-service.
- *
- * <p>Por defecto hay una sola cola compartida (si una instancia se cae, las demás siguen) y el
- * exchange es consistent-hash en los dos modos, así que donaciones-service no necesita saber
- * dónde está logística. Las colas de trabajo declaran dead letter exchange: lo no procesable
- * termina en {@link #DLQ_INTEGRACION}.
- */
 @Configuration
 @EnableRabbit
 public class RabbitMQConfig {
@@ -142,13 +134,6 @@ public class RabbitMQConfig {
         return new Declarables(declarables);
     }
 
-    /**
-     * Las N colas del modo particionado. Las declaran todas las instancias (declarar una cola
-     * durable idéntica es idempotente y garantiza que existan levantando una sola instancia).
-     *
-     * <p>La clave del binding va de 1 a N: el plugin de consistent-hash rechaza el cero con
-     * {@code PRECONDITION_FAILED}.
-     */
     private List<Declarable> colasParticionadas(CustomExchange integracion) {
         List<Declarable> declarables = new ArrayList<>();
         for (int i = 0; i < totalShards; i++) {
@@ -173,12 +158,6 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
-    /**
-     * Las colas que atiende <b>esta</b> instancia.
-     *
-     * <p>Es lo que resuelve el {@code @RabbitListener}. Sin particionado devuelve la cola unica,
-     * que es lo que hacen todas las instancias; con particionado devuelve las suyas.
-     */
     @Bean
     public String[] colasDeEstaInstancia() {
         if (!modoParticionado()) {
@@ -205,10 +184,6 @@ public class RabbitMQConfig {
         return PREFIJO_COLA_INTEGRACION + shard;
     }
 
-    /**
- * Serializa a JSON. No es opcional: sin este bean el listener recibe el body crudo y falla con
- * {@code MessageConversionException: Cannot convert from [[B] to [EntregaDTO]}.
- */
     @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();

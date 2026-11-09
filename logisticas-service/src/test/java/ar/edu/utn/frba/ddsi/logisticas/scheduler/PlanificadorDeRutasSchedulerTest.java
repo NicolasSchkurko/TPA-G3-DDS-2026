@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.Scheduler;
+package ar.edu.utn.frba.ddsi.logisticas.scheduler;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.EstadoEntrega;
@@ -62,7 +62,7 @@ class PlanificadorDeRutasSchedulerTest {
 
         when(repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE)).thenReturn(List.of(itemEnRuta, itemNuevo));
         when(repoCamiones.findAll()).thenReturn(List.of(camion));
-        when(repoRutas.findAll()).thenReturn(List.of(rutaActiva));
+        when(repoRutas.findByEstadoIn(eq(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)))).thenReturn(List.of(rutaActiva));
 
         scheduler.iniciarPlanificacionAutomatica();
 
@@ -93,7 +93,7 @@ class PlanificadorDeRutasSchedulerTest {
         rutaActiva.getParadas().add(parada);
 
         when(repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE)).thenReturn(List.of(item));
-        when(repoRutas.findAll()).thenReturn(List.of(rutaActiva));
+        when(repoRutas.findByEstadoIn(eq(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)))).thenReturn(List.of(rutaActiva));
 
         scheduler.iniciarPlanificacionAutomatica();
 

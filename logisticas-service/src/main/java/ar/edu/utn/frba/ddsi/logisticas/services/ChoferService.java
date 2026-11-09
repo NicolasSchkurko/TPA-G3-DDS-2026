@@ -1,16 +1,17 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
+import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class ChoferService {
@@ -23,25 +24,21 @@ public class ChoferService {
   }
 
   // --- MÉTODOS CRUD ---
-  public ChoferesDTO findAll() {
-    List<Chofer> choferes = repoChoferes.findAll();
-    return new ChoferesDTO(choferes.stream()
-            .filter(Chofer::isActivo)
-            .map(this::convertirAChoferDTO)
-            .collect(Collectors.toList()));
+  public Page<ChoferDTO> findAll(Pageable pageable) {
+    return repoChoferes.findActivos(pageable).map(chofer -> new ChoferDTO().aplicar(chofer));
   }
 
   public ChoferDTO findById(UUID id) {
     Chofer chofer = repoChoferes.findById(id)
             .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    return convertirAChoferDTO(chofer);
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+    return new ChoferDTO().aplicar(chofer);
   }
 
   public ChoferDTO create(ChoferDTO dto) {
-    Chofer nuevoChofer = convertirChoferDTO(dto);
+    Chofer nuevoChofer = dto.toDomain();
     repoChoferes.save(nuevoChofer);
-    return convertirAChoferDTO(nuevoChofer);
+    return new ChoferDTO().aplicar(nuevoChofer);
   }
 
   public ChoferesDTO createMultiple(ChoferesDTO dtos) {
@@ -52,7 +49,7 @@ public class ChoferService {
   public ChoferDTO update(UUID id, ChoferDTO dto) {
     Chofer choferExistente = repoChoferes.findById(id)
             .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
 
     if (dto.getNombre() != null) {
       choferExistente.setNombre(dto.getNombre());
@@ -62,19 +59,15 @@ public class ChoferService {
     }
 
     repoChoferes.save(choferExistente);
-    return convertirAChoferDTO(choferExistente);
+    return new ChoferDTO().aplicar(choferExistente);
   }
 
-  /**
-   * Da de baja lógica al chofer y desvincula el camión si tenía uno asignado.
-   * Preserva el registro histórico para trazabilidad de rutas en MongoDB.
-   */
   public void delete(UUID id) {
     Chofer chofer = repoChoferes.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
 
     if (!chofer.isActivo()) {
-      throw new IllegalArgumentException("Chofer no encontrado");
+      throw new RecursoNoEncontradoException("Chofer no encontrado");
     }
 
     chofer.darDeBaja();
@@ -95,7 +88,7 @@ public class ChoferService {
 
     Chofer chofer = repoChoferes.findById(id)
             .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
     if (disponible) {
       chofer.disponible();
     } else {
@@ -107,19 +100,4 @@ public class ChoferService {
 
   // --- MAPPERS ---
 
-  private ChoferDTO convertirAChoferDTO(Chofer chofer){
-    if (chofer == null) return null;
-    ChoferDTO dto = new ChoferDTO();
-    dto.setIdChofer(chofer.getIdChofer());
-    dto.setNombre(chofer.getNombre());
-    dto.setDisponible(chofer.isDisponible());
-    dto.setActivo(chofer.isActivo());
-    return dto;
-  }
-
-  private Chofer convertirChoferDTO(ChoferDTO dto){
-    if (dto == null) return null;
-    boolean esDisponible = dto.getDisponible() == null || dto.getDisponible();
-    return new Chofer(UUID.randomUUID(), dto.getNombre(), esDisponible);
-  }
 }

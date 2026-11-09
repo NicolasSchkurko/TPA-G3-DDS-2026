@@ -490,7 +490,7 @@
             "exec": [
               "pm.test('hay rutas planificadas', function () {",
               "    pm.response.to.have.status(200);",
-              "    var rutas = pm.response.json().rutas;",
+              "    var rutas = pm.response.json().content;",
               "    pm.expect(rutas).to.be.an('array').that.is.not.empty;",
               "});"
             ]
@@ -538,7 +538,7 @@
           "host": ["{{logisticasUrl}}"],
           "path": ["entregas", "{{idDonacion}}", "estado"]
         },
-        "description": "Este es el cambio de estado que dispara GestorPublicacionEventos: publica el evento ENTREGA_CONFIRMADA a logistica.eventos.exchange, del que donating es consumidor.\n\nSi la entrega no esta asignada a una ruta, el endpoint devuelve 500 con IllegalStateException ('No se encontro la ruta correspondiente'). Por eso van los pasos 10 a 13 antes de este."
+        "description": "Este es el cambio de estado que dispara GestorPublicacionEventos: publica el evento ENTREGA_CONFIRMADA a logistica.eventos.exchange, del que donating es consumidor.\n\nSi la entrega no esta asignada a una ruta, el endpoint devuelve 409 Conflict (IllegalStateException: 'No se encontro la ruta correspondiente'); si la donacion no existe, 404. Por eso van los pasos 10 a 13 antes de este."
       },
       "event": [
         {

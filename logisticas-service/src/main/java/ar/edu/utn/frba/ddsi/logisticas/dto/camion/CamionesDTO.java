@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.dto.camion;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +10,9 @@ import lombok.Setter;
 @Setter
 
 public class CamionesDTO {
-    private List<CamionDTO> camiones;
+    @NotNull(message = "es obligatorio")
+    @Valid
+    private List<@NotNull(message = "es obligatorio") CamionDTO> camiones;
 
     public CamionesDTO() {
     }
