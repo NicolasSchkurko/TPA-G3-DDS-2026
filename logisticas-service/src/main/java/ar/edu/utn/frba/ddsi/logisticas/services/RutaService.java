@@ -73,6 +73,10 @@ public class RutaService {
             idChofer,
             EstadoRuta.PROGRAMADA
     );
+    // Las rutas guardan una copia embebida de sus ítems. El callback del planificador puede
+    // haber incrementado la versión de esos documentos al persistirlos, así que recargamos
+    // los ítems desde su colección antes de modificarlos para evitar un optimistic lock stale.
+    rutaActual = obtenerRutaActualizada(rutaActual.getIdRuta());
 
     Ruta rutaConEvento = gestorPublicacionEventos.publicarInicioRuta(rutaActual);
     repoRutas.save(rutaConEvento);

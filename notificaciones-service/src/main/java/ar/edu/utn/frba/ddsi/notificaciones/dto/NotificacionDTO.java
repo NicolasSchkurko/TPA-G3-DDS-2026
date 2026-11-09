@@ -6,6 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class NotificacionDTO {
+    private String id;
     private String asunto;
     private String cuerpo;
     private String tipoMedioDeContacto;

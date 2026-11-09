@@ -128,7 +128,7 @@ public class PerfilController {
             @Parameter(description = "UUID del usuario asociado al perfil")
             @PathVariable UUID idUsuario,
             @ParameterObject
-            @PageableDefault(page = 0, size = 10, sort = "fechaObtencion", direction = Sort.Direction.DESC)
+            @PageableDefault(page = 0, size = 10)
             Pageable pageable) {
         return ResponseEntity.ok(perfilService.obtenerInsigniasPorIdUsuario(idUsuario, pageable));
     }

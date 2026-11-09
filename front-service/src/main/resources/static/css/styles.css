@@ -40,6 +40,11 @@ body {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
 }
 
+.static-card {
+    background-color: #fff;
+    border-radius: 0.75rem;
+}
+
 .table th {
     font-weight: 600;
     text-transform: uppercase;
