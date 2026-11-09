@@ -57,11 +57,6 @@ public class HomeController {
         return "register";
     }
 
-    @GetMapping("/terminos")
-    public String terminos() {
-        return "terminos";
-    }
-
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model) {
         try {

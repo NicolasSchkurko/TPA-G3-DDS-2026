@@ -32,7 +32,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/", "/landing", "/login", "/register", "/terminos", "/sin-acceso",
+                .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
                         "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
