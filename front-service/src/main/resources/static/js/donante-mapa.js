@@ -109,53 +109,21 @@
             }
         }
 
-        async function selectEntity(card) {
+        function selectEntity(card) {
             const name = card.dataset.name || "La entidad";
-            let latitud = Number(card.dataset.lat);
-            let longitud = Number(card.dataset.lon);
             if (!map) {
                 if (message) message.textContent = "El mapa no está disponible en este momento.";
                 return;
             }
 
             if (!card.dataset.lat || !card.dataset.lon) {
-                if (message) message.textContent = `Buscando la ubicación de ${name}...`;
-                card.disabled = true;
-                try {
-                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-                    const headers = {};
-                    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
-                    const urlPrefix = trigger.dataset.geocodeUrlPrefix;
-                    if (!urlPrefix) throw new Error("No se configuró la ruta de geocodificación.");
-
-                    const response = await fetch(
-                        `${urlPrefix}${encodeURIComponent(card.dataset.id)}/geocodificacion`,
-                        { method: "POST", headers }
-                    );
-                    if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
-
-                    const entidad = await response.json();
-                    latitud = Number(entidad.direccion?.latitud);
-                    longitud = Number(entidad.direccion?.longitud);
-                    if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
-                        if (message) message.textContent =
-                            `No se encontró una ubicación para ${name}. Revisá que la dirección esté completa.`;
-                        return;
-                    }
-
-                    card.dataset.lat = String(latitud);
-                    card.dataset.lon = String(longitud);
-                } catch (error) {
-                    console.error("No se pudo obtener la ubicación de la entidad.", error);
-                    if (message) message.textContent =
-                        `No se pudo consultar la ubicación de ${name}. Intentá nuevamente.`;
-                    return;
-                } finally {
-                    card.disabled = false;
-                }
+                if (message) message.textContent =
+                    `${name} todavía no tiene coordenadas. El sistema las actualizará automáticamente cuando pueda geocodificar su dirección.`;
+                return;
             }
 
+            const latitud = Number(card.dataset.lat);
+            const longitud = Number(card.dataset.lon);
             const marker = addEntityMarker(card, latitud, longitud);
             if (!marker) {
                 if (message) message.textContent = `La ubicación de ${name} no es válida.`;

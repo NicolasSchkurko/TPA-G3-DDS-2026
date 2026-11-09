@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entidades beneficiarias · DDSI</title>
-    <meta name="_csrf" th:content="${_csrf.token}">
-    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
     <link rel="stylesheet" th:href="@{/css/donante-mapa.css}">
@@ -42,8 +40,7 @@
                 <p>Más funcionalidades estarán disponibles próximamente.</p>
             </aside>
             <button class="entities-button" id="openEntities" type="button"
-                    aria-haspopup="dialog" aria-controls="entitiesDialog"
-                    th:attr="data-geocode-url-prefix=@{/donante/entidades/}">
+                    aria-haspopup="dialog" aria-controls="entitiesDialog">
                 Entidades beneficiarias
             </button>
             <p class="map-notice">Seleccioná una entidad para ver su ubicación y sus datos.

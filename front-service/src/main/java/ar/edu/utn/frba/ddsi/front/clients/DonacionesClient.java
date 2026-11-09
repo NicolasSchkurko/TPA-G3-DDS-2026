@@ -197,10 +197,4 @@ public class DonacionesClient {
         }
     }
 
-    public EntidadBeneficiariaDTO geocodificarEntidad(UUID id) {
-        return restClient.post()
-                .uri(baseUrl + "/api/entidades/{id}/geocodificacion", id)
-                .retrieve()
-                .body(EntidadBeneficiariaDTO.class);
-    }
 }

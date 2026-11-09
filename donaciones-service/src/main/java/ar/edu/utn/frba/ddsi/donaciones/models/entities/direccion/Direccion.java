@@ -28,8 +28,6 @@ public class Direccion {
   private Integer altura;
   private int piso;
   private String departamento;
-  private Double latitud;
-  private Double longitud;
 
   @ManyToOne
   @JoinColumn(name = "ciudad_id", referencedColumnName = "id")

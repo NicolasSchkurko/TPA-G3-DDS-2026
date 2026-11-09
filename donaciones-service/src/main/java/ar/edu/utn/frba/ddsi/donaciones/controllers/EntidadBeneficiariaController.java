@@ -50,12 +50,6 @@ public class EntidadBeneficiariaController {
         return ResponseEntity.ok(service.obtenerEntidadPorId(id));
     }
 
-    @Operation(summary = "Geocodificar dirección de una entidad")
-    @PostMapping("/{id}/geocodificacion")
-    public ResponseEntity<EntidadBeneficiariaDTO> geocodificarEntidad(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.geocodificarEntidad(id));
-    }
-
     @Operation(summary = "Crear una Entidad", description = "permite registrar una nueva entidad")
     @PostMapping
     public ResponseEntity<?> registrarEntidad(@RequestBody EntidadBeneficiariaDTO dto) {
