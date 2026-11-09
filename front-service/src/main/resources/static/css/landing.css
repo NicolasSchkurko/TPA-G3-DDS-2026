@@ -97,7 +97,7 @@ body.landing a {
     background: var(--white);
     border-bottom: 1px solid var(--line);
     position: relative;
-    z-index: 30;
+    z-index: 1200;
 }
 
 .brand {
@@ -143,6 +143,31 @@ body.landing a {
     margin: 0 auto;
 }
 
+.nav-menu {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-menu-toggle {
+    display: none;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--ink-2);
+    cursor: pointer;
+}
+
+.nav-menu-toggle svg {
+    width: 22px;
+    height: 22px;
+}
+
 .nav-links a {
     padding: 5px 0;
     border-bottom: 1px solid transparent;
@@ -154,6 +179,13 @@ body.landing a {
 .nav-links a:hover {
     color: var(--ink);
     border-bottom-color: var(--ink);
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .nav-register,
@@ -581,7 +613,7 @@ body.landing a {
 .entity-search-modal {
     position: fixed;
     inset: 0;
-    z-index: 110;
+    z-index: 1400;
     display: grid;
     place-items: start center;
     padding: min(12vh, 100px) 16px 24px;
@@ -715,7 +747,7 @@ body.entity-search-open {
 .info-modal {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 1300;
     display: grid;
     place-items: center;
     padding: 24px;
@@ -1004,6 +1036,67 @@ body.entity-search-open {
     .sidebar {
         padding: 28px 22px 20px;
     }
+
+    .site-nav {
+        gap: 12px;
+        padding: 0 20px;
+    }
+
+    .nav-menu-toggle {
+        display: grid;
+    }
+
+    .nav-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 1px);
+        right: 12px;
+        z-index: 1;
+        width: min(320px, calc(100vw - 24px));
+        padding: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--white);
+        box-shadow: 0 12px 32px rgba(15, 18, 16, 0.18);
+    }
+
+    .nav-menu.is-open {
+        display: flex;
+    }
+
+    .nav-links {
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        margin: 0;
+    }
+
+    .nav-links a {
+        padding: 10px 12px;
+        border-bottom: 0;
+        border-radius: var(--radius);
+    }
+
+    .nav-links a:hover,
+    .nav-links a:focus-visible {
+        background: var(--accent-soft);
+    }
+
+    .nav-actions {
+        width: 100%;
+        padding-top: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        border-top: 1px solid var(--line);
+    }
+
+    .nav-actions > a {
+        width: 100%;
+    }
 }
 
 @media (max-width: 860px) {
@@ -1020,10 +1113,6 @@ body.entity-search-open {
         height: 58px;
         padding: 0 18px;
         gap: 16px;
-    }
-
-    .nav-links {
-        display: none;
     }
 
     .brand-sub {
@@ -1074,6 +1163,22 @@ body.entity-search-open {
 }
 
 @media (max-width: 480px) {
+    .site-nav {
+        gap: 10px;
+        padding: 0 12px;
+    }
+
+    .nav-actions {
+        gap: 6px;
+    }
+
+    .nav-register,
+    .nav-login,
+    .nav-profile {
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
     .sidebar-actions .btn {
         flex: 1;
     }

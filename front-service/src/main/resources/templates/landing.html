@@ -61,28 +61,40 @@
             <span class="brand-sub">Donaciones</span>
         </a>
 
+        <button class="nav-menu-toggle" id="navMenuToggle" type="button"
+                aria-controls="navMenu" aria-expanded="false" aria-label="Abrir menú">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+
+        <div class="nav-menu" id="navMenu">
         <nav class="nav-links" aria-label="Principal">
             <a href="#" data-info="quienes">Quiénes somos</a>
             <a href="#" data-info="hacemos">Qué hacemos</a>
             <a href="#" data-info="contacto">Contactanos</a>
         </nav>
 
-        <a sec:authorize="!isAuthenticated()" class="nav-register" href="/register" th:href="@{/register}">Registrarse</a>
-        <a sec:authorize="!isAuthenticated()" class="nav-login" href="/login" th:href="@{/login}">
-            Ingresar <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-        </a>
-        <a sec:authorize="hasRole('ADMIN')" class="nav-profile" th:href="@{/panel}">
-            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Administrador
-        </a>
-        <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante}">
-            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Donante
-        </a>
-        <a sec:authorize="hasRole('CHOFER')" class="nav-profile" th:href="@{/chofer}">
-            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Chofer
-        </a>
-        <a sec:authorize="hasRole('ENTIDAD')" class="nav-profile" th:href="@{/entidad}">
-            <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Entidad
-        </a>
+        <div class="nav-actions">
+            <a sec:authorize="!isAuthenticated()" class="nav-register" href="/register" th:href="@{/register}">Registrarse</a>
+            <a sec:authorize="!isAuthenticated()" class="nav-login" href="/login" th:href="@{/login}">
+                Ingresar <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </a>
+            <a sec:authorize="hasRole('ADMIN')" class="nav-profile" th:href="@{/panel}">
+                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Administrador
+            </a>
+            <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante}">
+                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Donante
+            </a>
+            <a sec:authorize="hasRole('CHOFER')" class="nav-profile" th:href="@{/chofer}">
+                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Chofer
+            </a>
+            <a sec:authorize="hasRole('ENTIDAD')" class="nav-profile" th:href="@{/entidad}">
+                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Entidad
+            </a>
+        </div>
+        </div>
     </header>
 
     <main class="landing-shell">
@@ -198,6 +210,7 @@
 
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
     <script src="/js/landing.js" th:src="@{/js/landing.js}"></script>
+    <script src="/js/nav-menu.js" th:src="@{/js/nav-menu.js}"></script>
     <script th:src="@{/js/entity-search.js}"></script>
 </body>
 </html>
