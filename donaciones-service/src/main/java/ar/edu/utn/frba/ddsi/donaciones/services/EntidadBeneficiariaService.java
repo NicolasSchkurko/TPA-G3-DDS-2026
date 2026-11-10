@@ -13,11 +13,13 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioSubcategoriasDeBienes;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,13 +36,22 @@ public class EntidadBeneficiariaService {
     private final RepositorioCiudades repositorioCiudades;
     private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
     private final RepositorioNecesidades repositorioNecesidades;
+    private final GestorGeoref gestorGeoref;
 
+    /** Constructor de conveniencia para tests que no ejercitan geocoding. */
     public EntidadBeneficiariaService(RepositorioPersonas repositorioPersonas, RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes, RepositorioCiudades repositorioCiudades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades) {
+        this(repositorioPersonas, repositorioSubcategoriasDeBienes, repositorioCiudades,
+                repositorioEntidadesBeneficiarias, repositorioNecesidades, new GestorGeoref(null, false));
+    }
+
+    @Autowired
+    public EntidadBeneficiariaService(RepositorioPersonas repositorioPersonas, RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes, RepositorioCiudades repositorioCiudades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades, GestorGeoref gestorGeoref) {
         this.repositorioPersonas = repositorioPersonas;
         this.repositorioSubcategoriasDeBienes = repositorioSubcategoriasDeBienes;
         this.repositorioCiudades = repositorioCiudades;
         this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
         this.repositorioNecesidades = repositorioNecesidades;
+        this.gestorGeoref = gestorGeoref;
     }
 
     public List<EntidadBeneficiariaDTO> obtenerTodas() {
@@ -64,6 +75,7 @@ public class EntidadBeneficiariaService {
     public EntidadBeneficiariaDTO registrarEntidad(EntidadBeneficiariaDTO dto) {
         Ciudad ciudad = resolverCiudad(dto.getDireccion());
         EntidadBeneficiaria entidad = dto.toDomain(ciudad);
+        gestorGeoref.geocodificarAlta(entidad.getDireccion());
         if (entidad.getPersonaJuridica() != null) repositorioPersonas.registrarPersona(entidad.getPersonaJuridica());
         registrarEntidad(entidad);
         return EntidadBeneficiariaDTO.from(entidad);
@@ -71,10 +83,12 @@ public class EntidadBeneficiariaService {
 
     @Transactional(rollbackFor = Exception.class)
     public EntidadBeneficiariaDTO actualizarEntidad(UUID id, EntidadBeneficiariaDTO dto) {
-        Ciudad ciudad = resolverCiudad(dto.getDireccion());
-        EntidadBeneficiaria entidadActualizada = dto.toDomain(ciudad);
         EntidadBeneficiaria existente = repositorioEntidadesBeneficiarias.buscarPorId(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró la entidad con ID: " + id));
+
+        Ciudad ciudad = resolverCiudad(dto.getDireccion());
+        EntidadBeneficiaria entidadActualizada = dto.toDomain(ciudad);
+        gestorGeoref.geocodificarActualizacion(entidadActualizada.getDireccion(), existente.getDireccion());
 
         if (existente.getPersonaJuridica() != null && entidadActualizada.getPersonaJuridica() != null) {
             repositorioPersonas.modificarPersona(existente.getPersonaJuridica().getId(), entidadActualizada.getPersonaJuridica());

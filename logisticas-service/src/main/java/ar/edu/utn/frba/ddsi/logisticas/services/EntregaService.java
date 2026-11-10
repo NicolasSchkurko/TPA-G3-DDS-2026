@@ -234,6 +234,8 @@ public class EntregaService {
     direccion.setPiso(dto.getPiso());
     direccion.setDepartamento(dto.getDepartamento());
     direccion.setCiudad(ciudad);
+    direccion.setLatitud(dto.getLatitud());
+    direccion.setLongitud(dto.getLongitud());
 
     return repoDirecciones.save(direccion);
   }

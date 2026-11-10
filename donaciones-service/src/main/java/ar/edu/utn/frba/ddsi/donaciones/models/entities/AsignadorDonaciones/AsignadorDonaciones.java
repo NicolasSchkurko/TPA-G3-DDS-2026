@@ -46,8 +46,7 @@ public class AsignadorDonaciones {
         if (todasLasDonaciones == null || todasLasEntidades == null) {
             return;
         }
-        // Aislado por donación: si una falla (p.ej. un resultado de matchmaking duplicado), el
-        // resto del lote tiene que seguir procesándose en vez de abortar el batch entero.
+
         for (Donacion donacion : todasLasDonaciones) {
             try {
                 procesarMatchmaking(donacion, todasLasEntidades);
@@ -64,6 +63,11 @@ public class AsignadorDonaciones {
      * 3. Si NO hay intersección, devuelve las propuestas originales intactas.
      */
     public void procesarMatchmaking(Donacion donacion, List<EntidadBeneficiaria> todasLasEntidades) {
+        if (donacion != null && donacion.getId() != null) {
+            repositorioDeResultadosMatchmaking.findByDonacionId(donacion.getId())
+                    .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
+        }
+
         validarAlgoritmosConfigurados();
 
         // 1. Ejecutar todos los algoritmos devolviendo una única lista plana
@@ -81,6 +85,9 @@ public class AsignadorDonaciones {
         } else {
             // Si no hay intersección, ordenar por posición original y devolverlas nativas
             todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
+            for (int i = 0; i < todasLasPropuestas.size(); i++) {
+                todasLasPropuestas.get(i).setPosicion(i + 1);
+            }
             resultadoFinal = todasLasPropuestas;
         }
 

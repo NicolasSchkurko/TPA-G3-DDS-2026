@@ -68,4 +68,56 @@ public class DireccionTest {
     String esperado = "Av. Medrano S/N y Lavalle, Piso 2, Depto A, " + ciudad.getDireccion();
     assertEquals(esperado, resultado);
   }
+
+  @Test
+  @DisplayName("Punto 75: las coordenadas arrancan nulas y se pueden asignar")
+  void test_coordenadas() {
+    Direccion direccion = new Direccion("Av. Medrano", "Lavalle", 951, 2, "A", ciudad);
+
+    assertFalse(direccion.tieneCoordenadas());
+
+    direccion.setLatitud(-34.6037);
+    direccion.setLongitud(-58.3816);
+
+    assertTrue(direccion.tieneCoordenadas());
+    assertEquals(-34.6037, direccion.getLatitud());
+    assertEquals(-58.3816, direccion.getLongitud());
+  }
+
+  @Test
+  @DisplayName("Punto 75: mismaDireccion ignora mayúsculas y espacios")
+  void test_mismaDireccion_normaliza() {
+    Direccion original = new Direccion("Av. Medrano", "Lavalle", 951, 2, "A", ciudad);
+    Direccion igual = new Direccion("  av. medrano ", "LAVALLE", 951, 2, " a ", ciudad);
+
+    assertTrue(original.mismaDireccion(igual));
+  }
+
+  @Test
+  @DisplayName("Punto 75: mismaDireccion detecta un cambio de altura")
+  void test_mismaDireccion_detectaCambio() {
+    Direccion original = new Direccion("Av. Medrano", "Lavalle", 951, 2, "A", ciudad);
+    Direccion otraAltura = new Direccion("Av. Medrano", "Lavalle", 952, 2, "A", ciudad);
+
+    assertFalse(original.mismaDireccion(otraAltura));
+  }
+
+  @Test
+  @DisplayName("Punto 75: anonimizar borra coordenadas e intentos de geocoding")
+  void test_anonimizar_borraCoordenadas() {
+    Direccion direccion = new Direccion("Av. Medrano", "Lavalle", 951, 2, "A", ciudad);
+    direccion.setLatitud(-34.6037);
+    direccion.setLongitud(-58.3816);
+    direccion.setIntentosGeocoding(2);
+    direccion.setUltimoIntentoGeocoding(java.time.LocalDateTime.now());
+
+    direccion.anonimizar();
+
+    assertNull(direccion.getCalleUno());
+    assertFalse(direccion.tieneCoordenadas());
+    assertNull(direccion.getLatitud());
+    assertNull(direccion.getLongitud());
+    assertEquals(0, direccion.getIntentosGeocoding());
+    assertNull(direccion.getUltimoIntentoGeocoding());
+  }
 }

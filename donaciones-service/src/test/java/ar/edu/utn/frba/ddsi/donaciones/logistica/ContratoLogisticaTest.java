@@ -30,7 +30,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorFormulario;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
 
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioBienes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioBienes;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
 
@@ -189,8 +190,14 @@ public String departamento;
 
 @NotBlank public String provincia;
 
-@NotBlank public String pais;
-
+@NotBlank public String pais;
+
+/** Punto 75: coordenadas opcionales; logística las usa para las paradas. */
+
+public Double latitud;
+
+public Double longitud;
+
 }
 
 @Test
@@ -267,8 +274,10 @@ repoResultados,
 
 mock(RepositorioBienes.class),
 
-productor
-
+productor,
+
+mock(PlatformTransactionManager.class)
+
 );
 
 service.asignarPropuesta(donacionId, 1);
@@ -389,14 +398,17 @@ repoResultados,
 
 mock(RepositorioBienes.class),
 
-productor
-
+productor,
+
+mock(PlatformTransactionManager.class)
+
 );
 
 org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> service.asignarPropuesta(donacionId, 1));
 
-verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("ASIGNADO"), any());
-
+verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("ASIGNADO"), any());
+verify(gestorAsignaciones).cambiarEstado(eq(donacion.getId()), eq("LISTA_PARA_ENTREGAR"), any());
+
 }
 
 }

@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.Algo
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 
@@ -64,6 +65,7 @@ public class SubAtendidos implements AlgoritmoAsignacion {
     private int cantidadDonacionesUltimoTrimestre(EntidadBeneficiaria entidad) {
         LocalDate haceUnTrimestre = LocalDate.now().minusMonths(3);
         return (int) entidad.verDonaciones().stream()
+                            .filter(d -> d.getEstado() == Estado.ENTREGADO)
                             .filter(d -> d.getFechaEntrega() != null)
                             .filter(d -> d.getFechaEntrega().isAfter(haceUnTrimestre))
                             .count();
