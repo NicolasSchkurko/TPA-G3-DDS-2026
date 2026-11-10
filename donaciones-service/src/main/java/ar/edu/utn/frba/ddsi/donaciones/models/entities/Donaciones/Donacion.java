@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,12 +55,13 @@ public class Donacion {
     // repositorio: cascade PERSIST/MERGE, sin orphanRemoval.
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "donacion_id")
+    @BatchSize(size = 50)
     private List<Bien> bienes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     private Estado estado;
 
-    // Catálogo compartido (buscar-o-crear vía RepositorioSubcategoriasDeBienes), sin cascade.
+    // Catálogo compartido (buscar-o-crear vía RepositorioDeSubcategoriasDeBienes), sin cascade.
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
     private SubcategoriaBien subcategoria;

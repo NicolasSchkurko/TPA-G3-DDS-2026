@@ -9,7 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Entid
 
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeResultadosMatchmaking;
 
 
 import java.util.*;
@@ -25,17 +25,28 @@ import java.util.stream.Collectors;
 public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;
+    private final Map<UUID, Integer> cantidadesVigentesPorNecesidad;
     private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private GestorMatchmaking gestorMatchmaking;
     private GestorAsignaciones gestorAsignaciones;
 
     public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
+        this(gestorMatchmaking, gestorAsignaciones, repositorioDeResultadosMatchmaking, null, null);
+    }
+
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, Map<UUID, Integer> donacionesUltimoTrimestrePorEntidad) {
+        this(gestorMatchmaking, gestorAsignaciones, repositorioDeResultadosMatchmaking,
+            donacionesUltimoTrimestrePorEntidad, null);
+    }
+
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, Map<UUID, Integer> donacionesUltimoTrimestrePorEntidad, Map<UUID, Integer> cantidadesVigentesPorNecesidad) {
         this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
         this.gestorAsignaciones = gestorAsignaciones;
+        this.cantidadesVigentesPorNecesidad = cantidadesVigentesPorNecesidad;
         algoritmos.add(new CompatibilidadSemantica());
-        algoritmos.add(new SubAtendidos());
+        algoritmos.add(new SubAtendidos(donacionesUltimoTrimestrePorEntidad));
     }
 
     public List<AlgoritmoAsignacion> getAlgoritmos() {
@@ -123,7 +134,7 @@ public class AsignadorDonaciones {
 
         List<PropuestaAsignacion> listaPlana = new ArrayList<>();
         for (AlgoritmoAsignacion algoritmo : this.algoritmos) {
-            listaPlana.addAll(algoritmo.rankear(donacion, todasLasEntidades));
+            listaPlana.addAll(algoritmo.rankear(donacion, todasLasEntidades, cantidadesVigentesPorNecesidad));
         }
         return listaPlana;
     }
@@ -185,7 +196,7 @@ public class AsignadorDonaciones {
         // Guardar el resultado PRIMERO: si ya existe uno para esta donación (guardar() tira
         // IllegalArgumentException), el estado no debe cambiar a PENDIENTE_ASIGNACION. Con el
         // orden inverso, una donación podía quedar en PENDIENTE_ASIGNACION sin
-        // ResultadoMatchmaking y, como buscarDonacionesSinAsignar() sólo trae EN_DEPOSITO, el
+        // ResultadoMatchmaking y, como buscarIdsSinAsignar() sólo trae EN_DEPOSITO, el
         // scheduler nunca la volvía a recoger.
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
                 donacion,

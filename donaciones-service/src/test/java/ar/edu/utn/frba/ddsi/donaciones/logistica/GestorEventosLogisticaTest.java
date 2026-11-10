@@ -13,8 +13,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEventosProcesados;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEventosProcesados;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,22 +34,25 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.lang.reflect.Method;
+import org.springframework.transaction.annotation.Transactional;
 
 public class GestorEventosLogisticaTest {
 
-  private RepositorioDonaciones repositorioDonaciones;
+  private RepositorioDeDonaciones repositorioDonaciones;
   private FabricaEstrategiasNotificacion fabricaEstrategias;
   private IncentivosClient incentivosClient;
-  private RepositorioEventosProcesados repoEventosProcesados;
+  private RepositorioDeEventosProcesados repoEventosProcesados;
   private ObjectMapper objectMapper;
   private GestorEventosLogistica gestor;
 
   @BeforeEach
   void setUp() {
-    repositorioDonaciones = mock(RepositorioDonaciones.class);
+    repositorioDonaciones = mock(RepositorioDeDonaciones.class);
     fabricaEstrategias = mock(FabricaEstrategiasNotificacion.class);
     incentivosClient = mock(IncentivosClient.class);
-    repoEventosProcesados = mock(RepositorioEventosProcesados.class);
+    repoEventosProcesados = mock(RepositorioDeEventosProcesados.class);
     objectMapper = new ObjectMapper();
 
     gestor = new GestorEventosLogistica(
@@ -255,4 +258,14 @@ public class GestorEventosLogisticaTest {
     assertEquals(Estado.ENTREGA_FALLIDA, captor.getValue().getEstado(),
         "la entrega fallida debe quedar como estado trazable, no volver directo a EN_DEPOSITO");
   }
+
+  @Test
+  @DisplayName("Punto 45: procesarEvento debe ser @Transactional")
+  void procesarEventoEsTransactional() throws NoSuchMethodException {
+    Method method = GestorEventosLogistica.class.getMethod(
+        "procesarEvento", EventoLogisticaDTO.class, java.util.List.class);
+    assertTrue(method.isAnnotationPresent(Transactional.class),
+        "procesarEvento debe manejar transacciones atómicas por evento");
+  }
+
 }

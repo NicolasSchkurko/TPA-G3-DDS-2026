@@ -43,16 +43,17 @@ public class DonacionDTO {
 
   public static DonacionDTO from(Donacion donacion) {
     if (donacion == null) return null;
+    DonacionResumenDTO resumen = DonacionResumenDTO.from(donacion);
     DonacionDTO dto = new DonacionDTO();
-    dto.setId(donacion.getId());
-    dto.setDonanteName((donacion.getDonante() != null && donacion.getDonante().getPersona() != null) ? donacion.getDonante().getPersona().getNombreDeUsuario() : "Desconocido");
-    dto.setEntidadBeneficiaria((donacion.getEntidad() != null && donacion.getEntidad().getPersonaJuridica() != null) ? donacion.getEntidad().getPersonaJuridica().getRazonSocial() : "No asignada");
-    dto.setDescripcion(donacion.getDescripcion());
-    dto.setEstado(donacion.getEstado() != null ? donacion.getEstado().name() : "N/A");
-    dto.setSubcategoriaName(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getNombre() : "N/A");
-    dto.setCategoriaBienName((donacion.getSubcategoria() != null && donacion.getSubcategoria().getCategoria() != null) ? donacion.getSubcategoria().getCategoria().getNombre() : "N/A");
-    dto.setFechaEntrega(donacion.getFechaEntrega());
-    dto.setCantidadTotalBienes(donacion.sumaCantidadBienes());
+    dto.setId(resumen.getId());
+    dto.setDonanteName(resumen.getDonanteName());
+    dto.setEntidadBeneficiaria(resumen.getEntidadBeneficiaria());
+    dto.setDescripcion(resumen.getDescripcion());
+    dto.setEstado(resumen.getEstado());
+    dto.setSubcategoriaName(resumen.getSubcategoriaName());
+    dto.setCategoriaBienName(resumen.getCategoriaBienName());
+    dto.setFechaEntrega(resumen.getFechaEntrega());
+    dto.setCantidadTotalBienes(resumen.getCantidadTotalBienes());
 
     if (donacion.getBienes() != null) {
       dto.setBienes(donacion.getBienes().stream().map(BienResumenDTO::from).collect(Collectors.toList()));

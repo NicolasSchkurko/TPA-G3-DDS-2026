@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import ar.edu.utn.frba.ddsi.incentivos.config.RabbitMQConfig;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Notificaciones.PerfilNotificacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.exceptions.EnvioNotificacionException;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.NotificacionesPendientes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,13 +22,13 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 class NotificacionClientTest {
 
     private RabbitTemplate rabbitTemplate;
-    private RepositorioNotificacionesPendientes pendientes;
+    private NotificacionesPendientes pendientes;
     private NotificacionClient client;
 
     @BeforeEach
     void setUp() {
         rabbitTemplate = org.mockito.Mockito.mock(RabbitTemplate.class);
-        pendientes = new RepositorioNotificacionesPendientes();
+        pendientes = new NotificacionesPendientes();
         client = new NotificacionClient(rabbitTemplate, null, pendientes);
     }
 

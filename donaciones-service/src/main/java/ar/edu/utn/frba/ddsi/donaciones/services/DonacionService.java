@@ -2,13 +2,13 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.BienResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.BienDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.messaging.ProductorLogistica;
-import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioResumenDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.matchmaking.ResultadoMatchmakingDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.FormularioResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AsignadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
@@ -19,9 +19,11 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.*;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,7 +37,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,25 +53,25 @@ public class DonacionService {
   private final GestorAsignaciones gestorAsignaciones;
   private final GestorFormulario gestorFormulario;
   private final GestorMatchmaking gestorMatchmaking;
-  private final RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes;
-  private final RepositorioDonaciones repositorioDonaciones;
-  private final RepositorioDonantes repositorioDonantes;
-  private final RepositorioFormularios repositorioFormularios;
-  private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
+  private final GestorCatalogo gestorCatalogo;
+  private final RepositorioDeDonaciones repositorioDonaciones;
+  private final RepositorioDeDonantes repositorioDonantes;
+  private final RepositorioDeFormularios repositorioFormularios;
+  private final RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
   private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
-  private final RepositorioBienes repositorioBienes;
+  private final RepositorioDeBienes repositorioBienes;
   private final ProductorLogistica productorLogistica;
   private final TransactionTemplate requiereNuevaTransaccion;
 
   public DonacionService(GestorAsignaciones gestorAsignaciones,
                          GestorFormulario gestorFormulario, GestorMatchmaking gestorMatchmaking,
-                         RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes,
-                         RepositorioDonaciones repositorioDonaciones,
-                         RepositorioDonantes repositorioDonantes,
-                         RepositorioFormularios repositorioFormularios,
-                         RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
+                         GestorCatalogo gestorCatalogo,
+                         RepositorioDeDonaciones repositorioDonaciones,
+                         RepositorioDeDonantes repositorioDonantes,
+                         RepositorioDeFormularios repositorioFormularios,
+                         RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias,
                          RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking,
-                         RepositorioBienes repositorioBienes,
+                         RepositorioDeBienes repositorioBienes,
                          ProductorLogistica productorLogistica,
                          PlatformTransactionManager transactionManager) {
     this.requiereNuevaTransaccion = new TransactionTemplate(transactionManager);
@@ -75,7 +79,7 @@ public class DonacionService {
     this.gestorAsignaciones = gestorAsignaciones;
     this.gestorFormulario = gestorFormulario;
     this.gestorMatchmaking = gestorMatchmaking;
-    this.repositorioSubcategoriasDeBienes = repositorioSubcategoriasDeBienes;
+    this.gestorCatalogo = gestorCatalogo;
     this.repositorioDonaciones = repositorioDonaciones;
     this.repositorioDonantes = repositorioDonantes;
     this.repositorioFormularios = repositorioFormularios;
@@ -85,15 +89,18 @@ public class DonacionService {
     this.productorLogistica = productorLogistica;
   }
 
+  @Transactional(readOnly = true)
   public List<DonacionDTO> obtenerTodas() {
     return repositorioDonaciones.obtenerTodos().stream()
                            .map(DonacionDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(readOnly = true)
   public Page<DonacionDTO> obtenerTodas(Pageable pageable) {
     return repositorioDonaciones.obtenerTodos(pageable).map(DonacionDTO::from);
   }
 
+  @Transactional(readOnly = true)
   public DonacionDTO obtenerPorId(UUID id) {
     return DonacionDTO.from(repositorioDonaciones.obtenerPorId(id).orElseThrow(() -> new EntityNotFoundException("No se encontró la donación con ID: " + id)));
   }
@@ -118,11 +125,13 @@ public class DonacionService {
 
   // Ver FormularioResumenDTO: antes no había forma de listar/borrar Formularios vía API, lo que
   // dejaba a cualquier Donante que hubiera donado imposible de borrar (409 por FK donante_id).
+  @Transactional(readOnly = true)
   public List<FormularioResumenDTO> obtenerFormularios() {
     return repositorioFormularios.obtenerTodos().stream()
                            .map(FormularioResumenDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(readOnly = true)
   public Page<FormularioResumenDTO> obtenerFormularios(Pageable pageable) {
     return repositorioFormularios.obtenerTodos(pageable).map(FormularioResumenDTO::from);
   }
@@ -137,28 +146,69 @@ public class DonacionService {
    * en una no tumba el lote completo por rollback-only (punto 74).
    */
   public void ejecutarMatchmakingADemanda() {
-    List<UUID> ids = repositorioDonaciones.buscarDonacionesSinAsignar().stream()
-            .map(Donacion::getId)
-            .toList();
+    List<UUID> ids = repositorioDonaciones.buscarIdsSinAsignar();
+    if (ids.isEmpty()) {
+      return;
+    }
+    Map<UUID, Integer> conteosPorEntidad = repositorioDonaciones
+        .contarEntregadasUltimoTrimestrePorEntidad(LocalDate.now().minusMonths(3));
+    Map<UUID, List<RepositorioDeDonaciones.EntregaNecesidad>> entregasPorNecesidad =
+        repositorioDonaciones.entregasPorNecesidadYFecha();
     for (UUID id : ids) {
       try {
-        requiereNuevaTransaccion.executeWithoutResult(estado -> procesarMatchmakingDeDonacion(id));
+        requiereNuevaTransaccion.executeWithoutResult(
+            estado -> procesarMatchmakingDeDonacion(id, conteosPorEntidad, entregasPorNecesidad));
       } catch (Exception e) {
         log.error("Error al procesar matchmaking para la donación {}: {}", id, e.getMessage());
       }
     }
   }
 
-  private void procesarMatchmakingDeDonacion(UUID donacionId) {
+  private void procesarMatchmakingDeDonacion(UUID donacionId,
+                                             Map<UUID, Integer> conteosPorEntidad,
+                                             Map<UUID, List<RepositorioDeDonaciones.EntregaNecesidad>> entregasPorNecesidad) {
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId).orElse(null);
     if (donacion == null) {
       return;
     }
-    List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodas().stream()
-            .filter(EntidadBeneficiaria::isActiva)
-            .toList();
-    new AsignadorDonaciones(gestorMatchmaking, gestorAsignaciones, repositorioDeResultadosMatchmaking)
+    List<EntidadBeneficiaria> entidades = repositorioEntidadesBeneficiarias.obtenerTodasActivas();
+    Map<UUID, Integer> cantidadesVigentes = calcularCantidadesVigentes(entidades, entregasPorNecesidad);
+    new AsignadorDonaciones(gestorMatchmaking, gestorAsignaciones,
+            repositorioDeResultadosMatchmaking, conteosPorEntidad, cantidadesVigentes)
             .procesarMatchmaking(donacion, entidades);
+  }
+
+  /** Progreso por necesidad sin navegar donaciones: usa las filas agregadas por fecha. */
+  private Map<UUID, Integer> calcularCantidadesVigentes(
+      List<EntidadBeneficiaria> entidades,
+      Map<UUID, List<RepositorioDeDonaciones.EntregaNecesidad>> entregasPorNecesidad) {
+    LocalDate hoy = LocalDate.now();
+    Map<UUID, Integer> cantidades = new HashMap<>();
+    for (EntidadBeneficiaria entidad : entidades) {
+      for (Necesidad necesidad : entidad.getNecesidades()) {
+        if (!necesidad.isActiva()) {
+          continue;
+        }
+        List<RepositorioDeDonaciones.EntregaNecesidad> entregas =
+            entregasPorNecesidad.getOrDefault(necesidad.getId(), List.of());
+        int cantidad = 0;
+        if (necesidad instanceof NecesidadRecurrente recurrente) {
+          int plazo = recurrente.getPlazoEnDias() != null ? recurrente.getPlazoEnDias() : 30;
+          LocalDate desde = hoy.minusDays(plazo);
+          for (RepositorioDeDonaciones.EntregaNecesidad entrega : entregas) {
+            if (entrega.fechaEntrega() != null && entrega.fechaEntrega().isAfter(desde)) {
+              cantidad += entrega.cantidad();
+            }
+          }
+        } else {
+          for (RepositorioDeDonaciones.EntregaNecesidad entrega : entregas) {
+            cantidad += entrega.cantidad();
+          }
+        }
+        cantidades.put(necesidad.getId(), cantidad);
+      }
+    }
+    return cantidades;
   }
 
   // A diferencia de dto.toDomain() (que sólo completa id/descripcion/bienes, dejando
@@ -174,7 +224,7 @@ public class DonacionService {
       existente.setDescripcion(dto.getDescripcion());
     }
     if (dto.getBienes() != null) {
-      // Los bienes que la lista deja afuera no se borran (ver RepositorioBienes: la fila es
+      // Los bienes que la lista deja afuera no se borran (ver RepositorioDeBienes: la fila es
       // compartida con Formulario.donaciones) ni se cuentan como entregados, así que reescribir
       // el contenido de una donación ya asignada/entregada dejaría los conteos de
       // Necesidad.cantidadRecibida() sin correspondencia con lo realmente entregado. Por eso el
@@ -193,6 +243,10 @@ public class DonacionService {
 
   @Transactional(rollbackFor = Exception.class)
   public void eliminarDonacion(UUID id) {
+    // Punto 54: el resultado de matchmaking referencia la donación por FK y no tiene
+    // cascade REMOVE. Se borra primero para que el DELETE no termine en 409.
+    repositorioDeResultadosMatchmaking.findByDonacionId(id)
+        .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
     repositorioDonaciones.eliminarPorId(id);
   }
 
@@ -206,11 +260,13 @@ public class DonacionService {
     return DonacionDTO.from(gestorAsignaciones.cambiarEstado(id, "VENCIDO", "Registrado como vencido por la administración."));
   }
 
+  @Transactional(readOnly = true)
   public List<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking() {
     return repositorioDeResultadosMatchmaking.findAll().stream()
                             .map(ResultadoMatchmakingDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(readOnly = true)
   public Page<ResultadoMatchmakingDTO> obtenerTodosLosResultadosMatchmaking(Pageable pageable) {
     return repositorioDeResultadosMatchmaking.findAll(pageable).map(ResultadoMatchmakingDTO::from);
   }
@@ -248,12 +304,22 @@ public class DonacionService {
    *  dirección de la entidad. Es todo lo que logística necesita para crear los ítems de entrega;
    *  por contrato, no consulta este servicio para nada más. */
   private void publicarEntregaALogistica(UUID donacionId) {
+    // afterCommit no tiene sesión: el armado del DTO (que toca bienes lazy) va en una
+    // transacción nueva y la publicación queda afuera.
+    EntregaDTO entrega = requiereNuevaTransaccion.execute(
+            estado -> armarEntregaParaLogistica(donacionId));
+    if (entrega != null) {
+      productorLogistica.publicarDonacionAsignada(entrega);
+    }
+  }
+
+  private EntregaDTO armarEntregaParaLogistica(UUID donacionId) {
     Donacion donacion = repositorioDonaciones.obtenerPorId(donacionId)
             .orElseThrow(() -> new IllegalArgumentException("No se encontro la donacion"));
 
     EntidadBeneficiaria entidad = donacion.getEntidad();
     if (entidad == null || entidad.getDireccion() == null) {
-      return;
+      return null;
     }
 
     Map<UnidadDeMedida, Integer> cantidadesPorUnidad = new LinkedHashMap<>();
@@ -272,18 +338,12 @@ public class DonacionService {
     DireccionDTO direccionEntidad = DireccionDTO.from(entidad.getDireccion());
     direccionEntidad.setIdEntidad(entidad.getId());
 
-    EntregaDTO entrega = new EntregaDTO(
-            idsParaLogistica,
-            bienes,
-            direccionEntidad
-    );
-
-    productorLogistica.publicarDonacionAsignada(entrega);
+    return new EntregaDTO(idsParaLogistica, bienes, direccionEntidad);
   }
 
 
   private Bien resolverBien(BienResumenDTO dto) {
-    SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
+    SubcategoriaBien subcategoria = gestorCatalogo.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
     return dto.toDomain(subcategoria);
   }
 
