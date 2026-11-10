@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.FormularioDonacionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.slf4j.Logger;
@@ -74,15 +76,58 @@ public class DonacionesClient {
 
     public List<PersonaDonanteDTO> obtenerDonantes() {
         try {
-            PageResponse<PersonaDonanteDTO> page = restClient.get()
-                    .uri(baseUrl + "/api/personas")
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<PageResponse<PersonaDonanteDTO>>() {});
-            return page != null ? page.getContent() : Collections.emptyList();
+            return cargarDonantes();
         } catch (Exception e) {
             log.error("Error al obtener donantes desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    public List<PersonaDonanteDTO> buscarDonantesPorCorreo(String correo) {
+        if (correo == null || correo.isBlank()) {
+            return Collections.emptyList();
+        }
+
+        return cargarDonantes().stream()
+                .filter(donante -> donante.getMediosDeContacto() != null)
+                .filter(donante -> donante.getMediosDeContacto().stream()
+                        .filter(contacto -> contacto != null)
+                        .anyMatch(contacto -> ("EMAIL".equalsIgnoreCase(contacto.getTipo())
+                                || "MAIL".equalsIgnoreCase(contacto.getTipo()))
+                                && contacto.getValor() != null
+                                && contacto.getValor().trim().equalsIgnoreCase(correo.trim())))
+                .toList();
+    }
+
+    private List<PersonaDonanteDTO> cargarDonantes() {
+        int pageSize = 100;
+        PageResponse<PersonaDonanteDTO> page = restClient.get()
+                .uri(baseUrl + "/api/personas?page=0&size={size}", pageSize)
+                .retrieve()
+                .body(new ParameterizedTypeReference<PageResponse<PersonaDonanteDTO>>() {});
+        if (page == null) {
+            return Collections.emptyList();
+        }
+
+        List<PersonaDonanteDTO> donantes = new ArrayList<>(page.getContent());
+        for (int pageNumber = 1; pageNumber < page.getTotalPages(); pageNumber++) {
+            PageResponse<PersonaDonanteDTO> nextPage = restClient.get()
+                    .uri(baseUrl + "/api/personas?page={page}&size={size}", pageNumber, pageSize)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<PersonaDonanteDTO>>() {});
+            if (nextPage != null) {
+                donantes.addAll(nextPage.getContent());
+            }
+        }
+        return donantes;
+    }
+
+    public void crearDonacion(FormularioDonacionDTO formulario) {
+        restClient.post()
+                .uri(baseUrl + "/api/donaciones/formulario")
+                .body(formulario)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     public void registrarUsuario(String tipoRegistro, Map<String, String> datos) {
