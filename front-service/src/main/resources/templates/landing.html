@@ -84,7 +84,7 @@
             <a sec:authorize="hasRole('ADMIN')" class="nav-profile" th:href="@{/panel}">
                 <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Administrador
             </a>
-            <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante}">
+            <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante/mapa}">
                 <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Donante
             </a>
             <a sec:authorize="hasRole('CHOFER')" class="nav-profile" th:href="@{/chofer}">

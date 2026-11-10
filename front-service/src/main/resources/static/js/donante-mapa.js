@@ -15,7 +15,7 @@
             minZoom: 5,
             maxZoom: 18,
             scrollWheelZoom: false,
-            zoomControlPosition: "bottomright"
+            zoomControlPosition: "bottomleft"
         });
 
         if (map) {
@@ -295,6 +295,7 @@
             item.button.setAttribute("aria-expanded", "false");
             item.panel.setAttribute("aria-hidden", "true");
             item.panel.classList.remove("is-open");
+            item.button.closest(".beneficiary-map").classList.remove("options-open");
             item.button.querySelector("i").className = "bi bi-chevron-left";
         }
 
@@ -307,6 +308,7 @@
                     item.button.setAttribute("aria-expanded", "true");
                     item.panel.setAttribute("aria-hidden", "false");
                     item.panel.classList.add("is-open");
+                    item.button.closest(".beneficiary-map").classList.add("options-open");
                     item.button.querySelector("i").className = "bi bi-chevron-right";
                 }
             });

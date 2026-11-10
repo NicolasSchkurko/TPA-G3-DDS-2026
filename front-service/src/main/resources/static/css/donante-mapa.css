@@ -95,6 +95,7 @@ body {
     flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
+    --options-panel-width: min(var(--donor-sidebar-width), calc(100% - 54px));
 }
 
 .donor-sidebar {
@@ -371,6 +372,7 @@ body {
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
+    transition: left 200ms ease;
     padding: 12px 22px;
     border: 0;
     border-radius: 6px;
@@ -381,6 +383,10 @@ body {
     font: inherit;
     font-weight: 700;
     white-space: nowrap;
+}
+
+.beneficiary-map.options-open .entities-button {
+    left: calc((100% - var(--options-panel-width)) / 2);
 }
 
 .map-corner-toggle {
@@ -411,6 +417,11 @@ body {
 
 .map-corner-toggle-right {
     right: 18px;
+    transition: right 200ms ease;
+}
+
+.beneficiary-map.options-open .map-corner-toggle-right {
+    right: calc(min(var(--donor-sidebar-width), 100% - 54px) + 12px);
 }
 
 .map-corner-toggle:hover,
@@ -431,6 +442,8 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease, transform 160ms ease;
+    max-height: min(680px, calc(100% - 90px));
+    overflow-y: auto;
 }
 
 .map-drawer-left {
@@ -439,8 +452,78 @@ body {
 }
 
 .map-drawer-right {
-    right: 18px;
-    transform: translateX(8px);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--options-panel-width);
+    max-height: none;
+    overflow-y: auto;
+    padding: 0 0 18px;
+    border-left: 1px solid #e1e5e0;
+    border-radius: 0;
+    transform: translateX(100%);
+    scrollbar-color: #c9d2ca transparent;
+    scrollbar-width: thin;
+}
+
+.map-drawer-right.is-open {
+    transform: translateX(0);
+}
+
+.map-drawer-right .incentives-heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    min-height: 82px;
+    padding: 18px 20px 15px;
+    border-bottom: 1px solid #e1e5e0;
+    background: #fff;
+}
+
+.map-drawer-right .incentives-heading h2 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.25;
+}
+
+.map-drawer-right .incentives-heading > i {
+    margin-right: 48px;
+}
+
+.map-drawer-right .incentives-unavailable,
+.map-drawer-right .incentive-section {
+    margin-right: 20px;
+    margin-left: 20px;
+    text-align: center;
+}
+
+.map-drawer-right .incentive-section-title {
+    justify-content: center;
+}
+
+.map-drawer-right .badge-list {
+    justify-items: center;
+}
+
+.map-drawer-right .badge-item {
+    justify-content: center;
+}
+
+.map-drawer-right .ranking-list {
+    justify-items: center;
+}
+
+.map-drawer-right .ranking-list li {
+    justify-content: center;
+}
+
+.map-drawer-right .mission-progress-label {
+    text-align: center;
+}
+
+.map-drawer-right .my-ranking-position {
+    justify-content: center;
+    gap: 12px;
 }
 
 .map-drawer.is-open {
@@ -472,6 +555,180 @@ body {
 .map-drawer h2 {
     margin: 0 0 8px;
     font-size: 17px;
+}
+
+.incentives-heading,
+.incentive-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.incentives-heading > i {
+    color: #1b7838;
+    font-size: 22px;
+}
+
+.incentives-eyebrow {
+    margin: 0 0 3px !important;
+    color: #1b7838 !important;
+    font-size: 10px !important;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.incentive-section {
+    margin-top: 18px;
+    padding-top: 15px;
+    border-top: 1px solid #e7ece7;
+}
+
+.incentive-section h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.mission-percent,
+.ranking-period {
+    color: #1b7838;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mission-name {
+    margin: 9px 0 3px !important;
+    color: #172019 !important;
+    font-size: 14px !important;
+    font-weight: 700;
+}
+
+.mission-description,
+.mission-progress-label,
+.incentives-empty,
+.incentives-unavailable {
+    color: #667068 !important;
+    font-size: 11px !important;
+    line-height: 1.5;
+}
+
+.mission-progress {
+    height: 9px;
+    margin-top: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9eee9;
+}
+
+.mission-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #1b7838;
+}
+
+.mission-progress-label {
+    margin-top: 5px !important;
+    text-align: right;
+}
+
+.badge-list,
+.ranking-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.badge-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.badge-icon,
+.badge-image {
+    display: grid;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 50%;
+    color: #1b7838;
+    background: #eef5f0;
+    object-fit: cover;
+    font-size: 17px;
+}
+
+.badge-copy {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.badge-copy strong,
+.ranking-name {
+    overflow: hidden;
+    color: #28332b;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.badge-copy small {
+    overflow: hidden;
+    color: #667068;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.my-ranking-position {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding: 9px 11px;
+    border-radius: 6px;
+    color: #155f2d;
+    background: #eef5f0;
+    font-size: 12px;
+}
+
+.my-ranking-position strong {
+    font-size: 15px;
+}
+
+.ranking-list {
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ranking-list li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.ranking-number {
+    display: grid;
+    flex: 0 0 25px;
+    width: 25px;
+    height: 25px;
+    place-items: center;
+    border-radius: 50%;
+    color: #155f2d;
+    background: #eef5f0;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.incentives-unavailable,
+.incentives-empty {
+    margin: 8px 0 0 !important;
 }
 
 .map-drawer p {
@@ -660,6 +917,10 @@ body {
 
     .map-corner-toggle-right {
         right: 10px;
+    }
+
+    .beneficiary-map.options-open .map-corner-toggle-right {
+        right: calc(min(var(--donor-sidebar-width), 100% - 54px) + 12px);
     }
 
     .entities-dialog {

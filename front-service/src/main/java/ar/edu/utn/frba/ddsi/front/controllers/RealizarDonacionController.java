@@ -100,13 +100,6 @@ public class RealizarDonacionController {
     }
 
     private Optional<PersonaDonanteDTO> obtenerPerfilDonante(Authentication authentication, Model model) {
-        if (authentication == null || authentication.getAuthorities().stream()
-                .noneMatch(authority -> "ROLE_DONANTE".equals(authority.getAuthority()))) {
-            model.addAttribute("error", "Tu cuenta no tiene el rol de donante.");
-            model.addAttribute("mostrarRegistro", true);
-            return Optional.empty();
-        }
-
         String correo = obtenerCorreo(authentication);
         if (correo == null || correo.isBlank()) {
             model.addAttribute("error", "No encontramos un perfil de donante asociado al correo de tu cuenta.");

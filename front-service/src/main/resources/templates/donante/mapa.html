@@ -99,9 +99,9 @@
         </aside>
 
         <button class="map-corner-toggle map-corner-toggle-left" id="toggleDonorInfo"
-                type="button" aria-expanded="true" aria-controls="donorInfoPanel"
-                aria-label="Ocultar historial de donaciones">
-            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                type="button" aria-expanded="false" aria-controls="donorInfoPanel"
+                aria-label="Mostrar historial de donaciones">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
         </button>
         <section class="beneficiary-map" aria-label="Mapa de entidades beneficiarias">
             <div id="beneficiaryMap" class="ddsi-map" role="application"
@@ -112,8 +112,65 @@
                 <i class="bi bi-chevron-left" aria-hidden="true"></i>
             </button>
             <aside class="map-drawer map-drawer-right" id="mapOptionsPanel" aria-hidden="true">
-                <h2>Opciones</h2>
-                <p>Más funcionalidades estarán disponibles próximamente.</p>
+                <div class="incentives-heading">
+                    <div><p class="incentives-eyebrow">Tu perfil</p><h2>Objetivos</h2></div>
+                    <i class="bi bi-stars" aria-hidden="true"></i>
+                </div>
+                <p class="incentives-unavailable" th:if="${!incentivosDisponibles}">
+                    No pudimos cargar tus datos de incentivos en este momento.
+                </p>
+                <section class="incentive-section" aria-labelledby="missionTitle"
+                         th:if="${misionDonante != null and !misionDonante.isEmpty()}">
+                    <div class="incentive-section-title">
+                        <h3 id="missionTitle">Misión actual</h3>
+                        <span class="mission-percent" th:text="${porcentajeMision + '%'}">0%</span>
+                    </div>
+                    <p class="mission-name" th:text="${misionDonante.nombreMision}">Nombre de la misión</p>
+                    <p class="mission-description" th:if="${misionDonante.descripcion}"
+                       th:text="${misionDonante.descripcion}">Descripción</p>
+                    <div class="mission-progress" role="progressbar" aria-label="Progreso de la misión"
+                         th:attr="aria-valuenow=${porcentajeMision}, aria-valuemin=0, aria-valuemax=100">
+                        <span th:style="|width:${porcentajeMision}%|"></span>
+                    </div>
+                    <p class="mission-progress-label"
+                       th:text="${progresoMision + ' de ' + objetivoMision + ' completado(s)'}">0 de 0 completados</p>
+                </section>
+                <section class="incentive-section" aria-labelledby="badgesTitle">
+                    <h3 id="badgesTitle">Insignias obtenidas</h3>
+                    <div class="badge-list" th:if="${!#lists.isEmpty(insignias)}">
+                        <article class="badge-item" th:each="insignia : ${insignias}">
+                            <img class="badge-image" th:if="${insignia.urlImagen}"
+                                 th:src="${insignia.urlImagen}" th:alt="${insignia.nombre}">
+                            <span class="badge-icon" th:unless="${insignia.urlImagen}">
+                                <i class="bi bi-award" aria-hidden="true"></i>
+                            </span>
+                            <span class="badge-copy">
+                                <strong th:text="${insignia.nombre}">Insignia</strong>
+                                <small th:if="${insignia.descripcion}" th:text="${insignia.descripcion}">Descripción</small>
+                            </span>
+                        </article>
+                    </div>
+                    <p class="incentives-empty" th:if="${#lists.isEmpty(insignias)}">Todavía no obtuviste insignias.</p>
+                </section>
+                <section class="incentive-section ranking-section" aria-labelledby="rankingTitle">
+                    <div class="incentive-section-title">
+                        <h3 id="rankingTitle">Ranking del mes</h3>
+                        <span class="ranking-period" th:if="${periodoRanking}" th:text="${periodoRanking}">Mes</span>
+                    </div>
+                    <div class="my-ranking-position" th:if="${puestoRanking != null and !puestoRanking.isEmpty() and puestoRanking.puesto != null}">
+                        <span>Tu posición</span><strong th:text="${'#' + puestoRanking.puesto}">#0</strong>
+                    </div>
+                    <p class="incentives-empty" th:if="${puestoRanking == null or puestoRanking.isEmpty() or puestoRanking.puesto == null}">
+                        Todavía no tenés una posición publicada.
+                    </p>
+                    <ol class="ranking-list" th:if="${!#lists.isEmpty(rankingTop3)}">
+                        <li th:each="puesto : ${rankingTop3}">
+                            <span class="ranking-number" th:text="${puesto.puesto}">1</span>
+                            <span class="ranking-name" th:text="${puesto.nombreUsuario}">Colaborador</span>
+                        </li>
+                    </ol>
+                    <p class="incentives-empty" th:if="${#lists.isEmpty(rankingTop3)}">El top 3 mensual todavía no está disponible.</p>
+                </section>
             </aside>
             <button class="entities-button" id="openEntities" type="button"
                     aria-haspopup="dialog" aria-controls="entitiesDialog">
