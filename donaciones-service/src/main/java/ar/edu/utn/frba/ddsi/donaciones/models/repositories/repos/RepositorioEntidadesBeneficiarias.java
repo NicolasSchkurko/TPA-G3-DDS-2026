@@ -46,6 +46,15 @@ public class RepositorioEntidadesBeneficiarias {
         return jpaRepository.findById(id);
     }
 
+    /** Entidad activa cuyo responsable tiene ese mail como medio de contacto. */
+    public Optional<EntidadBeneficiaria> buscarPorEmailContacto(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        List<EntidadBeneficiaria> resultados = jpaRepository.buscarPorEmailContacto(email.trim().toLowerCase());
+        return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
+    }
+
     public void actualizar(UUID idOriginal, EntidadBeneficiaria entidadActualizada) {
         if (jpaRepository.existsById(idOriginal)) {
             jpaRepository.save(entidadActualizada);

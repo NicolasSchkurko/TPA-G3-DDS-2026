@@ -43,6 +43,15 @@ public class RepositorioAdministradores {
         return jpaRepository.findById(id);
     }
 
+    /** Administrador cuyo contacto o cuya persona humana tiene ese mail. */
+    public Optional<Administrador> buscarPorEmailContacto(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        List<Administrador> resultados = jpaRepository.buscarPorEmailContacto(email.trim().toLowerCase());
+        return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
+    }
+
     public void actualizar(UUID idOriginal, Administrador adminActualizado) {
         if (jpaRepository.existsById(idOriginal)) {
             adminActualizado.setId(idOriginal);

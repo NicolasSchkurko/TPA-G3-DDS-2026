@@ -5,9 +5,12 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeE
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -145,5 +148,18 @@ public class GestorNotificaciones {
 
     public Optional<Notificacion> obtenerNotificacionPorId(UUID id) {
         return repositorioNotificaciones.findById(id);
+    }
+
+    /** Notificaciones de un destinatario, más recientes primero. {@code estado} null devuelve todas. */
+    @Transactional(readOnly = true)
+    public Page<Notificacion> listarPorDestinatario(String destinatario, EstadoNotificacion estado, Pageable pageable) {
+        if (destinatario == null || destinatario.isBlank()) {
+            throw new IllegalArgumentException("El destinatario de la consulta es obligatorio.");
+        }
+        String normalizado = destinatario.trim().toLowerCase();
+        if (estado != null) {
+            return repositorioNotificaciones.findByDireccionDeContactoIgnoreCaseAndEstado(normalizado, estado, pageable);
+        }
+        return repositorioNotificaciones.findByDireccionDeContactoIgnoreCase(normalizado, pageable);
     }
 }

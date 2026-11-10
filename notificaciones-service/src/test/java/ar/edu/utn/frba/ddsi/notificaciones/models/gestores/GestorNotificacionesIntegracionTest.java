@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.gestores;
 
 import ar.edu.utn.frba.ddsi.notificaciones.messaging.ProductorNotificaciones;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +79,31 @@ class GestorNotificacionesIntegracionTest {
         @Override public void deleteAll() {}
         @Override public List<Notificacion> findAll(Sort sort) { return null; }
         @Override public Page<Notificacion> findAll(Pageable pageable) { return null; }
+
+        @Override
+        public Page<Notificacion> findByDireccionDeContactoIgnoreCase(String direccionDeContacto, Pageable pageable) {
+            return filtrar(direccionDeContacto, null, pageable);
+        }
+
+        @Override
+        public Page<Notificacion> findByDireccionDeContactoIgnoreCaseAndEstado(String direccionDeContacto,
+                                                                               EstadoNotificacion estado,
+                                                                               Pageable pageable) {
+            return filtrar(direccionDeContacto, estado, pageable);
+        }
+
+        private Page<Notificacion> filtrar(String direccionDeContacto, EstadoNotificacion estado, Pageable pageable) {
+            List<Notificacion> filtradas = tabla.values().stream()
+                    .filter(n -> n.getDireccionDeContacto() != null
+                            && n.getDireccionDeContacto().equalsIgnoreCase(direccionDeContacto))
+                    .filter(n -> estado == null || n.getEstado() == estado)
+                    .sorted(java.util.Comparator.comparing(Notificacion::getFechaCreacion,
+                            java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                    .toList();
+            int from = (int) Math.min(pageable.getOffset(), filtradas.size());
+            int to = Math.min(from + pageable.getPageSize(), filtradas.size());
+            return new org.springframework.data.domain.PageImpl<>(filtradas.subList(from, to), pageable, filtradas.size());
+        }
     }
 
     static class StubProductor extends ProductorNotificaciones {
@@ -127,5 +153,40 @@ class GestorNotificacionesIntegracionTest {
         gestor.enviarSolicitudDeNotificacion("solicitud-dup-1", "email", "ana@test.com", "Asunto", "Cuerpo");
         // No debe haberse llamado a save nuevamente
         assertEquals(1, repositorio.llamadasSave);
+    }
+
+    @Test
+    @DisplayName("listarPorDestinatario devuelve solo las notificaciones del destinatario, más recientes primero")
+    void listarPorDestinatarioFiltraYOrdenaDescendente() {
+        Notificacion primera = gestor.crearNotificacion("l-1", "email", "ANA@test.com", "Primera", "Cuerpo 1");
+        primera.setFechaCreacion(java.time.LocalDateTime.now().minusHours(3));
+        Notificacion segunda = gestor.crearNotificacion("l-2", "email", "ana@test.com", "Segunda", "Cuerpo 2");
+
+        gestor.crearNotificacion("l-3", "email", "otra@test.com", "Otra", "Cuerpo 3");
+
+        java.util.List<Notificacion> resultado = gestor
+                .listarPorDestinatario("ana@test.com", null,
+                        org.springframework.data.domain.PageRequest.of(0, 10))
+                .getContent();
+
+        assertEquals(2, resultado.size());
+        assertEquals("Segunda", resultado.get(0).getMensaje().getAsunto());
+        assertEquals("Primera", resultado.get(1).getMensaje().getAsunto());
+    }
+
+    @Test
+    @DisplayName("listarPorDestinatario con estado filtra además por estado")
+    void listarPorDestinatarioFiltraPorEstado() {
+        Notificacion fallida = gestor.crearNotificacion("e-1", "email", "ana@test.com", "Fallida", "Cuerpo 1");
+        fallida.marcarFallida();
+        gestor.crearNotificacion("e-2", "email", "ana@test.com", "Pendiente", "Cuerpo 2");
+
+        java.util.List<Notificacion> fallidas = gestor
+                .listarPorDestinatario("ana@test.com", EstadoNotificacion.FALLIDA,
+                        org.springframework.data.domain.PageRequest.of(0, 10))
+                .getContent();
+
+        assertEquals(1, fallidas.size());
+        assertEquals("Fallida", fallidas.get(0).getMensaje().getAsunto());
     }
 }

@@ -48,11 +48,11 @@ class NotificadorControllerTest {
     private NotificacionMapper notificacionMapper;
 
     @Test
-    void unBodyCompletoSeAceptaCon202YSeProcesa() throws Exception {
+    void unBodyCompletoSeAceptaCon201YSeProcesa() throws Exception {
         mockMvc.perform(post("/api/notificaciones")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY_COMPLETO))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isCreated());
 
         verify(notificadorService).procesarSolicitudDeNotificacion(any());
     }

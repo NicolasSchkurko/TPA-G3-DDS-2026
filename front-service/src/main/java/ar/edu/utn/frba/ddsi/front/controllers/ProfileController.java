@@ -19,12 +19,6 @@ public class ProfileController {
                 "Desde acá vas a poder consultar tus rutas y actualizar el estado de tus entregas.");
     }
 
-    @GetMapping("/entidad")
-    public String entidad(Authentication authentication, Model model) {
-        return perfil(authentication, model, "Espacio entidad beneficiaria", "ENTIDAD",
-                "Desde acá vas a poder consultar y actualizar las necesidades de tu entidad.");
-    }
-
     @GetMapping("/sin-acceso")
     public String sinAcceso() {
         return "sin-acceso";

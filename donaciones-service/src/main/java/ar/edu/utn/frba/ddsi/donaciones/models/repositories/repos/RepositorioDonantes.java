@@ -45,6 +45,15 @@ public class RepositorioDonantes {
     return jpaRepository.findById(id);
   }
 
+  /** Donante activo cuyo persona tiene ese mail como medio de contacto. */
+  public Optional<Donante> buscarPorEmailContacto(String email) {
+    if (email == null || email.isBlank()) {
+      return Optional.empty();
+    }
+    List<Donante> resultados = jpaRepository.buscarPorEmailContacto(email.trim().toLowerCase());
+    return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
+  }
+
   public Optional<Donante> buscarPorNombre(String nombre) {
     if (nombre == null || nombre.isBlank()) {
       return Optional.empty();

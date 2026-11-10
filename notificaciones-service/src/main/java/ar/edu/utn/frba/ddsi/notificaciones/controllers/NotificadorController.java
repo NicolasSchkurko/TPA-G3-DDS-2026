@@ -19,8 +19,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,5 +69,30 @@ public class NotificadorController {
         return notificacion
                 .map(d -> ResponseEntity.ok(notificacionMapper.notificacionDTO(d)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @Operation(
+            summary = "Listar notificaciones por destinatario",
+            description = "Devuelve las notificaciones dirigidas a un contacto (email o teléfono), " +
+                    "más recientes primero. Pensado para que el resto de los servicios (o el front) " +
+                    "arme la bandeja de avisos del usuario."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Listado de notificaciones (puede estar vacío)"),
+            @ApiResponse(responseCode = "400", description = "Falta el destinatario o el estado no es válido")
+    })
+    @GetMapping
+    public ResponseEntity<List<NotificacionDTO>> listarNotificaciones(
+            @RequestParam String destinatario,
+            @RequestParam(required = false) String estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("[HTTP] GET /api/notificaciones | destinatario='{}', estado='{}', page={}, size={}",
+                destinatario, estado, page, size);
+        List<NotificacionDTO> notificaciones = notificadorService.listarPorDestinatario(destinatario, estado, page, size)
+                .stream()
+                .map(notificacionMapper::notificacionDTO)
+                .toList();
+        return ResponseEntity.ok(notificaciones);
     }
 }

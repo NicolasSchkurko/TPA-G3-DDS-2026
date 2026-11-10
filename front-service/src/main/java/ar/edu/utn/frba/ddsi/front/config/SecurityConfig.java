@@ -7,6 +7,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+
+import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -40,7 +43,8 @@ public class SecurityConfig {
                 .requestMatchers("/panel", "/donaciones/**", "/donantes/**", "/admin/**").hasRole("ADMIN")
                 .requestMatchers("/donante/**").hasRole("DONANTE")
                 .requestMatchers("/chofer/**").hasRole("CHOFER")
-                .requestMatchers("/entidad/**").hasRole("ENTIDAD")
+                .requestMatchers("/entidad/**", "/api/entidad/**").hasRole("ENTIDAD")
+                .requestMatchers("/rol/**", "/cuenta/**").authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions.accessDeniedPage("/sin-acceso"))
@@ -56,17 +60,40 @@ public class SecurityConfig {
     }
 
     @Bean
-    GrantedAuthoritiesMapper keycloakAuthoritiesMapper() {
+    GrantedAuthoritiesMapper keycloakAuthoritiesMapper(DonacionesClient donacionesClient) {
         return source -> {
             List<GrantedAuthority> authorities = new ArrayList<>(source);
+            String email = null;
             for (GrantedAuthority authority : source) {
                 if (!(authority instanceof OidcUserAuthority oidcAuthority)) continue;
                 Map<String, Object> realmAccess = oidcAuthority.getIdToken().getClaimAsMap("realm_access");
-                if (realmAccess == null || !(realmAccess.get("roles") instanceof Collection<?> roles)) continue;
-                for (Object role : roles) {
-                    if (role instanceof String roleName) {
-                        authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()));
+                if (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> roles) {
+                    for (Object role : roles) {
+                        if (role instanceof String roleName) {
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()));
+                        }
                     }
+                }
+                if (email == null) {
+                    Object claim = oidcAuthority.getIdToken().getClaim("email");
+                    if (claim instanceof String mail && !mail.isBlank()) {
+                        email = mail.trim().toLowerCase();
+                    }
+                }
+            }
+            // El email es la identidad: si ya está vinculada a un donante/entidad/admin, habilitamos esos roles.
+            if (email != null) {
+                try {
+                    IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                    if (identidad != null && identidad.getRoles() != null) {
+                        for (String role : identidad.getRoles()) {
+                            if (role == null || role.isBlank()) continue;
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                        }
+                    }
+                } catch (Exception e) {
+                    org.slf4j.LoggerFactory.getLogger(SecurityConfig.class)
+                            .warn("No se pudo resolver la identidad por email {}: {}", email, e.getMessage());
                 }
             }
             return authorities;

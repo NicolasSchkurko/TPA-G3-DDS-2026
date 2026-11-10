@@ -26,6 +26,7 @@
         "http://localhost:8080/*"
       ],
       "webOrigins": ["http://localhost:8080"],
+      "defaultClientScopes": ["profile", "email", "roles", "web-origins"],
       "attributes": {
         "post.logout.redirect.uris": "http://localhost:8080/"
       },
@@ -44,6 +45,8 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        }
+      ]
     },
     {
       "clientId": "front-registration",
@@ -57,8 +60,6 @@
       "serviceAccountsEnabled": true,
       "clientAuthenticatorType": "client-secret",
       "defaultClientScopes": ["kc-admin-api"]
-        }
-      ]
     }
   ],
   "users": [
