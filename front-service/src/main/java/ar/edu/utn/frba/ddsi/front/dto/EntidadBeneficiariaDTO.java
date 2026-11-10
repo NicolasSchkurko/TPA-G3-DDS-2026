@@ -18,6 +18,7 @@ public class EntidadBeneficiariaDTO {
     private String cuit;
     private String tipoJuridico;
     private String telefono;
+    private String correoElectronico;
     private DireccionBeneficiariaDTO direccion;
     private UUID id;
     private Boolean activa;

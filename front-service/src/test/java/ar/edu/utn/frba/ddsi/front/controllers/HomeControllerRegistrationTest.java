@@ -41,8 +41,50 @@ class HomeControllerRegistrationTest {
         assertEquals("DONANTE", valoresPreservados.get("tipoRegistro"));
         assertEquals("Ana", valoresPreservados.get("nombre"));
         assertFalse(valoresPreservados.containsKey("password"));
-        assertEquals("Ingresá un correo electrónico para vincular tu perfil de donante con la cuenta.",
+        assertEquals("Ingresá un correo electrónico para vincular tu perfil con la cuenta.",
                 model.getAttribute("error"));
+    }
+
+    @Test
+    void requiresEmailBeforeCreatingBeneficiaryEntityAccount() {
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(new DonacionesClientStub(), keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+        Map<String, String> form = Map.of(
+                "username", "nueva-entidad",
+                "password", "password-segura",
+                "tipoRegistro", "ENTIDAD",
+                "razonSocial", "Entidad Ejemplo"
+        );
+
+        assertEquals("register", controller.register(form, model));
+
+        assertEquals("Ingresá un correo electrónico para vincular tu perfil con la cuenta.",
+                model.getAttribute("error"));
+        assertFalse(keycloakClient.created);
+    }
+
+    @Test
+    void usesBeneficiaryEntityEmailForKeycloakAndProfileRegistration() {
+        DonacionesClientStub donacionesClient = new DonacionesClientStub();
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+        Map<String, String> form = Map.of(
+                "username", "nueva-entidad",
+                "password", "password-segura",
+                "tipoRegistro", "ENTIDAD",
+                "razonSocial", "Entidad Ejemplo",
+                "correoElectronico", "entidad@example.com"
+        );
+
+        assertEquals("register", controller.register(form, model));
+
+        assertEquals("entidad@example.com", keycloakClient.email);
+        assertEquals("ENTIDAD", donacionesClient.tipoRegistro);
+        assertEquals("entidad@example.com", donacionesClient.datos.get("correoElectronico"));
+        assertEquals("Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.",
+                model.getAttribute("msg"));
     }
 
     @Test
@@ -73,6 +115,8 @@ class HomeControllerRegistrationTest {
 
     private static class DonacionesClientStub extends DonacionesClient {
         private HttpClientErrorException error;
+        private String tipoRegistro;
+        private Map<String, String> datos;
 
         private DonacionesClientStub() {
             super(RestClient.builder().build(), "http://localhost");
@@ -80,15 +124,18 @@ class HomeControllerRegistrationTest {
 
         @Override
         public void registrarUsuario(String tipoRegistro, Map<String, String> datos) {
+            this.tipoRegistro = tipoRegistro;
+            this.datos = datos;
             if (error != null) {
                 throw error;
             }
-            throw new AssertionError("El registro no debe llegar a Donaciones sin correo");
         }
     }
 
     private static class KeycloakRegistrationClientStub extends KeycloakRegistrationClient {
         private boolean deleted;
+        private boolean created;
+        private String email;
 
         private KeycloakRegistrationClientStub() {
             super(RestClient.builder(), "http://localhost/token", "http://localhost/admin",
@@ -98,6 +145,8 @@ class HomeControllerRegistrationTest {
         @Override
         public String crearUsuario(String username, String password, String role,
                                    String firstName, String lastName, String email) {
+            created = true;
+            this.email = email;
             return "test-user-id";
         }
 

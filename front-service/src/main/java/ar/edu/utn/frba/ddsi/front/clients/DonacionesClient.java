@@ -173,9 +173,10 @@ public class DonacionesClient {
             }
             case "ENTIDAD" -> {
                 requerir(datos, "razonSocial", "rubro", "cuit", "tipoJuridico",
-                        "calleUno", "altura", "ciudad", "provincia", "pais");
+                        "calleUno", "altura", "ciudad", "provincia", "pais", "correoElectronico");
                 payload = new LinkedHashMap<>();
-                copiarCamposAObjeto(datos, payload, "razonSocial", "rubro", "cuit", "tipoJuridico", "telefono");
+                copiarCamposAObjeto(datos, payload, "razonSocial", "rubro", "cuit", "tipoJuridico",
+                        "telefono", "correoElectronico");
                 payload.put("direccion", direccion(datos));
                 endpoint = "/api/entidades";
             }

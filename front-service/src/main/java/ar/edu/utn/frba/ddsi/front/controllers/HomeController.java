@@ -74,16 +74,20 @@ public class HomeController {
             if (username == null || username.trim().length() < 3 || password == null || password.length() < 8) {
                 throw new IllegalArgumentException("Ingresá un usuario de al menos 3 caracteres y una contraseña de al menos 8 caracteres.");
             }
-            if ("DONANTE".equals(form.get("tipoRegistro"))
-                    && (!"EMAIL".equals(form.get("tipoContacto"))
-                    || form.get("valorContacto") == null
-                    || form.get("valorContacto").isBlank())) {
-                throw new IllegalArgumentException("Ingresá un correo electrónico para vincular tu perfil de donante con la cuenta.");
+            String tipoRegistro = form.get("tipoRegistro");
+            String correoFormulario = "ENTIDAD".equals(tipoRegistro)
+                    ? form.get("correoElectronico") : form.get("valorContacto");
+            if (("DONANTE".equals(tipoRegistro) || "ENTIDAD".equals(tipoRegistro))
+                    && (correoFormulario == null || correoFormulario.isBlank()
+                    || ("DONANTE".equals(tipoRegistro) && !"EMAIL".equals(form.get("tipoContacto"))))) {
+                throw new IllegalArgumentException("Ingresá un correo electrónico para vincular tu perfil con la cuenta.");
             }
             String nombre = "HUMANA".equals(form.get("tipoPersona"))
                     ? form.get("nombre") : form.get("razonSocial");
             String apellido = "HUMANA".equals(form.get("tipoPersona")) ? form.get("apellido") : null;
-            String correo = "EMAIL".equals(form.get("tipoContacto")) ? form.get("valorContacto") : null;
+            String correo = "ENTIDAD".equals(tipoRegistro)
+                    ? form.get("correoElectronico")
+                    : "EMAIL".equals(form.get("tipoContacto")) ? form.get("valorContacto") : null;
             userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role,
                     nombre, apellido, correo);
             try {

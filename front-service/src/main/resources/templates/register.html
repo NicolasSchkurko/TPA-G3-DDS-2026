@@ -23,6 +23,11 @@
     <div class="container">
         <div class="static-card border-0 register-card">
             <div class="card-body p-4 p-md-5">
+                <div class="mb-3">
+                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/}">
+                        <i class="bi bi-house me-1" aria-hidden="true"></i> Volver
+                    </a>
+                </div>
                 <div class="text-center mb-4">
                     <div class="bg-primary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 54px; height: 54px;">
                         <i class="bi bi-person-plus fs-3"></i>
@@ -145,7 +150,7 @@
 
                         <input type="hidden" name="tipoContacto" value="EMAIL">
                         <div class="mb-3">
-                            <label for="donanteValorContacto" class="form-label">Correo electrónico de la cuenta</label>
+                            <label for="donanteValorContacto" class="form-label">Correo electrónico</label>
                             <input type="email" class="form-control" id="donanteValorContacto" name="valorContacto" autocomplete="email"
                                    th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
                             <div class="form-text">Usaremos este correo para vincular tu cuenta con el perfil de donante.</div>
@@ -268,6 +273,13 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label for="entidadCorreo" class="form-label">Correo electrónico de la cuenta</label>
+                            <input type="email" class="form-control" id="entidadCorreo" name="correoElectronico"
+                                   autocomplete="email"
+                                   th:value="${formularioRegistro != null ? formularioRegistro['correoElectronico'] : ''}">
+                            <div class="form-text">Usaremos este correo para vincular tu cuenta con el perfil de la entidad.</div>
+                        </div>
+                        <div class="mb-3">
                             <label for="entidadTelefono" class="form-label">Teléfono</label>
                             <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel">
                         </div>
@@ -350,7 +362,7 @@
         document.querySelectorAll(".registration-fields input, .registration-fields select").forEach((field) => {
             field.dataset.required = ["nombre", "apellido", "edad", "numeroDeDocumento", "genero",
                 "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar", "calleUno",
-                "altura", "ciudad", "provincia", "pais", "valorContacto"].includes(field.name) ? "true" : "false";
+                "altura", "ciudad", "provincia", "pais", "valorContacto", "correoElectronico"].includes(field.name) ? "true" : "false";
         });
 
         document.querySelectorAll('[data-registration="ADMIN"] select[name="tipoContacto"], [data-registration="ADMIN"] input[name="valorContacto"]').forEach((field) => {
