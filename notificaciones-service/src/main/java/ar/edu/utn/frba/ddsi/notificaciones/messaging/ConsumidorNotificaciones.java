@@ -1,12 +1,9 @@
 package ar.edu.utn.frba.ddsi.notificaciones.messaging;
 
 import ar.edu.utn.frba.ddsi.notificaciones.config.rabbit.RabbitConfig;
-import ar.edu.utn.frba.ddsi.notificaciones.dto.SolicitudNotificacionDTO;
-import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.SolicitudNotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
-import ar.edu.utn.frba.ddsi.notificaciones.models.gestores.GestorNotificaciones;
-import ar.edu.utn.frba.ddsi.notificaciones.models.repositories.RepositorioNotificaciones;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -31,15 +31,12 @@ public class ConsumidorNotificaciones {
 
     private static final Logger log = LoggerFactory.getLogger(ConsumidorNotificaciones.class);
 
-    private final GestorNotificaciones gestor;
-    private final RepositorioNotificaciones repositorioNotificaciones;
+    private final NotificadorService notificadorService;
     private final ObjectMapper objectMapper;
 
-    public ConsumidorNotificaciones(GestorNotificaciones gestor,
-                                    RepositorioNotificaciones repositorioNotificaciones,
+    public ConsumidorNotificaciones(NotificadorService notificadorService,
                                     ObjectMapper objectMapper) {
-        this.gestor = gestor;
-        this.repositorioNotificaciones = repositorioNotificaciones;
+        this.notificadorService = notificadorService;
         this.objectMapper = objectMapper;
     }
 
@@ -101,24 +98,24 @@ public class ConsumidorNotificaciones {
             throw new AmqpRejectAndDontRequeueException("Aviso con id no UUID: " + mensaje.id(), e);
         }
 
-        Optional<Notificacion> encontrada = repositorioNotificaciones.findById(uuid);
+        Optional<Notificacion> reclamada = notificadorService.reclamarParaEnvio(
+                uuid, mensaje.medioDeContacto(), mensaje.direccionDeContacto());
 
-        if (encontrada.isEmpty()) {
-            log.warn("[COLA] La notificación {} no existe, el aviso se rechaza a la dead letter", mensaje.id());
-            throw new AmqpRejectAndDontRequeueException("Notificación con id " + mensaje.id() + " no encontrada");
-        }
-
-        Notificacion notificacion = encontrada.get();
-
-        if (notificacion.getEstado() == EstadoNotificacion.ENVIADA) {
-            log.info("[COLA] La notificación {} ya estaba enviada, no se reenvía", notificacion.getId());
+        if (reclamada.isEmpty()) {
+            if (notificadorService.obtenerPorId(uuid).isEmpty()) {
+                log.warn("[COLA] La notificación {} no existe, el aviso se rechaza a la dead letter", mensaje.id());
+                throw new AmqpRejectAndDontRequeueException("Notificación con id " + mensaje.id() + " no encontrada");
+            }
+            log.info("[COLA] La notificación {} ya estaba enviada o en curso, no se reenvía", uuid);
             return;
         }
 
+        Notificacion notificacion = reclamada.get();
         log.info("[COLA] Despachando notificación {} (medio='{}', destino='{}')",
-                notificacion.getId(), mensaje.medioDeContacto(), mensaje.direccionDeContacto());
+                notificacion.getId(), notificacion.getTipoMedioDeContacto(),
+                notificacion.getDireccionDeContacto());
 
-        enviar(notificacion, mensaje.medioDeContacto(), mensaje.direccionDeContacto());
+        enviar(notificacion);
     }
 
     /** Solicitud de un servicio de dominio: valida los 4 campos y la guarda/encola. */
@@ -135,14 +132,6 @@ public class ConsumidorNotificaciones {
                 solicitud.getIdSolicitud(),
                 solicitud.getMedioDeContacto(), solicitud.getDireccionDeContacto(),
                 solicitud.getAsuntoMensaje());
-
-        if (solicitud.getIdSolicitud() != null && !solicitud.getIdSolicitud().isBlank()) {
-            if (repositorioNotificaciones.findByIdSolicitud(solicitud.getIdSolicitud()).isPresent()) {
-                log.info("[COLA] Solicitud idSolicitud='{}' ya procesada previamente, se descarta por idempotencia",
-                        solicitud.getIdSolicitud());
-                return;
-            }
-        }
 
         if (solicitud.getMedioDeContacto() == null || solicitud.getMedioDeContacto().isBlank()) {
             log.warn("[COLA] Solicitud sin medio de contacto, se rechaza a la dead letter: {}", abreviatura(cuerpoCrudo));
@@ -164,41 +153,67 @@ public class ConsumidorNotificaciones {
             throw new AmqpRejectAndDontRequeueException("Solicitud sin cuerpoMensaje obligatorio");
         }
 
-        gestor.enviarSolicitudDeNotificacion(
-                solicitud.getIdSolicitud(),
-                solicitud.getMedioDeContacto(),
-                solicitud.getDireccionDeContacto(),
-                solicitud.getAsuntoMensaje(),
-                solicitud.getCuerpoMensaje()
-        );
+        if (solicitud.getUrlMapa() != null && solicitud.getUrlMapa().length() > 1024) {
+            log.warn("[COLA] Solicitud con urlMapa demasiado largo, se rechaza a la dead letter");
+            throw new AmqpRejectAndDontRequeueException("Solicitud con urlMapa de más de 1024 caracteres");
+        }
+
+        notificadorService.procesarSolicitudDeNotificacion(solicitud);
 
         log.info("[COLA] Solicitud guardada y encolada para '{}'", solicitud.getDireccionDeContacto());
     }
 
-    private void enviar(Notificacion notificacion,
-                        String medioDeContacto,
-                        String direccionDeContacto) {
+    private void enviar(Notificacion notificacion) {
+        UUID claimId = notificacion.getClaimId();
+
         try {
-            gestor.enviarNotificacion(
-                    medioDeContacto != null ? medioDeContacto : notificacion.getTipoMedioDeContacto(),
-                    direccionDeContacto != null
-                            ? direccionDeContacto
-                            : notificacion.getDireccionDeContacto(),
-                    notificacion
-            );
-
-            notificacion.marcarEnviada();
-            log.info("[COLA] Notificación {} ENVIADA (estado={})",
-                    notificacion.getId(), notificacion.getEstado());
-        } catch (RuntimeException excepcion) {
-            notificacion.marcarFallida();
-
-            log.error("[COLA] Notificación {} FALLÓ (estado={}): {}",
-                    notificacion.getId(), notificacion.getEstado(),
-                    excepcion.getMessage(), excepcion);
+            notificadorService.enviarNotificacion(notificacion,
+                    notificacion.getTipoMedioDeContacto(), notificacion.getDireccionDeContacto());
+            boolean cerrada = notificadorService.marcarEnviada(notificacion.getId(), claimId);
+            if (cerrada) {
+                log.info("[COLA] Notificación {} ENVIADA", notificacion.getId());
+            } else {
+                log.warn("[COLA] La notificación {} salió a n8n pero el claim {} ya no era el vigente",
+                        notificacion.getId(), claimId);
+            }
+        } catch (HttpClientErrorException error4xx) {
+            marcarFallida(notificacion, claimId);
+            log.error("[COLA] Notificación {} FALLÓ (4xx de n8n): {}",
+                    notificacion.getId(), error4xx.getMessage(), error4xx);
+            if (esTransitorio(error4xx.getStatusCode())) {
+                // 408/425/429: n8n está limitando o tardando; el retry de AMQP puede salvarlo.
+                throw error4xx;
+            }
+            throw new AmqpRejectAndDontRequeueException("n8n devolvió un 4xx permanente", error4xx);
+        } catch (IllegalArgumentException datoInvalido) {
+            // Medio de contacto desconocido: dato inválido, no hay nada que reintentar.
+            marcarFallida(notificacion, claimId);
+            log.error("[COLA] Notificación {} FALLÓ (medio de contacto inválido): {}",
+                    notificacion.getId(), datoInvalido.getMessage(), datoInvalido);
+            throw new AmqpRejectAndDontRequeueException("Medio de contacto inválido", datoInvalido);
+        } catch (RestClientException errorTransitorio) {
+            // Red/timeout/5xx: se relanza para que actúen los reintentos de Spring AMQP y la DLQ.
+            marcarFallida(notificacion, claimId);
+            log.error("[COLA] Notificación {} FALLÓ (falla transitoria de n8n): {}",
+                    notificacion.getId(), errorTransitorio.getMessage(), errorTransitorio);
+            throw errorTransitorio;
+        } catch (RuntimeException inesperado) {
+            marcarFallida(notificacion, claimId);
+            log.error("[COLA] Notificación {} FALLÓ (error inesperado): {}",
+                    notificacion.getId(), inesperado.getMessage(), inesperado);
+            throw inesperado;
         }
+    }
 
-        repositorioNotificaciones.save(notificacion);
+    private void marcarFallida(Notificacion notificacion, UUID claimId) {
+        if (!notificadorService.marcarFallida(notificacion.getId(), claimId)) {
+            log.warn("[COLA] El claim {} de la notificación {} ya no era el vigente",
+                    claimId, notificacion.getId());
+        }
+    }
+
+    private static boolean esTransitorio(HttpStatusCode status) {
+        return status.value() == 408 || status.value() == 425 || status.value() == 429;
     }
 
     /** El aviso de una notificación ya guardada, que es lo que publica el productor interno. */

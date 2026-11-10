@@ -98,6 +98,8 @@ services:
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
+    # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy

@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.notificaciones.dto;
+package ar.edu.utn.frba.ddsi.notificaciones.dto.Error;
 
 import java.util.List;
 

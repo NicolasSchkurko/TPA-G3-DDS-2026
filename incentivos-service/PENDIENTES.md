@@ -14,19 +14,27 @@ de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
 | 3 | 48 | Alta | `Categoria.siguienteMision` y `eliminarMision` comparan `Mision` por igualdad referencial en vez de ID o `equals`, saltándose misiones del donante |
 | 4 | 49 | Alta | La racha de constancia mensual expira al inicio del mes siguiente si la última donación fue a principios de mes |
 | 5 | 1 | Alta | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
-| 6 | 50 | Media | `InsigniaObtenida.equals` compara instancias de `Insignia` sin `equals`, permitiendo duplicar medallas en JPA |
-| 7 | 51 | Media | `buscarSiguienteParaEnviar` en la outbox de n8n bloquea pesimistamente toda la tabla de pendientes sin paginación (`LIMIT 1`) |
-| 8 | 52 | Media | `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia |
-| 9 | 55 | Media | `PerfilService.actualizarPerfilImpacto` reintenta en bucle cerrado (tight spin loop) sin backoff ni jitter ante colisión optimista |
-| 10 | 56 | Media | `buscarPerfilesConMisionQueRequiereConstancia` combina `JOIN FETCH` con `Pageable`, arriesgando paginación en memoria |
-| 11 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
-| 12 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
-| 13 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
-| 14 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
-| 15 | 57 | Baja | `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler |
-| 16 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 17 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
-| 18 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
+| 6 | 58 | Alta | El ranking mensual se calcula con `Pageable.unpaged()` y construye todos los `Ranking` en memoria |
+| 7 | 50 | Media | `InsigniaObtenida.equals` compara instancias de `Insignia` sin `equals`, permitiendo duplicar medallas en JPA |
+| 8 | 51 | Media | `buscarSiguienteParaEnviar` en la outbox de n8n bloquea pesimistamente toda la tabla de pendientes sin paginación (`LIMIT 1`) |
+| 9 | 52 | Media | `RepositorioNotificacionesPendientes` retiene notificaciones fallidas en memoria sin reintentos ni persistencia |
+| 10 | 55 | Media | `PerfilService.actualizarPerfilImpacto` reintenta en bucle cerrado (tight spin loop) sin backoff ni jitter ante colisión optimista |
+| 11 | 56 | Media | `buscarPerfilesConMisionQueRequiereConstancia` combina `JOIN FETCH` con `Pageable`, arriesgando paginación en memoria |
+| 12 | 59 | Media | La lectura de rankings hidrata todas las posiciones y `/top` aplica el límite en Java |
+| 13 | 60 | Media | El scheduler de constancia hace una consulta por perfil y trae todo el historial de donaciones |
+| 14 | 61 | Media | La sincronización de perfiles carga todos los afectados y hace HTTP por evento en `AFTER_COMMIT` |
+| 15 | 62 | Media | El alta de perfiles en lote repite la consulta de categoría base y hace un commit por ítem |
+| 16 | 63 | Media | `findById` con `EntityGraph` hidrata todas las insignias en el camino de donaciones y `valoresObservados` no tiene tope |
+| 17 | 64 | Media | El Dockerfile no fija `-XX:MaxRAMPercentage` y los pools/batch quedan en los defaults |
+| 18 | 53 | Baja | `actualizarDatosPerfil` acepta nombres de usuario compuestos únicamente por espacios en blanco |
+| 19 | 65 | Baja | `AdminService` conserva operaciones masivas sin paginar y no está cableado a ningún controller |
+| 20 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
+| 21 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
+| 22 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
+| 23 | 57 | Baja | `N8nClient.procesarPendientes` procesa la outbox de n8n secuencialmente bloqueando el hilo del scheduler |
+| 24 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 25 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
+| 26 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
 
 El punto 1 requiere una decisión del equipo para acordar una identidad compartida entre servicios.
 El punto 10 queda documentado pero no es relevante: el equipo decidió deliberadamente contar insignias.
@@ -857,6 +865,172 @@ Acumulación de varias insignias en la outbox tras un evento masivo o período d
 ### Propuesta de arreglo
 
 Despachar las publicaciones reclamadas de forma asíncrona mediante un pool de hilos o `CompletableFuture`, o procesar en sub-lotes más pequeños con timeout estricto.
+
+---
+
+## 58. El ranking mensual se calcula con `Pageable.unpaged()` y construye todos los `Ranking` en memoria
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `.../services/RankingService.java` (líneas 92-95, 186-201), `.../models/repositories/SpringRepositories/RepositorioPerfiles.java` (líneas 100-109), `.../models/entities/Ranking/RankingMensual.java` (líneas 55-79)
+
+### Qué pasa
+
+`calcularRankingMensual(...)` usa `Pageable.unpaged()` (`RankingService.java:193`), así que trae **todos** los perfiles del período como entidades `Perfil`. Después `calcularYAgregarPosiciones` construye un objeto `Ranking` por perfil en memoria antes de persistir. Todo ocurre dentro del mismo `@Transactional`, de modo que el persistence context retiene todos los `Perfil` y todos los `Ranking` nuevos hasta el commit. El consumo es O(cantidad de donantes), sin techo.
+
+### Cómo se dispara
+
+El cierre mensual (`RankingScheduler`, día 1 a las 00:05) o la generación manual de un ranking.
+
+### Propuesta de arreglo
+
+Calcular y persistir por lotes paginados, o hacer un `INSERT ... SELECT` en la base que genere las posiciones sin materializar los perfiles en Java.
+
+---
+
+## 59. La lectura de rankings hidrata todas las posiciones y `/top` aplica el límite en Java
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../services/RankingService.java` (líneas 71-86, 167-180), `.../models/entities/Ranking/RankingMensual.java` (líneas 35-38)
+
+### Qué pasa
+
+`posiciones` es un `@OneToMany` LAZY con `@OrderBy`. `obtenerRankingConLimite` hace `rank.getPosiciones().stream().limit(limite)`: el `limit` corre en Java **después** de que Hibernate cargó todas las filas del ranking. `convertirRankingMesADTO` también recorre la colección completa, y `obtenerHistorialRankings` pagina rankings en SQL pero hidrata todas las posiciones de cada uno. `@BatchSize(size = 30)` reduce round-trips, no memoria: al final todas las posiciones quedan en el `PersistentBag`.
+
+### Cómo se dispara
+
+Cualquier consulta de ranking o de historial con muchos donantes en el período.
+
+### Propuesta de arreglo
+
+Consultar `Ranking` con `Pageable`/`LIMIT` por `rankingMensual.idRanking` y `puesto`, en lugar de navegar la colección; para el detalle completo, devolver un `Page`.
+
+---
+
+## 60. El scheduler de constancia hace una consulta por perfil y trae todo el historial de donaciones
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../services/PerfilService.java` (líneas 81-124), `.../models/repositories/SpringRepositories/RepositorioDonaciones.java` (líneas 24-27), `.../models/entities/Perfil/ProgresoMision.java` (líneas 99-102, 171-188)
+
+### Qué pasa
+
+Por cada bloque de 500 perfiles, el bucle ejecuta **una consulta por perfil** (`findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc`) que trae todas las donaciones históricas de ese usuario y misión, sin límite temporal. Son 500 queries por bloque y listas de tamaño no acotado; el bloque entero se mantiene en el persistence context hasta el `saveAll`.
+
+Además, `ProgresoMision.progresarMision` copia el historial completo, agrega la donación nueva y ordena toda la lista; `evaluarConstancia` vuelve a filtrar y ordenar. Es O(n log n) y O(n) de allocación por evento, con n = antigüedad del donante. El `while(true)` del scheduler no es busy-wait: corta cuando la página viene incompleta.
+
+### Cómo se dispara
+
+La pasada diaria de constancia con una base de donantes grande o donantes antiguos.
+
+### Propuesta de arreglo
+
+Traer las donaciones de todo el bloque en una sola query (`IN` de ids de usuario) y limitar el rango a la ventana de constancia; asumir el orden que ya garantiza el nombre de la query y dejar de copiar/ordenar en cada evento.
+
+---
+
+## 61. La sincronización de perfiles carga todos los afectados y hace HTTP por evento en `AFTER_COMMIT`
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../models/gestores/SincronizacionPerfiles.java` (líneas 42, 51-81, 119-127), `.../clients/NotificacionClient.java` (líneas 60-87), `.../models/entities/Perfil/Perfil.java` (líneas 165-182)
+
+### Qué pasa
+
+Al editar una categoría, `SincronizacionPerfiles` carga **todos** los perfiles de esa categoría, muta cada uno y hace `saveAll`. Cada `cambiarMision` registra un `MisionCambiada`; al commit, el listener `@TransactionalEventListener(AFTER_COMMIT)` ejecuta `donacionClient.obtenerContactoPersona(...)` (HTTP bloqueante) por cada evento. Resultado: O(n) entidades y O(n) eventos retenidos, seguidos de O(n) llamadas HTTP secuenciales para una sola edición de admin. `reiniciarProgresoDeMision` también carga todos los perfiles aunque no emita eventos.
+
+### Cómo se dispara
+
+Una edición de categoría o misión desde el panel de administración.
+
+### Propuesta de arreglo
+
+Procesar por lotes paginados y resolver los contactos con una sola consulta masiva; publicar las notificaciones desde un executor acotado en vez de una llamada HTTP por perfil en el hilo que commitea.
+
+---
+
+## 62. El alta de perfiles en lote repite la consulta de categoría base y hace un commit por ítem
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../services/PerfilService.java` (líneas 146-173, 186-195)
+
+### Qué pasa
+
+Por cada uno de hasta 500 perfiles ejecuta `existsById`, luego `obtenerCategoriaBase()` (query con `LEFT JOIN FETCH c.categoriaMisiones`) y un `save + flush` en su propia transacción. Es la misma consulta de categoría 500 veces y 500 commits. No retiene memoria entre ítems, pero quema CPU y base, y presiona el pool de conexiones.
+
+### Cómo se dispara
+
+`POST /api/perfiles/lote` con un lote grande.
+
+### Propuesta de arreglo
+
+Resolver `categoriaBase` una vez fuera del bucle y persistir con `saveAll` dentro de transacciones acotadas.
+
+---
+
+## 63. `findById` con `EntityGraph` hidrata todas las insignias en el camino de donaciones y `valoresObservados` no tiene tope
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../models/repositories/SpringRepositories/RepositorioPerfiles.java` (líneas 29-36), `.../services/PerfilService.java` (líneas 309-321), `.../models/entities/Perfil/ProgresoMision.java` (líneas 51-59, 68-70)
+
+### Qué pasa
+
+Cada `findById` de perfil hace `JOIN FETCH` de `insigniasObtenidas` y `insigniasObtenidas.insignia`. En el procesamiento de una donación solo se necesitan categoría y progreso, pero se hidrata el `Set` completo de insignias del donante (que crece durante toda su vida) y se duplican filas por el join.
+
+Aparte, `ProgresoMision.valoresObservados` es un `@ElementCollection` que acumula cada valor distinto del atributo y solo se limpia en `reiniciarProgreso`. En misiones `VALORES_DISTINTOS` con atributos como `ENTIDAD` o `SUBCATEGORIA`, el set crece indefinidamente mientras la misión siga vigente y se carga entero al hidratar el progreso.
+
+### Cómo se dispara
+
+Cada donación procesada para un donante con muchas insignias o con una misión de valores distintos de larga duración.
+
+### Propuesta de arreglo
+
+Definir un `findById` sin `insigniasObtenidas` para el camino de donaciones y dejar el `EntityGraph` completo solo para el DTO de perfil; acotar `valoresObservados` al `progresoObjetivo` o podar valores antiguos.
+
+---
+
+## 64. El Dockerfile no fija `-XX:MaxRAMPercentage` y los pools/batch quedan en los defaults
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `Dockerfile` (línea 25), `src/main/resources/application.properties` (líneas 24-28), `docker-compose.yml` (sección `incentivos-service`)
+
+### Qué pasa
+
+El `ENTRYPOINT` es `["java", "-jar", "app.jar"]`, sin `-Xmx` ni `-XX:MaxRAMPercentage`. La JVM usa el default de 25 % de la RAM del host. Como el compose tampoco define `mem_limit` (ver punto 6 del `PENDIENTES.md` raíz), el heap puede crecer mucho más de lo que el servicio necesita y, con los picos del ranking y del scheduler, el OOM killer mata el proceso.
+
+Además, no hay `spring.datasource.hikari.*` (pool default de 10 conexiones) ni `hibernate.jdbc.batch_size`/`default_batch_fetch_size`, así que los `saveAll` masivos hacen inserts/updates fila por fila.
+
+### Cómo se dispara
+
+Cualquier barrido masivo (cierre de ranking, sincronización, constancia) en un host con RAM abundante.
+
+### Propuesta de arreglo
+
+Agregar `-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError` al `ENTRYPOINT`, definir `mem_limit` en el compose y configurar Hikari (5-10 conexiones) y batch de Hibernate (50).
+
+---
+
+## 65. `AdminService` conserva operaciones masivas sin paginar y no está cableado a ningún controller
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `.../services/AdminService.java` (líneas 64-69, 137-166, 168-173, 240-262)
+
+### Qué pasa
+
+`AdminService` replica operaciones de `CategoriaService`/`MisionService` cargando tablas enteras o todos los perfiles de una categoría/misión en memoria (`findAll`, `findAllByCategoriaActual` + `saveAllAndFlush`). Hoy no lo inyecta ningún controller, así que no es alcanzable por HTTP; si se vuelve a cablear, es un pico de RAM O(n).
+
+### Cómo se dispara
+
+Solo si alguien vuelve a exponer el servicio por HTTP o lo llama desde otro bean.
+
+### Propuesta de arreglo
+
+Eliminarlo por ser código muerto, o migrar sus operaciones a las variantes paginadas de `CategoriaService`/`MisionService`.
 
 ---
 

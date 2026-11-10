@@ -21,8 +21,18 @@ public class Mensaje {
     @Column(name = "cuerpo", nullable = false)
     private String cuerpo;
 
+    /** Opcional: link estructurado a un mapa/adjunto; no va pegado en el cuerpo. */
+    @Getter
+    @Column(name = "url_mapa", length = 1024)
+    private String urlMapa;
+
     public Mensaje(String asunto, String cuerpo) {
+        this(asunto, cuerpo, null);
+    }
+
+    public Mensaje(String asunto, String cuerpo, String urlMapa) {
         this.asunto = asunto;
         this.cuerpo = cuerpo;
+        this.urlMapa = urlMapa;
     }
 }

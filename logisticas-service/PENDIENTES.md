@@ -15,21 +15,25 @@ rompe cuando pasa, y qué tan fácil es que pase.
 | 1 | 64 | Alta | `DonacionListener` duerme el hilo con `Thread.sleep` y no aborta ante interrupción, bloqueando el pool AMQP |
 | 2 | 60 | Alta | `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper` |
 | 3 | 61 | Alta | `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales |
-| 4 | 68 | Media | `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write) |
-| 5 | 65 | Media | `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM |
-| 6 | 66 | Media | `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red |
-| 7 | 67 | Media | `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster |
-| 8 | 49 | Media | RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer |
-| 9 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
-| 10 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
-| 11 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
-| 12 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
-| 13 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
-| 14 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
-| 15 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 16 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
-| 17 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
-| 18 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
+| 4 | 69 | Alta | Los eventos de trazabilidad crecen sin cota dentro de cada ítem y el polling los carga enteros en memoria |
+| 5 | 68 | Media | `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write) |
+| 6 | 65 | Media | `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM |
+| 7 | 66 | Media | `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red |
+| 8 | 67 | Media | `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster |
+| 9 | 49 | Media | RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer |
+| 10 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
+| 11 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
+| 12 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
+| 13 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
+| 14 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
+| 15 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
+| 16 | 70 | Media | El pool de Mongo queda en los defaults (`maxPoolSize=100` por instancia) y sin timeouts |
+| 17 | 71 | Media | El callback de rutas hace una consulta por id y búsquedas O(n·m) sobre camiones e ítems |
+| 18 | 72 | Media | El Dockerfile no fija `-XX:MaxRAMPercentage` y el compose no limita la memoria |
+| 19 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
+| 20 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
+| 21 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
+| 22 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
@@ -470,6 +474,8 @@ CompletableFuture.runAsync(() -> {
 
 Al no pasarle un `Executor` explícito, `CompletableFuture.runAsync` delega en el pool estático `ForkJoinPool.commonPool()` de la JVM. Este pool tiene una cantidad muy limitada de hilos (igual a la cantidad de cores de CPU) y está pensado para procesamiento intensivo de cómputo en memoria, no para esperas bloqueantes ni llamadas HTTP por red. Bloquear este pool con `Thread.sleep(2000)` y peticiones HTTP reduce la capacidad de paralelismo de streams paralelos y otros componentes asíncronos en toda la JVM.
 
+Agravante de memoria: los lotes se arman con `itemsPendientes.subList(...)` y `camionesDisponibles.subList(...)` (`PlanificadorDeRutas.java:48, 51`). `subList` devuelve una vista respaldada por la lista padre, así que cada tarea asíncrona mantiene viva la lista completa durante al menos los 2 s del `sleep`, no solo sus 100 ítems. Copiar el lote antes de entregarlo (`new ArrayList<>(subList)`) libera esa retención.
+
 ### Cómo se dispara
 
 Cada ejecución de la planificación de rutas (automática o manual) que utilice el proveedor simulado.
@@ -572,6 +578,88 @@ Cualquier fallo de conexión a base de datos, error de concurrencia optimista o 
 ### Propuesta de arreglo
 
 Registrar la publicación del evento en RabbitMQ para ejecutarse en el callback `afterCommit()` mediante `TransactionSynchronizationManager`, asegurando que el mensaje solo viaje si la base de datos confirmó los cambios exitosamente.
+
+---
+
+## 69. Los eventos de trazabilidad crecen sin cota dentro de cada ítem y el polling los carga enteros en memoria
+
+**Estado:** abierto  
+**Severidad:** alta  
+**Archivos:** `models/entities/ItemEntrega/ItemEntrega.java:64-73`, `models/gestores/GestorPublicacionEventos.java:131-135`, `services/EventoLogisticaService.java:22-25`, `models/repositories/RepositorioEventoLogistica.java:16-18`, `services/EntregaService.java:92-95, 443-446`
+
+### Qué pasa
+
+Cada cambio de estado agrega un `EventoLogistica` a la lista embebida del ítem (`item.getEventos().add(evento)`) y nunca se quita nada; además el mismo evento se guarda en la colección `evento_logistica`. El documento del ítem crece para siempre.
+
+`obtenerEventosNuevos(desdeId)` no tiene `limit` ni paginación: si un consumidor arranca con `desdeId=0` o se atrasa, descarga **toda** la colección a una `List<EventoLogistica>` y luego la mapea a DTO, duplicando el pico. Los `findAll()` de ítems deserializan todos los eventos históricos de todos los ítems.
+
+### Cómo se dispara
+
+Operación normal del servicio a lo largo del tiempo; el pico aparece cuando un consumidor nuevo o atrasado hace polling desde el inicio.
+
+### Propuesta de arreglo
+
+Agregar `limit`/`Pageable` al polling con cursor `desdeId`, purgar o indexar con TTL `evento_logistica.fecha`, y dejar de embeber la historia completa en `ItemEntrega` (guardar solo el último evento o los ids).
+
+---
+
+## 70. El pool de Mongo queda en los defaults (`maxPoolSize=100` por instancia) y sin timeouts
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `src/main/resources/application.properties:83-84`, `docker-compose.yml` (comentario de escalado)
+
+### Qué pasa
+
+La configuración de Mongo solo define `uri` y `database`. El driver usa `maxPoolSize=100` por defecto por instancia, así que con `--scale logisticas-service=2` son 200 conexiones, cada una con buffers. Tampoco hay `serverSelectionTimeoutMS`, `connectTimeoutMS` ni `socketTimeoutMS`: si Atlas no responde, las operaciones quedan colgadas reteniendo hilos y documentos.
+
+### Cómo se dispara
+
+Escalado horizontal del servicio o una caída/degradación del clúster de Mongo.
+
+### Propuesta de arreglo
+
+Fijar `maxPoolSize`, `minPoolSize`, `serverSelectionTimeoutMS`, `connectTimeoutMS` y `socketTimeoutMS` en la URI o en properties, dimensionados según la cantidad de réplicas.
+
+---
+
+## 71. El callback de rutas hace una consulta por id y búsquedas O(n·m) sobre camiones e ítems
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `services/PlanificadorRutasService.java:70-74`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java:74-86`
+
+### Qué pasa
+
+Para cada id del callback se hace un `findById` a Mongo (`PlanificadorRutasService.java:70-74`) y, por cada asignación, `PlanificadorDeRutas` recorre con `stream().filter(...)` todos los camiones y todos los ítems. Con N ítems son N consultas y O(n·m) comparaciones, con el consiguiente garbage y latencia. `RutaService.obtenerRutaActualizada:102-106` ya muestra el patrón correcto: un `Map<UUID, ItemEntrega>`/`Map<String, Camion>` armado una sola vez.
+
+### Cómo se dispara
+
+Callback de planificación con muchos ítems o camiones.
+
+### Propuesta de arreglo
+
+Usar `findAllById(ids)` y armar mapas por id una sola vez antes del loop de asignación.
+
+---
+
+## 72. El Dockerfile no fija `-XX:MaxRAMPercentage` y el compose no limita la memoria
+
+**Estado:** abierto  
+**Severidad:** media  
+**Archivos:** `Dockerfile:25`, `docker-compose.yml` (sección `logisticas-service`), `PENDIENTES.md` raíz (punto 6)
+
+### Qué pasa
+
+El `ENTRYPOINT` es `["java", "-jar", "app.jar"]`, sin `-Xmx` ni `-XX:MaxRAMPercentage`. La JVM usa el default de 25 % de la RAM del host y el compose no define `mem_limit`, así que el heap puede crecer mucho más de lo necesario. Con los eventos y los `findAll()` de rutas (puntos 69 y 49), el riesgo de OOM es concreto.
+
+### Cómo se dispara
+
+Cualquier barrido de rutas o acumulación de eventos en un host con RAM abundante.
+
+### Propuesta de arreglo
+
+Agregar `-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError` al `ENTRYPOINT` y definir `mem_limit` para el servicio en el compose (ver punto 6 raíz).
 
 ---
 

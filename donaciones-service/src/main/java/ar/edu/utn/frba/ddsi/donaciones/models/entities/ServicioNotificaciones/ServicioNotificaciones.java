@@ -32,6 +32,7 @@ public class ServicioNotificaciones {
         mensaje.getCuerpo(),
         mensaje.getAsunto()
     );
+    dto.setUrlMapa(mensaje.getUrlMapa());
 
     notificacionesClient.enviarNotificacion(dto);
   }

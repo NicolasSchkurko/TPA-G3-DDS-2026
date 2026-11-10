@@ -12,33 +12,38 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | #  | Punto | Severidad | Por qué está acá                                                                                                    |
 |----|-------|-----------|---------------------------------------------------------------------------------------------------------------------|
-| 1  | 71    | Alta      | `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor aborta la importación CSV a medias     |
-| 2  | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                                |
-| 3  | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara                   |
-| 4  | 64    | Media     | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 5  | 63    | Media     | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada       |
-| 6  | 62    | Media     | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real      |
-| 7  | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias                        |
-| 8  | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente                            |
-| 9  | 74    | Media     | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only   |
-| 10 | 75    | Media     | Cursor de eventos `ultimoIdProcesado` en `EventosListener` es en memoria: no sobrevive reinicios ni clusterización   |
-| 11 | 72    | Media     | `DonanteService.buscarPorNombre` escanea toda la tabla en memoria (`obtenerTodos().stream()`) en vez de consulta SQL |
-| 12 | 73    | Media     | Fuga de memoria en `DonanteService.reportesImportacion`: acumula reportes y errores en memoria sin TTL ni límite     |
-| 13 | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                                |
-| 14 | 65    | Media     | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior           |
-| 15 | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals                    |
-| 16 | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                                  |
-| 17 | 41    | Media     | La modificación de donante (`PUT`) ignora campos de personas jurídicas (`rubro`, `tipoJuridico`, `representantes`)   |
-| 18 | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                                              |
-| 19 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                                      |
-| 20 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                                        |
-| 21 | 67    | Baja      | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos       |
-| 22 | 68    | Baja      | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe           |
-| 23 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                                 |
-| 24 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                                            |
-| 25 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                                     |
-| 26 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                                    |
-| 27 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                                              |
+| 1 | 71    | Alta      | `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor aborta la importación CSV a medias     |
+| 2 | 77    | Alta      | Matchmaking y listados cargan tablas enteras y expanden el grafo JPA con `open-in-view` activo                     |
+| 3 | 49    | Media     | El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo                                |
+| 4 | 50    | Media     | La publicación a logística va dentro de la transacción y a un exchange que este servicio no declara                   |
+| 5 | 64    | Media     | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
+| 6 | 63    | Media     | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada       |
+| 7 | 62    | Media     | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real      |
+| 8 | 51    | Media     | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias                        |
+| 9 | 52    | Media     | El alta de donante crea el perfil en incentivos y notifica antes de persistir localmente                            |
+| 10 | 76    | Media     | La notificación de impacto a incentivos se pierde si el servicio está caído: `afterCommit` con `try/catch` y sin reintento |
+| 11 | 74    | Media     | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only   |
+| 12 | 75    | Media     | Cursor de eventos `ultimoIdProcesado` en `EventosListener` es en memoria: no sobrevive reinicios ni clusterización   |
+| 13 | 72    | Media     | `DonanteService.buscarPorNombre` escanea toda la tabla en memoria (`obtenerTodos().stream()`) en vez de consulta SQL |
+| 14 | 73    | Media     | Fuga de memoria en `DonanteService.reportesImportacion`: acumula reportes y errores en memoria sin TTL ni límite     |
+| 15 | 54    | Media     | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking                                |
+| 16 | 65    | Media     | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior           |
+| 17 | 55    | Media     | El catch-all del `GlobalExceptionHandler` convierte errores de cliente en 500 y filtra internals                    |
+| 18 | 56    | Media     | Los PUT de persona, entidad y admin traducen validación a 404 mudo                                                  |
+| 19 | 41    | Media     | La modificación de donante (`PUT`) ignora campos de personas jurídicas (`rubro`, `tipoJuridico`, `representantes`)   |
+| 20 | 42    | Media     | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados                                              |
+| 21 | 53    | Media     | La asignación notifica dos veces: mensaje directo y estrategia de notificación                                      |
+| 22 | 38    | Media     | Los listados devuelven la colección entera: falta paginación                                                        |
+| 23 | 78    | Media     | La importación CSV mantiene en memoria el archivo completo (bytes + todas las filas)                               |
+| 24 | 79    | Media     | Configuración JPA/Rabbit sin tuning: OSIV, `show-sql`, batch y prefetch en los defaults                            |
+| 25 | 67    | Baja      | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos       |
+| 26 | 80    | Baja      | `ActividadDonanteScheduler` carga todos los donantes y navega todos sus formularios (N+1)                          |
+| 27 | 68    | Baja      | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe           |
+| 28 | 57    | Baja      | Los POST de medios de contacto aceptan nulos/vacíos y responden 201                                                 |
+| 29 | 39    | Baja      | `DonacionController` inyecta `RabbitTemplate` sin usarlo                                                            |
+| 30 | 36    | Baja      | La nomenclatura de subcarpetas no coincide con la de incentivos                                                     |
+| 31 | 37    | Baja      | Los repositorios usan dos convenciones distintas entre servicios                                                    |
+| 32 | 43    | Baja      | "Consultar rankings" no está expuesto en donaciones: confirmar alcance                                              |
 
 ---
 
@@ -248,6 +253,39 @@ El 400 se lee como "body inválido" y nadie mira el otro servicio; el perfil fan
 ### Propuesta
 
 Validar y persistir primero, en una transacción; recién después crear el perfil externo y notificar (idealmente por evento/outbox, como discute el punto 35).
+
+---
+
+## 76. La notificación de impacto a incentivos se pierde si el servicio está caído
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorEventosLogistica.java` (líneas 122-144), `.../clients/IncentivosClient.java` (líneas 95-102), `.../services/DonanteService.java` (líneas 152-157)
+
+### Qué pasa
+
+Cuando logística informa una entrega confirmada, `GestorEventosLogistica.manejarEntregaConfirmada`
+notifica el impacto a incentivos en un `afterCommit` con `try/catch` que solo loguea un warning.
+La corrección del punto 61 evitó que una caída de incentivos revirtiera la entrega local, pero
+dejó el otro extremo: si incentivos está caído o responde 5xx en ese momento, el evento de Rabbit
+ya se consumió y se confirmó (ACK), la donación quedó `ENTREGADO` y la misión o insignia del
+donante **no avanza nunca**. No hay outbox, reintento ni job de reconciliación.
+
+El mismo patrón aparece en `DonanteService.actualizarPersona` (líneas 152-157): la propagación del
+cambio de datos a incentivos también traga la excepción con un warning y no se reintenta.
+
+### Por qué no se ve
+
+En la demo los dos servicios están arriba. El impacto perdido se nota recién como una insignia que
+no se otorga o un ranking que no cambia, y no hay ningún registro de negocio que lo delate.
+
+### Propuesta
+
+Encolar el impacto en una outbox persistente en donaciones (mismo patrón que
+`publicacion_pendiente_n8n` de incentivos: fila en base, lease y reintento con backoff) o publicar
+un evento `donacion.entregada` por Rabbit y que incentivos lo consuma con idempotencia por id de
+donación (su `actualizarPerfilImpacto` ya usa el id como clave). Para `actualizarPersona` alcanza
+con el mismo outbox o con un reintento programado.
 
 ---
 
@@ -696,6 +734,8 @@ private final Map<UUID, ReporteImportacionDTO> reportesImportacion = new Concurr
 
 Cada llamada a `importarDonantes` inserta un nuevo `ReporteImportacionDTO` con su `importId`. El reporte contiene un `List<String> errores` con los detalles de cada fila rechazada. Este mapa **nunca se limpia**, no tiene política de expiración (TTL), ni límite de entradas. Con el uso sostenido del servicio, el mapa retiene miles de objetos y cadenas de error, produciendo una fuga de memoria continua. Además, en un entorno con múltiples réplicas, consultar el reporte en una instancia distinta a la que procesó el archivo devolverá 404.
 
+Agravante: `ReporteImportacionDTO` guarda `errores.subList(0, 50)` (`ReporteImportacionDTO.java:33-35`). `subList` **no copia**: devuelve una vista respaldada por la lista original, así que cada reporte retiene **todos** los mensajes de error de la importación, no solo los primeros 50. El arreglo del mapa debe incluir una copia real (`new ArrayList<>(errores.subList(0, Math.min(50, errores.size())))`).
+
 ### Cómo se dispara
 
 Uso continuo del endpoint de importación CSV a lo largo del tiempo.
@@ -764,6 +804,101 @@ Reinicio del contenedor o escalado horizontal del servicio consumiendo eventos d
 ### Propuesta de arreglo
 
 Persistir los IDs de eventos procesados en una tabla de base de datos (`eventos_logistica_procesados`) con clave primaria sobre `id_evento`, asegurando la verificación e inserción atómica transaccional.
+
+---
+
+## 77. Matchmaking y listados cargan tablas enteras y expanden el grafo JPA con `open-in-view` activo
+
+**Estado:** abierto
+**Severidad:** alta
+**Archivos:** `.../models/sheduler/AsignacionScheduler.java` (líneas 36-44), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 45-57, 66-96), `.../models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java` (líneas 64-69), `.../models/repositories/repos/RepositorioDonaciones.java` (líneas 38-40), `.../models/repositories/repos/RepositorioEntidadesBeneficiarias.java` (líneas 35-37), `src/main/resources/application.properties` (sin `spring.jpa.open-in-view=false`)
+
+### Qué pasa
+
+`buscarDonacionesSinAsignar()` es `findByEstado(EN_DEPOSITO)` sin paginación y `obtenerTodas()` es `findAll()`: el matchmaking corre seis veces por día dentro de un único `@Transactional` (`AsignacionScheduler.java:37`), así que todas las donaciones pendientes y todas las entidades quedan en el persistence context hasta el final del lote.
+
+Sobre ese grafo, `SubAtendidos.cantidadDonacionesUltimoTrimestre()` navega `entidad.verDonaciones()`, que recorre todas las necesidades y todas sus donaciones; `esCompatibleCon()` y `cantidadFaltante()` vuelven a navegar `necesidad.getDonaciones()` y `donacion.getBienes()`. Se disparan N+1 y se materializan donaciones y bienes de todas las entidades varias veces por corrida.
+
+El mismo patrón aparece en los listados: `GET /api/entidades` mapea cada entidad a un DTO que incluye **todas** sus necesidades, cada necesidad **todas** sus donaciones y cada donación **todos** sus bienes (`EntidadBeneficiariaDTO.java:93-100`, `NecesidadDTO.java:82-88`, `DonacionDTO.java:44-63`). Con `open-in-view=true` (default de Spring Boot, no desactivado en `application.properties`), la sesión sigue abierta durante el mapeo y la serialización, así que todos los lazy se cargan dentro de la request.
+
+### Cómo se dispara
+
+Cada corrida del scheduler de asignación o un `GET` de listado con datos suficientes para que el grafo no entre cómodo en heap. El pico crece con el histórico, no con la cantidad de trabajo útil.
+
+### Propuesta de arreglo
+
+1. Paginar el barrido del matchmaking (keyset o `Pageable`) y procesar por lotes con `EntityManager.clear()` entre lotes.
+2. Reemplazar `verDonaciones()` y `cantidadRecibida()` por consultas de agregación (`COUNT`/`SUM`) en lugar de navegar colecciones.
+3. En los listados, devolver proyecciones o DTOs planos sin anidar donaciones dentro de entidades; usar `@EntityGraph`/`join fetch` donde haga falta.
+4. Agregar `spring.jpa.open-in-view=false` **después** de resolver los fetch explícitos.
+
+---
+
+## 78. La importación CSV mantiene en memoria el archivo completo (bytes + todas las filas)
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `.../services/DonanteService.java` (líneas 206-249), `.../models/entities/lector/csv/LectorCSV.java` (líneas 53-77), `.../DonacionesServiceApplication.java` (líneas 51-62)
+
+### Qué pasa
+
+`importarDonantes` hace `file.getBytes()` y encola la tarea con ese `byte[]`. Dentro de la tarea, `LectorCSV.importar()` acumula **todos** los `Donante` convertidos en `resultados` y todos los errores en `errores` antes de que el service empiece a persistir. Durante el procesamiento conviven el `byte[]` del archivo, la lista completa de objetos de dominio y los perfiles pendientes de enviar a incentivos.
+
+El pool de importación está bien acotado (2 hilos y cola de 8), pero cada tarea encolada retiene su archivo completo hasta que le toca ejecutarse. El límite default de multipart (1 MB) acota el daño hoy; si se sube, el consumo crece linealmente.
+
+### Cómo se dispara
+
+Importaciones concurrentes o un CSV grande con muchas filas válidas.
+
+### Propuesta de arreglo
+
+Pasar el `InputStream` del `MultipartFile` al lector y procesar fila por fila (streaming), persistiendo a medida que se lee en vez de acumular `resultados`; no llamar a `getBytes()`.
+
+---
+
+## 79. Configuración JPA/Rabbit sin tuning: OSIV, `show-sql`, batch y prefetch en los defaults
+
+**Estado:** abierto
+**Severidad:** media
+**Archivos:** `src/main/resources/application.properties` (líneas 33-34 y 47-52), `.../RabbitMQ/EventosListener.java` (líneas 51-68)
+
+### Qué pasa
+
+- `spring.jpa.show-sql=true` y `format_sql=true` imprimen todas las consultas formateadas. Combinado con los N+1 del punto 77, el volumen de log se multiplica y el formateo consume CPU e I/O en cada request y cada corrida del scheduler.
+- No hay `spring.jpa.properties.hibernate.jdbc.batch_size` ni `order_inserts/order_updates`, así que los `saveAll()` y las importaciones hacen un INSERT/UPDATE por fila.
+- No se configura `spring.rabbitmq.listener.simple.prefetch` ni `concurrency`: Spring AMQP usa prefetch 250 por defecto, así que hasta 250 mensajes sin ack quedan bufferizados en memoria por consumidor.
+- `EventosListener.recibirEvento()` hace `repoAdministradores.obtenerTodos()` y mapea todos los administradores en **cada** mensaje, incluso para eventos que no usan contactos de admin (`INICIO_RUTA`, `ENTREGA_CONFIRMADA`, `REINGRESO_DEPOSITO`).
+
+### Cómo se dispara
+
+Uso normal con logs activos y una cola con backlog; el costo crece con el volumen de eventos.
+
+### Propuesta de arreglo
+
+1. `spring.jpa.show-sql=false` y `format_sql=false` fuera de desarrollo (dejarlos en un perfil `dev`).
+2. `hibernate.jdbc.batch_size=50`, `order_inserts=true`, `order_updates=true`.
+3. `spring.rabbitmq.listener.simple.prefetch=10` y `concurrency`/`max-concurrency` acotados.
+4. Cargar los administradores solo cuando el evento sea `ENTREGA_FALLIDA`.
+
+---
+
+## 80. `ActividadDonanteScheduler` carga todos los donantes y navega todos sus formularios (N+1)
+
+**Estado:** abierto
+**Severidad:** baja
+**Archivos:** `.../models/sheduler/ActividadDonanteScheduler.java` (líneas 16-19), `.../services/DonanteService.java` (líneas 311-318), `.../models/entities/donador/Donante.java` (líneas 38-39), `.../models/repositories/repos/RepositorioDonantes.java` (`obtenerTodos()`)
+
+### Qué pasa
+
+`revisarActividades` llama a `obtenerTodos()` (`findAll()` sin paginación) y, por cada donante activo, accede a `p.getFormularios()` solo para mirar el último. Eso dispara una consulta por donante y carga la colección completa de formularios en el persistence context de la transacción diaria, que crece con toda la tabla.
+
+### Cómo se dispara
+
+Cada corrida diaria del scheduler con una base de donantes mediana o grande.
+
+### Propuesta de arreglo
+
+Consultar directamente los donantes inactivos con una proyección `MAX(fechaRealizacion) < now() - 20 días`, paginada, en lugar de cargar todos y navegar colecciones.
 
 ---
 
