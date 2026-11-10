@@ -16,12 +16,6 @@ public class BienDonacionDTO {
     @NotBlank(message = "Completá la descripción de cada bien.")
     private String descripcion;
 
-    @NotBlank(message = "Completá la categoría de cada bien.")
-    private String categoria;
-
-    @NotBlank(message = "Completá la subcategoría de cada bien.")
-    private String subcategoria;
-
     @NotNull(message = "Indicá la cantidad de cada bien.")
     @Positive(message = "La cantidad debe ser mayor a cero.")
     private Integer cantidad;

@@ -62,16 +62,6 @@
                                     <input class="form-control" th:id="'bienDescripcion' + ${stat.index}"
                                            th:field="*{bienes[__${stat.index}__].descripcion}" type="text" required>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label class="form-label" th:for="'bienCategoria' + ${stat.index}">Categoría</label>
-                                    <input class="form-control" th:id="'bienCategoria' + ${stat.index}"
-                                           th:field="*{bienes[__${stat.index}__].categoria}" type="text" required>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label class="form-label" th:for="'bienSubcategoria' + ${stat.index}">Subcategoría</label>
-                                    <input class="form-control" th:id="'bienSubcategoria' + ${stat.index}"
-                                           th:field="*{bienes[__${stat.index}__].subcategoria}" type="text" required>
-                                </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCantidad' + ${stat.index}">Cantidad</label>
                                     <input class="form-control" th:id="'bienCantidad' + ${stat.index}"
