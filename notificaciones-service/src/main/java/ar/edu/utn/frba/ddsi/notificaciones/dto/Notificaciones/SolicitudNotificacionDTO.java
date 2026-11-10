@@ -1,7 +1,8 @@
-package ar.edu.utn.frba.ddsi.notificaciones.dto;
+package ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,4 +24,8 @@ public class SolicitudNotificacionDTO {
 
     @NotBlank(message = "es obligatorio")
     private String cuerpoMensaje;
+
+    /** Opcional: link estructurado a un mapa o adjunto (por ejemplo, el seguimiento de una ruta). */
+    @Size(max = 1024, message = "no puede superar 1024 caracteres")
+    private String urlMapa;
 }

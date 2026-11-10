@@ -1,6 +1,6 @@
-package ar.edu.utn.frba.ddsi.notificaciones.clientes;
+package ar.edu.utn.frba.ddsi.notificaciones.clients;
 
-import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.n8n.NotificacionPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +25,14 @@ public class N8nClient {
 
     public void enviarNotificacion(NotificacionPayload payload) {
         String asunto = payload.getMensaje() != null ? payload.getMensaje().getAsunto() : null;
+        String cuerpo = payload.getMensaje() != null ? payload.getMensaje().getCuerpo() : null;
 
-        log.info("[N8N] -> POST {} | canal={} | destino={} | asunto={} | cuerpo={}",
+        log.info("[N8N] -> POST {} | canal={} | destino={} | asunto={} | cuerpo={} chars",
                 n8nUrl, payload.getCanal(), payload.getDireccionContacto(), asunto,
-                payload.getMensaje() != null ? payload.getMensaje().getCuerpo() : null);
+                cuerpo != null ? cuerpo.length() : 0);
+        if (log.isDebugEnabled()) {
+            log.debug("[N8N] cuerpo={}", cuerpo);
+        }
 
         try {
             ResponseEntity<Void> respuesta = restTemplate.postForEntity(n8nUrl, payload, Void.class);

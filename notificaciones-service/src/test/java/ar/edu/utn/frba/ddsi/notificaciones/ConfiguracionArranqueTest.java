@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +38,20 @@ class ConfiguracionArranqueTest {
     }
 
     @Test
+    @DisplayName("El contenedor acota el heap y la memoria del compose")
+    void elContenedorAcotaLaMemoria() throws IOException {
+        String dockerfile = Files.readString(Path.of("Dockerfile"));
+        assertThat(dockerfile)
+                .contains("-XX:MaxRAMPercentage=70.0")
+                .contains("-XX:+ExitOnOutOfMemoryError");
+
+        String compose = Files.readString(Path.of("..", "docker-compose.yml"));
+        assertThat(compose)
+                .as("sin mem_limit, MaxRAMPercentage se calcula contra la RAM del host")
+                .containsPattern("(?s)notificaciones-service:.*?mem_limit:\\s*512m");
+    }
+
+    @Test
     @DisplayName("El perfil dev sí prende el log de SQL")
     void elPerfilDevPrendeShowSql() throws IOException {
         assertThat(propiedadesDe("/application-dev.properties").getProperty("spring.jpa.show-sql"))
@@ -50,6 +66,34 @@ class ConfiguracionArranqueTest {
                 .getProperty("spring.rabbitmq.listener.simple.default-requeue-rejected"))
                 .as("con el default (true) el mensaje vuelve a la cola y se reintenta para siempre")
                 .isEqualTo("false");
+    }
+
+    @Test
+    @DisplayName("Rabbit no deja 250 mensajes sin confirmar ni un solo consumidor")
+    void rabbitTienePrefetchYConcurrenciaAcotados() throws IOException {
+        Properties propiedades = propiedadesDe("/application.properties");
+
+        assertThat(propiedades.getProperty("spring.rabbitmq.listener.simple.prefetch"))
+                .as("250 mensajes sin confirmar en memoria con n8n lento es un buffer innecesario")
+                .isEqualTo("${RABBIT_PREFETCH:10}");
+        assertThat(propiedades.getProperty("spring.rabbitmq.listener.simple.concurrency"))
+                .isEqualTo("${RABBIT_CONCURRENCY:2}");
+        assertThat(propiedades.getProperty("spring.rabbitmq.listener.simple.max-concurrency"))
+                .isEqualTo("${RABBIT_MAX_CONCURRENCY:4}");
+    }
+
+    @Test
+    @DisplayName("Sin OSIV y con pool de conexiones acotado")
+    void jpaSinOsivYPoolAcotado() throws IOException {
+        Properties propiedades = propiedadesDe("/application.properties");
+
+        assertThat(propiedades.getProperty("spring.jpa.open-in-view")).isEqualTo("false");
+        assertThat(propiedades.getProperty("spring.datasource.hikari.maximum-pool-size"))
+                .isEqualTo("${DB_POOL_MAX:5}");
+        assertThat(propiedades.getProperty("spring.datasource.hikari.minimum-idle"))
+                .isEqualTo("${DB_POOL_MIN:2}");
+        assertThat(propiedades.getProperty("spring.datasource.hikari.connection-timeout"))
+                .isEqualTo("${DB_POOL_CONNECTION_TIMEOUT_MS:5000}");
     }
 
     @Test

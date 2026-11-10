@@ -2,14 +2,16 @@ package ar.edu.utn.frba.ddsi.notificaciones.config;
 
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketTimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Un servidor local que acepta y no responde: la llamada tiene que cortar por timeout. */
@@ -36,13 +38,17 @@ class RestTemplateConfigTest {
 
         try {
             RestTemplate restTemplate = config.restTemplate();
+            assertInstanceOf(JdkClientHttpRequestFactory.class, restTemplate.getRequestFactory(),
+                    "el cliente tiene que usar el HttpClient del JDK con pool");
             String url = "http://localhost:" + servidorQueNoResponde.getAddress().getPort() + "/lento";
 
             ResourceAccessException excepcion = assertThrows(ResourceAccessException.class,
                     () -> restTemplate.getForEntity(url, String.class));
 
-            assertInstanceOf(SocketTimeoutException.class, excepcion.getCause(),
+            assertInstanceOf(IOException.class, excepcion.getCause(),
                     "el corte tiene que ser por timeout, no por otro error de red");
+            assertTrue(excepcion.getCause().getMessage().toLowerCase().contains("timed out"),
+                    "el corte tiene que ser por timeout: " + excepcion.getCause().getMessage());
         } finally {
             servidorQueNoResponde.stop(0);
         }
