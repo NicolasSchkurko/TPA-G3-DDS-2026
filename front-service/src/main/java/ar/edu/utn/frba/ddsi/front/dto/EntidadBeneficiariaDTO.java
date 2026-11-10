@@ -20,7 +20,10 @@ public class EntidadBeneficiariaDTO {
     private String cuit;
     private String tipoJuridico;
     private String telefono;
+    /** Email canónico de la entidad (igual que lo que manda donaciones-service). */
     private String email;
+    /** Alias de compatibilidad: apunta al mismo Mail que {@link #email}. */
+    private String correoElectronico;
     private DireccionDTO direccion;
     private UUID id;
     private Boolean activa;

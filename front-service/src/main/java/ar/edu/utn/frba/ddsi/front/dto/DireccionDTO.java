@@ -17,6 +17,13 @@ public class DireccionDTO {
     private String ciudad;
     private String provincia;
     private String pais;
+    private Double latitud;
+    private Double longitud;
+
+    /** true si el backend trae coordenadas (elegidas en el mapa / geocodificadas con Georef). */
+    public boolean tieneCoordenadas() {
+        return latitud != null && longitud != null;
+    }
 
     public String etiqueta() {
         String calle = calleUno != null ? calleUno : "";

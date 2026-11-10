@@ -71,12 +71,18 @@ public class GestorAsignaciones {
                 return Estado.EN_DEPOSITO;
             case "PENDIENTE_ASIGNACION":
                 return Estado.PENDIENTE_ASIGNACION;
-            case "ENTREGADO":
-                return Estado.ENTREGADO;
-            case "VENCIDO":
-                return Estado.VENCIDO;
             case "ASIGNADO":
                 return Estado.ASIGNADO;
+            case "LISTA_PARA_ENTREGAR":
+                return Estado.LISTA_PARA_ENTREGAR;
+            case "EN_TRASLADO":
+                return Estado.EN_TRASLADO;
+            case "ENTREGADO":
+                return Estado.ENTREGADO;
+            case "ENTREGA_FALLIDA":
+                return Estado.ENTREGA_FALLIDA;
+            case "VENCIDO":
+                return Estado.VENCIDO;
             default:
                 throw new IllegalArgumentException("Estado desconocido: " + nuevoEstado);
         }

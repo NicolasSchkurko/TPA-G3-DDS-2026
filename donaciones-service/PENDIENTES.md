@@ -19,286 +19,24 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 | #  | Punto | Severidad | Paquete | Por qué está acá |
 |----|-------|-----------|---------|------------------|
-| 1  | 42    | Media     | `models.entities` | Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados |
-| 2  | 62    | Media     | `models.entities` | `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real |
-| 3  | 63    | Media     | `models.entities` | Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada |
-| 4  | 64    | Media     | `models.gestores` | Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking` |
-| 5  | 74    | Media     | `models.sheduler` | `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only |
-| 6  | 75    | Media     | `models.entities` | `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar direcciones con una API gratuita |
-| 7  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
-| 8  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
-| 9  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
-| 10 | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
-| 11 | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
-| 12 | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
-| 13 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
-| 14 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
-| 15 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
-| 16 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
-| 17 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
+| 4  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
+| 5  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
+| 6  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
+| 7  | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
+| 8  | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
+| 9  | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
+| 10 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
+| 11 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
+| 12 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
+| 13 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
+| 14 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
+| 15 | 76    | Baja      | `models.gestores` | Revisar y reordenar la implementación de Georef en `GestorGeoref` (cliente, batching, persistencia y sincronización con la transacción) |
 
 
 ---
 
 
-## 42. Faltan "Lista para entregar" y "Entrega fallida" en el enum de estados
 
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/Donaciones/Estado.java`, `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorEventosLogistica.java` (`manejarEntregaFallida`)
-
-### Qué pasa
-
-El enunciado pide trazar: "En depósito", "Asignación realizada", "Lista para entregar", "En traslado", "Entregada", "Entrega fallida" y "Vencida". El enum hoy es `EN_DEPOSITO`, `PENDIENTE_ASIGNACION`, `EN_TRASLADO`, `ASIGNADO`, `ENTREGADO`, `VENCIDO`, y cubre 5 de 7:
-
-- **"Lista para entregar"** no tiene valor que lo represente: entre `ASIGNADO` y `EN_TRASLADO` el estado de la donación no cambia.
-
-- **"Entrega fallida"** no es un estado: `manejarEntregaFallida` devuelve la donación a `EN_DEPOSITO` con una justificación (queda registrado en el historial).
-
-La auditoría/trazabilidad persistente sí existe: `Donacion` guarda el historial de estados en la tabla `donacion_historial_estados` (`@ElementCollection`).
-
-### Propuesta
-
-Definir el mapeo con el equipo: agregar `LISTA_PARA_ENTREGAR` (al planificar la ruta) y/o `ENTREGA_FALLIDA` como valores del enum, o documentar que `ASIGNADO` cubre "lista para entregar" y que la fallida vuelve a depósito a propósito.
-
-
----
-
-
-## 62. `SegmentadorDonaciones` asigna `fechaEntrega` prematura en depósito falseando `SubAtendidos` y anulando la real
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/SegmentadorDonaciones/SegmentadorDonaciones.java` (líneas 62-74), `.../models/entities/Donaciones/Donacion.java` (líneas 114-116), `.../models/entities/AsignadorDonaciones/AlgoritmosDeAsignacion/SubAtendidos.java` (líneas 64-70)
-
-### Qué pasa
-
-Al registrar un formulario de donación, `SegmentadorDonaciones.crearDonacion` asigna la fecha del formulario directamente al campo `fechaEntrega` de cada segmento creado:
-
-```java
-return new Donacion(
-
-    donante,
-
-    null,
-
-    "Segmento de donación: " + sub.getNombre(),
-
-    bienesDelGrupo,
-
-    Estado.EN_DEPOSITO,
-
-    sub,
-
-    fechaEntrega // <-- Recibe formulario.getFechaRealizacion()
-
-);
-```
-
-Esto genera dos inconsistencias graves:
-
-1. `SubAtendidos.cantidadDonacionesUltimoTrimestre` cuenta donaciones recibidas filtrando por `d.getFechaEntrega() != null && d.getFechaEntrega().isAfter(haceUnTrimestre)`, **sin validar `d.getEstado() == Estado.ENTREGADO`**. Cualquier donación en depósito o en traslado ya suma como donación entregada para la entidad, penalizándola en el ranking injustamente.
-
-2. En `Donacion.actualizarEstado`:
-
-   `if (nuevoEstado == Estado.ENTREGADO && this.fechaEntrega == null) { this.fechaEntrega = LocalDate.now(); }`
-
-   Como `this.fechaEntrega` ya fue poblada en la creación, esta condición nunca se cumple. La fecha de entrega real nunca se registra y queda congelada con la fecha de carga del formulario, distorsionando las ventanas de `NecesidadRecurrente.cantidadRecibidaEnPeriodo`.
-
-### Cómo se dispara
-
-Crear una donación vía `POST /api/donaciones/formulario` y consultar el ranking de matchmaking o el cálculo de `SubAtendidos` antes de que la donación haya sido entregada.
-
-### Propuesta de arreglo
-
-Instanciar la donación con `fechaEntrega = null` en `SegmentadorDonaciones.crearDonacion`, y verificar `d.getEstado() == Estado.ENTREGADO` en `SubAtendidos.cantidadDonacionesUltimoTrimestre`.
-
-
----
-
-
-## 63. Fallback de matchmaking sin intersección deja propuestas con posición duplicada y asigna propuesta equivocada
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 78-85), `.../models/gestores/GestorMatchmaking.java` (líneas 29-39)
-
-### Qué pasa
-
-En `AsignadorDonaciones.procesarMatchmaking`, si no hay intersección entre algoritmos (`huboCoincidenciaTotal == false`), se ejecuta:
-
-```java
-todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
-
-resultadoFinal = todasLasPropuestas;
-```
-
-A diferencia de la rama con intersección (donde se reasigna `setPosicion(i + 1)`), en esta rama cada algoritmo aportó propuestas numeradas `1..N`. La lista resultante contiene múltiples elementos con `posicion == 1`, múltiples con `posicion == 2`, etc.
-
-`GestorMatchmaking.obtenerPropuestaSeleccionadaParaDonacion` asume que el parámetro `posicion` recibido en `POST /donaciones/asignar` corresponde al índice de la lista:
-
-```java
-PropuestaAsignacion propuesta = resultado.getPropuestasOrdenadas().get(posicion - 1);
-```
-
-Si el operador visualiza en la interfaz una propuesta con posición 2 (proveniente de `CompatibilidadSemantica`) y envía `posicionPropuesta = 2`, el código accede al índice 1 de la lista, que corresponde a la propuesta de `SubAtendidos` (cuya posición original era 1). El sistema aprueba y asigna una propuesta completamente distinta a la seleccionada.
-
-### Cómo se dispara
-
-1. Se corre matchmaking para una donación donde `CompatibilidadSemantica` y `SubAtendidos` recomiendan entidades distintas (`huboCoincidenciaTotal = false`).
-
-2. `GET /donaciones/pendientes` devuelve la lista con posiciones repetidas (`1, 1, 2, 2...`).
-
-3. Se invoca `POST /donaciones/asignar` con `posicionPropuesta = 2`.
-
-4. Se asigna la entidad del índice 1 (que tiene posición 1 de otro algoritmo) en lugar de la elegida.
-
-### Propuesta de arreglo
-
-Renumerar secuencialmente las posiciones de `resultadoFinal` (`setPosicion(i + 1)`) en la rama `else` de `AsignadorDonaciones.procesarMatchmaking`, o permitir seleccionar la propuesta por un identificador unívoco (ID de necesidad/entidad).
-
-
----
-
-
-## 64. Donaciones que reingresan a depósito no pueden volver a pasar por matchmaking por colisión en `ResultadoMatchmaking`
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/repositories/repos/RepositorioDeResultadosMatchmaking.java` (líneas 28-36), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 178-192), `.../models/gestores/GestorEventosLogistica.java` (líneas 131 y 151)
-
-### Qué pasa
-
-Cuando una donación pasa por matchmaking, se persiste un `ResultadoMatchmaking` en la base de datos. Si la donación reingresa a depósito (por entrega fallida en `GestorEventosLogistica.manejarEntregaFallida` / `manejarReingresoDeposito`, o por reseteo manual de estado a `EN_DEPOSITO`), el `ResultadoMatchmaking` anterior no se elimina (únicamente se borra en `DonacionService.asignarPropuesta`).
-
-Al volver a correr el matchmaking (`AsignacionScheduler` o `POST /matchmaking/ejecutar`), `buscarDonacionesSinAsignar()` incluye la donación en `EN_DEPOSITO`. Pero al persistir el nuevo resultado, `RepositorioDeResultadosMatchmaking.guardar` valida:
-
-```java
-if (findByDonacionId(resultado.getDonacion().getId()).isPresent()) {
-
-    throw new IllegalArgumentException("Ya existe un resultado de matchmaking para la donación: " + resultado.getDonacion().getId());
-
-}
-```
-
-La excepción es capturada en `AsignadorDonaciones.ejecutarMatchmakingBatch`, imprimiendo el error en consola y omitiendo la donación. La donación queda varada en `EN_DEPOSITO` permanentemente sin poder generar propuestas nuevas, y `GET /donaciones/pendientes` sigue sirviendo las propuestas obsoletas del ciclo anterior.
-
-### Cómo se dispara
-
-1. Una donación es asignada y enviada a entrega.
-
-2. La entrega falla (`ENTREGA_FALLIDA`) o la donación reingresa a depósito (`REINGRESO_DEPOSITO`).
-
-3. El scheduler de matchmaking intenta procesar la donación.
-
-4. Falla con `IllegalArgumentException` por clave única duplicada y nunca más se vuelve a procesar.
-
-### Propuesta de arreglo
-
-En `AsignadorDonaciones.registrarDonacionPendienteDeAprobacion` (o en `RepositorioDeResultadosMatchmaking`), borrar o actualizar el resultado previo si ya existía para esa donación antes de insertar el nuevo.
-
-
----
-
-
-## 74. `AsignacionScheduler` transacciona todo el lote junto: un fallo en una donación tumba el batch por rollback-only
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/sheduler/AsignacionScheduler.java` (línea 37), `.../models/entities/AsignadorDonaciones/AsignadorDonaciones.java` (líneas 51-57)
-
-### Qué pasa
-
-`AsignacionScheduler.ejecutarAsignacion()` está anotado con `@Transactional(rollbackFor = Exception.class)`. Dentro, `AsignadorDonaciones.ejecutarMatchmakingBatch` recorre las donaciones en un bucle `for` con un `try / catch`:
-
-```java
-for (Donacion donacion : todasLasDonaciones) {
-
-    try {
-
-        procesarMatchmaking(donacion, todasLasEntidades);
-
-    } catch (Exception e) {
-
-        System.err.println("Error al procesar matchmaking para la donación...: " + e.getMessage());
-
-    }
-
-}
-```
-
-El comentario asume que aislar con `try/catch` permite continuar con el resto del lote si una donación falla. Sin embargo, al estar bajo una transacción única de Spring/Hibernate, si una donación dispara una excepción a nivel base de datos (por ejemplo, violación de clave única en `ResultadoMatchmaking` o constraint de FK), Hibernate marca la sesión y la transacción física como **rollback-only**. Cuando el scheduler termina, Spring intenta hacer commit y arroja `UnexpectedRollbackException`, descartando todas las asignaciones exitosas del lote completo.
-
-### Cómo se dispara
-
-Cualquier corrida programada donde al menos una donación sufra un error de integridad o colisión en base de datos.
-
-### Propuesta de arreglo
-
-Remover `@Transactional` del método del scheduler y encapsular el procesamiento de cada donación individual en una transacción independiente mediante `TransactionTemplate` o un método de servicio con `@Transactional(propagation = Propagation.REQUIRES_NEW)`.
-
-
----
-
-
-## 75. `Direccion.getLatitud()`/`getLongitud()` devuelven un placeholder: falta geocodificar las direcciones con una API gratuita
-
-**Estado:** abierto
-
-**Severidad:** media
-
-**Paquete:** `models.entities`
-
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/entities/direccion/Direccion.java` (líneas 97-103), `.../dto/DireccionDTO.java`, `.../services/EntidadBeneficiariaService.java` (`registrarEntidad` y `actualizarEntidad`), `.../services/DonanteService.java` (`resolverCiudad` y los métodos que persisten donantes), `../logisticas-service/.../dto/entrega/DireccionDTO.java`, `../logisticas-service/.../models/entities/Direccion/Direccion.java`
-
-### Qué pasa
-
-`Direccion` no guarda coordenadas: solo tiene calle, altura, piso, departamento y `Ciudad`. Los dos getters que deberían resolverlas devuelven un string de relleno:
-
-```java
-// Pendiente: requeriría integración con una API externa de geolocalización.
-public String getLatitud() {
-  return "INSERTAR CONTENIDO A DEVOLVER";
-}
-
-public String getLongitud() {
-  return "INSERTAR CONTENIDO A DEVOLVER";
-}
-```
-
-No es un problema de formato: cualquier consumidor que llame a esos métodos recibe un texto que no es una coordenada. Y como `DireccionDTO` tampoco tiene campos `latitud`/`longitud`, aunque se geocodificara en `donaciones-service` las coordenadas no llegarían a `logisticas-service` ni al frontend.
-
-### Cómo se dispara
-
-Cualquier intento de ubicar una entidad beneficiaria, un donante o una parada en un mapa, o de calcular una ruta por calles. Hoy el bug queda latente porque ningún endpoint expone esos getters; aparece en cuanto se conecta el mapa o el ruteo.
-
-### Propuesta de arreglo
-
-1. Agregar `Double latitud` y `Double longitud` a `Direccion` (nullable: las filas viejas no tienen coordenadas). Reemplazar los getters placeholder por los generados por Lombok o por getters que devuelvan esos campos, sin hacer I/O.
-2. Crear un `GeocodingService` en `donaciones-service` que use **Georef Argentina**, la API gratuita del Estado y sin API key:
-   - `GET https://apis.datos.gob.ar/georef/api/direcciones`
-   - parámetros: `direccion` (calle + altura), `provincia` y `localidad`
-   - respuesta: `direcciones[0].ubicacion.lat` y `direcciones[0].ubicacion.lon` (WGS84)
-   - si `direcciones` viene vacío, devolver `null` y loguear un warning; no romper el alta.
-3. Geocodificar en el alta/actualización, no en los getters: llamar al servicio en `EntidadBeneficiariaService.registrarEntidad`, `actualizarEntidad` y en los métodos de `DonanteService` que persisten una `Direccion`, después de `resolverCiudad` y antes de guardar. Los getters de una entidad JPA deben ser puros.
-4. Persistir las coordenadas y propagarlas: agregar `latitud`/`longitud` a `DireccionDTO` de `donaciones-service`, mapearlas en `from`/`toDomain`, y agregarlas también al `DireccionDTO` y al `Direccion` de `logisticas-service` para que las paradas puedan dibujarse.
-5. Poner timeout y cachear: no llamar a Georef en cada lectura. Una vez persistidas, las coordenadas se leen de la base. Para las filas existentes, hacer una migración/backfill único, no un geocoding por request.
-6. Agregar tests con `GeocodingService` mockeado: dirección encontrada, dirección sin resultado (se guarda `null`), y round-trip de `DireccionDTO` con lat/lon.
-
-Georef cubre direcciones de Argentina y devuelve la coordenada de la cuadra/calle, no el punto exacto del portal; para el TP alcanza. Si en el futuro se necesita cobertura fuera del país, se puede evaluar Nominatim (OpenStreetMap), pero exige `User-Agent`, máximo aproximado de 1 request por segundo y cachear resultados.
-
-
----
 
 
 ## 51. `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias
@@ -637,7 +375,30 @@ Lanzar `IllegalArgumentException` o `EntityNotFoundException` cuando `buscarPorI
 ---
 
 
+## 76. Revisar y reordenar la implementación de Georef en `GestorGeoref`
+
+**Estado:** abierto
+
+**Severidad:** baja
+
+**Paquete:** `models.gestores`
+
+**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/donaciones/models/gestores/GestorGeoref.java`, `.../models/sheduler/GeocodingScheduler.java`, `.../clients/GeorefClient.java`
+
+### Qué pasa
+
+`GestorGeoref` concentra cliente HTTP, deduplicación, lotes, persistencia con `TransactionTemplate`, sincronización `afterCommit` y reglas de actualización. Conviene revisar la partición entre `GestorGeoref` y `GeorefClient`/repositorio para que el gestor coordine y las otras capas queden más acotadas.
+
+### Propuesta de arreglo
+
+1. Revisar qué responsabilidades quedan en `GestorGeoref` y cuáles deberían delegarse.
+2. Alinear con el flujo `controller -> service -> gestores -> dominio`.
+
+---
+
 ## Corregidos
+
+- **75 (geocoding).** `Direccion` no guardaba coordenadas y `getLatitud()`/`getLongitud()` devolvían un placeholder - agregados `latitud`/`longitud` persistentes y `GeorefClient`/`GestorGeoref` sobre la API pública Georef (POST `/direcciones` en lotes de hasta 1000, deduplicados, `max = 1` y reintento sin localidad). `GestorGeoref` coordina el alta y el PUT: geocodifica después del commit y en una transacción corta con lock pesimista (no se mantiene abierta la transacción durante el HTTP y no se pisan coordenadas entre instancias), conserva coordenadas y backoff si la dirección textual no cambió, y deja la operación de negocio en pie si Georef falla. `GeocodingScheduler` corre a las 00:30, limita la corrida con `geocoding.cron.max-por-corrida`, aplica backoff de 7 días y hasta 3 intentos, y distingue "sin resultado" de "API caída" (la caída no consume intento). `anonimizar()` borra las coordenadas y `DireccionDTO` las transporta a logística tanto en entregas como en paradas; los GET de donantes no publican las coordenadas (el PUT las conserva si la dirección textual no cambió). Cobertura en `GestorGeorefTest`, `GeocodingSchedulerTest`, `GeorefClientTest`, `DireccionTest` y `DireccionDTOTest`.
 
 - **75.** El cursor de deduplicación de eventos `ultimoIdProcesado` en `EventosListener` era en memoria: no sobrevivía reinicios ni clusters - reemplazado por la tabla de idempotencia `eventos_logistica_procesados` (clave primaria `id_evento`, vía `RepositorioEventosProcesados`). El reclamo se inserta al comienzo de la transacción de `GestorEventosLogistica.procesarEvento` (`persist` + `flush`), así que la verificación y la inserción son atómicas: si el evento falla, el rollback borra la fila y el retry lo reprocesa; si otra réplica ya lo reclamó, la PK duplicada se traduce a `EventoYaProcesadoException` y el listener confirma el mensaje sin reprocesar. La deduplicación es duradera y compartida entre todas las réplicas, sin alterar el contrato del Punto 45. Coberturas en `EventosListenerTest` y `GestorEventosLogisticaTest`.
 
@@ -756,4 +517,8 @@ Un bullet por arreglo; el número es el ID estable del punto original («sin ID�
 - **Rabbit (sin ID).** Dos bindings ataban al exchange equivocado y usaban comodines `.#` — cada servicio declara lo suyo con la clave exacta.
 
 - **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
-
+- **64.** `ResultadoMatchmaking` colisionaba al re-matchear: el reemplazo se hace al inicio del bucle de `ejecutarMatchmakingBatch` (borra el previo antes de procesar), `eliminarResultado` ahora hace `flush`, y `guardar` es un save puro. Cubierto por `RepositorioDeResultadosMatchmakingTest` y `AsignadorDonacionesReMatchmakingTest`.
+- **74.** `AsignacionScheduler` transaccionaba todo el lote junto: un fallo en una donación tumbaba el batch por rollback-only — `DonacionService.ejecutarMatchmakingADemanda` ahora procesa cada donación dentro de un `TransactionTemplate` con `PROPAGATION_REQUIRES_NEW`, así un error de integridad solo revierte esa donación; el scheduler mantiene su `@Transactional` (punto 44) para la lectura inicial.
+- **42.** Estados del enunciado: se agregaron `LISTA_PARA_ENTREGAR` y `ENTREGA_FALLIDA` al enum; `manejarEntregaFallida` registra `ENTREGA_FALLIDA`, `REINGRESO_DEPOSITO` vuelve a `EN_DEPOSITO`, y `asignarPropuesta` deja el estado final en `LISTA_PARA_ENTREGAR`.
+- **62.** `fechaEntrega` prematura en depósito: `SegmentadorDonaciones` la deja en `null` (se setea al entregar) y `SubAtendidos` filtra por `Estado.ENTREGADO`.
+- **63.** Fallback de matchmaking sin intersección: se renumeran las posiciones secuencialmente para evitar asignar la propuesta equivocada.

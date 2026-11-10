@@ -1,0 +1,18 @@
+$kind: http-request
+description: posicionPropuesta es 1-indexada (DonacionService.asignarPropuesta hace propuestasOrdenadas.get(posicion - 1)) y queda resuelta por el paso 07. Esto dispara notificaciones e incentivos y publica la entrega a logistica.
+url: "{{baseUrl}}/api/donaciones/asignar"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "donacionId": "{{donacionId}}",
+      "posicionPropuesta": {{posicionPropuesta}}
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('asigna la propuesta', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 8000

@@ -26,21 +26,21 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="donanteNombre" class="form-label">Nombre</label>
-                <input type="text" class="form-control" id="donanteNombre" name="nombre" autocomplete="given-name">
+                <input type="text" class="form-control" id="donanteNombre" name="nombre" autocomplete="given-name" th:value="${formularioRegistro != null ? formularioRegistro['nombre'] : ''}">
             </div>
             <div class="col-md-6 mb-3">
                 <label for="donanteApellido" class="form-label">Apellido</label>
-                <input type="text" class="form-control" id="donanteApellido" name="apellido" autocomplete="family-name">
+                <input type="text" class="form-control" id="donanteApellido" name="apellido" autocomplete="family-name" th:value="${formularioRegistro != null ? formularioRegistro['apellido'] : ''}">
             </div>
         </div>
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label for="donanteEdad" class="form-label">Edad</label>
-                <input type="number" class="form-control" id="donanteEdad" name="edad" min="1">
+                <input type="number" class="form-control" id="donanteEdad" name="edad" min="1" th:value="${formularioRegistro != null ? formularioRegistro['edad'] : ''}">
             </div>
             <div class="col-md-4 mb-3">
                 <label for="donanteDocumento" class="form-label">Número de documento</label>
-                <input type="number" class="form-control" id="donanteDocumento" name="numeroDeDocumento" min="1">
+                <input type="number" class="form-control" id="donanteDocumento" name="numeroDeDocumento" min="1" th:value="${formularioRegistro != null ? formularioRegistro['numeroDeDocumento'] : ''}">
             </div>
             <div class="col-md-4 mb-3">
                 <label for="donanteGenero" class="form-label">Género</label>
@@ -56,16 +56,16 @@
     <div data-persona="JURIDICA" class="d-none">
         <div class="mb-3">
             <label for="donanteRazonSocial" class="form-label">Razón social</label>
-            <input type="text" class="form-control" id="donanteRazonSocial" name="razonSocial">
+            <input type="text" class="form-control" id="donanteRazonSocial" name="razonSocial" th:value="${formularioRegistro != null ? formularioRegistro['razonSocial'] : ''}">
         </div>
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label for="donanteRubro" class="form-label">Rubro</label>
-                <input type="text" class="form-control" id="donanteRubro" name="rubro">
+                <input type="text" class="form-control" id="donanteRubro" name="rubro" th:value="${formularioRegistro != null ? formularioRegistro['rubro'] : ''}">
             </div>
             <div class="col-md-4 mb-3">
                 <label for="donanteCuit" class="form-label">CUIT</label>
-                <input type="text" class="form-control" id="donanteCuit" name="cuit">
+                <input type="text" class="form-control" id="donanteCuit" name="cuit" th:value="${formularioRegistro != null ? formularioRegistro['cuit'] : ''}">
             </div>
             <div class="col-md-4 mb-3">
                 <label for="donanteTipoJuridico" class="form-label">Tipo jurídico</label>
@@ -80,6 +80,7 @@
     </div>
 
     <h6 class="fw-semibold mt-2">Medio de contacto (opcional)</h6>
+    <p class="form-text mb-1">Este medio es opcional y <strong>no</strong> reemplaza el correo de la cuenta: usamos el correo que ingresaste arriba para tu perfil de donante.</p>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label for="donanteTipoContacto" class="form-label">Tipo</label>
@@ -91,38 +92,39 @@
         </div>
         <div class="col-md-8 mb-3">
             <label for="donanteValorContacto" class="form-label">Correo o número</label>
-            <input type="text" class="form-control" id="donanteValorContacto" name="valorContacto" autocomplete="email">
+            <input type="text" class="form-control" id="donanteValorContacto" name="valorContacto" autocomplete="email"
+                   placeholder="Opcional: si no cargás nada, usamos el correo de tu cuenta" th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
         </div>
     </div>
     <h6 class="fw-semibold mt-2">Dirección</h6>
     <div class="row">
         <div class="col-md-8 mb-3">
             <label for="donanteCalle" class="form-label">Calle</label>
-            <input type="text" class="form-control" id="donanteCalle" name="calleUno" autocomplete="address-line1">
+            <input type="text" class="form-control" id="donanteCalle" name="calleUno" autocomplete="address-line1" th:value="${formularioRegistro != null ? formularioRegistro['calleUno'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="donanteAltura" class="form-label">Altura</label>
-            <input type="number" class="form-control" id="donanteAltura" name="altura" min="1">
+            <input type="number" class="form-control" id="donanteAltura" name="altura" min="1" th:value="${formularioRegistro != null ? formularioRegistro['altura'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="donantePiso" class="form-label">Piso</label>
-            <input type="number" class="form-control" id="donantePiso" name="piso" min="0">
+            <input type="number" class="form-control" id="donantePiso" name="piso" min="0" th:value="${formularioRegistro != null ? formularioRegistro['piso'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="donanteDepartamento" class="form-label">Departamento</label>
-            <input type="text" class="form-control" id="donanteDepartamento" name="departamento">
+            <input type="text" class="form-control" id="donanteDepartamento" name="departamento" th:value="${formularioRegistro != null ? formularioRegistro['departamento'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="donanteCiudad" class="form-label">Ciudad</label>
-            <input type="text" class="form-control" id="donanteCiudad" name="ciudad" autocomplete="address-level2">
+            <input type="text" class="form-control" id="donanteCiudad" name="ciudad" autocomplete="address-level2" th:value="${formularioRegistro != null ? formularioRegistro['ciudad'] : ''}">
         </div>
         <div class="col-md-6 mb-3">
             <label for="donanteProvincia" class="form-label">Provincia</label>
-            <input type="text" class="form-control" id="donanteProvincia" name="provincia" autocomplete="address-level1">
+            <input type="text" class="form-control" id="donanteProvincia" name="provincia" autocomplete="address-level1" th:value="${formularioRegistro != null ? formularioRegistro['provincia'] : ''}">
         </div>
         <div class="col-md-6 mb-3">
             <label for="donantePais" class="form-label">País</label>
-            <input type="text" class="form-control" id="donantePais" name="pais" value="Argentina" autocomplete="country-name">
+            <input type="text" class="form-control" id="donantePais" name="pais" value="Argentina" autocomplete="country-name" th:value="${formularioRegistro != null ? (formularioRegistro['pais'] ?: 'Argentina') : 'Argentina'}">
         </div>
     </div>
 </section>
@@ -132,16 +134,16 @@
     <h5 class="fw-semibold mb-3">Datos de la entidad beneficiaria</h5>
     <div class="mb-3">
         <label for="entidadRazonSocial" class="form-label">Razón social</label>
-        <input type="text" class="form-control" id="entidadRazonSocial" name="razonSocial">
+        <input type="text" class="form-control" id="entidadRazonSocial" name="razonSocial" th:value="${formularioRegistro != null ? formularioRegistro['razonSocial'] : ''}">
     </div>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label for="entidadRubro" class="form-label">Rubro</label>
-            <input type="text" class="form-control" id="entidadRubro" name="rubro">
+            <input type="text" class="form-control" id="entidadRubro" name="rubro" th:value="${formularioRegistro != null ? formularioRegistro['rubro'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadCuit" class="form-label">CUIT</label>
-            <input type="text" class="form-control" id="entidadCuit" name="cuit">
+            <input type="text" class="form-control" id="entidadCuit" name="cuit" th:value="${formularioRegistro != null ? formularioRegistro['cuit'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadTipoJuridico" class="form-label">Tipo jurídico</label>
@@ -155,37 +157,37 @@
     </div>
     <div class="mb-3">
         <label for="entidadTelefono" class="form-label">Teléfono</label>
-        <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel">
+        <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel" th:value="${formularioRegistro != null ? formularioRegistro['telefono'] : ''}">
     </div>
     <h6 class="fw-semibold mt-2">Dirección</h6>
     <div class="row">
         <div class="col-md-8 mb-3">
             <label for="entidadCalle" class="form-label">Calle</label>
-            <input type="text" class="form-control" id="entidadCalle" name="calleUno" autocomplete="address-line1">
+            <input type="text" class="form-control" id="entidadCalle" name="calleUno" autocomplete="address-line1" th:value="${formularioRegistro != null ? formularioRegistro['calleUno'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadAltura" class="form-label">Altura</label>
-            <input type="number" class="form-control" id="entidadAltura" name="altura" min="1">
+            <input type="number" class="form-control" id="entidadAltura" name="altura" min="1" th:value="${formularioRegistro != null ? formularioRegistro['altura'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadPiso" class="form-label">Piso</label>
-            <input type="number" class="form-control" id="entidadPiso" name="piso" min="0">
+            <input type="number" class="form-control" id="entidadPiso" name="piso" min="0" th:value="${formularioRegistro != null ? formularioRegistro['piso'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadDepartamento" class="form-label">Departamento</label>
-            <input type="text" class="form-control" id="entidadDepartamento" name="departamento">
+            <input type="text" class="form-control" id="entidadDepartamento" name="departamento" th:value="${formularioRegistro != null ? formularioRegistro['departamento'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="entidadCiudad" class="form-label">Ciudad</label>
-            <input type="text" class="form-control" id="entidadCiudad" name="ciudad" autocomplete="address-level2">
+            <input type="text" class="form-control" id="entidadCiudad" name="ciudad" autocomplete="address-level2" th:value="${formularioRegistro != null ? formularioRegistro['ciudad'] : ''}">
         </div>
         <div class="col-md-6 mb-3">
             <label for="entidadProvincia" class="form-label">Provincia</label>
-            <input type="text" class="form-control" id="entidadProvincia" name="provincia" autocomplete="address-level1">
+            <input type="text" class="form-control" id="entidadProvincia" name="provincia" autocomplete="address-level1" th:value="${formularioRegistro != null ? formularioRegistro['provincia'] : ''}">
         </div>
         <div class="col-md-6 mb-3">
             <label for="entidadPais" class="form-label">País</label>
-            <input type="text" class="form-control" id="entidadPais" name="pais" value="Argentina" autocomplete="country-name">
+            <input type="text" class="form-control" id="entidadPais" name="pais" value="Argentina" autocomplete="country-name" th:value="${formularioRegistro != null ? (formularioRegistro['pais'] ?: 'Argentina') : 'Argentina'}">
         </div>
     </div>
 </section>
@@ -195,26 +197,26 @@
     <h5 class="fw-semibold mb-3">Datos del administrador</h5>
     <div class="mb-3">
         <label for="nombreAMostrar" class="form-label">Nombre a mostrar</label>
-        <input type="text" class="form-control" id="nombreAMostrar" name="nombreAMostrar">
+        <input type="text" class="form-control" id="nombreAMostrar" name="nombreAMostrar" th:value="${formularioRegistro != null ? formularioRegistro['nombreAMostrar'] : ''}">
     </div>
     <div class="row">
         <div class="col-md-6 mb-3">
             <label for="adminNombre" class="form-label">Nombre</label>
-            <input type="text" class="form-control" id="adminNombre" name="nombre">
+            <input type="text" class="form-control" id="adminNombre" name="nombre" th:value="${formularioRegistro != null ? formularioRegistro['nombre'] : ''}">
         </div>
         <div class="col-md-6 mb-3">
             <label for="adminApellido" class="form-label">Apellido</label>
-            <input type="text" class="form-control" id="adminApellido" name="apellido">
+            <input type="text" class="form-control" id="adminApellido" name="apellido" th:value="${formularioRegistro != null ? formularioRegistro['apellido'] : ''}">
         </div>
     </div>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label for="adminEdad" class="form-label">Edad</label>
-            <input type="number" class="form-control" id="adminEdad" name="edad" min="1">
+            <input type="number" class="form-control" id="adminEdad" name="edad" min="1" th:value="${formularioRegistro != null ? formularioRegistro['edad'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="adminDocumento" class="form-label">Número de documento</label>
-            <input type="number" class="form-control" id="adminDocumento" name="numeroDeDocumento" min="1">
+            <input type="number" class="form-control" id="adminDocumento" name="numeroDeDocumento" min="1" th:value="${formularioRegistro != null ? formularioRegistro['numeroDeDocumento'] : ''}">
         </div>
         <div class="col-md-4 mb-3">
             <label for="adminGenero" class="form-label">Género</label>
@@ -237,7 +239,7 @@
         </div>
         <div class="col-md-8 mb-3">
             <label for="adminValorContacto" class="form-label">Correo o número</label>
-            <input type="text" class="form-control" id="adminValorContacto" name="valorContacto" autocomplete="email">
+            <input type="text" class="form-control" id="adminValorContacto" name="valorContacto" autocomplete="email" th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
         </div>
     </div>
 </section>

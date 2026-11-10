@@ -1,0 +1,24 @@
+$kind: http-request
+description: La subcategoria/categoria tienen que coincidir EXACTO con las del bien donado (Necesidad.esCompatibleCon compara nombre de subcategoria) para que el matchmaking la encuentre compatible.
+url: "{{baseUrl}}/api/entidades/{{entidadId}}/necesidades"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "tipoNecesidad": "RECURRENTE",
+      "descripcion": "Ropa de abrigo",
+      "cantidadObjetivo": 10,
+      "nombreSubcategoria": "Ropa",
+      "nombreCategoria": "Indumentaria",
+      "plazoEnDias": 30
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('agrega la necesidad', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) { pm.collectionVariables.set('necesidadId', pm.response.json().id); }
+    language: text/javascript
+order: 4000

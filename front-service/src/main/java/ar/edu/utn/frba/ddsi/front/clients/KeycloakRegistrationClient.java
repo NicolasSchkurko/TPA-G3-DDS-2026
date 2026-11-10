@@ -51,6 +51,9 @@ public class KeycloakRegistrationClient {
      * Crea la cuenta en Keycloak. Si se pasan {@code firstName}/{@code lastName} se guardan como
      * nombre visible; si no se pasan, se usa el username para que el perfil declarativo de
      * Keycloak quede completo y no se dispare el requerido "Verify Profile".
+     *
+     * <p>Firma canónica (nosotros): {@code (username, password, email, role, firstName, lastName)}.
+     * Sofi usaba otro orden de parámetros; se adaptó para no perder sus llamadas.</p>
      */
     public String crearUsuario(String username, String password, String email, String role,
                                String firstName, String lastName) {
@@ -60,7 +63,7 @@ public class KeycloakRegistrationClient {
         Map<String, Object> nuevoUsuario = new LinkedHashMap<>();
         nuevoUsuario.put("username", username);
         nuevoUsuario.put("enabled", true);
-        nuevoUsuario.put("email", email);
+        if (email != null && !email.isBlank()) nuevoUsuario.put("email", email.trim().toLowerCase());
         nuevoUsuario.put("emailVerified", true);
         nuevoUsuario.put("firstName", nombre);
         nuevoUsuario.put("lastName", apellido);

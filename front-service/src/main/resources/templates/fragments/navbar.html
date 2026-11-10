@@ -6,7 +6,8 @@
     <meta charset="UTF-8">
 </head>
 <body>
-    <!-- Alias histórico: la cabecera unificada vive en fragments/app-shell -->
+    <!-- Alias histórico: la cabecera unificada vive en fragments/app-shell.
+         Conserva la entrada de donante ("Mi perfil" -> /donante/perfil) vía la cabecera. -->
     <th:block th:fragment="navbar">
         <div th:replace="~{fragments/app-shell :: appHeader}"></div>
     </th:block>

@@ -72,6 +72,9 @@ public class HomeController {
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model) {
         String userId = null;
+        Map<String, String> datosFormulario = new LinkedHashMap<>(form);
+        datosFormulario.remove("password");
+        model.addAttribute("formularioRegistro", datosFormulario);
         try {
             String role = rolParaTipoRegistro(form.get("tipoRegistro"));
             String username = form.get("username");
@@ -136,9 +139,7 @@ public class HomeController {
             } catch (RestClientResponseException e) {
                 eliminarCuentaSiCorresponde(userId);
                 log.warn("Donaciones rechazó el alta con estado {}", e.getStatusCode());
-                model.addAttribute("error", e.getStatusCode().value() == 409
-                        ? "Ya existe un perfil con esos datos (documento, CUIT o email). Si es tu cuenta, iniciá sesión y agregá el rol desde ella."
-                        : "No se pudo crear el perfil del rol. Revisá los datos e intentá nuevamente.");
+                model.addAttribute("error", mensajeErrorPerfil(e));
                 return "register";
             } catch (Exception e) {
                 eliminarCuentaSiCorresponde(userId);
@@ -194,6 +195,20 @@ public class HomeController {
         if (email == null) return null;
         String normalizado = email.trim().toLowerCase();
         return EMAIL_PATTERN.matcher(normalizado).matches() ? normalizado : null;
+    }
+
+    private static String mensajeErrorPerfil(RestClientResponseException exception) {
+        if (exception.getStatusCode().value() == 409) {
+            return "Ya existe un perfil con esos datos. Revisá el documento o CUIT e intentá nuevamente.";
+        }
+        if (exception.getStatusCode().is4xxClientError()) {
+            String detalle = exception.getResponseBodyAsString().trim();
+            if (!detalle.isEmpty() && detalle.length() <= 300 && !detalle.startsWith("{")) {
+                return detalle;
+            }
+            return "El servicio de perfiles rechazó los datos. Revisá los campos del formulario e intentá nuevamente.";
+        }
+        return "No se pudo guardar el perfil de donante. Intentá nuevamente más tarde.";
     }
 
     private static String rolParaTipoRegistro(String tipoRegistro) {

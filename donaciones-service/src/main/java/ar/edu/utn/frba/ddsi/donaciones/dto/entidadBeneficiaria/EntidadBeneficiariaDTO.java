@@ -2,12 +2,12 @@ package ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +24,13 @@ public class EntidadBeneficiariaDTO {
     private String cuit;
     private String tipoJuridico;
     private String telefono;
+    /** Email canónico de la entidad. */
     private String email;
+    /**
+     * Alias de compatibilidad con el frontend/formularios de Sofi: apunta al mismo
+     * Mail que {@link #email}. Si se envía solo este, se mapea al Mail de la entidad.
+     */
+    private String correoElectronico;
     private DireccionDTO direccion;
     private UUID id;
     private Boolean activa;
@@ -32,11 +38,12 @@ public class EntidadBeneficiariaDTO {
 
     public EntidadBeneficiaria toDomain(Ciudad ciudad) {
         Juridica juridica = null;
-        if (this.razonSocial != null || this.telefono != null || this.email != null) {
+        String mail = emailValido() ? email : (correoElectronico != null && !correoElectronico.isBlank() ? correoElectronico : null);
+        if (this.razonSocial != null || this.telefono != null || mail != null) {
             if (this.razonSocial == null || this.razonSocial.isBlank()) {
                 throw new IllegalArgumentException("La razón social es obligatoria para registrar una entidad beneficiaria");
             }
-            if (this.email != null && !this.email.isBlank() && !this.email.contains("@")) {
+            if (mail != null && !mail.contains("@")) {
                 throw new IllegalArgumentException("Ingresá un correo electrónico válido");
             }
 
@@ -58,16 +65,16 @@ public class EntidadBeneficiariaDTO {
                 juridica.agregarMedioDeContacto(tel);
             }
 
-            Mail mail = null;
-            if (this.email != null && !this.email.isBlank()) {
-                mail = new Mail(this.email);
-                juridica.agregarMedioDeContacto(mail);
+            Mail mailContacto = null;
+            if (mail != null) {
+                mailContacto = new Mail(mail);
+                juridica.agregarMedioDeContacto(mailContacto);
             }
 
             if (tel != null) {
                 juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(tel);
-            } else if (mail != null) {
-                juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(mail);
+            } else if (mailContacto != null) {
+                juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(mailContacto);
             }
         }
 
@@ -81,6 +88,10 @@ public class EntidadBeneficiariaDTO {
         }
 
         return entidad;
+    }
+
+    private boolean emailValido() {
+        return this.email != null && !this.email.isBlank();
     }
 
     private boolean tipoJuridicoValido() {
@@ -102,7 +113,9 @@ public class EntidadBeneficiariaDTO {
                     && entidad.getPersonaJuridica().getMediosDeContacto().getListaMediosDeContacto() != null) {
                 for (MedioDeContacto medio : entidad.getPersonaJuridica().getMediosDeContacto().getListaMediosDeContacto()) {
                     if (medio instanceof Mail mail) {
+                        // Unificamos: ambos campos exponen el mismo Mail canónico.
                         dto.setEmail(mail.getDireccionMail());
+                        dto.setCorreoElectronico(mail.getDireccionMail());
                     } else if (medio instanceof Telefono telefono) {
                         dto.setTelefono(telefono.getValor());
                     }
