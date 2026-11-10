@@ -27,4 +27,12 @@ public class GestorCamiones {
         camion.disponible();
         camion.resetearCargaOcupada();
     }
+
+    public void cambiarDisponibilidad(Camion camion, boolean disponible) {
+        if (disponible) {
+            camion.disponible();
+        } else {
+            camion.ocupado();
+        }
+    }
 }

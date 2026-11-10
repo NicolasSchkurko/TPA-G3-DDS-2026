@@ -120,6 +120,17 @@ class GestorPublicacionEventosTest {
     }
 
     @Test
+    @DisplayName("Punto 73: el inicio de ruta arma la URL de seguimiento del front")
+    void elInicioDeRutaArmaLaUrlDelFront() {
+        Ruta ruta = rutaVacia();
+
+        gestor().publicarInicioRuta(ruta);
+
+        assertThat(ruta.getUrlSeguimiento())
+                .isEqualTo("http://localhost:8080/seguimiento/" + ruta.getIdRuta());
+    }
+
+    @Test
     @DisplayName("Al broker sale un solo INICIO_RUTA, aunque la ruta lleve varios items")
     void alBrokerSaleUnSoloInicioDeRuta() {
         // El consumidor notifica una vez por mensaje: N mensajes serian N notificaciones del
@@ -127,6 +138,33 @@ class GestorPublicacionEventosTest {
         gestor().publicarInicioRuta(rutaCon(item(ID_DONACION_A), item(ID_DONACION_B)));
 
         verify(productorEventos, times(1)).publicar(any(EventoLogistica.class));
+    }
+
+    @Test
+    @DisplayName("Punto 69: el ítem conserva solo el último evento")
+    void elItemConservaSoloElUltimoEvento() {
+        ItemEntrega item = item(ID_DONACION_A);
+        item.setEstado(EstadoEntrega.EN_CAMINO);
+        item.getEventos().add(new EventoLogistica(
+            "EVENTO_VIEJO", ID_DONACION_A.toString(), java.time.LocalDateTime.now(), null));
+
+        gestor().publicarEntregaConfirmada(item, rutaCon(item), "http://foto.jpg");
+
+        assertThat(item.getEventos()).hasSize(1);
+        assertThat(item.getEventos().get(0).getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
+    }
+
+    @Test
+    @DisplayName("Punto 69: un ítem con eventos null (leído de Mongo) no rompe al guardar el último")
+    void elItemConEventosNullNoRompe() {
+        ItemEntrega item = item(ID_DONACION_A);
+        item.setEstado(EstadoEntrega.EN_CAMINO);
+        item.setEventos(null);
+
+        gestor().publicarEntregaConfirmada(item, rutaCon(item), "http://foto.jpg");
+
+        assertThat(item.getEventos()).hasSize(1);
+        assertThat(item.getEventos().get(0).getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
     }
 
     @Test

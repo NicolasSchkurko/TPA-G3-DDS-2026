@@ -43,7 +43,7 @@ public class ItemEntrega {
 
     private Entidad entidadDestino;
 
-    private List<EventoLogistica> eventos;
+    private List<EventoLogistica> eventos = new ArrayList<>();
 
     public ItemEntrega(UUID idDonacion, Integer cantidad, UnidadDeMedida unidad, Entidad entidadDestino) {
         this.idDonacion = idDonacion;

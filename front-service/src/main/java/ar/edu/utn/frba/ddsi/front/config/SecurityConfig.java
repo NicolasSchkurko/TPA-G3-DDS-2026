@@ -33,7 +33,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
-                        "/oauth2/**", "/login/oauth2/**").permitAll()
+                        "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
                 .requestMatchers(HttpMethod.GET, "/donaciones/{id}").permitAll()

@@ -12,6 +12,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntreg
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -30,7 +31,9 @@ public class GestorPublicacionEventos {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String TEMPLATE_URL_SEGUIMIENTO = "https://donaciones-app.example.com/seguimiento/";
+
+    @Value("${logistica.seguimiento.url-base:http://localhost:8080/seguimiento/}")
+    private String urlBaseSeguimiento = "http://localhost:8080/seguimiento/";
 
     private final RepositorioEventoLogistica repoEventos;
     private final RepositorioItemEntrega repoItemEntrega;
@@ -48,7 +51,8 @@ public class GestorPublicacionEventos {
     }
 
     public Ruta publicarInicioRuta(Ruta ruta) {
-        ruta.setUrlSeguimiento(TEMPLATE_URL_SEGUIMIENTO + ruta.getIdRuta());
+        String base = urlBaseSeguimiento.endsWith("/") ? urlBaseSeguimiento : urlBaseSeguimiento + "/";
+        ruta.setUrlSeguimiento(base + ruta.getIdRuta());
 
         ruta.getParadas().forEach(parada ->
                 parada.getItems().forEach(item -> {
@@ -130,7 +134,15 @@ public class GestorPublicacionEventos {
 
     private void guardarEventoDeItem(ItemEntrega item, EventoLogistica evento) {
         repoEventos.save(evento);
-        item.getEventos().add(evento);
+        // El historial completo vive en evento_logistica; el ítem solo conserva el último
+        // evento para no crecer sin cota dentro del documento (punto 69).
+        List<EventoLogistica> eventos = item.getEventos();
+        if (eventos == null) {
+            eventos = new ArrayList<>();
+            item.setEventos(eventos);
+        }
+        eventos.clear();
+        eventos.add(evento);
         publicarAlCommit(evento);
     }
 

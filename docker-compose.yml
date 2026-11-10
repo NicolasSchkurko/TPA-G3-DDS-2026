@@ -211,6 +211,8 @@ services:
       RABBITMQ_PASSWORD: tpa-local
       MONGODB_URI: mongodb://mongodb:27017/logistica?replicaSet=rs0
       MONGODB_DB_NAME: logistica
+      LOGISTICA_SEGUIMIENTO_URL: http://localhost:8080/seguimiento/
+    mem_limit: 512m
     depends_on:
       rabbitmq:
         condition: service_healthy

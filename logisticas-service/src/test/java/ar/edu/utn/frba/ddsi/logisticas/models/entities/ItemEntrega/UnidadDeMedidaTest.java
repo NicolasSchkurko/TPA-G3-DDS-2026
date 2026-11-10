@@ -8,9 +8,9 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Pais;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Provincia;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
-import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorPublicacionEventos;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCatalogoUbicaciones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRegistroEntregas;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.*;
-import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,9 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.annotation.Version;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -38,15 +35,12 @@ import static org.mockito.Mockito.*;
 class UnidadDeMedidaTest {
 
     @Mock private RepositorioItemEntrega repoItemEntrega;
-    @Mock private RepositorioRutas repoRutas;
     @Mock private RepositorioEntidades repoEntidades;
     @Mock private RepositorioDirecciones repoDirecciones;
     @Mock private RepositorioCiudades repoCiudades;
     @Mock private RepositorioProvincias repoProvincias;
     @Mock private RepositorioPaises repoPaises;
     @Mock private RepositorioUnidadesDeMedida repoUnidades;
-    @Mock private GestorPublicacionEventos gestorPublicacionEventos;
-    @Mock private PlatformTransactionManager gestorTransacciones;
 
     @Test
     @DisplayName("UnidadDeMedida no debe tener campo anotado con @Version para evitar bloqueos optimistas en instancias estáticas")
@@ -80,16 +74,11 @@ class UnidadDeMedidaTest {
     }
 
     @Test
-    @DisplayName("EntregaService no debe persistir la unidad de medida estática en la base de datos por cada donación")
-    void entregaServiceNoPersisteUnidadEstaticaEnCadaDonacion() {
-        EntregaService service = new EntregaService(
-                repoItemEntrega, repoRutas, repoEntidades, repoDirecciones,
-                repoCiudades, repoProvincias, repoPaises, repoUnidades,
-                gestorPublicacionEventos, gestorTransacciones
-        );
-
-        TransactionStatus status = mock(TransactionStatus.class);
-        when(gestorTransacciones.getTransaction(any(TransactionDefinition.class))).thenReturn(status);
+    @DisplayName("El registro de entregas no persiste la unidad de medida estática por cada donación")
+    void elRegistroNoPersisteUnidadEstaticaEnCadaDonacion() {
+        GestorCatalogoUbicaciones catalogo = new GestorCatalogoUbicaciones(
+                repoEntidades, repoDirecciones, repoCiudades, repoProvincias, repoPaises);
+        GestorRegistroEntregas gestor = new GestorRegistroEntregas(repoItemEntrega, catalogo);
 
         UUID idDonacion = UUID.randomUUID();
         UUID idEntidad = UUID.randomUUID();
@@ -123,7 +112,7 @@ class UnidadDeMedidaTest {
         Entidad entidad = new Entidad(idEntidad, dir);
         when(repoEntidades.findById(any())).thenReturn(Optional.of(entidad));
 
-        service.procesarPeticion(dto);
+        gestor.registrar(dto);
 
         // Verificamos que repoUnidades.save NO se invoque en cada donación
         verify(repoUnidades, never()).save(any());

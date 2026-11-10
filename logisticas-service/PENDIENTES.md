@@ -5,7 +5,7 @@ MongoDB, consistente con E3-E5. Se mantienen abajo los riesgos técnicos vigente
 serialización HTTP externa, tolerancia a fallas del proveedor/broker, concurrencia distribuida y trazado
 real de rutas. E3 también solicita documentación de APIs (Postman y Swagger/OpenAPI); hay colección
 Postman, pero no se encontró configuración OpenAPI versionada. E6 requiere que el front consuma estos
-flujos con autenticación; actualmente no hay cliente de logística en `front-service`.
+flujos con autenticación; el front ya tiene un cliente de logística para el seguimiento público de rutas.
 
 ---
 # Pendientes técnicos de `logisticas-service`
@@ -22,126 +22,8 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
-| 1 | 69 | Alta | Los eventos de trazabilidad crecen sin cota dentro de cada ítem y el polling los carga enteros en memoria |
-| 2 | 70 | Media | El pool de Mongo queda en los defaults (`maxPoolSize=100` por instancia) y sin timeouts |
-| 3 | 71 | Media | El callback de rutas hace una consulta por id y búsquedas O(n·m) sobre camiones e ítems |
-| 4 | 72 | Media | El Dockerfile no fija `-XX:MaxRAMPercentage` y el compose no limita la memoria |
-| 5 | 73 | Media | La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa |
-| 6 | 74 | Baja | El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local |
-| 7 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
-
----
-
-## 69. Los eventos de trazabilidad crecen sin cota dentro de cada ítem y el polling los carga enteros en memoria
-
-**Estado:** abierto  
-**Severidad:** alta  
-**Archivos:** `models/entities/ItemEntrega/ItemEntrega.java:64-73`, `models/gestores/GestorPublicacionEventos.java:131-135`, `services/EventoLogisticaService.java:22-25`, `models/repositories/RepositorioEventoLogistica.java:16-18`, `services/EntregaService.java:92-95, 443-446`
-
-### Qué pasa
-
-Cada cambio de estado agrega un `EventoLogistica` a la lista embebida del ítem (`item.getEventos().add(evento)`) y nunca se quita nada; además el mismo evento se guarda en la colección `evento_logistica`. El documento del ítem crece para siempre.
-
-`obtenerEventosNuevos(desdeId)` no tiene `limit` ni paginación: si un consumidor arranca con `desdeId=0` o se atrasa, descarga **toda** la colección a una `List<EventoLogistica>` y luego la mapea a DTO, duplicando el pico. Los `findAll()` de ítems deserializan todos los eventos históricos de todos los ítems.
-
-### Cómo se dispara
-
-Operación normal del servicio a lo largo del tiempo; el pico aparece cuando un consumidor nuevo o atrasado hace polling desde el inicio.
-
-### Propuesta de arreglo
-
-Agregar `limit`/`Pageable` al polling con cursor `desdeId`, purgar o indexar con TTL `evento_logistica.fecha`, y dejar de embeber la historia completa en `ItemEntrega` (guardar solo el último evento o los ids).
-
----
-
-## 70. El pool de Mongo queda en los defaults (`maxPoolSize=100` por instancia) y sin timeouts
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `src/main/resources/application.properties:83-84`, `docker-compose.yml` (comentario de escalado)
-
-### Qué pasa
-
-La configuración de Mongo solo define `uri` y `database`. El driver usa `maxPoolSize=100` por defecto por instancia, así que con `--scale logisticas-service=2` son 200 conexiones, cada una con buffers. Tampoco hay `serverSelectionTimeoutMS`, `connectTimeoutMS` ni `socketTimeoutMS`: si Atlas no responde, las operaciones quedan colgadas reteniendo hilos y documentos.
-
-### Cómo se dispara
-
-Escalado horizontal del servicio o una caída/degradación del clúster de Mongo.
-
-### Propuesta de arreglo
-
-Fijar `maxPoolSize`, `minPoolSize`, `serverSelectionTimeoutMS`, `connectTimeoutMS` y `socketTimeoutMS` en la URI o en properties, dimensionados según la cantidad de réplicas.
-
----
-
-## 71. El callback de rutas hace una consulta por id y búsquedas O(n·m) sobre camiones e ítems
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `services/PlanificadorRutasService.java:70-74`, `models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java:74-86`
-
-### Qué pasa
-
-Para cada id del callback se hace un `findById` a Mongo (`PlanificadorRutasService.java:70-74`) y, por cada asignación, `PlanificadorDeRutas` recorre con `stream().filter(...)` todos los camiones y todos los ítems. Con N ítems son N consultas y O(n·m) comparaciones, con el consiguiente garbage y latencia. `RutaService.obtenerRutaActualizada:102-106` ya muestra el patrón correcto: un `Map<UUID, ItemEntrega>`/`Map<String, Camion>` armado una sola vez.
-
-### Cómo se dispara
-
-Callback de planificación con muchos ítems o camiones.
-
-### Propuesta de arreglo
-
-Usar `findAllById(ids)` y armar mapas por id una sola vez antes del loop de asignación.
-
----
-
-## 72. El Dockerfile no fija `-XX:MaxRAMPercentage` y el compose no limita la memoria
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `Dockerfile:25`, `docker-compose.yml` (sección `logisticas-service`), `PENDIENTES.md` raíz (punto 6)
-
-### Qué pasa
-
-El `ENTRYPOINT` es `["java", "-jar", "app.jar"]`, sin `-Xmx` ni `-XX:MaxRAMPercentage`. La JVM usa el default de 25 % de la RAM del host y el compose no define `mem_limit`, así que el heap puede crecer mucho más de lo necesario. Con los eventos y los `findAll()` de rutas (puntos 69 y 49), el riesgo de OOM es concreto.
-
-### Cómo se dispara
-
-Cualquier barrido de rutas o acumulación de eventos en un host con RAM abundante.
-
-### Propuesta de arreglo
-
-Agregar `-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError` al `ENTRYPOINT` y definir `mem_limit` para el servicio en el compose (ver punto 6 raíz).
-
----
-
-## 73. La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/Ruta/Ruta.java`, `models/entities/Parada/Parada.java`, `services/PlanificadorRutasService.java` (`procesarCallbackRutas`), `controllers/RutaController.java`, `dto/rutas/RutaDTO.java`, `dto/entrega/DireccionDTO.java`, `models/entities/Direccion/Direccion.java`, `models/gestores/GestorPublicacionEventos.java:51`
-
-### Qué pasa
-
-`Ruta` guarda las `paradas` y un `urlSeguimiento`, pero no guarda el trazado que sigue el camión por las calles. `Parada` guarda una `Direccion` sin latitud/longitud, y `DireccionDTO` tampoco transporta coordenadas. A su vez, el callback del planificador solo acepta un `Map<patente, List<UUID idDonacion>>`; aunque el proveedor externo devuelva una geometría, `procesarCallbackRutas` la descarta.
-
-`RutaController` expone `GET /api/rutas/{id}` con las paradas, pero no existe ningún endpoint que devuelva un GeoJSON o un `LineString`. `urlSeguimiento` es solo un enlace armado en `GestorPublicacionEventos`; no reemplaza la geometría de la ruta.
-
-### Cómo se dispara
-
-Cualquier intento del front de mostrar una ruta en el mapa. Sin coordenadas ni polyline, el navegador solo podría dibujar líneas rectas entre paradas, y ni siquiera eso porque las paradas tampoco tienen lat/lon.
-
-### Propuesta de arreglo
-
-1. Al planificar o recibir el callback, obtener el trazado real por calles con un motor de ruteo (OSRM/ORS o el mismo proveedor externo) usando las paradas en orden. Guardar por ruta:
-   - `List<Coordenada>` o GeoJSON `LineString`;
-   - `distanciaMetros`, `duracionSegundos`, `provider`, `fechaCalculo`.
-   Se puede embeber en `Ruta` o usar una colección `trazado_ruta` separada; una polyline típica entra cómodamente en el límite de 16 MB de Mongo.
-   También hay que guardar `latitud`/`longitud` en `Direccion`/`Parada` (depende del pendiente 75 de `donaciones-service`).
-2. Exponer `GET /api/rutas/{id}/geojson` (o `/trazado`) con `Content-Type: application/geo+json` y `Cache-Control`/`ETag`. Si la ruta todavía no tiene geometría, devolver 404 o 204; no recalcularla en el request.
-3. Hacer que `front-service` actúe de BFF: proxy del endpoint y el navegador solo hace `fetch` + `DDSIMap.addGeoJson`. La API key del proveedor queda siempre en el backend.
-4. Cachear por firma de paradas ordenadas para no recalcular; invalidar si cambia una parada, el camión o la fecha. Manejar el fallo del proveedor con reintento/fallback sin romper la creación de la ruta.
-5. Normalizar la respuesta a GeoJSON en el backend (no guardar el JSON crudo del proveedor) para que el front no dependa de HERE/TomTom/OSRM.
-6. Tests: ruta con geometría, ruta sin geometría (204/404) y callback que no descarte el trazado si el proveedor lo manda.
+| 1 | 74 | Baja | El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local |
+| 2 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
@@ -159,11 +41,11 @@ Hoy `LogisticaConfig` registra `ProveedorRutasExternoSimulado`, que agrupa las e
 
 Crear `ProveedorRutasExternoOsrm implements ProveedorRutasExterno`:
 
-1. Obtener lat/lon de cada parada (depende del pendiente 75 de `donaciones-service`).
+1. Usar el lat/lon que ya viene en cada parada.
 2. Pedir a OSRM `/table` la matriz de duraciones/distancias.
 3. Resolver la asignación con una heurística Java simple: vecino más cercano + capacidad de peso/volumen, trabajando sobre copias de los `Camion` para no mutar los documentos de Mongo antes de persistir.
 4. Pedir a OSRM `/route` por cada camión para obtener el `LineString` por calles.
-5. Guardar el trazado (pendiente 73) y disparar el callback actual con `Map<patente, List<UUID>>`.
+5. Guardar el trazado por calles y reemplazar la línea entre paradas que hoy dibuja el front. Después, disparar el callback actual con `Map<patente, List<UUID>>`.
 
 Elegir la implementación por property en `LogisticaConfig`, por ejemplo `planificador.proveedor=osrm|simulado`.
 
@@ -193,6 +75,16 @@ El servicio de logística mantiene el cumplimiento estricto del enunciado: no re
 ---
 
 ## Corregidos
+
+- **71.** El callback resolvía un `findById` por cada ítem y recorría listas completas de camiones e ítems por asignación — ahora `PlanificadorRutasService` trae todos los ítems con un único `findAllById`, valida los ids faltantes y `PlanificadorDeRutas` arma `Map<patente, Camion>` y `Map<UUID, ItemEntrega>` una sola vez. Cobertura en `PlanificadorRutasServiceTest`.
+
+- **73.** La ruta no tenía forma de dibujarse en el mapa — `Direccion`/`DireccionDTO` ya transportaban lat/lon y `RutaDTO` las exponía, así que se reemplazó el host ficticio de `urlSeguimiento` por una URL configurable al front (`LOGISTICA_SEGUIMIENTO_URL`), y el front incorporó `LogisticasClient` + `GET /seguimiento/{idRuta}`, que une las coordenadas de las paradas en un GeoJSON (`LineString` + puntos) y lo dibuja con `DDSIMap.addGeoJson`. Cobertura en `SeguimientoControllerTest`.
+
+- **72.** El Dockerfile de logística no pasaba flags JVM y el compose no limitaba la memoria — el `ENTRYPOINT` ahora usa `-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError` y el servicio declara `mem_limit: 512m`, por lo que el heap se calcula contra el límite del contenedor.
+
+- **69.** Los eventos de trazabilidad crecían sin cota dentro de cada `ItemEntrega` y el polling cargaba toda la colección — el ítem ahora conserva solo el último evento, `GET /api/eventos` pagina con `desdeId` + `limite` (máximo 500) y `evento_logistica.fecha` tiene TTL de 30 días con `auto-index-creation` habilitado. Cobertura en `EventoLogisticaServiceTest`, `GestorPublicacionEventosTest` y `EventoLogisticaSecuenciaTest`.
+
+- **70.** El driver de Mongo usaba `maxPoolSize=100` por instancia y no tenía timeouts — `MongoConfig` aplica pool 20/2 y timeouts de selección/conexión/lectura (5 s/5 s/10 s), configurables por `MONGODB_POOL_*`/`MONGODB_*_TIMEOUT_MS`. Cobertura en `MongoConfigTest`.
 
 - **59** — `RutaService.terminarRuta` persistía instancias desactualizadas de `Camion` y `Chofer` embebidas en `Ruta`, disparando `OptimisticLockingFailureException` y pisando datos → Causa raíz: `terminarRuta` tomaba el camión y chofer directamente del snapshot embebido en el documento `Ruta` en lugar de sus repositorios correspondientes. Al persistir con `@Version`, si el camión o chofer fueron editados durante el día, fallaba con excepción de concurrencia optimista o sobreescribía los datos vigentes, además de provocar `NullPointerException` ante rutas sin camión. Solución: se recargan las entidades vigentes mediante `repoChoferes.findById(idChofer)` y `repoCamiones.findById(patente)` con guardas defensivas ante nulos antes de actualizar disponibilidad y persistir. Tests de regresión agregados en `RutaServiceTerminarRutaTest` (validando persistencia de entidades frescas con version superior y ruta sin camión). Archivos: `RutaService.java`, `RutaServiceTerminarRutaTest.java`.
 

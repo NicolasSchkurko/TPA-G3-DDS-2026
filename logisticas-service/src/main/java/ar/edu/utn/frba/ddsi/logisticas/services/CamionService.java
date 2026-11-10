@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class CamionService {
@@ -62,15 +61,10 @@ public class CamionService {
     return new CamionDTO().aplicar(camionActualizado);
   }
 
-  /** Borra el camión: el 404 es para lo que dice (el recurso no estaba). */
   public void delete(String patente) {
-    Optional<Camion> camion = repoCamiones.findById(patente);
-    if(camion.isPresent()){
-      repoCamiones.deleteById(patente);
-    }
-    else {
-      throw new RecursoNoEncontradoException("Camión no encontrado");
-    }
+    repoCamiones.findById(patente)
+            .orElseThrow(() -> new RecursoNoEncontradoException("Camión no encontrado"));
+    repoCamiones.deleteById(patente);
   }
 
   public String cambiarDisponibilidad(String patente, Map<String, Boolean> body){
@@ -79,14 +73,9 @@ public class CamionService {
     }
 
     boolean disponible = body.get("disponible");
-
     Camion camion = repoCamiones.findById(patente)
             .orElseThrow(() -> new RecursoNoEncontradoException("Camión no encontrado"));
-    if (disponible) {
-      camion.disponible();
-    } else {
-      camion.ocupado();
-    }
+    gestorCamiones.cambiarDisponibilidad(camion, disponible);
     repoCamiones.save(camion);
     return disponible ? "Camión marcado como disponible." : "Camión marcado como ocupado.";
   }
