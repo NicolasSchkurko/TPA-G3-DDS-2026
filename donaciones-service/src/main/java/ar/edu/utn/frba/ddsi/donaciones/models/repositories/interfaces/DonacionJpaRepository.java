@@ -17,6 +17,8 @@ import org.springframework.data.repository.query.Param;
 public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID> {
     List<Donacion> findByEstado(Estado estado);
 
+    List<Donacion> findByDonante_Id(UUID donanteId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Donacion d SET d.donante = null WHERE d.donante.id = :donanteId")
     void desvincularDonante(@Param("donanteId") UUID donanteId);

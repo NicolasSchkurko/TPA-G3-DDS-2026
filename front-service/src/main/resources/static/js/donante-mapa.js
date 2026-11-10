@@ -244,6 +244,8 @@
             sidebarToggle.querySelector("i").className = collapsed
                 ? "bi bi-chevron-right"
                 : "bi bi-chevron-left";
+            const label = sidebarToggle.querySelector(".map-corner-toggle-label");
+            if (label) label.textContent = collapsed ? "Historial" : "Ocultar";
             if (map) {
                 window.setTimeout(() => map.invalidateSize(), 220);
             }
@@ -297,6 +299,9 @@
             item.panel.classList.remove("is-open");
             item.button.closest(".beneficiary-map").classList.remove("options-open");
             item.button.querySelector("i").className = "bi bi-chevron-left";
+            item.button.setAttribute("aria-label", "Abrir objetivos del mapa");
+            const label = item.button.querySelector(".map-corner-toggle-label");
+            if (label) label.textContent = "Objetivos";
         }
 
         controls.forEach((item) => {
@@ -310,6 +315,9 @@
                     item.panel.classList.add("is-open");
                     item.button.closest(".beneficiary-map").classList.add("options-open");
                     item.button.querySelector("i").className = "bi bi-chevron-right";
+                    item.button.setAttribute("aria-label", "Cerrar objetivos del mapa");
+                    const label = item.button.querySelector(".map-corner-toggle-label");
+                    if (label) label.textContent = "Cerrar";
                 }
             });
         });

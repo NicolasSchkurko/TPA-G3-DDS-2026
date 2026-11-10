@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
                         "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
+                .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
                 .requestMatchers(HttpMethod.GET, "/donaciones/{id}").permitAll()

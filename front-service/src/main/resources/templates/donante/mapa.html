@@ -26,6 +26,12 @@
                       th:text="${#lists.size(historialDonaciones)}">0</span>
             </header>
 
+            <a class="donate-cta" th:href="@{/realizar-donacion}">
+                <i class="bi bi-heart-fill" aria-hidden="true"></i>
+                <span>Realizar donación</span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+
             <div class="history-controls">
                 <label class="visually-hidden" for="historySearch">Buscar en el historial</label>
                 <div class="history-search">
@@ -102,13 +108,15 @@
                 type="button" aria-expanded="false" aria-controls="donorInfoPanel"
                 aria-label="Mostrar historial de donaciones">
             <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <span class="map-corner-toggle-label">Historial</span>
         </button>
         <section class="beneficiary-map" aria-label="Mapa de entidades beneficiarias">
             <div id="beneficiaryMap" class="ddsi-map" role="application"
                  aria-label="Mapa interactivo de entidades beneficiarias"></div>
             <button class="map-corner-toggle map-corner-toggle-right" id="toggleMapOptions"
                     type="button" aria-expanded="false" aria-controls="mapOptionsPanel"
-                    aria-label="Abrir opciones del mapa">
+                    aria-label="Abrir objetivos del mapa">
+                <span class="map-corner-toggle-label">Objetivos</span>
                 <i class="bi bi-chevron-left" aria-hidden="true"></i>
             </button>
             <aside class="map-drawer map-drawer-right" id="mapOptionsPanel" aria-hidden="true">

@@ -79,6 +79,11 @@ public class RepositorioDonaciones {
         jpaRepository.save(donacion);
     }
 
+    public List<Donacion> buscarPorDonante(UUID donanteId) {
+        if (donanteId == null) return List.of();
+        return jpaRepository.findByDonante_Id(donanteId);
+    }
+
     public void desvincularDonante(UUID donanteId) {
         jpaRepository.desvincularDonante(donanteId);
     }

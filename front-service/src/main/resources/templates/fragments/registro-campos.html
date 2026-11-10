@@ -85,9 +85,10 @@
         <div class="col-md-4 mb-3">
             <label for="donanteTipoContacto" class="form-label">Tipo</label>
             <select class="form-select" id="donanteTipoContacto" name="tipoContacto">
-                <option value="EMAIL">Correo electrónico</option>
-                <option value="TELEFONO">Teléfono</option>
-                <option value="WHATSAPP">WhatsApp</option>
+                <option value="" th:selected="${formularioRegistro == null or formularioRegistro['tipoContacto'] == null or formularioRegistro['tipoContacto'] == ''}">Sin medio adicional</option>
+                <option value="EMAIL" th:selected="${formularioRegistro != null and formularioRegistro['tipoContacto'] == 'EMAIL'}">Correo electrónico</option>
+                <option value="TELEFONO" th:selected="${formularioRegistro != null and formularioRegistro['tipoContacto'] == 'TELEFONO'}">Teléfono</option>
+                <option value="WHATSAPP" th:selected="${formularioRegistro != null and formularioRegistro['tipoContacto'] == 'WHATSAPP'}">WhatsApp</option>
             </select>
         </div>
         <div class="col-md-8 mb-3">
@@ -96,7 +97,8 @@
                    placeholder="Opcional: si no cargás nada, usamos el correo de tu cuenta" th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
         </div>
     </div>
-    <h6 class="fw-semibold mt-2">Dirección</h6>
+    <h6 class="fw-semibold mt-2">Dirección (opcional)</h6>
+    <p class="form-text mb-1">La dirección es opcional para donantes: las entidades beneficiarias sí la requieren, porque allí se entregan las donaciones.</p>
     <div class="row">
         <div class="col-md-8 mb-3">
             <label for="donanteCalle" class="form-label">Calle</label>

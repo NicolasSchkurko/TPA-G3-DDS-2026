@@ -1,9 +1,9 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
+import ar.edu.utn.frba.ddsi.front.services.IdentidadService;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.core.Authentication;
@@ -20,17 +20,20 @@ import java.util.UUID;
 public class ProfileController {
     private final DonacionesClient donacionesClient;
     private final IncentivosClient incentivosClient;
+    private final IdentidadService identidadService;
     private final String keycloakIssuerUri;
     private final String keycloakClientId;
     private final String keycloakAccountReturnUri;
 
     public ProfileController(DonacionesClient donacionesClient,
                              IncentivosClient incentivosClient,
+                             IdentidadService identidadService,
                              @Value("${keycloak.issuer-uri}") String keycloakIssuerUri,
                              @Value("${keycloak.client-id}") String keycloakClientId,
                              @Value("${keycloak.account-return-uri}") String keycloakAccountReturnUri) {
         this.donacionesClient = donacionesClient;
         this.incentivosClient = incentivosClient;
+        this.identidadService = identidadService;
         this.keycloakIssuerUri = keycloakIssuerUri;
         this.keycloakClientId = keycloakClientId;
         this.keycloakAccountReturnUri = keycloakAccountReturnUri;
@@ -57,28 +60,22 @@ public class ProfileController {
     public String mapaDonante(Authentication authentication, Model model) {
         model.addAttribute("nombreDonante", nombreDonante(authentication));
         model.addAttribute("entidades", donacionesClient.obtenerEntidades());
-        cargarIncentivosDonante(authentication, model);
-        List<DonacionDTO> historial = donacionesClient.obtenerTodasLasDonaciones().stream()
-                .filter(donacion -> donacion.getDonanteName() != null
-                        && donacion.getDonanteName().equalsIgnoreCase(authentication.getName()))
-                .toList();
+        UUID idDonante = identidadService.donanteIdActual(authentication).orElse(null);
+        cargarIncentivosDonante(idDonante, model);
+        List<DonacionDTO> historial = idDonante == null
+                ? List.of()
+                : donacionesClient.obtenerDonacionesDeDonante(idDonante);
         model.addAttribute("historialDonaciones", historial);
         return "donante/mapa";
     }
 
-    private void cargarIncentivosDonante(Authentication authentication, Model model) {
-        String correo = correoDeCuenta(authentication);
-        List<PersonaDonanteDTO> coincidencias = correo == null
-                ? List.of()
-                : donacionesClient.buscarDonantesPorCorreo(correo);
-        if (coincidencias.size() != 1 || coincidencias.get(0).getId() == null) {
+    private void cargarIncentivosDonante(UUID idDonante, Model model) {
+        if (idDonante == null) {
             model.addAttribute("incentivosDisponibles", false);
             model.addAttribute("insignias", List.of());
             model.addAttribute("rankingTop3", List.of());
             return;
         }
-
-        UUID idDonante = coincidencias.get(0).getId();
         Map<String, Object> mision = incentivosClient.obtenerMision(idDonante.toString());
         int progreso = numero(mision.get("progresoActual"));
         int objetivo = numero(mision.get("progresoObjetivo"));
@@ -99,15 +96,6 @@ public class ProfileController {
         model.addAttribute("rankingTop3", top3);
         model.addAttribute("periodoRanking", rankingMensual.get("periodo"));
         model.addAttribute("incentivosDisponibles", !mision.isEmpty() || !rankingMensual.isEmpty());
-    }
-
-    /** Correo de la cuenta (OIDC) para buscar el perfil de donante vinculado. */
-    private static String correoDeCuenta(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof OidcUser oidcUser) {
-            String email = oidcUser.getAttribute("email");
-            if (email != null && !email.isBlank()) return email.trim().toLowerCase();
-        }
-        return null;
     }
 
     private static int numero(Object valor) {

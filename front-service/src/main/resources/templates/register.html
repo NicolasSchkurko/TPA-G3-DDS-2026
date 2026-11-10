@@ -128,8 +128,16 @@
 
         document.querySelectorAll(".registration-fields input, .registration-fields select").forEach((field) => {
             field.dataset.required = ["nombre", "apellido", "edad", "numeroDeDocumento", "genero",
-                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar", "calleUno",
+                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar",
                 "altura", "ciudad", "provincia", "pais"].includes(field.name) ? "true" : "false";
+        });
+
+        // La dirección es opcional para donantes y obligatoria para entidades.
+        document.querySelectorAll('[data-registration="ENTIDAD"] input[name="calleUno"], [data-registration="ENTIDAD"] input[name="altura"], [data-registration="ENTIDAD"] input[name="ciudad"], [data-registration="ENTIDAD"] input[name="provincia"], [data-registration="ENTIDAD"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "true";
+        });
+        document.querySelectorAll('[data-registration="DONANTE"] input[name="calleUno"], [data-registration="DONANTE"] input[name="altura"], [data-registration="DONANTE"] input[name="ciudad"], [data-registration="DONANTE"] input[name="provincia"], [data-registration="DONANTE"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "false";
         });
 
         document.querySelectorAll('[data-registration="ADMIN"] select[name="tipoContacto"], [data-registration="ADMIN"] input[name="valorContacto"]').forEach((field) => {

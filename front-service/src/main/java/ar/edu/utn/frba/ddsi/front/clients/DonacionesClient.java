@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
+import ar.edu.utn.frba.ddsi.front.dto.AdminDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.FormularioDonacionDTO;
@@ -157,7 +158,7 @@ public class DonacionesClient {
                 if (!"HUMANA".equals(tipoPersona) && !"JURIDICA".equals(tipoPersona)) {
                     throw new IllegalArgumentException("Seleccioná un tipo de persona válido.");
                 }
-                requerir(datos, "calleUno", "altura", "ciudad", "provincia", "pais", "email");
+                requerir(datos, "email");
                 payload = new LinkedHashMap<>();
                 payload.put("tipoPersona", tipoPersona);
                 if ("HUMANA".equals(tipoPersona)) {
@@ -187,7 +188,11 @@ public class DonacionesClient {
                     payload.put("mediosDeContacto", medios);
                     payload.put("medioPredeterminado", medioElegido != null ? medioElegido : medios.get(medios.size() - 1));
                 }
-                payload.put("direccion", direccion(datos));
+                // La dirección es opcional para donantes: solo se envía si hay algo cargado.
+                Map<String, Object> direccionDonante = direccion(datos);
+                if (!direccionDonante.isEmpty()) {
+                    payload.put("direccion", direccionDonante);
+                }
                 endpoint = "/api/personas";
             }
             case "ENTIDAD" -> {
@@ -249,6 +254,31 @@ public class DonacionesClient {
                     .body(IdentidadDTO.class);
         } catch (Exception e) {
             log.warn("No se pudo resolver la identidad por email {}: {}", email, e.getMessage());
+            return null;
+        }
+    }
+
+    public List<DonacionDTO> obtenerDonacionesDeDonante(UUID idDonante) {
+        try {
+            DonacionDTO[] donaciones = restClient.get()
+                    .uri(baseUrl + "/api/donaciones/donante/{id}", idDonante)
+                    .retrieve()
+                    .body(DonacionDTO[].class);
+            return donaciones == null ? Collections.emptyList() : List.of(donaciones);
+        } catch (Exception e) {
+            log.error("Error al obtener donaciones del donante {} desde {}: {}", idDonante, baseUrl, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public AdminDTO obtenerAdminPorId(UUID id) {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/api/admins/{id}", id)
+                    .retrieve()
+                    .body(AdminDTO.class);
+        } catch (Exception e) {
+            log.error("Error al obtener admin con id {} desde {}: {}", id, baseUrl, e.getMessage());
             return null;
         }
     }
@@ -333,15 +363,15 @@ public class DonacionesClient {
     }
 
     private static Map<String, String> contactoOpcional(Map<String, String> datos) {
-        String tipo = datos.get("tipoContacto");
         String valor = datos.get("valorContacto");
-        if ((tipo == null || tipo.isBlank()) && (valor == null || valor.isBlank())) {
+        if (valor == null || valor.isBlank()) {
             return null;
         }
-        if (tipo == null || tipo.isBlank() || valor == null || valor.isBlank()) {
-            throw new IllegalArgumentException("Completá el tipo y el valor del medio de contacto.");
+        String tipo = datos.get("tipoContacto");
+        if (tipo == null || tipo.isBlank()) {
+            tipo = "EMAIL";
         }
-        return contacto(datos);
+        return Map.of("tipo", tipo.trim().toUpperCase(), "valor", valor.trim());
     }
 
     private static Map<String, Object> direccion(Map<String, String> datos) {
