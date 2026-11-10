@@ -1,3 +1,17 @@
+## Revisión del enunciado hasta Entrega 6
+
+El servicio cubre perfiles, progreso de misiones, insignias, métricas/rankings, APIs REST y persistencia
+relacional; también hay publicación de eventos a n8n con outbox. Los puntos técnicos abiertos que siguen
+abajo afectan seguridad de administración, consistencia/concurrencia, operación de la outbox y reglas de
+negocio. E2 requiere además confirmar el alcance funcional completo de analíticas y avisos. Faltan los
+diagramas de clases/ERD y la justificación de diseño versionados (pendiente transversal). E6 es del
+`front-service`; hoy no propaga identidad/token a este backend.
+
+Nota de vigencia: la baja lógica/anonimización de perfil con preservación de métricas ya figura en
+`Corregidos` (punto 54); no reabrirla como borrado físico. Verificar que referencias antiguas del punto
+39 se interpreten a la luz de esa corrección.
+
+---
 # Pendientes técnicos de `incentivos-service`
 
 Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo

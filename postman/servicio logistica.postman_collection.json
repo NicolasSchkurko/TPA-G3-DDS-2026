@@ -1,4 +1,4 @@
-﻿{
+{
     "info":  {
                  "_postman_id":  "18244ed3-b6bf-4bc8-b7d2-f53aa18a5a94",
                  "name":  "servicio logistica",
@@ -23,7 +23,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones"
@@ -61,7 +61,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones",
@@ -102,7 +102,7 @@
                                                                  ],
                                                       "body":  {
                                                                    "mode":  "raw",
-                                                                   "raw":  "{\n    \"patente\": \"DEF456\",\n    \"capacidadVolumen\": 80,\n    \"altura\": 15,\n    \"capacidadCarga\": 5000,\n    \"disponible\": true\n}",
+                                                                   "raw":  "{\n    \"patente\": \"{{camionPatente}}\",\n    \"capacidadVolumen\": 80,\n    \"altura\": 15,\n    \"capacidadCarga\": 5000,\n    \"disponible\": true\n}",
                                                                    "options":  {
                                                                                    "raw":  {
                                                                                                "language":  "json"
@@ -115,7 +115,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones"
@@ -125,20 +125,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el POST se acepto o se rechazo con un error de negocio\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"listen":"prerequest","script":{"type":"text/javascript","exec":["pm.collectionVariables.set('camionPatente', 'TST' + pm.variables.replaceIn('{{$guid}}').replace(/-/g, '').slice(0, 6).toUpperCase());"]}},{"script":{"exec":["pm.test('crea el camion que se va a probar', function () { pm.response.to.have.status(201); });","pm.expect(pm.response.json().patente).to.eql(pm.collectionVariables.get('camionPatente'));"],"type":"text/javascript"},"listen":"test"}]
                                   },
                                   {
                                       "name":  "crear camiones",
@@ -162,7 +149,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones",
@@ -197,7 +184,7 @@
                                                                  ],
                                                       "body":  {
                                                                    "mode":  "raw",
-                                                                   "raw":  "{\n    \"patente\": \"DEF456\",\n    \"capacidadVolumen\": 120,\n    \"altura\": 30,\n    \"capacidadCarga\": 2500,\n    \"disponible\": true\n}",
+                                                                   "raw":  "{\n    \"patente\": \"{{camionPatente}}\",\n    \"capacidadVolumen\": 120,\n    \"altura\": 30,\n    \"capacidadCarga\": 2500,\n    \"disponible\": true\n}",
                                                                    "options":  {
                                                                                    "raw":  {
                                                                                                "language":  "json"
@@ -210,7 +197,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones",
@@ -219,7 +206,7 @@
                                                                   "variable":  [
                                                                                    {
                                                                                        "key":  "patente",
-                                                                                       "value":  "DEF456"
+                                                                                       "value":  "{{camionPatente}}"
                                                                                    }
                                                                                ]
                                                               }
@@ -227,20 +214,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el PUT responde o rechaza con 404\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"script":{"exec":["pm.test('el PUT responde o rechaza con 404', function () {","    pm.expect(pm.response.code).to.be.at.least(200);","    pm.expect(pm.response.code).to.be.below(500);","});"],"type":"text/javascript"},"listen":"test"}]
                                   },
                                   {
                                       "name":  "eliminar camion",
@@ -255,7 +229,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones",
@@ -264,7 +238,7 @@
                                                                   "variable":  [
                                                                                    {
                                                                                        "key":  "patente",
-                                                                                       "value":  "MNO654"
+                                                                                       "value":  "{{camionPatente}}"
                                                                                    }
                                                                                ]
                                                               }
@@ -272,20 +246,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el DELETE borra o rechaza con 404\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('el DELETE elimina el camion creado', function () { pm.response.to.have.status(204); });","pm.sendRequest(pm.variables.replaceIn('http://{{baseUrl}}:8086/api/camiones/{{camionPatente}}'), function (err, res) { pm.test('el camion eliminado ya no existe', function () { pm.expect(err).to.equal(null); pm.expect(res.code).to.eql(404); }); });"]}}]
                                   },
                                   {
                                       "name":  "actualizar estado camion",
@@ -309,7 +270,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "camiones",
@@ -360,7 +321,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes"
@@ -398,7 +359,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes",
@@ -452,7 +413,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes"
@@ -462,20 +423,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el POST se acepto o se rechazo con un error de negocio\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"script":{"exec":["pm.test('crea el chofer que se va a probar', function () { pm.response.to.have.status(201); });","pm.collectionVariables.set('choferId', pm.response.json().idChofer);"],"type":"text/javascript"},"listen":"test"}]
                                   },
                                   {
                                       "name":  "crear choferes",
@@ -499,7 +447,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes",
@@ -547,7 +495,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes",
@@ -556,7 +504,7 @@
                                                                   "variable":  [
                                                                                    {
                                                                                        "key":  "id",
-                                                                                       "value":  "4a416c85-3a57-40c0-aaad-36bf274366c0"
+                                                                                       "value":  "{{choferId}}"
                                                                                    }
                                                                                ]
                                                               }
@@ -596,7 +544,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes",
@@ -605,7 +553,7 @@
                                                                   "variable":  [
                                                                                    {
                                                                                        "key":  "id",
-                                                                                       "value":  "7b76d0a3-27bd-4940-a9e0-1dc95f737457"
+                                                                                       "value":  "{{choferId}}"
                                                                                    }
                                                                                ]
                                                               }
@@ -613,20 +561,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el DELETE borra o rechaza con 404\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('el DELETE da de baja el chofer creado', function () { pm.response.to.have.status(204); });","pm.sendRequest(pm.variables.replaceIn('http://{{baseUrl}}:8086/api/choferes/{{choferId}}'), function (err, res) { pm.test('el chofer dado de baja ya no se encuentra activo', function () { pm.expect(err).to.equal(null); pm.expect(res.code).to.eql(404); }); });"]}}]
                                   },
                                   {
                                       "name":  "actualizar estado chofer",
@@ -650,7 +585,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "choferes",
@@ -708,7 +643,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas"
@@ -753,7 +688,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas",
@@ -799,7 +734,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas",
@@ -840,7 +775,7 @@
                                                                  ],
                                                       "body":  {
                                                                    "mode":  "raw",
-                                                                   "raw":  "{\n  \"entregas\": [\n    {\n      \"donacionResumen\": {\n        \"idsDonaciones\": [\n          \"550e8400-e29b-41d4-a716-446655440001\",\n          \"550e8400-e29b-41d4-a716-446655440002\"\n        ],\n        \"bienes\": [\n          {\n            \"cantidad\": 100,\n            \"unidadDeMedida\": \"KILOGRAMOS\",\n            \"estado\": \"PENDIENTE\",\n            \"fechaCambioEstado\": \"2026-08-20T10:30:00\",\n            \"fotoComprobante\": \"comprobante_001.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"11111111-1111-1111-1111-111111111111\",\n              \"calleUno\": \"Av. Rivadavia\",\n              \"calleDos\": \"Calle Moreno\",\n              \"altura\": 2500,\n              \"piso\": 1,\n              \"departamento\": \"A\",\n              \"ciudad\": \"Buenos Aires\",\n              \"provincia\": \"Buenos Aires\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          },\n          {\n            \"cantidad\": 50,\n            \"unidadDeMedida\": \"UNIDADES\",\n            \"estado\": \"PENDIENTE\",\n            \"fechaCambioEstado\": \"2026-08-20T10:35:00\",\n            \"fotoComprobante\": \"comprobante_002.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"11111111-1111-1111-1111-111111111111\",\n              \"calleUno\": \"Av. Rivadavia\",\n              \"calleDos\": \"Calle Moreno\",\n              \"altura\": 2500,\n              \"piso\": 1,\n              \"departamento\": \"A\",\n              \"ciudad\": \"Buenos Aires\",\n              \"provincia\": \"Buenos Aires\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          }\n        ]\n      },\n      \"entidadBeneficiaria\": {\n        \"idEntidad\": \"11111111-1111-1111-1111-111111111111\",\n        \"calleUno\": \"Av. Rivadavia\",\n        \"calleDos\": \"Calle Moreno\",\n        \"altura\": 2500,\n        \"piso\": 1,\n        \"departamento\": \"A\",\n        \"ciudad\": \"Buenos Aires\",\n        \"provincia\": \"Buenos Aires\",\n        \"pais\": \"Argentina\"\n      }\n    },\n    {\n      \"donacionResumen\": {\n        \"idsDonaciones\": [\n          \"550e8400-e29b-41d4-a716-446655440003\",\n          \"550e8400-e29b-41d4-a716-446655440004\"\n        ],\n        \"bienes\": [\n          {\n            \"cantidad\": 200,\n            \"unidadDeMedida\": \"UNIDADES\",\n            \"estado\": \"EN_CAMINO\",\n            \"fechaCambioEstado\": \"2026-08-21T09:15:00\",\n            \"fotoComprobante\": \"comprobante_003.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"22222222-2222-2222-2222-222222222222\",\n              \"calleUno\": \"Av. Santa Fe\",\n              \"calleDos\": \"Calle Callao\",\n              \"altura\": 1800,\n              \"piso\": 2,\n              \"departamento\": \"B\",\n              \"ciudad\": \"La Plata\",\n              \"provincia\": \"Buenos Aires\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          },\n          {\n            \"cantidad\": 80,\n            \"unidadDeMedida\": \"LITROS\",\n            \"estado\": \"EN_CAMINO\",\n            \"fechaCambioEstado\": \"2026-08-21T09:20:00\",\n            \"fotoComprobante\": \"comprobante_004.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"22222222-2222-2222-2222-222222222222\",\n              \"calleUno\": \"Av. Santa Fe\",\n              \"calleDos\": \"Calle Callao\",\n              \"altura\": 1800,\n              \"piso\": 2,\n              \"departamento\": \"B\",\n              \"ciudad\": \"La Plata\",\n              \"provincia\": \"Buenos Aires\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          }\n        ]\n      },\n      \"entidadBeneficiaria\": {\n        \"idEntidad\": \"22222222-2222-2222-2222-222222222222\",\n        \"calleUno\": \"Av. Santa Fe\",\n        \"calleDos\": \"Calle Callao\",\n        \"altura\": 1800,\n        \"piso\": 2,\n        \"departamento\": \"B\",\n        \"ciudad\": \"La Plata\",\n        \"provincia\": \"Buenos Aires\",\n        \"pais\": \"Argentina\"\n      }\n    },\n    {\n      \"donacionResumen\": {\n        \"idsDonaciones\": [\n          \"550e8400-e29b-41d4-a716-446655440005\"\n        ],\n        \"bienes\": [\n          {\n            \"cantidad\": 150,\n            \"unidadDeMedida\": \"KILOGRAMOS\",\n            \"estado\": \"ENTREGADA\",\n            \"fechaCambioEstado\": \"2026-08-22T14:00:00\",\n            \"fotoComprobante\": \"comprobante_005.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"33333333-3333-3333-3333-333333333333\",\n              \"calleUno\": \"Av. Colón\",\n              \"calleDos\": \"Calle Santa Rosa\",\n              \"altura\": 1200,\n              \"piso\": 3,\n              \"departamento\": \"C\",\n              \"ciudad\": \"Córdoba\",\n              \"provincia\": \"Córdoba\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          }\n        ]\n      },\n      \"entidadBeneficiaria\": {\n        \"idEntidad\": \"33333333-3333-3333-3333-333333333333\",\n        \"calleUno\": \"Av. Colón\",\n        \"calleDos\": \"Calle Santa Rosa\",\n        \"altura\": 1200,\n        \"piso\": 3,\n        \"departamento\": \"C\",\n        \"ciudad\": \"Córdoba\",\n        \"provincia\": \"Córdoba\",\n        \"pais\": \"Argentina\"\n      }\n    },\n    {\n      \"donacionResumen\": {\n        \"idsDonaciones\": [\n          \"550e8400-e29b-41d4-a716-446655440006\",\n          \"550e8400-e29b-41d4-a716-446655440007\"\n        ],\n        \"bienes\": [\n          {\n            \"cantidad\": 75,\n            \"unidadDeMedida\": \"KILOGRAMOS\",\n            \"estado\": \"NO_RECIBIDA\",\n            \"fechaCambioEstado\": \"2026-08-23T11:45:00\",\n            \"fotoComprobante\": \"comprobante_006.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"44444444-4444-4444-4444-444444444444\",\n              \"calleUno\": \"Av. Belgrano\",\n              \"calleDos\": \"Calle Mitre\",\n              \"altura\": 900,\n              \"piso\": 1,\n              \"departamento\": \"D\",\n              \"ciudad\": \"Rosario\",\n              \"provincia\": \"Santa Fe\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          },\n          {\n            \"cantidad\": 40,\n            \"unidadDeMedida\": \"UNIDADES\",\n            \"estado\": \"NO_RECIBIDA\",\n            \"fechaCambioEstado\": \"2026-08-23T11:50:00\",\n            \"fotoComprobante\": \"comprobante_007.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"44444444-4444-4444-4444-444444444444\",\n              \"calleUno\": \"Av. Belgrano\",\n              \"calleDos\": \"Calle Mitre\",\n              \"altura\": 900,\n              \"piso\": 1,\n              \"departamento\": \"D\",\n              \"ciudad\": \"Rosario\",\n              \"provincia\": \"Santa Fe\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          }\n        ]\n      },\n      \"entidadBeneficiaria\": {\n        \"idEntidad\": \"44444444-4444-4444-4444-444444444444\",\n        \"calleUno\": \"Av. Belgrano\",\n        \"calleDos\": \"Calle Mitre\",\n        \"altura\": 900,\n        \"piso\": 1,\n        \"departamento\": \"D\",\n        \"ciudad\": \"Rosario\",\n        \"provincia\": \"Santa Fe\",\n        \"pais\": \"Argentina\"\n      }\n    },\n    {\n      \"donacionResumen\": {\n        \"idsDonaciones\": [\n          \"550e8400-e29b-41d4-a716-446655440008\"\n        ],\n        \"bienes\": [\n          {\n            \"cantidad\": 120,\n            \"unidadDeMedida\": \"LITROS\",\n            \"estado\": \"PENDIENTE\",\n            \"fechaCambioEstado\": \"2026-08-24T16:20:00\",\n            \"fotoComprobante\": \"comprobante_008.jpg\",\n            \"entidadDestino\": {\n              \"idEntidad\": \"55555555-5555-5555-5555-555555555555\",\n              \"calleUno\": \"Av. Pellegrini\",\n              \"calleDos\": \"Calle Oroño\",\n              \"altura\": 1500,\n              \"piso\": 2,\n              \"departamento\": \"E\",\n              \"ciudad\": \"Mendoza\",\n              \"provincia\": \"Mendoza\",\n              \"pais\": \"Argentina\"\n            },\n            \"eventos\": []\n          }\n        ]\n      },\n      \"entidadBeneficiaria\": {\n        \"idEntidad\": \"55555555-5555-5555-5555-555555555555\",\n        \"calleUno\": \"Av. Pellegrini\",\n        \"calleDos\": \"Calle Oroño\",\n        \"altura\": 1500,\n        \"piso\": 2,\n        \"departamento\": \"E\",\n        \"ciudad\": \"Mendoza\",\n        \"provincia\": \"Mendoza\",\n        \"pais\": \"Argentina\"\n      }\n    }\n  ]\n}",
+                                                                   "raw":  "{\n  \"donacionResumen\": {\n    \"idsDonaciones\": [\n      \"{{entregaId}}\"\n    ],\n    \"bienes\": [\n      {\n        \"cantidad\": 1,\n        \"unidadDeMedida\": \"UNIDADES\",\n        \"estado\": \"PENDIENTE\",\n        \"fechaCambioEstado\": \"2026-11-08T12:00:00\",\n        \"fotoComprobante\": \"\",\n        \"eventos\": []\n      }\n    ]\n  },\n  \"entidadBeneficiaria\": {\n    \"idEntidad\": \"11111111-1111-1111-1111-111111111111\",\n    \"calleUno\": \"Av. Test\",\n    \"altura\": 10,\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  }\n}",
                                                                    "options":  {
                                                                                    "raw":  {
                                                                                                "language":  "json"
@@ -853,7 +788,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas"
@@ -863,20 +798,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el POST se acepto o se rechazo con un error de negocio\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"listen":"prerequest","script":{"type":"text/javascript","exec":["pm.collectionVariables.set('entregaId', pm.variables.replaceIn('{{$guid}}'));"]}},{"script":{"exec":["pm.test('crea la entrega de prueba', function () { pm.response.to.have.status(201); });"],"type":"text/javascript"},"listen":"test"}]
                                   },
                                   {
                                       "name":  "actualizar estado item",
@@ -900,7 +822,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas",
@@ -950,7 +872,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "entregas",
@@ -959,7 +881,7 @@
                                                                   "variable":  [
                                                                                    {
                                                                                        "key":  "id",
-                                                                                       "value":  "550e8400-e29b-41d4-a716-446655440008"
+                                                                                       "value":  "{{entregaId}}"
                                                                                    }
                                                                                ]
                                                               }
@@ -967,20 +889,7 @@
                                       "response":  [
 
                                                    ],
-                                      "event":  [
-                                                    {
-                                                        "script":  {
-                                                                       "exec":  [
-                                                                                    "pm.test(\u0027el DELETE borra o rechaza con 404\u0027, function () {",
-                                                                                    "    pm.expect(pm.response.code).to.be.at.least(200);",
-                                                                                    "    pm.expect(pm.response.code).to.be.below(500);",
-                                                                                    "});"
-                                                                                ],
-                                                                       "type":  "text/javascript"
-                                                                   },
-                                                        "listen":  "test"
-                                                    }
-                                                ]
+                                      "event":  [{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('el DELETE elimina la entrega creada', function () { pm.response.to.have.status(204); });","pm.sendRequest(pm.variables.replaceIn('http://{{baseUrl}}:8086/api/entregas/{{entregaId}}'), function (err, res) { pm.test('la entrega eliminada ya no existe', function () { pm.expect(err).to.equal(null); pm.expect(res.code).to.eql(404); }); });"]}}]
                                   }
                               ]
                  },
@@ -1012,7 +921,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "eventos"
@@ -1061,7 +970,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "PlanificacionRutas",
@@ -1109,7 +1018,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "PlanificacionRutas",
@@ -1160,7 +1069,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "rutas"
@@ -1205,7 +1114,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "rutas",
@@ -1254,7 +1163,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "rutas",
@@ -1305,7 +1214,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "port":  "8082",
+                                                                  "port":  "8086",
                                                                   "path":  [
                                                                                "api",
                                                                                "rutas",
@@ -1345,7 +1254,7 @@
     "variable":  [
                      {
                          "key":  "baseUrl",
-                         "value":  "http://localhost:8086"
+                         "value":  "localhost"
                      }
                  ]
 }

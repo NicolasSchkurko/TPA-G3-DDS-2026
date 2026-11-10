@@ -1,0 +1,114 @@
+{
+  "realm": "ddsi",
+  "enabled": true,
+  "displayName": "DDSI - Desarrollo local",
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "Administración de la plataforma" },
+      { "name": "DONANTE", "description": "Persona donante humana o jurídica" },
+      { "name": "CHOFER", "description": "Chofer de logística" },
+      { "name": "ENTIDAD", "description": "Entidad beneficiaria" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "front-service",
+      "name": "DDSI Web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "front-service-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/keycloak",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": ["http://localhost:8080"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8080/"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles in id token",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "user.attribute": "",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+    },
+    {
+      "clientId": "front-registration",
+      "name": "DDSI Registration Backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "front-registration-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "defaultClientScopes": ["kc-admin-api"]
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-front-registration",
+      "enabled": true,
+      "serviceAccountClientId": "front-registration",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-realm"]
+      }
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@ddsi.local",
+      "firstName": "Admin",
+      "lastName": "DDSI",
+      "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
+      "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "donante",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "donante@ddsi.local",
+      "firstName": "Persona",
+      "lastName": "Donante",
+      "credentials": [{ "type": "password", "value": "donante123", "temporary": false }],
+      "realmRoles": ["DONANTE"]
+    },
+    {
+      "username": "chofer",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "chofer@ddsi.local",
+      "firstName": "Chofer",
+      "lastName": "DDSI",
+      "credentials": [{ "type": "password", "value": "chofer123", "temporary": false }],
+      "realmRoles": ["CHOFER"]
+    },
+    {
+      "username": "entidad",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "entidad@ddsi.local",
+      "firstName": "Entidad",
+      "lastName": "Beneficiaria",
+      "credentials": [{ "type": "password", "value": "entidad123", "temporary": false }],
+      "realmRoles": ["ENTIDAD"]
+    }
+  ]
+}

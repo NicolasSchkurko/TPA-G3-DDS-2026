@@ -35,7 +35,7 @@ public class DonacionesViewController {
             return "redirect:/donaciones";
         }
         model.addAttribute("donacion", donacion);
-        return "donaciones/detalle";
+        return "donacion/detalle-donacion";
     }
 
     @GetMapping("/donantes")

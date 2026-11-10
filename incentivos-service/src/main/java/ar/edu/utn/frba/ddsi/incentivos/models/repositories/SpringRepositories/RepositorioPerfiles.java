@@ -79,11 +79,10 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
  * {@link InsigniaObtenida} para poder ordenar por fecha de obtención; el {@code countQuery}
  * va aparte porque el fetch duplica filas.
  */
-@Query(value = "SELECT io FROM Perfil p JOIN p.insigniasObtenidas io "
-        + "WHERE p.idUsuario = :idUsuario",
+@Query(value = "SELECT io FROM Perfil p JOIN p.insigniasObtenidas io JOIN FETCH io.insignia "
+        + "WHERE p.idUsuario = :idUsuario ORDER BY io.fechaObtencion DESC",
         countQuery = "SELECT COUNT(io) FROM Perfil p JOIN p.insigniasObtenidas io "
                 + "WHERE p.idUsuario = :idUsuario")
-    @EntityGraph(attributePaths = "insignia")
     Page<InsigniaObtenida> paginaInsigniasPorIdUsuario(
             @Param("idUsuario") UUID idUsuario,
             Pageable pageable

@@ -7,38 +7,103 @@
     "_exporter_id": "48547069"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8082", "description": "Puerto real de incentivos-service" },
-    { "key": "idUsuario", "value": "123e4567-e89b-12d3-a456-426614174000", "description": "UUID del usuario asociado al perfil" },
-    { "key": "idRanking", "value": "123e4567-e89b-12d3-a456-426614174001" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082",
+      "description": "Puerto real de incentivos-service"
+    },
+    {
+      "key": "idUsuario",
+      "value": "",
+      "description": "UUID del usuario asociado al perfil"
+    },
+    {
+      "key": "idRanking",
+      "value": "123e4567-e89b-12d3-a456-426614174001"
+    },
+    {
+      "key": "donacionesUrl",
+      "value": "http://localhost:8084",
+      "description": "Puerto del servicio de donaciones para crear el administrador requerido en operaciones protegidas"
+    }
   ],
   "item": [
     {
       "name": "Perfiles",
       "item": [
         {
+          "name": "Crear administrador de prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombreAMostrar\":\"Admin Postman Incentivos\",\"nombre\":\"Test\",\"apellido\":\"Incentivos\",\"edad\":35,\"numeroDeDocumento\":{{$randomInt}},\"genero\":\"OTRO\",\"medioDeContacto\":{\"tipo\":\"EMAIL\",\"valor\":\"{{$randomEmail}}\"}}"
+            },
+            "url": {
+              "raw": "{{donacionesUrl}}/api/admins",
+              "host": [
+                "{{donacionesUrl}}"
+              ],
+              "path": [
+                "api",
+                "admins"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('crea el administrador para operaciones protegidas', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('adminId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Crear un nuevo perfil de donante",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"idUsuario\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"nombreUsuario\": \"Juan Perez\"\n}"
+              "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"nombreUsuario\": \"Juan Perez\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/perfiles",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles"
+              ]
             },
             "description": "Lo llama donaciones-service cuando se da de alta un donante. Conviene correrlo sobre una base limpia: un perfil que ya existe se rechaza."
           },
           "event": [
             {
-              "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('el perfil se creo', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 409]);",
-                "});"
-              ] }
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idUsuario', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
             }
           ]
         },
@@ -49,20 +114,35 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}", "description": "UUID del usuario asociado al perfil" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}",
+                  "description": "UUID del usuario asociado al perfil"
+                }
+              ]
             },
             "description": "El id es el del USUARIO, no el del perfil. Es el mismo id que dona donating al crear el perfil."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el perfil o un 404 si no existe', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el perfil o un 404 si no existe', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -73,20 +153,36 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario/mision",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario", "mision"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}", "description": "UUID del usuario asociado al perfil" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario",
+                "mision"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}",
+                  "description": "UUID del usuario asociado al perfil"
+                }
+              ]
             },
             "description": "Devuelve el objetivo gamificado vigente (racha, completitud) del perfil."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve la mision o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve la mision o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -97,19 +193,34 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario/insignias",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario", "insignias"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario",
+                "insignias"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve las insignias o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve las insignias o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -120,20 +231,35 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario/publico",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario", "publico"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario",
+                "publico"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             },
             "description": "Es lo que se muestra al donante en el front."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el perfil publico o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el perfil publico o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -141,27 +267,47 @@
           "name": "Registrar el impacto de una donacion (lo llama donating)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"idDonacion\": \"123e4567-e89b-12d3-a456-426614174002\",\n  \"fechaEntrega\": \"2026-10-07T10:00:00\",\n  \"cantidadBienes\": 10,\n  \"subCategoria\": \"ENLATADOS\",\n  \"categoria\": \"ALIMENTOS\",\n  \"entidadBeneficiaria\": \"Banco de alimentos\",\n  \"estado\": \"ENTREGADA\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/donacion/:idUsuario",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", "donacion", ":idUsuario"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                "donacion",
+                ":idUsuario"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             },
             "description": "Es el endpoint que llama donaciones-service cuando asigna una donacion (IncentivosClient.notificarDonacionAsignada). Es la conexion donating -> incentivos del enunciado."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('el perfil acepta el impacto o rechaza el usuario inexistente', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('el perfil acepta el impacto o rechaza el usuario inexistente', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -169,26 +315,49 @@
           "name": "Actualizar un perfil",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Admin-Id",
+                "value": "{{adminId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombreUsuario\": \"Juan Perez actualizado\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('actualiza o rechaza si no existe', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('actualiza o rechaza si no existe', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -196,22 +365,69 @@
           "name": "Eliminar un perfil",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Admin-Id",
+                "value": "{{adminId}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "perfiles", ":idUsuario"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "perfiles",
+                ":idUsuario"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('borra o rechaza si no existe', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('borra o rechaza si no existe', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar administrador de prueba",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{donacionesUrl}}/api/admins/{{adminId}}",
+              "host": [
+                "{{donacionesUrl}}"
+              ],
+              "path": [
+                "api",
+                "admins",
+                "{{adminId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('elimina el administrador de prueba', function () { pm.expect(pm.response.code).to.be.oneOf([204, 404]); });"
+                ]
+              }
             }
           ]
         }
@@ -228,19 +444,34 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/metricas/:idUsuario/actividad",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "metricas", ":idUsuario", "actividad"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "metricas",
+                ":idUsuario",
+                "actividad"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve la actividad o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve la actividad o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -251,23 +482,44 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/metricas/:idUsuario/periodo",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "metricas", ":idUsuario", "periodo"],
-              "variable": [ { "key": "idUsuario", "value": "{{idUsuario}}" } ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "metricas",
+                ":idUsuario",
+                "periodo"
+              ],
+              "variable": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ],
               "query": [
-                { "key": "desde", "value": "2026-01-01" },
-                { "key": "hasta", "value": "2026-12-31" }
+                {
+                  "key": "desde",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-12-31"
+                }
               ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el periodo o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el periodo o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         }
@@ -284,19 +536,28 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/rankings/actual",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "rankings", "actual"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rankings",
+                "actual"
+              ]
             },
             "description": "Sustituye al GET /perfiles/:id/ranking que tenia la version anterior y no existia."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el ranking del mes (o 404 si no hay ranking cerrado)', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el ranking del mes (o 404 si no hay ranking cerrado)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -307,21 +568,41 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/rankings/:id/top",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "rankings", ":id", "top"],
-              "variable": [ { "key": "id", "value": "{{idRanking}}" } ],
-              "query": [ { "key": "cantidad", "value": "3" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rankings",
+                ":id",
+                "top"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{idRanking}}"
+                }
+              ],
+              "query": [
+                {
+                  "key": "cantidad",
+                  "value": "3"
+                }
+              ]
             },
             "description": "Sustituye al GET /perfiles/:id/ranking/top3. Es el mismo recurso, pero el top esta en el controller de rankings, no en el de perfiles."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el top o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el top o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         },
@@ -332,19 +613,34 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/rankings/:id/puestoRanking",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "rankings", ":id", "puestoRanking"],
-              "variable": [ { "key": "id", "value": "{{idRanking}}" } ]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rankings",
+                ":id",
+                "puestoRanking"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{idRanking}}"
+                }
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el puesto o un 404', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el puesto o un 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ]
+              }
             }
           ]
         }
@@ -360,18 +656,26 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/categorias",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categorias"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
             }
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [
-                "pm.test('devuelve el listado de categorias', function () {",
-                "    pm.response.to.have.status(200);",
-                "});"
-              ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('devuelve el listado de categorias', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
             }
           ]
         }

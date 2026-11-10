@@ -1,5 +1,16 @@
 # Pendientes técnicos de `donaciones-service`
 
+## Revisión del enunciado hasta Entrega 6
+
+El backlog técnico detallado debajo se mantiene como lista de trabajo del servicio. Contrastado con
+E1-E5: existen dominio de donaciones, segmentación, necesidades, importación CSV, estados e historial,
+APIs REST y persistencia relacional. Siguen abiertos los riesgos ya enumerados, especialmente estados
+faltantes/trazabilidad, fecha real de entrega, consistencia del matchmaking, transacciones y notificación
+asíncrona. Para cerrar los entregables del TP también falta versionar diagramas de clases/ERD y contratos
+API actualizados (ver backlog raíz). E6 corresponde principalmente a `front-service`.
+
+---
+
 Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo para
 que no se pierdan de vista al crecer el código.
 
@@ -7,25 +18,9 @@ que no se pierdan de vista al crecer el código.
 ID estable y no se renumera nunca, así que quedan huecos. Un punto corregido se borra de esta
 lista y pasa a la sección [Corregidos](#corregidos) del final.
 
-<<<<<<< HEAD
 El orden no es el de la severidad declarada en cada punto sino el del daño real: cuánto se
 rompe cuando pasa, y qué tan fácil es que pase.
-=======
-| #  | Punto | Severidad | Paquete | Por qué está acá |
-|----|-------|-----------|---------|------------------|
-| 4  | 51    | Media     | `services` | `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias |
-| 5  | 53    | Media     | `services` | La asignación notifica dos veces: mensaje directo y estrategia de notificación |
-| 6  | 54    | Media     | `services` | `DELETE /donaciones/{id}` responde 409 si la donación tiene resultado de matchmaking |
-| 7  | 65    | Media     | `services` | `AdminService.actualizarAdmin` inserta una nueva `Humana` en cada PUT dejando huérfana la persona anterior |
-| 8  | 36    | Baja      | `arquitectura` | La nomenclatura de subcarpetas no coincide con la de incentivos |
-| 9  | 39    | Baja      | `controllers` | `DonacionController` inyecta `RabbitTemplate` sin usarlo |
-| 10 | 43    | Baja      | `controllers` | "Consultar rankings" no está expuesto en donaciones: confirmar alcance |
-| 11 | 57    | Baja      | `dto` | Los POST de medios de contacto aceptan nulos/vacíos y responden 201 |
-| 12 | 37    | Baja      | `models.repositories` | Los repositorios usan dos convenciones distintas entre servicios |
-| 13 | 67    | Baja      | `models.sheduler` | `ActividadDonanteScheduler` evalúa formularios en orden arbitrario y dispara spam diario perpetuo a inactivos |
-| 14 | 68    | Baja      | `services` | `GET /api/entidades/{id}/donaciones` responde 200 con lista vacía en lugar de 404 si la entidad no existe |
-| 15 | 76    | Baja      | `models.gestores` | Revisar y reordenar la implementación de Georef en `GestorGeoref` (cliente, batching, persistencia y sincronización con la transacción) |
->>>>>>> origin/develop-donaciones
+
 
 | #  | Punto | Severidad | Por qué está acá                                                                                                    |
 |----|-------|-----------|---------------------------------------------------------------------------------------------------------------------|
@@ -64,7 +59,6 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 ---
 
-<<<<<<< HEAD
 ## 49. El `RestTemplate` de integración no tiene timeouts: un servicio colgado bloquea todo
 
 **Estado:** abierto
@@ -228,11 +222,7 @@ Crear una donación vía `POST /api/donaciones/formulario` y consultar el rankin
 Instanciar la donación con `fechaEntrega = null` en `SegmentadorDonaciones.crearDonacion`, y verificar `d.getEstado() == Estado.ENTREGADO` en `SubAtendidos.cantidadDonacionesUltimoTrimestre`.
 
 ---
-=======
 
-
-
->>>>>>> origin/develop-donaciones
 
 ## 51. `EntidadBeneficiariaService` sin transacciones: altas y bajas de necesidades quedan a medias
 
@@ -948,8 +938,6 @@ Consultar directamente los donantes inactivos con una proyección `MAX(fechaReal
 
 ## Corregidos
 
-<<<<<<< HEAD
-=======
 - **75 (geocoding).** `Direccion` no guardaba coordenadas y `getLatitud()`/`getLongitud()` devolvían un placeholder - agregados `latitud`/`longitud` persistentes y `GeorefClient`/`GestorGeoref` sobre la API pública Georef (POST `/direcciones` en lotes de hasta 1000, deduplicados, `max = 1` y reintento sin localidad). `GestorGeoref` coordina el alta y el PUT: geocodifica después del commit y en una transacción corta con lock pesimista (no se mantiene abierta la transacción durante el HTTP y no se pisan coordenadas entre instancias), conserva coordenadas y backoff si la dirección textual no cambió, y deja la operación de negocio en pie si Georef falla. `GeocodingScheduler` corre a las 00:30, limita la corrida con `geocoding.cron.max-por-corrida`, aplica backoff de 7 días y hasta 3 intentos, y distingue "sin resultado" de "API caída" (la caída no consume intento). `anonimizar()` borra las coordenadas y `DireccionDTO` las transporta a logística tanto en entregas como en paradas; los GET de donantes no publican las coordenadas (el PUT las conserva si la dirección textual no cambió). Cobertura en `GestorGeorefTest`, `GeocodingSchedulerTest`, `GeorefClientTest`, `DireccionTest` y `DireccionDTOTest`.
 
 - **75.** El cursor de deduplicación de eventos `ultimoIdProcesado` en `EventosListener` era en memoria: no sobrevivía reinicios ni clusters - reemplazado por la tabla de idempotencia `eventos_logistica_procesados` (clave primaria `id_evento`, vía `RepositorioEventosProcesados`). El reclamo se inserta al comienzo de la transacción de `GestorEventosLogistica.procesarEvento` (`persist` + `flush`), así que la verificación y la inserción son atómicas: si el evento falla, el rollback borra la fila y el retry lo reprocesa; si otra réplica ya lo reclamó, la PK duplicada se traduce a `EventoYaProcesadoException` y el listener confirma el mensaje sin reprocesar. La deduplicación es duradera y compartida entre todas las réplicas, sin alterar el contrato del Punto 45. Coberturas en `EventosListenerTest` y `GestorEventosLogisticaTest`.
@@ -970,7 +958,7 @@ Consultar directamente los donantes inactivos con una proyección `MAX(fechaReal
 
 - **71.** `executorImportacion` usa hilos daemon: un apagado o reinicio del contenedor abortaba la importación CSV a medias — migrado el pool a `ThreadPoolTaskExecutor` de Spring con hilos no-daemon (`setDaemon(false)`), espera de tareas activas al apagar (`setWaitForTasksToCompleteOnShutdown(true)`) y ventana de gracia de 30 segundos (`setAwaitTerminationSeconds(30)`), exponiendo `getThreadPoolExecutor()` como bean `ExecutorService` para preservar la inyección requerida por `DonanteService` sin que Spring destruya el `DataSource` ni los recursos de BD mientras hay importaciones en curso.
 
->>>>>>> origin/develop-donaciones
+
 - **61.** Llamada síncrona a `IncentivosClient` en transacción de entrega revertía la persistencia y descartaba el evento de logística — aislada la llamada a `incentivosClient.notificarImpactoDonacion` para ejecutarse post-commit mediante `TransactionSynchronizationManager` con `afterCommit()` (o fallback directo aislado en `try/catch` con log de advertencia), evitando que caídas o demoras de incentivos reviertan la confirmación local de la donación a `ENTREGADO` y previniendo el descarte irreversible del evento en RabbitMQ.
 - **70.** Soft Delete en `EntidadBeneficiaria` y cancelación lógica de necesidades, evitando 409 y preservando donaciones — implementada baja lógica (`activa = false`, `fechaBaja = now()`) en `EntidadBeneficiaria`, cancelación lógica de necesidades (`activa = false` en `Necesidad`), anonimización de persona jurídica y dirección, exclusión de entidades y necesidades inactivas en matchmaking (`CompatibilidadSemantica`, `SubAtendidos`, `AsignacionScheduler`, `DonacionService`) y listados, y eliminación del borrado físico en `EntidadBeneficiariaService.eliminarEntidad` y `eliminarNecesidad` para evitar el 409 por restricción de clave foránea (absorbió bug 66).
 - **69.** Soft Delete y minimización de datos en `Donante` y `Persona`, eliminando desvinculación a `null` de donaciones — implementada baja lógica (`activo = false`, `fechaBaja = now()`) en `Donante`, anonimización en cascada (`Persona.anonimizar()`, `Humana`, `Juridica`, `Direccion`, `MediosDeContacto.limpiarMedios()`), filtrado de inactivos en `DonanteService.listarTodas()` y `buscarPorNombre()`, y eliminadas las desvinculaciones destructivas a `null` del punto 34 para preservar claves foráneas y prevenir `NullPointerException` en eventos de entrega logística (absorbió bug 60).
@@ -1023,11 +1011,8 @@ Un bullet por arreglo; el número es el ID estable del punto original («sin ID�
 - **Clientes (sin ID).** Se tragaban las excepciones de salida sin log — ahora loguean y relanzan.
 - **Rabbit (sin ID).** Dos bindings ataban al exchange equivocado y usaban comodines `.#` — cada servicio declara lo suyo con la clave exacta.
 - **Properties (sin ID).** URLs default sin context-path y faltaba el bloque `spring.rabbitmq.*` — parametrizados por entorno.
-<<<<<<< HEAD
-=======
 - **64.** `ResultadoMatchmaking` colisionaba al re-matchear: el reemplazo se hace al inicio del bucle de `ejecutarMatchmakingBatch` (borra el previo antes de procesar), `eliminarResultado` ahora hace `flush`, y `guardar` es un save puro. Cubierto por `RepositorioDeResultadosMatchmakingTest` y `AsignadorDonacionesReMatchmakingTest`.
 - **74.** `AsignacionScheduler` transaccionaba todo el lote junto: un fallo en una donación tumbaba el batch por rollback-only — `DonacionService.ejecutarMatchmakingADemanda` ahora procesa cada donación dentro de un `TransactionTemplate` con `PROPAGATION_REQUIRES_NEW`, así un error de integridad solo revierte esa donación; el scheduler mantiene su `@Transactional` (punto 44) para la lectura inicial.
 - **42.** Estados del enunciado: se agregaron `LISTA_PARA_ENTREGAR` y `ENTREGA_FALLIDA` al enum; `manejarEntregaFallida` registra `ENTREGA_FALLIDA`, `REINGRESO_DEPOSITO` vuelve a `EN_DEPOSITO`, y `asignarPropuesta` deja el estado final en `LISTA_PARA_ENTREGAR`.
 - **62.** `fechaEntrega` prematura en depósito: `SegmentadorDonaciones` la deja en `null` (se setea al entregar) y `SubAtendidos` filtra por `Estado.ENTREGADO`.
 - **63.** Fallback de matchmaking sin intersección: se renumeran las posiciones secuencialmente para evitar asignar la propuesta equivocada.
->>>>>>> origin/develop-donaciones
