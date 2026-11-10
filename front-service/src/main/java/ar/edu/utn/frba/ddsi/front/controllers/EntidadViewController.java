@@ -335,7 +335,11 @@ public class EntidadViewController {
                            Authentication authentication,
                            RedirectAttributes flash) {
         try {
-            identidadService.vincularEntidad(IdentidadService.usernameDe(authentication), entidadId);
+            String sub = subDe(authentication);
+            if (sub == null) {
+                throw new IllegalArgumentException("Tu cuenta no tiene un identificador de Keycloak. Iniciá sesión nuevamente.");
+            }
+            identidadService.vincularEntidad(sub, entidadId);
             flash.addFlashAttribute("toastTipo", "success");
             flash.addFlashAttribute("toastMensaje", "Tu cuenta quedó vinculada a la entidad.");
             return "redirect:/entidad";
@@ -343,10 +347,31 @@ public class EntidadViewController {
             flash.addFlashAttribute("toastTipo", "error");
             flash.addFlashAttribute("toastMensaje", e.getMessage());
             return "redirect:/entidad/vincular";
+        } catch (org.springframework.web.client.RestClientResponseException e) {
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", e.getStatusCode().value() == 409
+                    ? "Esa entidad ya está vinculada a otra cuenta."
+                    : "No se pudo vincular. Revisá los datos e intentá de nuevo.");
+            return "redirect:/entidad/vincular";
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(EntidadViewController.class)
+                    .warn("No se pudo vincular la entidad: {}", e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", "No se pudo vincular. Intentá nuevamente más tarde.");
+            return "redirect:/entidad/vincular";
         }
     }
 
     /* ============================ Helpers ============================ */
+
+    /** Identificador inmutable de la cuenta de Keycloak del usuario autenticado. */
+    private static String subDe(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidcUser) {
+            String sub = oidcUser.getSubject();
+            return (sub != null && !sub.isBlank()) ? sub.trim() : null;
+        }
+        return null;
+    }
 
     /**
      * Resuelve los datos del portal (reales o demo) y los expone en el modelo.

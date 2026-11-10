@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,4 +29,6 @@ public interface EntidadBeneficiariaJpaRepository extends JpaRepository<EntidadB
           AND e.activa = true
         """)
     List<EntidadBeneficiaria> buscarPorEmailContacto(@Param("email") String email);
+
+    Optional<EntidadBeneficiaria> findByKeycloakSubAndActivaTrue(String keycloakSub);
 }

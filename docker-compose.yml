@@ -34,16 +34,16 @@ services:
 
   # Credenciales simples solo para el entorno local de demostración. No reutilizar
   # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
+  # MySQL no se expone al host: los servicios llegan por la red interna de Docker.
   mysql:
     image: mysql:8.0
     container_name: tpa-mysql
-    ports:
-      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
@@ -104,6 +104,8 @@ services:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
+      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -128,6 +130,8 @@ services:
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
+      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -156,6 +160,9 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
+      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -232,11 +239,11 @@ services:
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       LOGISTICAS_URL: http://logisticas-service:8086/api
       KEYCLOAK_CLIENT_ID: front-service
-      KEYCLOAK_CLIENT_SECRET: front-service-dev-secret
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_FRONT_CLIENT_SECRET:-front-service-dev-secret}
       KEYCLOAK_REALM: ddsi
       KEYCLOAK_ADMIN_BASE_URI: http://keycloak:8080/admin
       KEYCLOAK_REGISTRATION_CLIENT_ID: front-registration
-      KEYCLOAK_REGISTRATION_CLIENT_SECRET: front-registration-dev-secret
+      KEYCLOAK_REGISTRATION_CLIENT_SECRET: ${KEYCLOAK_REGISTRATION_CLIENT_SECRET:-front-registration-dev-secret}
       KEYCLOAK_ACCOUNT_RETURN_URI: http://localhost:8080/donante/mapa
       # La app usa endpoints internos para backchannel y el issuer público en los tokens.
       KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ddsi
@@ -246,11 +253,10 @@ services:
       KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/userinfo
       KEYCLOAK_LOGOUT_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/logout
       KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:8080/
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
     depends_on:
       keycloak:
         condition: service_started
-    volumes:
-      - ./front-service/data:/app/data
 
 volumes:
   keycloak-data:

@@ -2,7 +2,6 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
-import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -12,9 +11,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,20 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HomeControllerRegistrationTest {
 
-    private static IdentidadMappingStore mappingStoreDePrueba() {
-        try {
-            Path temp = Files.createTempFile("identidad-test", ".json");
-            temp.toFile().deleteOnExit();
-            return new IdentidadMappingStore(temp.toString());
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     @Test
     void preservesDonorFormValuesWhenEmailValidationFailsWithoutKeepingPassword() {
         HomeController controller = new HomeController(new DonacionesClientStub(),
-                new KeycloakRegistrationClientStub(), mappingStoreDePrueba());
+                new KeycloakRegistrationClientStub());
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nuevo-donante",
@@ -62,8 +50,7 @@ class HomeControllerRegistrationTest {
     @Test
     void requiresAccountEmailBeforeCreatingBeneficiaryEntityAccount() {
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
-        HomeController controller = new HomeController(new DonacionesClientStub(), keycloakClient,
-                mappingStoreDePrueba());
+        HomeController controller = new HomeController(new DonacionesClientStub(), keycloakClient);
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nueva-entidad",
@@ -83,8 +70,7 @@ class HomeControllerRegistrationTest {
     void usesAccountEmailForKeycloakAndProfileRegistration() {
         DonacionesClientStub donacionesClient = new DonacionesClientStub();
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
-        HomeController controller = new HomeController(donacionesClient, keycloakClient,
-                mappingStoreDePrueba());
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nueva-entidad",
@@ -104,14 +90,32 @@ class HomeControllerRegistrationTest {
     }
 
     @Test
+    void sendsTheKeycloakSubWhenCreatingTheProfile() {
+        DonacionesClientStub donacionesClient = new DonacionesClientStub();
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+        Map<String, String> form = Map.of(
+                "username", "nueva-entidad",
+                "password", "password-segura",
+                "tipoRegistro", "ENTIDAD",
+                "email", "entidad@example.com",
+                "razonSocial", "Entidad Ejemplo"
+        );
+
+        assertEquals("register", controller.register(form, model));
+
+        assertEquals("test-user-id", donacionesClient.datos.get("keycloakSub"));
+    }
+
+    @Test
     void showsProfileServiceValidationErrorAndRollsBackCreatedAccount() {
         DonacionesClientStub donacionesClient = new DonacionesClientStub();
         donacionesClient.error = HttpClientErrorException.create(HttpStatus.BAD_REQUEST, "Bad Request",
                 HttpHeaders.EMPTY, "La dirección no tiene una ciudad válida".getBytes(StandardCharsets.UTF_8),
                 StandardCharsets.UTF_8);
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
-        HomeController controller = new HomeController(donacionesClient, keycloakClient,
-                mappingStoreDePrueba());
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nuevo-donante",
@@ -143,6 +147,16 @@ class HomeControllerRegistrationTest {
         @Override
         public ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO buscarIdentidadPorEmail(String email) {
             return null;
+        }
+
+        @Override
+        public ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO buscarIdentidadPorSub(String sub) {
+            return null;
+        }
+
+        @Override
+        public void vincularIdentidad(String sub, String rol, UUID perfilId) {
+            // no-op: no hay backend en los tests
         }
 
         @Override

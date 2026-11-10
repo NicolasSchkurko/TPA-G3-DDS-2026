@@ -43,6 +43,14 @@ public class RepositorioAdministradores {
         return jpaRepository.findById(id);
     }
 
+    /** Administrador vinculado a la cuenta de Keycloak indicada. */
+    public Optional<Administrador> buscarPorKeycloakSub(String keycloakSub) {
+        if (keycloakSub == null || keycloakSub.isBlank()) {
+            return Optional.empty();
+        }
+        return jpaRepository.findByKeycloakSub(keycloakSub.trim());
+    }
+
     /** Administrador cuyo contacto o cuya persona humana tiene ese mail. */
     public Optional<Administrador> buscarPorEmailContacto(String email) {
         if (email == null || email.isBlank()) {

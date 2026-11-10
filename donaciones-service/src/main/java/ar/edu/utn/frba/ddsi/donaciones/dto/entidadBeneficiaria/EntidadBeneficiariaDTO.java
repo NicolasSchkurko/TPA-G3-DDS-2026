@@ -8,6 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.T
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.Juridica;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Juridica.TipoJuridico;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -35,6 +36,10 @@ public class EntidadBeneficiariaDTO {
     private UUID id;
     private Boolean activa;
     private List<NecesidadDTO> necesidades;
+
+    /** Identificador inmutable de la cuenta de Keycloak. Solo se acepta al crear, nunca se expone. */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String keycloakSub;
 
     public EntidadBeneficiaria toDomain(Ciudad ciudad) {
         Juridica juridica = null;

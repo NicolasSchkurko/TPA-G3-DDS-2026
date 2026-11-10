@@ -25,6 +25,11 @@ public class Donante {
     @Id
     private UUID id;
 
+    // Identificador inmutable de la cuenta de Keycloak vinculada a este perfil.
+    // Es la identidad del usuario (el email es solo medio de contacto).
+    @Column(name = "keycloak_sub", unique = true, length = 36)
+    private String keycloakSub;
+
     // Soft delete: el donante nunca se elimina físicamente para preservar claves foráneas de donaciones.
     @Column(nullable = false)
     private boolean activo = true;

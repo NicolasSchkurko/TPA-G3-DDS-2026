@@ -7,6 +7,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Column;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import java.util.UUID;
@@ -20,6 +21,10 @@ import lombok.Setter;
 public class Administrador {
     @Id
     private UUID id = UUID.randomUUID();
+
+    // Identificador inmutable de la cuenta de Keycloak vinculada a este administrador.
+    @Column(name = "keycloak_sub", unique = true, length = 36)
+    private String keycloakSub;
 
     // ManyToOne (no OneToOne): la Humana vive en su propio repositorio (RepositorioPersonas),
     // igual que Juridica para EntidadBeneficiaria. Sin cascade REMOVE: dar de baja el

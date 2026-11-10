@@ -66,6 +66,7 @@ public class SecurityConfig {
         return source -> {
             List<GrantedAuthority> authorities = new ArrayList<>(source);
             String email = null;
+            String sub = null;
             for (GrantedAuthority authority : source) {
                 if (!(authority instanceof OidcUserAuthority oidcAuthority)) continue;
                 Map<String, Object> realmAccess = oidcAuthority.getIdToken().getClaimAsMap("realm_access");
@@ -76,6 +77,9 @@ public class SecurityConfig {
                         }
                     }
                 }
+                if (sub == null) {
+                    sub = oidcAuthority.getIdToken().getSubject();
+                }
                 if (email == null) {
                     Object claim = oidcAuthority.getIdToken().getClaim("email");
                     if (claim instanceof String mail && !mail.isBlank()) {
@@ -83,19 +87,28 @@ public class SecurityConfig {
                     }
                 }
             }
-            // El email es la identidad: si ya está vinculada a un donante/entidad/admin, habilitamos esos roles.
-            if (email != null) {
+            // La identidad estable es el sub de Keycloak: si ya está vinculado a un
+            // donante/entidad/admin, habilitamos esos roles.
+            if (sub != null) {
                 try {
-                    IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                    IdentidadDTO identidad = donacionesClient.buscarIdentidadPorSub(sub);
                     if (identidad != null && identidad.getRoles() != null) {
                         for (String role : identidad.getRoles()) {
                             if (role == null || role.isBlank()) continue;
                             authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
                         }
+                    } else if (email != null) {
+                        IdentidadDTO porEmail = donacionesClient.buscarIdentidadPorEmail(email);
+                        if (porEmail != null && porEmail.getRoles() != null) {
+                            for (String role : porEmail.getRoles()) {
+                                if (role == null || role.isBlank()) continue;
+                                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                            }
+                        }
                     }
                 } catch (Exception e) {
                     org.slf4j.LoggerFactory.getLogger(SecurityConfig.class)
-                            .warn("No se pudo resolver la identidad por email {}: {}", email, e.getMessage());
+                            .warn("No se pudo resolver la identidad por sub: {}", e.getMessage());
                 }
             }
             return authorities;

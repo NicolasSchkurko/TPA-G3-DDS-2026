@@ -28,6 +28,10 @@ public class EntidadBeneficiaria {
     @Id
     private UUID id; // Identificador único autogenerado
 
+    // Identificador inmutable de la cuenta de Keycloak vinculada a esta entidad.
+    @Column(name = "keycloak_sub", unique = true, length = 36)
+    private String keycloakSub;
+
     // Soft delete: la entidad nunca se elimina físicamente para preservar claves foráneas y trazabilidad histórica.
     @Column(nullable = false)
     private boolean activa = true;

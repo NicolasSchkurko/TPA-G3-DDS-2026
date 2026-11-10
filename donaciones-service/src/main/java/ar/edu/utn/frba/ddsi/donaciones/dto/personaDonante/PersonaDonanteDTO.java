@@ -12,6 +12,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,6 +27,10 @@ public class PersonaDonanteDTO {
   private UUID id;
   private Boolean activo;
   private String tipoPersona;
+
+  /** Identificador inmutable de la cuenta de Keycloak. Solo se acepta al crear, nunca se expone. */
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+  private String keycloakSub;
   private String nombre;
   private String apellido;
   private int edad;

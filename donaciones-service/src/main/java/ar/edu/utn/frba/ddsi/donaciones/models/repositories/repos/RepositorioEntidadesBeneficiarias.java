@@ -46,6 +46,14 @@ public class RepositorioEntidadesBeneficiarias {
         return jpaRepository.findById(id);
     }
 
+    /** Entidad activa vinculada a la cuenta de Keycloak indicada. */
+    public Optional<EntidadBeneficiaria> buscarPorKeycloakSub(String keycloakSub) {
+        if (keycloakSub == null || keycloakSub.isBlank()) {
+            return Optional.empty();
+        }
+        return jpaRepository.findByKeycloakSubAndActivaTrue(keycloakSub.trim());
+    }
+
     /** Entidad activa cuyo responsable tiene ese mail como medio de contacto. */
     public Optional<EntidadBeneficiaria> buscarPorEmailContacto(String email) {
         if (email == null || email.isBlank()) {

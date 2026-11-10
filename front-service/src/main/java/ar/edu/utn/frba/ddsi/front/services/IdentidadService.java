@@ -16,20 +16,18 @@ import java.util.UUID;
 /**
  * Resuelve el perfil de dominio del usuario autenticado.
  *
- * <p>Primero intenta identificar los perfiles por el email de la cuenta (el email es el
- * puente entre Keycloak y los perfiles de dominio). Si eso no responde, usa el mapping local
- * {@code front.entidad.mapping-file} como respaldo demo.
+ * <p>La identidad estable es el {@code sub} de Keycloak: es inmutable aunque cambie el
+ * email o el username. El email se usa sólo como fallback transitorio y como medio de
+ * contacto para notificaciones.</p>
  */
 @Service
 public class IdentidadService {
 
     private static final Logger log = LoggerFactory.getLogger(IdentidadService.class);
 
-    private final IdentidadMappingStore store;
     private final DonacionesClient donacionesClient;
 
-    public IdentidadService(IdentidadMappingStore store, DonacionesClient donacionesClient) {
-        this.store = store;
+    public IdentidadService(DonacionesClient donacionesClient) {
         this.donacionesClient = donacionesClient;
     }
 
@@ -54,32 +52,31 @@ public class IdentidadService {
     }
 
     /**
-     * Resuelve el perfil del usuario para un rol. Primero por email (fuente de verdad),
-     * luego por el mapping local como respaldo.
+     * Resuelve el perfil del usuario para un rol. Primero por el {@code sub} de Keycloak;
+     * si no hay vínculo, cae al email como fallback y auto-cura el vínculo.
      */
     public Optional<UUID> perfilIdActual(Authentication authentication, String rol) {
         if (authentication == null || rol == null || rol.isBlank()) {
             return Optional.empty();
         }
-        String email = emailDe(authentication);
-        if (email != null) {
-            IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
-            if (identidad != null) {
-                UUID id = switch (rol.toUpperCase()) {
-                    case "ENTIDAD" -> identidad.getEntidadId();
-                    case "DONANTE" -> identidad.getDonanteId();
-                    case "ADMIN" -> identidad.getAdminId();
-                    default -> null;
-                };
-                if (id != null) {
-                    guardarVinculo(authentication.getName(), rol, id);
-                    return Optional.of(id);
-                }
-                return Optional.empty();
-            }
-            log.debug("No se pudo resolver la identidad por email {}; se usa el mapping local.", email);
+        String sub = subDe(authentication);
+        if (sub == null) {
+            return resolverPorEmail(authentication, rol);
         }
-        return store.obtener(usernameDe(authentication), rol);
+        IdentidadDTO identidad = donacionesClient.buscarIdentidadPorSub(sub);
+        if (identidad != null) {
+            UUID id = idDe(identidad, rol);
+            return Optional.ofNullable(id);
+        }
+        return resolverPorEmail(authentication, rol, sub);
+    }
+
+    /** Identidad completa por el sub de Keycloak (o null si no se pudo resolver). */
+    public Optional<IdentidadDTO> identidadPorSub(String sub) {
+        if (sub == null || sub.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(donacionesClient.buscarIdentidadPorSub(sub.trim()));
     }
 
     /** Identidad completa por email (o null si no se pudo resolver). */
@@ -90,35 +87,69 @@ public class IdentidadService {
         return Optional.ofNullable(donacionesClient.buscarIdentidadPorEmail(email.trim().toLowerCase()));
     }
 
-    /** Registra el vínculo username→perfil al dar de alta un perfil desde el registro web. */
-    public void registrarVinculo(String username, String rol, UUID perfilId) {
-        if (perfilId != null && username != null && !username.isBlank() && rol != null) {
-            store.guardar(username, rol, perfilId);
+    /** Registra el vínculo entre la cuenta de Keycloak y el perfil de dominio. */
+    public void registrarVinculo(String sub, String rol, UUID perfilId) {
+        if (perfilId != null && sub != null && !sub.isBlank() && rol != null && !rol.isBlank()) {
+            donacionesClient.vincularIdentidad(sub.trim(), rol.trim().toUpperCase(), perfilId);
         }
     }
 
     /** Vincula manualmente el perfil de entidad del usuario (pantalla de onboarding). */
-    public void vincularEntidad(String username, UUID entidadId) {
-        if (username == null || username.isBlank() || entidadId == null) {
+    public void vincularEntidad(String sub, UUID entidadId) {
+        if (sub == null || sub.isBlank() || entidadId == null) {
             throw new IllegalArgumentException("Seleccioná una entidad válida para vincular tu perfil.");
         }
-        store.guardar(username, "ENTIDAD", entidadId);
+        donacionesClient.vincularIdentidad(sub.trim(), "ENTIDAD", entidadId);
     }
 
-    /** Entidades disponibles para que el usuario elija cuál es la suya (respaldo demo). */
+    /** Entidades disponibles para que el usuario elija cuál es la suya. */
     public List<EntidadBeneficiariaDTO> listarEntidadesParaVincular() {
         return donacionesClient.obtenerEntidades();
     }
 
-    private void guardarVinculo(String username, String rol, UUID perfilId) {
-        if (username == null || username.isBlank() || perfilId == null) {
-            return;
+    private Optional<UUID> resolverPorEmail(Authentication authentication, String rol) {
+        return resolverPorEmail(authentication, rol, subDe(authentication));
+    }
+
+    private Optional<UUID> resolverPorEmail(Authentication authentication, String rol, String sub) {
+        String email = emailDe(authentication);
+        if (email == null) {
+            return Optional.empty();
         }
-        try {
-            store.guardar(username, rol, perfilId);
-        } catch (Exception e) {
-            log.debug("No se pudo actualizar el mapping local para {} ({}): {}", username, rol, e.getMessage());
+        IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+        if (identidad == null) {
+            return Optional.empty();
         }
+        UUID id = idDe(identidad, rol);
+        if (id != null && sub != null) {
+            try {
+                donacionesClient.vincularIdentidad(sub, rol, id);
+                log.info("Vínculo auto-curado para la cuenta (rol {}).", rol);
+            } catch (Exception e) {
+                log.warn("No se pudo auto-curar el vínculo de la cuenta (rol {}): {}", rol, e.getMessage());
+            }
+        }
+        return Optional.ofNullable(id);
+    }
+
+    private static UUID idDe(IdentidadDTO identidad, String rol) {
+        if (identidad == null || rol == null) return null;
+        return switch (rol.toUpperCase()) {
+            case "ENTIDAD" -> identidad.getEntidadId();
+            case "DONANTE" -> identidad.getDonanteId();
+            case "ADMIN" -> identidad.getAdminId();
+            default -> null;
+        };
+    }
+
+    private static String subDe(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            String sub = oidcUser.getSubject();
+            if (sub != null && !sub.isBlank()) {
+                return sub.trim();
+            }
+        }
+        return null;
     }
 
     private static String emailDe(Authentication authentication) {

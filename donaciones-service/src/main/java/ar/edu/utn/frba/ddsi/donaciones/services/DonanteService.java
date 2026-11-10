@@ -131,6 +131,13 @@ public class DonanteService {
   public PersonaDonanteDTO crearPersona(PersonaDonanteDTO dto) {
     Ciudad ciudad = resolverCiudad(dto.getDireccion());
     Donante nuevoDonante = dto.toDomain(ciudad);
+    if (dto.getKeycloakSub() != null && !dto.getKeycloakSub().isBlank()) {
+      String sub = dto.getKeycloakSub().trim();
+      repositorioDonantes.buscarPorKeycloakSub(sub)
+          .ifPresent(d -> { throw new IllegalArgumentException(
+              "Esa cuenta ya está vinculada a un perfil de donante. Iniciá sesión y agregá el rol desde tu cuenta."); });
+      nuevoDonante.setKeycloakSub(sub);
+    }
     gestorGeoref.geocodificarAlta(nuevoDonante.getDireccion());
 
     // Punto 52: Persistir localmente primero en transacción

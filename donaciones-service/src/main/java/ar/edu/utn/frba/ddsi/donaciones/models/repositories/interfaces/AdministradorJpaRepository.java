@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,6 @@ public interface AdministradorJpaRepository extends JpaRepository<Administrador,
              AND LOWER(TREAT(hm AS Mail).direccionMail) = LOWER(:email))
       """)
   List<Administrador> buscarPorEmailContacto(@Param("email") String email);
+
+  Optional<Administrador> findByKeycloakSub(String keycloakSub);
 }

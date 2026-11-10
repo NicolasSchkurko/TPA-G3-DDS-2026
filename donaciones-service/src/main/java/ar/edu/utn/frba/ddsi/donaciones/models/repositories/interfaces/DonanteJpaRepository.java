@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,8 @@ public interface DonanteJpaRepository extends JpaRepository<Donante, UUID> {
         AND d.activo = true
       """)
   List<Donante> buscarPorEmailContacto(@Param("email") String email);
+
+  Optional<Donante> findByKeycloakSubAndActivoTrue(@Param("keycloakSub") String keycloakSub);
 
   Page<Donante> findByActivoTrue(Pageable pageable);
 }

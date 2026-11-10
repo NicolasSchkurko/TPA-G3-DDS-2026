@@ -45,6 +45,14 @@ public class RepositorioDonantes {
     return jpaRepository.findById(id);
   }
 
+  /** Donante activo vinculado a la cuenta de Keycloak indicada. */
+  public Optional<Donante> buscarPorKeycloakSub(String keycloakSub) {
+    if (keycloakSub == null || keycloakSub.isBlank()) {
+      return Optional.empty();
+    }
+    return jpaRepository.findByKeycloakSubAndActivoTrue(keycloakSub.trim());
+  }
+
   /** Donante activo cuyo persona tiene ese mail como medio de contacto. */
   public Optional<Donante> buscarPorEmailContacto(String email) {
     if (email == null || email.isBlank()) {

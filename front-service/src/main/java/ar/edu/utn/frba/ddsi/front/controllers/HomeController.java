@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
-import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +29,6 @@ public class HomeController {
 
     private final DonacionesClient donacionesClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
-    private final IdentidadMappingStore identidadMappingStore;
 
     @Value("${servicio.donaciones.url}")
     private String donacionesUrl;
@@ -44,11 +42,9 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
-    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient,
-                          IdentidadMappingStore identidadMappingStore) {
+    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
         this.donacionesClient = donacionesClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
-        this.identidadMappingStore = identidadMappingStore;
     }
 
     @GetMapping("/login")
@@ -122,14 +118,14 @@ public class HomeController {
                     Map<String, String> datos = new LinkedHashMap<>(form);
                     datos.put("email", email);
                     datos.put("username", username);
+                    datos.put("keycloakSub", userId);
                     perfilId = donacionesClient.registrarUsuario(form.get("tipoRegistro"), datos);
-                }
-                if (perfilId != null) {
+                } else if (userId != null) {
+                    // El perfil existía: lo vinculamos con esta cuenta de Keycloak.
                     try {
-                        identidadMappingStore.guardar(username, role, perfilId);
+                        donacionesClient.vincularIdentidad(userId, role, perfilId);
                     } catch (Exception mappingError) {
-                        // El alta ya quedó persistida; el vínculo se puede rehacer desde "Vincular mi perfil".
-                        log.warn("No se pudo guardar el vínculo de identidad para {} ({}): {}", username, role, mappingError.getMessage());
+                        log.warn("No se pudo vincular el perfil existente de {} ({}): {}", username, role, mappingError.getMessage());
                     }
                 }
             } catch (IllegalArgumentException e) {
@@ -152,19 +148,25 @@ public class HomeController {
             try {
                 Set<String> roles = new LinkedHashSet<>();
                 roles.add(role);
-                ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO identidad = userId != null
+                        ? donacionesClient.buscarIdentidadPorSub(userId) : null;
+                if (identidad == null) {
+                    identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                }
                 if (identidad != null) {
                     if (identidad.getRoles() != null) {
                         roles.addAll(identidad.getRoles());
                     }
-                    if (identidad.getEntidadId() != null) {
-                        identidadMappingStore.guardar(username, "ENTIDAD", identidad.getEntidadId());
-                    }
-                    if (identidad.getDonanteId() != null) {
-                        identidadMappingStore.guardar(username, "DONANTE", identidad.getDonanteId());
-                    }
-                    if (identidad.getAdminId() != null) {
-                        identidadMappingStore.guardar(username, "ADMIN", identidad.getAdminId());
+                    if (userId != null) {
+                        if (identidad.getEntidadId() != null) {
+                            vincularSilencioso(userId, "ENTIDAD", identidad.getEntidadId(), username);
+                        }
+                        if (identidad.getDonanteId() != null) {
+                            vincularSilencioso(userId, "DONANTE", identidad.getDonanteId(), username);
+                        }
+                        if (identidad.getAdminId() != null) {
+                            vincularSilencioso(userId, "ADMIN", identidad.getAdminId(), username);
+                        }
                     }
                 }
                 roles.addAll(keycloakRegistrationClient.rolesDeUsuariosConEmail(email));
@@ -262,6 +264,15 @@ public class HomeController {
             case "ADMIN" -> "Administración";
             default -> rol;
         };
+    }
+
+    /** Vincula el perfil con la cuenta de Keycloak sin romper el alta si falla. */
+    private void vincularSilencioso(String userId, String rol, java.util.UUID perfilId, String username) {
+        try {
+            donacionesClient.vincularIdentidad(userId, rol, perfilId);
+        } catch (Exception e) {
+            log.warn("No se pudo vincular el perfil de {} ({}): {}", username, rol, e.getMessage());
+        }
     }
 
     private void eliminarCuentaSiCorresponde(String userId) {
