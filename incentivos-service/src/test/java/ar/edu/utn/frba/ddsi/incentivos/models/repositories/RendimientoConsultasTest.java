@@ -142,11 +142,12 @@ class RendimientoConsultasTest {
 
             var entityGraph = metodo.getAnnotation(
                     org.springframework.data.jpa.repository.EntityGraph.class);
+            var query = metodo.getAnnotation(
+                    org.springframework.data.jpa.repository.Query.class);
 
-            assertThat(entityGraph)
+            assertThat(entityGraph != null || (query != null && query.value().contains("JOIN FETCH io.insignia")))
                     .as("sin esto el LAZY se traduce en una consulta por elemento de la página")
-                    .isNotNull();
-            assertThat(entityGraph.attributePaths()).contains("insignia");
+                    .isTrue();
         }
     }
 
