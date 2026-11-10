@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -21,14 +20,9 @@ public class EventoLogisticaService {
     *  uno convertiria el "estrictamente mayor" en un "mayor o igual" que reenvia el ultimo evento. */
   public EventoLogisticaResponseDTO obtenerEventosNuevos(Long desdeId) {
       long desde = desdeId == null ? 0L : desdeId;
-      return new EventoLogisticaResponseDTO(convertirEventosADTO(repoEventos.findByIdGreaterThanOrderByIdAsc(desde)));
-  }
-
-  private List<EventoLogisticaDTO> convertirEventosADTO(List<EventoLogistica> eventos){
-    return eventos.stream().map(this::convertirAEventoDTO).toList();
-  }
-
-  private EventoLogisticaDTO convertirAEventoDTO(EventoLogistica evento){
-    return new EventoLogisticaDTO(evento.getId(), evento.getTipoEvento(), evento.getReferenciaId(), evento.getJustificacion(), evento.getPayloadJson());
+      List<EventoLogisticaDTO> eventos = repoEventos.findByIdGreaterThanOrderByIdAsc(desde).stream()
+              .map(evento -> new EventoLogisticaDTO().aplicar(evento))
+              .toList();
+      return new EventoLogisticaResponseDTO(eventos);
   }
 }

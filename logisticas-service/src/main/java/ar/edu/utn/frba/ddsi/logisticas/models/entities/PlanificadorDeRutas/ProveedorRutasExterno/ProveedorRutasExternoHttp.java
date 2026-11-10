@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,22 +12,28 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
 
   private static final Logger log = LoggerFactory.getLogger(ProveedorRutasExternoHttp.class);
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
   private final HttpClient httpClient;
   private final String urlApiExterna;
   private final ObjectMapper objectMapper;
 
   public ProveedorRutasExternoHttp(String urlApiExterna) {
-    this.httpClient = HttpClient.newHttpClient();
+    this.httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     this.urlApiExterna = urlApiExterna;
-    this.objectMapper = new ObjectMapper();
+    this.objectMapper = new ObjectMapper()
+            .findAndRegisterModules()
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
   }
 
   @Override
@@ -40,11 +47,15 @@ public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
 
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(urlApiExterna))
+                                       .timeout(REQUEST_TIMEOUT)
                                        .header("Content-Type", "application/json")
                                        .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                                        .build();
 
       httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                // El timeout del HttpRequest deja de correr al recibir los headers; esto acota
+                // también la lectura del body, que si el proveedor se cuelga nunca termina.
+                .orTimeout(REQUEST_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)
                 .thenAccept(response -> {
                   if (response.statusCode() >= 400) {
                     log.error("El proveedor externo rechazó el lote ({}): {}",
@@ -52,6 +63,11 @@ public class ProveedorRutasExternoHttp implements ProveedorRutasExterno {
                   } else {
                     log.info("Lote enviado al proveedor externo");
                   }
+                })
+                .exceptionally(ex -> {
+                  log.error("Falló la llamada HTTP al proveedor externo de ruteo en {}",
+                          urlApiExterna, ex);
+                  return null;
                 });
 
     } catch (Exception e) {

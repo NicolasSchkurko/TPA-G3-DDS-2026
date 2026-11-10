@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.RabbitMQ;
+package ar.edu.utn.frba.ddsi.logisticas.messaging;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.BienesDTO;
@@ -16,24 +16,18 @@ import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-/**
- * Como decide el listener frente a las carreras y los fallos que aparecen con N instancias.
- *
- * <p>La distincion importa: <b>no todas las excepciones son lo mismo</b>, y mandarlas todas a la
- * dead letter queue seria contraproducente, porque la cola es compartida y un mensaje trabado
- * frena a todas las instancias a la vez.
- *
- * <p><b>Los reintentos no se prueban durmiendo.</b> El listener recibe la espera por parametro, y
- * aca se pasa cero: lo que se verifica es la cantidad de intentos y que el error escape o no,
- * que es lo que decide si el mensaje va a la DLQ o se descarta.
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DonacionListener reintenta lo transitorio y descarta lo que no tiene arreglo")
 class DonacionListenerCarreraTest {
@@ -58,11 +52,6 @@ class DonacionListenerCarreraTest {
     @Test
     @DisplayName("Una violacion de clave primaria se traga: otra instancia ya la registro")
     void violacionDeClavePrimariaNoEsUnFallo() {
-        // Dos instancias leen el mismo idDonacion antes de que ninguna lo escriba. Ambas pasan
-        // el existsById, las dos intentan insertar. Gana una; la otra recibe la violacion de clave
-        // primaria, que es exactamente el estado final que se buscaba. Mandarla a la DLQ seria
-        // reportar como fallo haber conseguido el resultado correcto, y ademas trabaria la cola
-        // compartida para el resto de las instancias.
         EntregaDTO dto = peticion();
         doThrow(new DataIntegrityViolationException("Duplicate entry for key 'PRIMARY'"))
                 .when(entregaService).procesarPeticion(dto);
@@ -129,19 +118,6 @@ class DonacionListenerCarreraTest {
         verify(entregaService, times(INTENTOS)).procesarPeticion(dto);
     }
 
-    /**
-     * El mensaje tiene que salir del listener como un rechazo SIN reencolar.
-     *
-     * <p><b>Por que importa el tipo de la excepcion y no solo que salga alguna.</b> Spring AMQP
-     * reencola por defecto todo lo que sale del listener, asi que un {@code throw ultimoFallo} a
-     * secas devuelve el mensaje a su posicion original en la cola compartida y vuelve a entrar:
-     * el mismo payload falla tres veces mas, para siempre. Con la cola compartida de la que
-     * dependen todas las instancias, un unico mensaje malformado frena las notificaciones de
-     * toda la base, y la dead letter queda vacia porque nunca se activo nada.
-     *
-     * <p>Por eso la causa original se conserva: el operador que mira la DLQ tiene que ver por que
-     * fallo el mensaje, no solo que se descarto.
-     */
     @Test
     @DisplayName("Agotados los intentos el mensaje se rechaza sin reencolar, no vuelve a la cola")
     void falloPersistenteRechazaSinReencolar() {
@@ -185,6 +161,39 @@ class DonacionListenerCarreraTest {
                 .doesNotThrowAnyException();
 
         verify(entregaService, times(INTENTOS)).procesarPeticion(dto);
+    }
+
+    @Test
+    @DisplayName("Si interrumpen la espera entre reintentos, no sigue reintentando")
+    void interrupcionAbortaLosReintentos() throws Exception {
+        // El apagado del contexto interrumpe el hilo. Antes se restablecía el flag pero el bucle
+        // seguía: el mensaje se reintentaba contra un servicio que ya se estaba cerrando.
+        EntregaDTO dto = peticion();
+        CountDownLatch primerIntento = new CountDownLatch(1);
+        doAnswer(invocacion -> {
+            primerIntento.countDown();
+            throw new IllegalStateException("La base no responde");
+        }).when(entregaService).procesarPeticion(dto);
+
+        DonacionListener listener = new DonacionListener(entregaService, INTENTOS, 10_000);
+        AtomicReference<Throwable> salida = new AtomicReference<>();
+        Thread hilo = new Thread(() -> {
+            try {
+                listener.recibirDonacionParaEntregar(dto);
+            } catch (Throwable error) {
+                salida.set(error);
+            }
+        });
+        hilo.setDaemon(true);
+
+        hilo.start();
+        assertThat(primerIntento.await(5, TimeUnit.SECONDS)).isTrue();
+        hilo.interrupt();
+        hilo.join(5_000);
+
+        assertThat(hilo.isAlive()).isFalse();
+        assertThat(salida.get()).isInstanceOf(AmqpRejectAndDontRequeueException.class);
+        verify(entregaService, times(1)).procesarPeticion(dto);
     }
 
     @Test

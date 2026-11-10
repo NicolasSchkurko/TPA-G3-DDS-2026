@@ -1,4 +1,4 @@
-package ar.edu.utn.frba.ddsi.logisticas.RabbitMQ;
+package ar.edu.utn.frba.ddsi.logisticas.messaging;
 
 import ar.edu.utn.frba.ddsi.logisticas.dto.entrega.EntregaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.services.EntregaService;
@@ -10,18 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
-/**
- * Recibe las donaciones que esperan ser entregadas y las registra como ítems de entrega.
- *
- * <p>Todas las instancias escuchan la misma cola salvo que esté configurado el reparto por shards:
- * el SpEL de {@code @RabbitListener} resuelve el bean {@code colasDeEstaInstancia}.
- *
- * <p>Reintenta con espera antes de rendirse, así que un fallo de infraestructura se vuelve blando.
- * Agotados los intentos, rendirse es lanzar {@link AmqpRejectAndDontRequeueException}: Spring AMQP
- * reencola por defecto, y reencolar lo devuelto a la cola compartida lo haría fallar otra vez y
- * frenarla para siempre. El rechazo sin requeue es lo que activa el dead letter de
- * {@code RabbitMQConfig}.
- */
 @Component
 public class DonacionListener {
 
@@ -61,8 +49,11 @@ public class DonacionListener {
                 ultimoFallo = error;
                 log.warn("Falló el procesamiento de una donación (intento {} de {}): {}",
                         intento, intentos, error.getMessage());
-                if (intento < intentos) {
-                    dormir();
+                if (intento < intentos && !dormir()) {
+                    // Si el contexto se está cerrando, el hilo se interrumpe durante la espera:
+                    // no tiene sentido seguir reintentando contra un servicio que se apaga.
+                    throw new AmqpRejectAndDontRequeueException(
+                            "Listener interrumpido durante la espera entre reintentos", ultimoFallo);
                 }
             }
         }
@@ -74,17 +65,14 @@ public class DonacionListener {
                 "Donación no procesable tras " + intentos + " intentos", ultimoFallo);
     }
 
-    /**
-     * Espera entre intentos. Duerme el hilo del listener a propósito: la alternativa es tirar el
-     * mensaje y que otro lo tome, y el mensaje ya se consumió de la cola, así que nadie más lo
-     * va a leer.
-     */
-    private void dormir() {
+    private boolean dormir() {
         try {
             Thread.sleep(esperaMs);
+            return true;
         } catch (InterruptedException interrumpido) {
             Thread.currentThread().interrupt();
             log.debug("Se interrumpió la espera entre reintentos");
+            return false;
         }
     }
 }

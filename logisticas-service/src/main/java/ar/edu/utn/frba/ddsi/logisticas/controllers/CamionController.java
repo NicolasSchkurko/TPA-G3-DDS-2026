@@ -7,7 +7,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.dao.DuplicateKeyException;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,10 +29,11 @@ public class CamionController {
   }
 
   // --- CRUD ---
-  @Operation(summary = "Listar todos los camiones")
+  @Operation(summary = "Listar camiones de forma paginada")
   @GetMapping
-  public ResponseEntity<CamionesDTO> obtenerTodos() {
-    return ResponseEntity.ok(camionService.findAll());
+  public ResponseEntity<Page<CamionDTO>> obtenerTodos(
+          @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+    return ResponseEntity.ok(camionService.findAll(pageable));
   }
 
   @Operation(summary = "Obtener un camión por su patente")
@@ -38,11 +43,7 @@ public class CamionController {
   })
   @GetMapping("/{patente}")
   public ResponseEntity<?> obtenerPorPatente(@PathVariable String patente) {
-    try {
-      return ResponseEntity.ok(camionService.findById(patente));
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
+    return ResponseEntity.ok(camionService.findById(patente));
   }
 
   @Operation(summary = "Registrar un nuevo camión")
@@ -52,19 +53,9 @@ public class CamionController {
           @ApiResponse(responseCode = "409", description = "La patente ya se encuentra registrada")
   })
   @PostMapping
-  public ResponseEntity<?> crearCamion(@RequestBody CamionDTO request) {
-    try {
-      CamionDTO nuevoCamion = camionService.create(request);
-      return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
-    } catch (DuplicateKeyException e) {
-      return ResponseEntity.status(HttpStatus.CONFLICT)
-              .body("Ya existe un camión registrado con la patente: " + (request != null ? request.getPatente() : ""));
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .body("Error al registrar el camión: " + e.getMessage());
-    }
+  public ResponseEntity<?> crearCamion(@Valid @RequestBody CamionDTO request) {
+    CamionDTO nuevoCamion = camionService.create(request);
+    return new ResponseEntity<>(nuevoCamion, HttpStatus.CREATED);
   }
 
   @Operation(summary = "Registrar múltiples camiones")
@@ -74,19 +65,9 @@ public class CamionController {
           @ApiResponse(responseCode = "409", description = "Conflicto por patente duplicada")
   })
   @PostMapping("/registrar")
-  public ResponseEntity<?> registrarCamiones(@RequestBody CamionesDTO camiones) {
-    try {
-      CamionesDTO nuevosCamiones = camionService.createMultiple(camiones);
-      return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
-    } catch (DuplicateKeyException e) {
-      return ResponseEntity.status(HttpStatus.CONFLICT)
-              .body("Error de clave duplicada: una o más patentes ya se encuentran registradas");
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .body("Error al registrar camiones: " + e.getMessage());
-    }
+  public ResponseEntity<?> registrarCamiones(@Valid @RequestBody CamionesDTO camiones) {
+    CamionesDTO nuevosCamiones = camionService.createMultiple(camiones);
+    return new ResponseEntity<>(nuevosCamiones, HttpStatus.CREATED);
   }
 
   @Operation(summary = "Actualizar un camión existente")
@@ -96,11 +77,7 @@ public class CamionController {
   })
   @PutMapping("/{patente}")
   public ResponseEntity<?> actualizarCamion(@PathVariable String patente, @RequestBody CamionDTO request) {
-    try {
-      return ResponseEntity.ok(camionService.update(patente, request));
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
+    return ResponseEntity.ok(camionService.update(patente, request));
   }
 
   @Operation(summary = "Eliminar un camión")
@@ -110,12 +87,8 @@ public class CamionController {
   })
   @DeleteMapping("/{patente}")
   public ResponseEntity<?> eliminarCamion(@PathVariable String patente) {
-    try {
-      camionService.delete(patente);
-      return ResponseEntity.noContent().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
+    camionService.delete(patente);
+    return ResponseEntity.noContent().build();
   }
 
   // --- OPERACIONES DE NEGOCIO ---
@@ -123,17 +96,13 @@ public class CamionController {
   @Operation(summary = "Actualizar disponibilidad de un camión")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente"),
+      @ApiResponse(responseCode = "400", description = "Falta el campo 'disponible'"),
       @ApiResponse(responseCode = "404", description = "Camión no encontrado")
   })
   @PatchMapping("/{patente}/estado")
   public ResponseEntity<String> cambiarEstadoDisponibilidad(
       @PathVariable String patente,
       @RequestBody Map<String, Boolean> body) {
-    try {
-      String mensaje = camionService.cambiarDisponibilidad(patente, body);
-      return ResponseEntity.ok(mensaje);
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
+    return ResponseEntity.ok(camionService.cambiarDisponibilidad(patente, body));
   }
 }

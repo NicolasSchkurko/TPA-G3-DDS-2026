@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.Scheduler.PlanificadorDeRutasScheduler;
+import ar.edu.utn.frba.ddsi.logisticas.scheduler.PlanificadorDeRutasScheduler;
 import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorRutasService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

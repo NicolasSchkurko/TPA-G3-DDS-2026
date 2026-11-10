@@ -24,11 +24,6 @@ public class PlanificadorDeRutas {
 
   private ProveedorRutasExterno proveedorExterno;
 
-  /**
-   * Manda las donaciones pendientes al proveedor externo en lotes de
-   * {@value #TAMANO_LOTE_MAXIMO}, particionando también los camiones disponibles
-   * para que ningún camión viaje en más de un lote en el mismo día.
-   */
   public void iniciarPlanificacion(List<ItemEntrega> itemsPendientes, List<Camion> camionesDisponibles) {
     if (itemsPendientes == null || itemsPendientes.isEmpty() || camionesDisponibles == null || camionesDisponibles.isEmpty()) {
       return;
@@ -55,11 +50,6 @@ public class PlanificadorDeRutas {
     }
   }
 
-  /**
-   * Reconstruye las rutas que devolvio el proveedor externo.
-   *
-   * @param itemsPorPatenteCamion patente del camion -> ids de las donaciones que debe llevar
-   */
   public List<Ruta> procesarCallbackRutas(
       Map<String, List<UUID>> itemsPorPatenteCamion,
       List<Camion> repositorioCamiones,
@@ -95,6 +85,11 @@ public class PlanificadorDeRutas {
                 "la capacidad máxima (peso o volumen) del camión patente: " + patente
         );
       }
+
+      // La ocupación real del camión sale de la ruta generada. El simulador la calcula
+      // sobre copias descartables, así que sin esto la base queda siempre en 0.
+      camion.setPesoOcupado(nuevaRuta.pesoTotalCargadoKg());
+      camion.setVolumenOcupado(nuevaRuta.volumenTotalCargadoM3());
 
       nuevaRuta.setEstado(EstadoRuta.PROGRAMADA);
       rutasGeneradas.add(nuevaRuta);

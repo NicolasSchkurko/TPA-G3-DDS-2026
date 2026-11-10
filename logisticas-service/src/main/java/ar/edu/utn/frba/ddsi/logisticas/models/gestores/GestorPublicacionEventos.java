@@ -136,14 +136,14 @@ public class GestorPublicacionEventos {
 
     private void publicarAlCommit(EventoLogistica evento) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            productorEventos.publicar(evento);
+            publicarProtegido(evento);
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                productorEventos.publicar(evento);
+                publicarProtegido(evento);
             }
 
             @Override
@@ -153,6 +153,15 @@ public class GestorPublicacionEventos {
                 }
             }
         });
+    }
+
+    private void publicarProtegido(EventoLogistica evento) {
+        try {
+            productorEventos.publicar(evento);
+        } catch (RuntimeException e) {
+            log.error("No se pudo publicar el evento {} ({}); queda persistido en evento_logistica",
+                    evento.getTipoEvento(), evento.getId(), e);
+        }
     }
 
     private PayloadEntregaDTO payloadDatosEntrega(ItemEntrega item, Ruta ruta) {

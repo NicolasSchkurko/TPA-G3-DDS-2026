@@ -9,10 +9,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa un evento ocurrido en el dominio de Logística.
- * Sirve como bitácora (Outbox) para que otros servicios puedan consultarla vía HTTP Polling.
- */
 @Document(collection = "evento_logistica")
 @Getter
 @Setter

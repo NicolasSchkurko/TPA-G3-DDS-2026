@@ -17,6 +17,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -32,19 +37,22 @@ public class PlanificadorRutasService {
     private final RepositorioCamiones repoCamiones;
     private final RepositorioParadas repoParadas;
     private final PlanificadorDeRutas planificadorDominio;
+    private final MongoTemplate mongoTemplate;
 
     public PlanificadorRutasService(RepositorioRutas repoRutas,
                                     RepositorioChoferes repoChoferes,
                                     RepositorioItemEntrega repoItemEntrega,
                                     RepositorioCamiones repoCamiones,
                                     RepositorioParadas repoParadas,
-                       PlanificadorDeRutas planificadorDominio) {
+                       PlanificadorDeRutas planificadorDominio,
+                                    MongoTemplate mongoTemplate) {
         this.repoRutas = repoRutas;
         this.repoChoferes = repoChoferes;
         this.repoItemEntrega = repoItemEntrega;
         this.repoCamiones = repoCamiones;
         this.repoParadas = repoParadas;
         this.planificadorDominio = planificadorDominio;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -81,13 +89,14 @@ public class PlanificadorRutasService {
         return planificadorDominio.procesarCallbackRutas(asignacion, camionesDb, itemsDb);
     }
 
-    public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas) {
+    public List<Ruta> asignarChoferes(List<Ruta> rutas) {
         if (rutas == null || rutas.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Set<UUID> choferesEnRutasActivas = repoRutas.findAll().stream()
-                .filter(ruta -> ruta.getEstado() != null && ruta.getEstado() != EstadoRuta.FINALIZADA)
+        Set<UUID> choferesEnRutasActivas = repoRutas
+                .findByEstadoIn(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO))
+                .stream()
                 .map(Ruta::getCamionAsignado)
                 .filter(Objects::nonNull)
                 .map(Camion::getChofer)
@@ -109,30 +118,49 @@ public class PlanificadorRutasService {
         List<Ruta> rutasPendientes = new ArrayList<>(rutas);
         List<Ruta> rutasAsignadas = new ArrayList<>();
 
-        int cantidadAAsignar = Math.min(rutasPendientes.size(), choferesDisponibles.size());
-
-        for (int i = 0; i < cantidadAAsignar; i++) {
-            Chofer choferElegido = choferesDisponibles.remove(random.nextInt(choferesDisponibles.size()));
+        while (!rutasPendientes.isEmpty() && !choferesDisponibles.isEmpty()) {
             Ruta rutaElegida = rutasPendientes.remove(random.nextInt(rutasPendientes.size()));
-
             Camion camion = rutaElegida.getCamionAsignado();
-            if (camion != null) {
-                camion.setChofer(choferElegido);
-                camion.ocupado();
-                choferElegido.ocupado();
 
-                repoCamiones.save(camion);
-                repoChoferes.save(choferElegido);
+            if (camion == null) {
+                continue;
             }
 
-            persistirRutaAsignada(rutaElegida);
+            Chofer candidato = choferesDisponibles.remove(random.nextInt(choferesDisponibles.size()));
+            Chofer choferElegido = buscarChofer(candidato.getIdChofer());
+
+            if (choferElegido == null) {
+                // Otra réplica ya lo reclamó entre el findAll y el findAndModify.
+                // Devolvemos la ruta y seguimos con el próximo chofer.
+                rutasPendientes.add(rutaElegida);
+                continue;
+            }
+
+            camion.setChofer(choferElegido);
+            camion.ocupado();
+
+            try {
+                repoCamiones.save(camion);
+                persistirRutaAsignada(rutaElegida);
+            } catch (RuntimeException e) {
+                // El claim ya quedó commiteado. Si falla el guardado posterior no queremos
+                // dejar al chofer ocupado sin ruta: se libera y se propaga el error original.
+                try {
+                    liberarChofer(choferElegido.getIdChofer(), choferElegido.getVersion());
+                } catch (RuntimeException liberacionError) {
+                    e.addSuppressed(liberacionError);
+                    log.error("No se pudo liberar al chofer {} tras fallar la asignación",
+                            choferElegido.getIdChofer(), liberacionError);
+                }
+                throw e;
+            }
             rutasAsignadas.add(rutaElegida);
-            choferesEnRutasActivas.add(choferElegido.getIdChofer());
         }
 
         if (rutasAsignadas.size() < rutas.size()) {
-            log.warn("Se generaron {} rutas pero solo se asignaron {} por falta de choferes disponibles. " +
-                    "Las rutas no asignadas no fueron persistidas y sus ítems continúan pendientes para futuras planificaciones.",
+            log.warn("Se generaron {} rutas pero solo se asignaron {}. Las no asignadas (por falta de " +
+                    "choferes disponibles o por no tener camión) no fueron persistidas y sus ítems " +
+                    "continúan pendientes para futuras planificaciones.",
                     rutas.size(), rutasAsignadas.size());
         } else {
             log.info("Se asignaron y persistieron exitosamente {} rutas nuevas.", rutasAsignadas.size());
@@ -141,8 +169,25 @@ public class PlanificadorRutasService {
         return rutasAsignadas;
     }
 
+    private Chofer buscarChofer(UUID idChofer) {
+        Query query = new Query(Criteria.where("_id").is(idChofer)
+                .and("disponible").is(true)
+                .and("activo").ne(false));
+        Update update = new Update().set("disponible", false).inc("version", 1);
+        return mongoTemplate.findAndModify(
+                query, update, new FindAndModifyOptions().returnNew(true), Chofer.class);
+    }
+
+    private void liberarChofer(UUID idChofer, Long version) {
+        // CAS por versión: sólo libera si nadie más tocó al chofer desde el claim.
+        Query query = new Query(Criteria.where("_id").is(idChofer)
+                .and("version").is(version)
+                .and("activo").ne(false));
+        Update update = new Update().set("disponible", true).inc("version", 1);
+        mongoTemplate.updateFirst(query, update, Chofer.class);
+    }
+
     private void persistirRutaAsignada(Ruta ruta) {
-        repoRutas.save(ruta);
         if (ruta.getParadas() != null) {
             for (Parada parada : ruta.getParadas()) {
                 repoParadas.save(parada);
@@ -153,5 +198,8 @@ public class PlanificadorRutasService {
                 }
             }
         }
+        // La ruta se guarda al final: si algo falla antes, no queda persistida una ruta
+        // apuntando a un chofer que la compensación va a liberar.
+        repoRutas.save(ruta);
     }
 }
