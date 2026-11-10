@@ -10,7 +10,7 @@
 </head>
 <body class="bg-light py-4">
 <main class="container">
-    <div class="card shadow border-0 mx-auto" style="max-width: 850px;">
+    <div class="static-card border-0 mx-auto" style="max-width: 850px;">
         <div class="card-body p-4 p-md-5">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
@@ -24,9 +24,6 @@
 
             <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}">
                 No se pudo registrar la donación.
-            </div>
-            <div th:if="${msg}" class="alert alert-success" role="status" th:text="${msg}">
-                Donación registrada correctamente.
             </div>
             <form th:action="@{/realizar-donacion}" th:object="${formulario}" method="post">
                 <div class="mb-4">
