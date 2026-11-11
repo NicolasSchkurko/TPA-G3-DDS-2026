@@ -34,6 +34,9 @@ scripts:
           const body = pm.response.json();
           pm.collectionVariables.set('donanteId', body.id);
           pm.collectionVariables.set('donanteNombre', body.nombre);
+          const contactos = body.mediosDeContacto || body.mediosContacto || [];
+          const email = contactos.find(function (medio) { return medio.tipo === 'EMAIL'; });
+          if (email) pm.collectionVariables.set('donanteEmail', email.valor);
       }
     language: text/javascript
 order: 2000

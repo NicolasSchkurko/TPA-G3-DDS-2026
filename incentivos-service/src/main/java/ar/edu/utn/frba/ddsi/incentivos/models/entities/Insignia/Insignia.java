@@ -55,4 +55,10 @@ public class Insignia {
             this.urlImagen = imagenNueva;
         }
     }
+
+    /** Limpia una URL de imagen provisional para esperar la imagen generada por n8n. */
+    public void limpiarUrlImagen() {
+        this.urlImagen = null;
+    }
+
 }

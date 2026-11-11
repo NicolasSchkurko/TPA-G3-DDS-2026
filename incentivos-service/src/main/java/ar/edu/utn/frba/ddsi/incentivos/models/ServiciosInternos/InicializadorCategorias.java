@@ -13,15 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Siembra el programa base de categorías y misiones la primera vez que arranca el servicio,
- * en una base vacía. {@code @Order(1)} lo hace correr primero.
+ * Siembra el programa base de categorÃ­as y misiones la primera vez que arranca el servicio,
+ * en una base vacÃ­a. {@code @Order(1)} lo hace correr primero.
  */
 @Component
 @Order(1)
 public class InicializadorCategorias implements CommandLineRunner {
-
-    /** Dónde están publicadas las insignias del seed: se guarda la referencia, no los bytes. */
-    private static final String URL_INSIGNIA = "https://incentivos.example.edu.ar/img/";
 
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioMisiones repositorioMisiones;
@@ -39,17 +36,18 @@ public class InicializadorCategorias implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (repositorioCategorias.count() != 0) {
+            actualizarUrlsDeInsigniasDeEjemplo();
             return;
         }
 
         // Cada insignia lleva su propio texto e imagen; la imagen es una URL de referencia.
         Mision misionPrimera = misionFactory.crearMision(
             null,
-            "Primera donación",
-            "Realiza tu primera donación para empezar a colaborar.",
+            "Primera donaciÃ³n",
+            "Realiza tu primera donaciÃ³n para empezar a colaborar.",
             "Primer paso",
-            "Otorgada a quien completa su primera donación al programa.",
-            URL_INSIGNIA + "primer-paso.png",
+            "Otorgada a quien completa su primera donaciÃ³n al programa.",
+            null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
@@ -57,10 +55,10 @@ public class InicializadorCategorias implements CommandLineRunner {
         Mision misionRacha = misionFactory.crearMision(
             null,
             "Racha",
-            "Realiza 1 donación durante 3 meses consecutivos.",
+            "Realiza 1 donaciÃ³n durante 3 meses consecutivos.",
             "Constancia solidaria",
-            "Reconoce la continuidad: una donación en cada uno de tres meses seguidos.",
-            URL_INSIGNIA + "constancia-solidaria.png",
+            "Reconoce la continuidad: una donaciÃ³n en cada uno de tres meses seguidos.",
+            null,
             misionFactory.crearConstancia(1, "MONTHS"),
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 3, null, "ENTREGADA")
@@ -68,33 +66,33 @@ public class InicializadorCategorias implements CommandLineRunner {
         Mision misionCompletitud = misionFactory.crearMision(
             null,
             "Completitud",
-            "Realiza 5 donaciones de al menos 3 categorías distintas.",
-            "Donador versátil",
-            "Se otorga al donante que reparte su ayuda entre varias categorías de bienes.",
-            URL_INSIGNIA + "donador-versatil.png",
+            "Realiza 5 donaciones de al menos 3 categorÃ­as distintas.",
+            "Donador versÃ¡til",
+            "Se otorga al donante que reparte su ayuda entre varias categorÃ­as de bienes.",
+            null,
             null,
             misionFactory.crearAtributoImpacto("CATEGORIA"),
             misionFactory.crearOperacion("VALORES_DISTINTOS", 5, 3, null)
         );
         Mision misionHabilDonador = misionFactory.crearMision(
             null,
-            "Hábil Donador",
-            "Realiza 1 donación que supere 6 bienes.",
+            "HÃ¡bil Donador",
+            "Realiza 1 donaciÃ³n que supere 6 bienes.",
             "Manos a la obra",
-            "Para la donación generosa: una sola entrega de siete bienes o más.",
-            URL_INSIGNIA + "manos-a-la-obra.png",
+            "Para la donaciÃ³n generosa: una sola entrega de siete bienes o mÃ¡s.",
+            null,
             null,
             misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
-            // El umbral es exclusivo: "supera 6" significa 7 o más.
+            // El umbral es exclusivo: "supera 6" significa 7 o mÃ¡s.
             misionFactory.crearOperacion("SUPERA_CANTIDAD", 1, 6, null)
         );
         Mision misionDonacionesExitosas = misionFactory.crearMision(
             null,
             "Donaciones Exitosas",
-            "Logra 1 donación con estado recibida por una entidad beneficiaria.",
+            "Logra 1 donaciÃ³n con estado recibida por una entidad beneficiaria.",
             "Ayuda recibida",
-            "Certifica que la donación llegó efectivamente a la entidad beneficiaria.",
-            URL_INSIGNIA + "ayuda-recibida.png",
+            "Certifica que la donaciÃ³n llegÃ³ efectivamente a la entidad beneficiaria.",
+            null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "RECIBIDA")
@@ -120,5 +118,22 @@ public class InicializadorCategorias implements CommandLineRunner {
         transformador.agregarMision(misionDonacionesExitosas);
 
         repositorioCategorias.saveAll(List.of(colaborador, sostenedor, transformador));
+    }
+
+        /** Quita URLs de ejemplo para que la imagen se asigne desde la respuesta de n8n. */
+    private void actualizarUrlsDeInsigniasDeEjemplo() {
+        List<Mision> misiones = repositorioMisiones.findAll();
+        boolean cambio = false;
+        for (Mision mision : misiones) {
+            String url = mision.getInsigniaObjetivo().getUrlImagen();
+            if (url != null && (url.startsWith("/img/badges/")
+                    || url.startsWith("https://incentivos.example.edu.ar/img/"))) {
+                mision.getInsigniaObjetivo().limpiarUrlImagen();
+                cambio = true;
+            }
+        }
+        if (cambio) {
+            repositorioMisiones.saveAll(misiones);
+        }
     }
 }

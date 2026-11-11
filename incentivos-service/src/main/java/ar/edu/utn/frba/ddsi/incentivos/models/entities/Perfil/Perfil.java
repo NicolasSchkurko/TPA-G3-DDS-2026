@@ -150,6 +150,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         registerEvent(new MisionCompletada(
                 misionAnterior != null ? misionAnterior.getNombreMision() : null,
                 insignia.getNombre(),
+                insignia.getIdInsignia(),
                 this.idUsuario,
                 this.nombreUsuario,
                 donacion

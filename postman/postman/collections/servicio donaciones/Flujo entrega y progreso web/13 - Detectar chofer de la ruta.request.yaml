@@ -1,0 +1,27 @@
+$kind: http-request
+description: Busca la ruta de la donación y guarda el chofer que logística asignó realmente; puede ser distinto al creado en el paso 10.
+url: http://localhost:8086/api/rutas
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('consulta las rutas', function () { pm.response.to.have.status(200); });
+      const respuesta = pm.response.json();
+      const rutas = respuesta.rutas || [];
+      const idDonacion = pm.collectionVariables.get('donacionId');
+      const ruta = rutas.find(function (r) {
+          return (r.paradas || []).some(function (p) {
+              return ((p.items || {}).idsDonaciones || []).includes(idDonacion);
+          });
+      });
+      pm.test('encuentra la ruta de esta donación', function () {
+          pm.expect(ruta, 'ruta para ' + idDonacion).to.exist;
+      });
+      if (ruta) {
+          pm.expect(ruta.camionAsignado).to.exist;
+          pm.expect(ruta.camionAsignado.idChofer).to.exist;
+          pm.collectionVariables.set('choferId', ruta.camionAsignado.idChofer);
+          pm.collectionVariables.set('rutaId', ruta.idRuta);
+      }
+    language: text/javascript
+order: 13000
