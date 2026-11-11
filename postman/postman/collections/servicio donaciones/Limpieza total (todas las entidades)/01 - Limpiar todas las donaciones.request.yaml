@@ -1,0 +1,27 @@
+$kind: http-request
+description: "Primero las donaciones: referencian donante y entidad, asi que tienen que borrarse antes que esos dos."
+url: "{{baseUrl}}/api/donaciones"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('obtiene la lista de donaciones', function () { pm.response.to.have.status(200); });
+
+      const baseUrl = pm.collectionVariables.get('baseUrl');
+      const donacionesRaw = pm.response.json();
+      const donaciones = Array.isArray(donacionesRaw) ? donacionesRaw : (donacionesRaw && donacionesRaw.content ? donacionesRaw.content : []);
+
+      if (Array.isArray(donaciones)) {
+          donaciones.forEach(function (donacion) {
+              pm.sendRequest({
+                  url: baseUrl + '/api/donaciones/' + donacion.id,
+                  method: 'DELETE'
+              }, function (err, res) {
+                  console.log('donacion ' + donacion.id + ' -> ' + (res ? res.code : err));
+              });
+          });
+      }
+
+      pm.test('dispara el borrado de ' + donaciones.length + ' donacion(es)', function () { pm.expect(true).to.be.true; });
+    language: text/javascript
+order: 1000

@@ -1,0 +1,27 @@
+$kind: http-request
+description: "Formulario.donante_id es FK no nula sin cascade REMOVE (a proposito, ver comentario en Formulario.java): el paso 05 ('Registrar donacion del donante') crea una fila de formulario ademas de la Donacion, y esa fila nunca se borra sola. Si no se borra antes, el paso 14 ('Borrar donante creado') falla con 409. Antes no existia ningun endpoint para listar/borrar formularios -- se agrego GET/DELETE /api/donaciones/formularios(/:id) en el backend para poder hacer esta limpieza."
+url: "{{baseUrl}}/api/donaciones/formularios"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('obtiene la lista de formularios', function () { pm.response.to.have.status(200); });
+
+      const baseUrl = pm.collectionVariables.get('baseUrl');
+      const donanteId = pm.collectionVariables.get('donanteId');
+      const formulariosRaw = pm.response.json();
+      const formularios = Array.isArray(formulariosRaw) ? formulariosRaw : (formulariosRaw && formulariosRaw.content ? formulariosRaw.content : []);
+      const propios = Array.isArray(formularios) ? formularios.filter(function (f) { return f.donanteId === donanteId; }) : [];
+
+      propios.forEach(function (formulario) {
+          pm.sendRequest({
+              url: baseUrl + '/api/donaciones/formularios/' + formulario.id,
+              method: 'DELETE'
+          }, function (err, res) {
+              console.log('formulario ' + formulario.id + ' -> ' + (res ? res.code : err));
+          });
+      });
+
+      pm.test('dispara el borrado de ' + propios.length + ' formulario(s) del donante', function () { pm.expect(true).to.be.true; });
+    language: text/javascript
+order: 11000

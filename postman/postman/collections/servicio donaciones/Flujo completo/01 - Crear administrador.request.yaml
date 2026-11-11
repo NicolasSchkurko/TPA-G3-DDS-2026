@@ -1,0 +1,28 @@
+$kind: http-request
+description: AdminDTO.toDomain() tira IllegalArgumentException (-> 400) si medioDeContacto viene null.
+url: "{{baseUrl}}/api/admins"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nombreAMostrar": "Admin Postman",
+      "nombre": "{{$randomFirstName}}",
+      "apellido": "{{$randomLastName}}",
+      "edad": 35,
+      "numeroDeDocumento": {{$randomInt}},
+      "genero": "OTRO",
+      "medioDeContacto": {
+        "tipo": "EMAIL",
+        "valor": "{{$randomEmail}}"
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea el administrador', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) { pm.collectionVariables.set('adminId', pm.response.json().id); }
+    language: text/javascript
+order: 1000
