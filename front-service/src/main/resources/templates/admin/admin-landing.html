@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administradores — DDSI</title>
+    <meta name="description" content="Zona de administradores">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+
+<body>
+
+<header class="encabezado">
+    <div class="encabezado-contenido">
+
+        <a href="/landing" class="logo">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
+        </a>
+
+        <nav class="nav-links-admin">
+            <a href="#">Quiénes somos</a>
+            <a> - </a>
+            <a href="#">Qué hacemos</a>
+            <a> - </a>
+            <a href="#">Contactanos</a>
+        </nav>
+
+        <div class="usuario-administrador">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png"
+                 alt="foto de usuario">
+
+            <div class="datos-usuario">
+        <span th:text="${nombre + ' ' + apellido}">
+            Nombre Apellido
+        </span>
+
+                <span th:text="${rol}">
+            Administrador
+        </span>
+            </div>
+        </div>
+
+    </div>
+</header>
+
+<main class="main-admin">
+
+    <div class="mensaje-administrador">
+        <a>Elija qué gestionar</a>
+    </div>
+
+    <div class="cuadricula">
+
+        <a href="#" class="item">
+            <img src="../../static/images/donaciones.jpg" alt="Donaciones">
+            <div>
+                <h2>Donaciones</h2>
+                <p>Gestione las donaciones registradas en el sistema</p>
+            </div>
+        </a>
+
+        <a href="#" class="item">
+            <img src="../../static/images/entidades.jpg" alt="Entidades">
+            <div>
+                <h2>Entidades</h2>
+                <p>Gestione las entidades registradas en el sistema</p>
+            </div>
+        </a>
+
+        <a href="#" class="item">
+            <img src="../../static/images/donante.jpg"
+                 alt="Donantes">
+            <div>
+                <h2>Donantes</h2>
+                <p>Gestione los donantes registrados en el sistema</p>
+            </div>
+        </a>
+
+        <a href="#" class="item">
+            <img src="../../static/images/incentivos.jpg"
+                 alt="Incentivos">
+            <div>
+                <h2>Incentivos a donantes</h2>
+                <p>Gestione los incentivos que reciben los donantes en el sistema</p>
+            </div>
+        </a>
+
+        <a href="#" class="item">
+            <img src="../../static/images/camiones.jpg"
+                 alt="Camiones repartidores">
+            <div>
+                <h2>Camiones repartidores</h2>
+                <p>Gestione los camiones y choferes registrados en el sistema</p>
+            </div>
+        </a>
+
+    </div>
+
+</main>
+
+</body>
+</html>
