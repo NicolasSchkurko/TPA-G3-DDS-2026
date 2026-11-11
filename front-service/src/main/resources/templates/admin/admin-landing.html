@@ -52,7 +52,9 @@
     <div class="cuadricula">
 
         <a href="#" class="item">
-            <img src="../../static/images/donaciones.jpg" alt="Donaciones">
+            <img src="../../static/images/donaciones.jpg"
+                 th:src="@{/images/donaciones.jpg}"
+                 alt="Donaciones">
             <div>
                 <h2>Donaciones</h2>
                 <p>Gestione las donaciones registradas en el sistema</p>
@@ -60,15 +62,18 @@
         </a>
 
         <a href="#" class="item">
-            <img src="../../static/images/entidades.jpg" alt="Entidades">
+            <img src="../../static/images/entidades.jpg"
+                 th:src="@{/images/entidades.jpg}"
+                 alt="Entidades">
             <div>
                 <h2>Entidades</h2>
                 <p>Gestione las entidades registradas en el sistema</p>
             </div>
         </a>
 
-        <a href="#" class="item">
+        <a href="/admin/donantes" th:href="@{/admin/donantes}" class="item">
             <img src="../../static/images/donante.jpg"
+                 th:src="@{/images/donante.jpg}"
                  alt="Donantes">
             <div>
                 <h2>Donantes</h2>
@@ -78,6 +83,7 @@
 
         <a href="#" class="item">
             <img src="../../static/images/incentivos.jpg"
+                 th:src="@{/images/incentivos.jpg}"
                  alt="Incentivos">
             <div>
                 <h2>Incentivos a donantes</h2>
@@ -87,6 +93,7 @@
 
         <a href="#" class="item">
             <img src="../../static/images/camiones.jpg"
+                 th:src="@{/images/camiones.jpg}"
                  alt="Camiones repartidores">
             <div>
                 <h2>Camiones repartidores</h2>

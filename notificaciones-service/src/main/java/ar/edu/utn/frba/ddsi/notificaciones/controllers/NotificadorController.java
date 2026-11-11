@@ -1,7 +1,8 @@
 package ar.edu.utn.frba.ddsi.notificaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionDTO;
-import ar.edu.utn.frba.ddsi.notificaciones.dto.SolicitudNotificacionDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.NotificacionDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.SolicitudAceptadaDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.SolicitudNotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.mappers.NotificacionMapper;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
@@ -47,19 +48,35 @@ public class NotificadorController {
                     "El sistema valida la estructura y acepta la petición para ser procesada en segundo plano por el motor de notificaciones."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Notificación creada y encolada para su procesamiento"),
+            @ApiResponse(responseCode = "202", description = "Solicitud aceptada y encolada para su procesamiento"),
             @ApiResponse(responseCode = "400", description = "Error de validación en los datos de la solicitud (cuerpo malformado o faltan campos obligatorios)")
     })
     @PostMapping
-    public ResponseEntity<NotificacionDTO> recibirSolicitudNotificacion(
+    public ResponseEntity<SolicitudAceptadaDTO> recibirSolicitudNotificacion(
             @Valid @RequestBody SolicitudNotificacionDTO dto) {
         log.info("[HTTP] POST /api/notificaciones | medio='{}', destino='{}', asunto='{}'",
                 dto.getMedioDeContacto(), dto.getDireccionDeContacto(), dto.getAsuntoMensaje());
 
-        Notificacion notificacion = notificadorService.procesarSolicitudDeNotificacion(dto);
+        UUID id = notificadorService.procesarSolicitudDeNotificacion(dto);
 
-        log.info("[HTTP] Notificación creada (201) para '{}'", dto.getDireccionDeContacto());
-        return ResponseEntity.status(HttpStatus.CREATED).body(notificacionMapper.notificacionDTO(notificacion));
+        log.info("[HTTP] Solicitud aceptada (202) para '{}' con id {}", dto.getDireccionDeContacto(), id);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new SolicitudAceptadaDTO(id.toString()));
+    }
+
+    @Operation(
+            summary = "Reintentar el envío de una notificación",
+            description = "Republica el aviso de una notificación que no llegó a enviarse."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "202", description = "Reintento aceptado"),
+            @ApiResponse(responseCode = "404", description = "La notificación no existe"),
+            @ApiResponse(responseCode = "409", description = "La notificación ya fue enviada")
+    })
+    @PostMapping("/{id}/reintento")
+    public ResponseEntity<SolicitudAceptadaDTO> reintentarNotificacion(@PathVariable UUID id) {
+        log.info("[HTTP] POST /api/notificaciones/{}/reintento", id);
+        notificadorService.reintentar(id);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new SolicitudAceptadaDTO(id.toString()));
     }
 
     @Operation(summary = "Ver notificacion por id")

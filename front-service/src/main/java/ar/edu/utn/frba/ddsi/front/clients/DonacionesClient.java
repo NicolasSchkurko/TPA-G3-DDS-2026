@@ -13,7 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
@@ -115,6 +119,131 @@ public class DonacionesClient {
                     .body(PersonaDonanteDTO.class);
         } catch (Exception e) {
             log.warn("No se pudo obtener el perfil de donante {} desde {}: {}", id, baseUrl, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Mapeo de columnas por defecto para la importación de donantes por CSV. El backend
+     * (PersonaDonanteFilaConverter.CampoLogico) sólo entiende estos siete campos lógicos, así que
+     * acá se listan los nombres de columna más habituales para que el admin pueda subir el archivo
+     * sin tener que configurar nada. La búsqueda de encabezados es case-insensitive y sin espacios.
+     *
+     * <p>Ojo con NOMBRE_RAZON_SOCIAL: el converter <em>concatena</em> todas las columnas que
+     * matcheen, en el orden de esta lista. Por eso "nombre" va antes que "apellido" (un CSV con
+     * ambas columnas arma "Juan Perez" y el backend lo vuelve a partir por el último espacio).
+     */
+    private static final String MAPEOS_CSV_POR_DEFECTO = """
+            [
+              {"campo":"TIPO_PERSONA","nombresColumnas":["tipo_persona","tipoPersona","tipo persona","tipo"]},
+              {"campo":"TIPO_DOC","nombresColumnas":["tipo_doc","tipoDoc","tipo_documento","tipo documento"]},
+              {"campo":"DOCUMENTO","nombresColumnas":["documento","nro_documento","numero_documento","nro documento","dni","cuit"]},
+              {"campo":"NOMBRE_RAZON_SOCIAL","nombresColumnas":["nombre","apellido","nombre_completo","nombre completo","razon_social","razonSocial","razón social","nombre_razon_social"]},
+              {"campo":"EMAIL","nombresColumnas":["email","mail","correo","correo_electronico","correoElectronico"]},
+              {"campo":"TELEFONO","nombresColumnas":["telefono","teléfono","tel","celular"]},
+              {"campo":"WHATSAPP","nombresColumnas":["whatsapp","wpp","whats app"]}
+            ]
+            """;
+
+    /**
+     * Actualiza sólo los campos editados, preservando el resto.
+     *
+     * <p>El PUT de donaciones-service hace {@code dto.toDomain(...)} y pisa la persona entera con lo
+     * que venga en el body, así que mandar un DTO armado desde el formulario borraría todo lo que el
+     * front no modela (edad, numeroDeDocumento, genero, cuit, direccion, representantes...). Por eso
+     * se lee el JSON crudo como Map, se superponen los cambios y se devuelve completo: así los campos
+     * que el front desconoce viajan de ida y vuelta intactos.
+     */
+    public void actualizarDonanteCampos(UUID id, Map<String, Object> cambios) {
+        try {
+            Map<String, Object> actual = restClient.get()
+                    .uri(baseUrl + "/api/personas/{id}", id)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+            if (actual == null) {
+                throw new IllegalStateException("No se encontró el donante " + id);
+            }
+
+            Map<String, Object> payload = new LinkedHashMap<>(actual);
+            cambios.forEach((clave, valor) -> {
+                if (valor != null) {
+                    payload.put(clave, valor);
+                }
+            });
+
+            restClient.put()
+                    .uri(baseUrl + "/api/personas/{id}", id)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al actualizar el donante {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    public void eliminarDonante(UUID id) {
+        try {
+            restClient.delete()
+                    .uri(baseUrl + "/api/personas/{id}", id)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al eliminar el donante {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Sube el CSV a donaciones-service. La importación es asincrónica: devuelve el id con el que
+     * después se consulta el reporte en {@link #obtenerReporteImportacion(UUID)}.
+     */
+    public UUID importarDonantesCSV(byte[] contenido, String nombreArchivo) {
+        MultiValueMap<String, Object> cuerpo = new LinkedMultiValueMap<>();
+        cuerpo.add("file", new ByteArrayResource(contenido) {
+            @Override
+            public String getFilename() {
+                // Sin filename el part viaja como campo de formulario y @RequestPart("file") falla.
+                return nombreArchivo == null || nombreArchivo.isBlank() ? "donantes.csv" : nombreArchivo;
+            }
+        });
+        cuerpo.add("mapeos", MAPEOS_CSV_POR_DEFECTO);
+
+        try {
+            String body = restClient.post()
+                    .uri(baseUrl + "/api/personas/importar")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(cuerpo)
+                    .retrieve()
+                    .body(String.class);
+            return extraerUuidPlano(body);
+        } catch (Exception e) {
+            log.error("Error al importar donantes por CSV en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    public Map<String, Object> obtenerReporteImportacion(UUID importId) {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/api/personas/importar/{importId}", importId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el reporte de importación {}: {}", importId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** El endpoint devuelve el UUID "pelado" (con comillas si Jackson lo serializó como string). */
+    private static UUID extraerUuidPlano(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(body.trim().replace("\"", ""));
+        } catch (IllegalArgumentException e) {
+            log.warn("La importación no devolvió un UUID reconocible: {}", body);
             return null;
         }
     }

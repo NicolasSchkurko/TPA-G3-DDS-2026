@@ -38,6 +38,19 @@ public interface RepositorioNotificaciones extends JpaRepository<Notificacion, U
     Page<Notificacion> findAll(Pageable pageable);
 
     /**
+     * Bandeja de un destinatario (email o teléfono). La dirección se compara sin distinguir
+     * mayúsculas porque el front la normaliza a minúsculas y los productores no siempre lo hacen.
+     */
+    @EntityGraph(attributePaths = "mensaje")
+    Page<Notificacion> findByDireccionDeContactoIgnoreCase(String direccionDeContacto, Pageable pageable);
+
+    /** Igual que la anterior, filtrando además por estado. */
+    @EntityGraph(attributePaths = "mensaje")
+    Page<Notificacion> findByDireccionDeContactoIgnoreCaseAndEstado(String direccionDeContacto,
+                                                                   EstadoNotificacion estado,
+                                                                   Pageable pageable);
+
+    /**
      * Lee la notificación con bloqueo pesimista para el despacho de un aviso: dos entregas
      * concurrentes del mismo aviso se serializan, la segunda ve el estado que dejó la primera y
      * no vuelve a enviar. Requiere una transacción activa.
