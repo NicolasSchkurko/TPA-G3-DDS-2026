@@ -47,12 +47,18 @@
 
                 <form th:action="@{/register}" method="post" id="registerForm">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="username" class="form-label fw-semibold">Usuario</label>
                             <input type="text" class="form-control" id="username" name="username" autocomplete="username" minlength="3" required
                                    th:value="${formularioRegistro != null ? formularioRegistro['username'] : ''}">
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label for="email" class="form-label fw-semibold">Correo electrónico</label>
+                            <input type="email" class="form-control" id="email" name="email" autocomplete="email" required
+                                   placeholder="nombre@dominio.com" aria-describedby="emailHelp">
+                            <div class="form-text" id="emailHelp">Si ya existe una cuenta con ese correo, iniciá sesión y agregá el rol desde tu cuenta.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
                             <label for="password" class="form-label fw-semibold">Contraseña</label>
                             <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" minlength="8" required>
                             <div class="form-text">Debe tener al menos 8 caracteres.</div>
@@ -69,252 +75,13 @@
                         </select>
                     </div>
 
-                    <p class="form-text mb-4">Tu usuario, contraseña y permisos se guardan en forma segura en Keycloak.</p>
+                    <p class="form-text mb-4">Tu usuario, contraseña, email y permisos se guardan en forma segura en Keycloak.</p>
 
-                    <section class="registration-fields d-none" data-registration="DONANTE">
-                        <h5 class="fw-semibold mb-3">Datos del donante</h5>
-                        <div class="mb-3">
-                            <label for="tipoPersona" class="form-label">Tipo de persona</label>
-                            <select class="form-select" id="tipoPersona" name="tipoPersona">
-                                <option value="HUMANA"
-                                        th:selected="${formularioRegistro == null or formularioRegistro['tipoPersona'] != 'JURIDICA'}">Persona humana</option>
-                                <option value="JURIDICA"
-                                        th:selected="${formularioRegistro != null and formularioRegistro['tipoPersona'] == 'JURIDICA'}">Persona jurídica</option>
-                            </select>
-                        </div>
+                    <th:block th:replace="~{fragments/registro-campos :: donante(true)}"></th:block>
 
-                        <div data-persona="HUMANA">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="donanteNombre" class="form-label">Nombre</label>
-                                    <input type="text" class="form-control" id="donanteNombre" name="nombre" autocomplete="given-name"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['nombre'] : ''}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="donanteApellido" class="form-label">Apellido</label>
-                                    <input type="text" class="form-control" id="donanteApellido" name="apellido" autocomplete="family-name"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['apellido'] : ''}">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteEdad" class="form-label">Edad</label>
-                                    <input type="number" class="form-control" id="donanteEdad" name="edad" min="1"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['edad'] : ''}">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteDocumento" class="form-label">Número de documento</label>
-                                    <input type="number" class="form-control" id="donanteDocumento" name="numeroDeDocumento" min="1"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['numeroDeDocumento'] : ''}">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteGenero" class="form-label">Género</label>
-                                    <select class="form-select" id="donanteGenero" name="genero">
-                                        <option value="MUJER" th:selected="${formularioRegistro != null and formularioRegistro['genero'] == 'MUJER'}">Mujer</option>
-                                        <option value="HOMBRE" th:selected="${formularioRegistro != null and formularioRegistro['genero'] == 'HOMBRE'}">Hombre</option>
-                                        <option value="OTRO"
-                                                th:selected="${formularioRegistro == null or formularioRegistro['genero'] == 'OTRO'}">Otro</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
+                    <th:block th:replace="~{fragments/registro-campos :: admin(true)}"></th:block>
 
-                        <div data-persona="JURIDICA" class="d-none">
-                            <div class="mb-3">
-                                <label for="donanteRazonSocial" class="form-label">Razón social</label>
-                                <input type="text" class="form-control" id="donanteRazonSocial" name="razonSocial"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['razonSocial'] : ''}">
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteRubro" class="form-label">Rubro</label>
-                                    <input type="text" class="form-control" id="donanteRubro" name="rubro"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['rubro'] : ''}">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteCuit" class="form-label">CUIT</label>
-                                    <input type="text" class="form-control" id="donanteCuit" name="cuit"
-                                           th:value="${formularioRegistro != null ? formularioRegistro['cuit'] : ''}">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="donanteTipoJuridico" class="form-label">Tipo jurídico</label>
-                                    <select class="form-select" id="donanteTipoJuridico" name="tipoJuridico">
-                                        <option value="ONG" th:selected="${formularioRegistro == null or formularioRegistro['tipoJuridico'] == 'ONG'}">ONG</option>
-                                        <option value="GUBERNAMENTAL" th:selected="${formularioRegistro != null and formularioRegistro['tipoJuridico'] == 'GUBERNAMENTAL'}">Gubernamental</option>
-                                        <option value="EMPRESA" th:selected="${formularioRegistro != null and formularioRegistro['tipoJuridico'] == 'EMPRESA'}">Empresa</option>
-                                        <option value="INSTITUCION" th:selected="${formularioRegistro != null and formularioRegistro['tipoJuridico'] == 'INSTITUCION'}">Institución</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <input type="hidden" name="tipoContacto" value="EMAIL">
-                        <div class="mb-3">
-                            <label for="donanteValorContacto" class="form-label">Correo electrónico</label>
-                            <input type="email" class="form-control" id="donanteValorContacto" name="valorContacto" autocomplete="email"
-                                   th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
-                            <div class="form-text">Usaremos este correo para vincular tu cuenta con el perfil de donante.</div>
-                        </div>
-                        <h6 class="fw-semibold mt-2">Dirección</h6>
-                        <div class="row">
-                            <div class="col-md-8 mb-3">
-                                <label for="donanteCalle" class="form-label">Calle</label>
-                                <input type="text" class="form-control" id="donanteCalle" name="calleUno" autocomplete="address-line1"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['calleUno'] : ''}">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="donanteAltura" class="form-label">Altura</label>
-                                <input type="number" class="form-control" id="donanteAltura" name="altura" min="1"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['altura'] : ''}">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="donantePiso" class="form-label">Piso</label>
-                                <input type="number" class="form-control" id="donantePiso" name="piso" min="0"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['piso'] : ''}">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="donanteDepartamento" class="form-label">Departamento</label>
-                                <input type="text" class="form-control" id="donanteDepartamento" name="departamento"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['departamento'] : ''}">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="donanteCiudad" class="form-label">Ciudad</label>
-                                <input type="text" class="form-control" id="donanteCiudad" name="ciudad" autocomplete="address-level2"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['ciudad'] : ''}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="donanteProvincia" class="form-label">Provincia</label>
-                                <input type="text" class="form-control" id="donanteProvincia" name="provincia" autocomplete="address-level1"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['provincia'] : ''}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="donantePais" class="form-label">País</label>
-                                <input type="text" class="form-control" id="donantePais" name="pais"
-                                       th:value="${formularioRegistro != null ? formularioRegistro['pais'] : 'Argentina'}"
-                                       value="Argentina" autocomplete="country-name">
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="registration-fields d-none" data-registration="ADMIN">
-                        <h5 class="fw-semibold mb-3">Datos del administrador</h5>
-                        <div class="mb-3">
-                            <label for="nombreAMostrar" class="form-label">Nombre a mostrar</label>
-                            <input type="text" class="form-control" id="nombreAMostrar" name="nombreAMostrar">
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="adminNombre" class="form-label">Nombre</label>
-                                <input type="text" class="form-control" id="adminNombre" name="nombre">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="adminApellido" class="form-label">Apellido</label>
-                                <input type="text" class="form-control" id="adminApellido" name="apellido">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="adminEdad" class="form-label">Edad</label>
-                                <input type="number" class="form-control" id="adminEdad" name="edad" min="1">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="adminDocumento" class="form-label">Número de documento</label>
-                                <input type="number" class="form-control" id="adminDocumento" name="numeroDeDocumento" min="1">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="adminGenero" class="form-label">Género</label>
-                                <select class="form-select" id="adminGenero" name="genero">
-                                    <option value="MUJER">Mujer</option>
-                                    <option value="HOMBRE">Hombre</option>
-                                    <option value="OTRO" selected>Otro</option>
-                                </select>
-                            </div>
-                        </div>
-                        <h6 class="fw-semibold mt-2">Medio de contacto</h6>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="adminTipoContacto" class="form-label">Tipo</label>
-                                <select class="form-select" id="adminTipoContacto" name="tipoContacto">
-                                    <option value="EMAIL">Correo electrónico</option>
-                                    <option value="TELEFONO">Teléfono</option>
-                                    <option value="WHATSAPP">WhatsApp</option>
-                                </select>
-                            </div>
-                            <div class="col-md-8 mb-3">
-                                <label for="adminValorContacto" class="form-label">Correo o número</label>
-                                <input type="text" class="form-control" id="adminValorContacto" name="valorContacto" autocomplete="email">
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="registration-fields d-none" data-registration="ENTIDAD">
-                        <h5 class="fw-semibold mb-3">Datos de la entidad beneficiaria</h5>
-                        <div class="mb-3">
-                            <label for="entidadRazonSocial" class="form-label">Razón social</label>
-                            <input type="text" class="form-control" id="entidadRazonSocial" name="razonSocial">
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadRubro" class="form-label">Rubro</label>
-                                <input type="text" class="form-control" id="entidadRubro" name="rubro">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadCuit" class="form-label">CUIT</label>
-                                <input type="text" class="form-control" id="entidadCuit" name="cuit">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadTipoJuridico" class="form-label">Tipo jurídico</label>
-                                <select class="form-select" id="entidadTipoJuridico" name="tipoJuridico">
-                                    <option value="ONG">ONG</option>
-                                    <option value="GUBERNAMENTAL">Gubernamental</option>
-                                    <option value="EMPRESA">Empresa</option>
-                                    <option value="INSTITUCION">Institución</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="entidadCorreo" class="form-label">Correo electrónico de la cuenta</label>
-                            <input type="email" class="form-control" id="entidadCorreo" name="correoElectronico"
-                                   autocomplete="email"
-                                   th:value="${formularioRegistro != null ? formularioRegistro['correoElectronico'] : ''}">
-                            <div class="form-text">Usaremos este correo para vincular tu cuenta con el perfil de la entidad.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="entidadTelefono" class="form-label">Teléfono</label>
-                            <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel">
-                        </div>
-                        <h6 class="fw-semibold mt-2">Dirección</h6>
-                        <div class="row">
-                            <div class="col-md-8 mb-3">
-                                <label for="entidadCalle" class="form-label">Calle</label>
-                                <input type="text" class="form-control" id="entidadCalle" name="calleUno" autocomplete="address-line1">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadAltura" class="form-label">Altura</label>
-                                <input type="number" class="form-control" id="entidadAltura" name="altura" min="1">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadPiso" class="form-label">Piso</label>
-                                <input type="number" class="form-control" id="entidadPiso" name="piso" min="0">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadDepartamento" class="form-label">Departamento</label>
-                                <input type="text" class="form-control" id="entidadDepartamento" name="departamento">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="entidadCiudad" class="form-label">Ciudad</label>
-                                <input type="text" class="form-control" id="entidadCiudad" name="ciudad" autocomplete="address-level2">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="entidadProvincia" class="form-label">Provincia</label>
-                                <input type="text" class="form-control" id="entidadProvincia" name="provincia" autocomplete="address-level1">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="entidadPais" class="form-label">País</label>
-                                <input type="text" class="form-control" id="entidadPais" name="pais" value="Argentina" autocomplete="country-name">
-                            </div>
-                        </div>
-                    </section>
+                    <th:block th:replace="~{fragments/registro-campos :: entidad(true)}"></th:block>
 
                     <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
                         <i class="bi bi-person-check me-1"></i> Registrarme
@@ -361,12 +128,24 @@
 
         document.querySelectorAll(".registration-fields input, .registration-fields select").forEach((field) => {
             field.dataset.required = ["nombre", "apellido", "edad", "numeroDeDocumento", "genero",
-                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar", "calleUno",
-                "altura", "ciudad", "provincia", "pais", "valorContacto", "correoElectronico"].includes(field.name) ? "true" : "false";
+                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar",
+                "altura", "ciudad", "provincia", "pais"].includes(field.name) ? "true" : "false";
+        });
+
+        // La dirección es opcional para donantes y obligatoria para entidades.
+        document.querySelectorAll('[data-registration="ENTIDAD"] input[name="calleUno"], [data-registration="ENTIDAD"] input[name="altura"], [data-registration="ENTIDAD"] input[name="ciudad"], [data-registration="ENTIDAD"] input[name="provincia"], [data-registration="ENTIDAD"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "true";
+        });
+        document.querySelectorAll('[data-registration="DONANTE"] input[name="calleUno"], [data-registration="DONANTE"] input[name="altura"], [data-registration="DONANTE"] input[name="ciudad"], [data-registration="DONANTE"] input[name="provincia"], [data-registration="DONANTE"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "false";
         });
 
         document.querySelectorAll('[data-registration="ADMIN"] select[name="tipoContacto"], [data-registration="ADMIN"] input[name="valorContacto"]').forEach((field) => {
             field.dataset.required = "true";
+        });
+        // El correo obligatorio del donante es el de la cuenta (datos de usuario de arriba).
+        document.querySelectorAll('[data-registration="DONANTE"] input[name="valorContacto"]').forEach((field) => {
+            field.dataset.required = "false";
         });
 
         registrationType.addEventListener("change", updateRequiredFields);

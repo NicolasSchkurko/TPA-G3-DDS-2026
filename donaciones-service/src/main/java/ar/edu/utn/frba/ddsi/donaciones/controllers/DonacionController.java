@@ -56,6 +56,12 @@ public class DonacionController {
     return ResponseEntity.noContent().build();
   }
 
+  @Operation(summary = "Donaciones de un donante")
+  @GetMapping("/donante/{id}")
+  public ResponseEntity<List<DonacionDTO>> obtenerDonacionesDeDonante(@PathVariable UUID id) {
+    return ResponseEntity.ok(donacionService.obtenerDeDonante(id));
+  }
+
   @Operation(summary = "Ver donaciones")
   @GetMapping
   public ResponseEntity<Page<DonacionDTO>> obtenerDonaciones(

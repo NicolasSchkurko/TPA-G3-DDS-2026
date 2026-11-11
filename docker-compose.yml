@@ -38,7 +38,7 @@ services:
     image: mysql:8.0
     container_name: tpa-mysql
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
@@ -67,6 +67,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  # n8n local para procesar los webhooks de notificaciones e incentivos.
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tpa-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5678/
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - n8n-data:/home/node/.n8n
 
   mongodb:
     image: mongo:7
@@ -104,14 +122,18 @@ services:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
-    # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
-    mem_limit: 512m
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
+      N8N_URL: http://n8n:5678/webhook/notificaciones
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      n8n:
+        condition: service_started
 
   incentivos-service:
     build:
@@ -131,6 +153,7 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
       RABBITMQ_PASSWORD: tpa-local
+      N8N_URL: http://n8n:5678/webhook/incentivos
     depends_on:
       mysql:
         condition: service_healthy
@@ -138,6 +161,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+      n8n:
+        condition: service_started
 
   # Es el broker de integración del enunciado: publica las donaciones asignadas para
   # logística y consume los eventos de trazabilidad para notificar.
@@ -248,9 +273,12 @@ services:
     depends_on:
       keycloak:
         condition: service_started
+    volumes:
+      - ./front-service/data:/app/data
 
 volumes:
   keycloak-data:
   mysql-data:
   rabbit-data:
   mongodb-data:
+  n8n-data:
