@@ -170,41 +170,10 @@
         const list = document.getElementById("donationList");
         if (!list) return;
 
-        list.innerHTML = DONATIONS.map((d) => `
-            <button class="donation-card" type="button" data-id="${d.id}"
-                    aria-label="${escapeHtml(d.title)} en ${escapeHtml(d.org)}">
-                <span class="card-icon">${iconSvg(d.icon)}</span>
-                <span class="card-body">
-                    <span class="card-title">${escapeHtml(d.title)}</span>
-                    <span class="card-meta">${escapeHtml(d.org)} · ${escapeHtml(d.area)}</span>
-                </span>
-                <span class="row-status ${d.status}">
-                    <span class="status-dot" aria-hidden="true"></span>${statusLabel(d.status)}
-                </span>
-            </button>
-        `).join("");
-
         const count = document.getElementById("panelCount");
         if (count) {
-            count.textContent = String(DONATIONS.length);
+            count.textContent = String(list.querySelectorAll(".donation-card").length);
         }
-
-        list.querySelectorAll(".donation-card").forEach((card) => {
-            const id = card.dataset.id;
-
-            card.addEventListener("click", () => focusDonation(id));
-
-            card.addEventListener("mouseenter", () => {
-                const el = markerElement(markersById.get(id));
-                if (el) el.classList.add("is-active");
-            });
-
-            card.addEventListener("mouseleave", () => {
-                if (activeId === id) return;
-                const el = markerElement(markersById.get(id));
-                if (el) el.classList.remove("is-active");
-            });
-        });
     }
 
     function setActive(id) {

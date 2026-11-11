@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import ar.edu.utn.frba.ddsi.incentivos.clients.DonacionClient;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.CantidadCoincidencias;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.SuperaCantidad;
@@ -34,8 +35,11 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.n8n.PerfilPublicacionDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.NotificacionesPendientesService;
 import ar.edu.utn.frba.ddsi.incentivos.services.MetricasService;
+import ar.edu.utn.frba.ddsi.incentivos.services.PerfilService;
 import ar.edu.utn.frba.ddsi.incentivos.services.RankingService;
 import ar.edu.utn.frba.ddsi.incentivos.services.PublicacionesN8nService;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
+import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import java.lang.reflect.Field;
@@ -70,7 +74,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
     "spring.jpa.open-in-view=false"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PublicacionesN8nService.class, NotificacionesPendientesService.class, MetricasService.class, RankingService.class, SincronizacionPerfiles.class})
+@Import({PublicacionesN8nService.class, NotificacionesPendientesService.class, MetricasService.class, PerfilService.class, RankingService.class, SincronizacionPerfiles.class})
 class PersistenciaJpaTest {
     @Autowired
     private EntityManager entityManager;
@@ -101,6 +105,9 @@ class PersistenciaJpaTest {
 
     @Autowired
     private MetricasService metricasService;
+
+    @Autowired
+    private PerfilService perfilService;
 
     @MockBean
     private DonacionClient donacionClient;
@@ -190,6 +197,62 @@ class PersistenciaJpaTest {
         assertThat(actividad.getRegistros()).isEmpty();
         assertThat(actividad.getTotalDonaciones()).isZero();
         assertThat(actividad.getTotalOrganizaciones()).isZero();
+    }
+
+    @Test
+    void impactoQueCompletaMisionSePersisteYLaConsultaLoIncluyeComoDestacado() {
+        UUID idUsuario = UUID.randomUUID();
+        UUID idDestacada = UUID.randomUUID();
+        LocalDateTime fechaEntrega = LocalDateTime.of(2026, 11, 10, 12, 0);
+
+        Mision mision = new Mision(
+                "Donar una vez", null, "Completar una donación entregada", "Primera donación",
+                new Regla(null, AtributoImpacto.ESTADO,
+                        new CantidadCoincidencias(1, TextNode.valueOf("ENTREGADA"))));
+        entityManager.persist(mision);
+        Categoria categoriaBase = new Categoria("Base de prueba", null, 1, List.of(mision));
+        entityManager.persist(categoriaBase);
+        Perfil perfil = new Perfil(idUsuario, "Donante de prueba");
+        perfil.iniciarEn(categoriaBase);
+        entityManager.persist(perfil);
+
+        ImpactoDonacion sinMisionCompletada = new ImpactoDonacion(
+                UUID.randomUUID(), idUsuario, "Comedor de prueba", 2, fechaEntrega,
+                "ALIMENTOS", "Arroz", "ENTREGADA");
+        ImpactoDonacion noEntregada = new ImpactoDonacion(
+                UUID.randomUUID(), idUsuario, "Comedor de prueba", 1, fechaEntrega,
+                "ALIMENTOS", "Leche", "EN_TRASLADO");
+        noEntregada.registrarSiCompletoMision(true);
+        ImpactoDonacion sinFechaEntrega = new ImpactoDonacion(
+                UUID.randomUUID(), idUsuario, "Comedor de prueba", 1, null,
+                "ALIMENTOS", "Aceite", "ENTREGADA");
+        sinFechaEntrega.registrarSiCompletoMision(true);
+
+        entityManager.persist(sinMisionCompletada);
+        entityManager.persist(noEntregada);
+        entityManager.persist(sinFechaEntrega);
+        entityManager.flush();
+        entityManager.clear();
+
+        ImpactoDonacionDTO impacto = new ImpactoDonacionDTO();
+        impacto.setIdDonacion(idDestacada);
+        impacto.setFechaEntrega(fechaEntrega);
+        impacto.setCantidadBienes(4);
+        impacto.setCategoria("ALIMENTOS");
+        impacto.setSubCategoria("Fideos");
+        impacto.setEntidadBeneficiaria("Comedor de prueba");
+        impacto.setEstado("ENTREGADA");
+
+        assertThat(perfilService.actualizarPerfilImpacto(idUsuario, impacto)).isTrue();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(repositorioDonaciones.findById(idDestacada)).isPresent();
+        assertThat(repositorioDonaciones.findById(idDestacada).orElseThrow().getCompletMision())
+                .isTrue();
+        assertThat(repositorioDonaciones.buscarDestacadas(PageRequest.of(0, 30)))
+                .extracting(ImpactoDonacion::getIdDonacion)
+                .containsExactly(idDestacada);
     }
 
     @Test

@@ -116,31 +116,44 @@
             <section class="sidebar-section" aria-labelledby="destacadas-title">
                 <div class="section-head">
                     <h2 id="destacadas-title">Donaciones destacadas</h2>
-                    <span id="panelCount">5</span>
+                    <span id="panelCount" th:text="${destacadas != null ? #lists.size(destacadas) : 0}">0</span>
                 </div>
 
                 <div class="donation-list" id="donationList">
+                    <a class="donation-card" th:each="donacion : ${destacadas}"
+                       th:href="@{/donaciones/{id}(id=${donacion.idDonacion})}"
+                       th:attr="data-id=${donacion.idDonacion}">
+                        <span class="card-icon" aria-hidden="true">
+                            <svg class="icon"><use href="#i-gift"></use></svg>
+                        </span>
+                        <span class="card-body">
+                            <span class="card-title"
+                                  th:text="${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
+                                      ? donacion.subCategoria
+                                      : (donacion.categoria ?: 'Donación')}">Donación</span>
+                            <span class="card-meta">
+                                <span th:text="${donacion.entidadBeneficiaria ?: 'Entidad no informada'}">Entidad</span>
+                                <span aria-hidden="true"> · </span>
+                                <time th:if="${donacion.fechaEntrega != null}"
+                                      th:datetime="${donacion.fechaEntrega}"
+                                      th:text="${#temporals.format(donacion.fechaEntrega, 'dd/MM/yyyy')}">Fecha</time>
+                                <span th:if="${donacion.fechaEntrega == null}">Fecha no informada</span>
+                            </span>
+                        </span>
+                        <span class="row-status" aria-label="Entregada y misión completada">
+                            <span class="status-dot" aria-hidden="true"></span>Destacada
+                        </span>
+                    </a>
+                    <p class="panel-empty" th:if="${#lists.isEmpty(destacadas)}">
+                        Todavía no hay donaciones destacadas.
+                    </p>
                     <noscript>
-                        <div class="donation-card">
-                            <span class="card-icon"><svg class="icon" aria-hidden="true"><use href="#i-basket2"></use></svg></span>
-                            <span class="card-body">
-                                <span class="card-title">Alimentos no perecederos</span>
-                                <span class="card-meta">Comedor Los Piletones · Villa Soldati</span>
-                            </span>
-                        </div>
-                        <div class="donation-card">
-                            <span class="card-icon"><svg class="icon" aria-hidden="true"><use href="#i-bag-heart"></use></svg></span>
-                            <span class="card-body">
-                                <span class="card-title">Ropa de abrigo</span>
-                                <span class="card-meta">Hogar San José · Barracas</span>
-                            </span>
-                        </div>
                         <p class="panel-noscript">Activá JavaScript para ver el mapa interactivo.</p>
                     </noscript>
                 </div>
             </section>
 
-            <p class="sidebar-note">Datos de ejemplo · Ciudad de Buenos Aires</p>
+            <p class="sidebar-note">Donaciones destacadas reales · Mapa con ubicaciones ilustrativas</p>
         </aside>
 
         <section class="map-pane" aria-label="Mapa de donaciones">
@@ -152,7 +165,7 @@
                 <span><i class="legend-dot urgent" aria-hidden="true"></i> Urgente</span>
             </div>
 
-            <p class="map-caption">Mapa de donaciones entregadas</p>
+            <p class="map-caption">Mapa ilustrativo · Ubicaciones de ejemplo</p>
         </section>
     </main>
 

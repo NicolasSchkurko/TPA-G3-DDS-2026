@@ -399,6 +399,10 @@ body.landing a {
     transition: background 0.15s ease;
 }
 
+.donation-list a.donation-card {
+    text-decoration: none;
+}
+
 .donation-card:hover {
     background: #f7f9f7;
 }
@@ -480,6 +484,12 @@ body.landing a {
     margin: 8px 0 0;
     color: var(--muted-2);
     font-size: 12px;
+}
+
+.panel-empty {
+    margin: 12px 0;
+    color: var(--muted-2);
+    font-size: 13px;
 }
 
 .sidebar-note {
