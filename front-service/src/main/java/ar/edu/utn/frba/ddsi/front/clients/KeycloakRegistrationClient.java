@@ -36,14 +36,21 @@ public class KeycloakRegistrationClient {
         this.clientSecret = clientSecret;
     }
 
-    public String crearUsuario(String username, String password, String role) {
+    public String crearUsuario(String username, String password, String role,
+                               String firstName, String lastName, String email) {
         String token = obtenerToken();
+        Map<String, Object> user = new java.util.LinkedHashMap<>();
+        user.put("username", username);
+        user.put("enabled", true);
+        user.put("credentials", List.of(Map.of("type", "password", "value", password, "temporary", false)));
+        if (firstName != null && !firstName.isBlank()) user.put("firstName", firstName);
+        if (lastName != null && !lastName.isBlank()) user.put("lastName", lastName);
+        if (email != null && !email.isBlank()) user.put("email", email);
         // Keycloak devuelve el identificador en el header Location al responder 201.
         URI location = restClient.post().uri(adminBaseUri + "/realms/{realm}/users", realm)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("username", username, "enabled", true,
-                        "credentials", List.of(Map.of("type", "password", "value", password, "temporary", false))))
+                .body(user)
                 .retrieve().toBodilessEntity().getHeaders().getLocation();
         if (location == null) throw new IllegalStateException("Keycloak no devolvió el identificador de la cuenta creada.");
         String userId = location.getPath().substring(location.getPath().lastIndexOf('/') + 1);

@@ -1,0 +1,34 @@
+$kind: http-request
+description: Usa el {{donanteId}} del paso 02. El bien es 'Ropa'/'Indumentaria' a proposito, para matchear con la necesidad creada en el paso 04. Devuelve una lista de DonacionDTO, no un objeto suelto.
+url: "{{baseUrl}}/api/donaciones/formulario"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "idDonante": "{{donanteId}}",
+      "fechaRealizacion": "2026-10-08",
+      "bienes": [
+        {
+          "descripcion": "Abrigo de invierno",
+          "subcategoria": "Ropa",
+          "categoria": "Indumentaria",
+          "cantidad": 5,
+          "unidadDeMedida": "KILOGRAMOS",
+          "tipoBien": "CON_ESTADO",
+          "usado": false
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea la donacion', function () { pm.response.to.have.status(200); });
+      if (pm.response.code === 200) {
+          const body = pm.response.json();
+          if (Array.isArray(body) && body.length > 0) { pm.collectionVariables.set('donacionId', body[0].id); }
+      }
+    language: text/javascript
+order: 5000

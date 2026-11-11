@@ -15,6 +15,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Controller
@@ -63,6 +64,9 @@ public class HomeController {
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model) {
         String userId = null;
+        Map<String, String> datosFormulario = new LinkedHashMap<>(form);
+        datosFormulario.remove("password");
+        model.addAttribute("formularioRegistro", datosFormulario);
         try {
             String role = rolParaTipoRegistro(form.get("tipoRegistro"));
             String username = form.get("username");
@@ -70,18 +74,41 @@ public class HomeController {
             if (username == null || username.trim().length() < 3 || password == null || password.length() < 8) {
                 throw new IllegalArgumentException("Ingresá un usuario de al menos 3 caracteres y una contraseña de al menos 8 caracteres.");
             }
-            userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role);
-            donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
+            String tipoRegistro = form.get("tipoRegistro");
+            String correoFormulario = "ENTIDAD".equals(tipoRegistro)
+                    ? form.get("correoElectronico") : form.get("valorContacto");
+            if (("DONANTE".equals(tipoRegistro) || "ENTIDAD".equals(tipoRegistro))
+                    && (correoFormulario == null || correoFormulario.isBlank()
+                    || ("DONANTE".equals(tipoRegistro) && !"EMAIL".equals(form.get("tipoContacto"))))) {
+                throw new IllegalArgumentException("Ingresá un correo electrónico para vincular tu perfil con la cuenta.");
+            }
+            String nombre = "HUMANA".equals(form.get("tipoPersona"))
+                    ? form.get("nombre") : form.get("razonSocial");
+            String apellido = "HUMANA".equals(form.get("tipoPersona")) ? form.get("apellido") : null;
+            String correo = "ENTIDAD".equals(tipoRegistro)
+                    ? form.get("correoElectronico")
+                    : "EMAIL".equals(form.get("tipoContacto")) ? form.get("valorContacto") : null;
+            userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role,
+                    nombre, apellido, correo);
+            try {
+                donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
+            } catch (RestClientResponseException e) {
+                eliminarCuentaSiCorresponde(userId);
+                userId = null;
+                log.warn("El servicio de perfiles rechazó el registro con estado {}", e.getStatusCode());
+                model.addAttribute("error", mensajeErrorPerfil(e));
+                return "register";
+            }
             model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
         } catch (IllegalArgumentException e) {
             eliminarCuentaSiCorresponde(userId);
             model.addAttribute("error", e.getMessage());
         } catch (RestClientResponseException e) {
             eliminarCuentaSiCorresponde(userId);
-            log.warn("Un servicio rechazó el registro con estado {}", e.getStatusCode());
+            log.warn("Keycloak rechazó el registro con estado {}", e.getStatusCode());
             model.addAttribute("error", e.getStatusCode().value() == 409
-                    ? "Ya existe una cuenta o un perfil con esos datos. Revisalos e intentá nuevamente."
-                    : "No se pudo completar el registro. Revisá los datos e intentá nuevamente.");
+                    ? "Ya existe una cuenta con ese usuario o correo. Revisalos e intentá nuevamente."
+                    : "Keycloak no pudo crear la cuenta. Revisá el usuario, el correo y la contraseña e intentá nuevamente.");
         } catch (ResourceAccessException e) {
             eliminarCuentaSiCorresponde(userId);
             log.error("No se pudo conectar con Keycloak o Donaciones durante el registro: {}", e.getMessage());
@@ -92,6 +119,20 @@ public class HomeController {
             model.addAttribute("error", "No se pudo crear la cuenta. Intentá nuevamente más tarde.");
         }
         return "register";
+    }
+
+    private static String mensajeErrorPerfil(RestClientResponseException exception) {
+        if (exception.getStatusCode().value() == 409) {
+            return "Ya existe un perfil con esos datos. Revisá el documento o CUIT e intentá nuevamente.";
+        }
+        if (exception.getStatusCode().is4xxClientError()) {
+            String detalle = exception.getResponseBodyAsString().trim();
+            if (!detalle.isEmpty() && detalle.length() <= 300 && !detalle.startsWith("{")) {
+                return detalle;
+            }
+            return "El servicio de perfiles rechazó los datos. Revisá los campos del formulario e intentá nuevamente.";
+        }
+        return "No se pudo guardar el perfil de donante. Intentá nuevamente más tarde.";
     }
 
     private static String rolParaTipoRegistro(String tipoRegistro) {

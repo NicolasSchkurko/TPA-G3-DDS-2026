@@ -1,0 +1,46 @@
+$kind: http-request
+description: EntidadBeneficiaria.necesidades no tiene cascade REMOVE/orphanRemoval, asi que antes de borrar cada entidad hay que borrar a mano todas sus necesidades (se usa un contador para esperar que terminen todas antes de borrar la entidad).
+url: "{{baseUrl}}/api/entidades"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('obtiene la lista de entidades', function () { pm.response.to.have.status(200); });
+
+      const baseUrl = pm.collectionVariables.get('baseUrl');
+      const entidadesRaw = pm.response.json();
+      const entidades = Array.isArray(entidadesRaw) ? entidadesRaw : (entidadesRaw && entidadesRaw.content ? entidadesRaw.content : []);
+
+      if (Array.isArray(entidades)) {
+          entidades.forEach(function (entidad) {
+              const necesidades = entidad.necesidades || [];
+              let pendientes = necesidades.length;
+
+              function eliminarEntidad() {
+                  pm.sendRequest({
+                      url: baseUrl + '/api/entidades/' + entidad.id,
+                      method: 'DELETE'
+                  }, function (err, res) {
+                      console.log('entidad ' + entidad.id + ' -> ' + (res ? res.code : err));
+                  });
+              }
+
+              if (pendientes === 0) {
+                  eliminarEntidad();
+              } else {
+                  necesidades.forEach(function (necesidad) {
+                      pm.sendRequest({
+                          url: baseUrl + '/api/entidades/' + entidad.id + '/necesidades/' + necesidad.id,
+                          method: 'DELETE'
+                      }, function (err, res) {
+                          pendientes--;
+                          if (pendientes === 0) { eliminarEntidad(); }
+                      });
+                  });
+              }
+          });
+      }
+
+      pm.test('dispara el borrado de ' + entidades.length + ' entidad(es)', function () { pm.expect(true).to.be.true; });
+    language: text/javascript
+order: 3000

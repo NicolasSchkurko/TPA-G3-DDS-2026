@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/personas"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('obtiene la lista de donantes', function () { pm.response.to.have.status(200); });
+
+      const baseUrl = pm.collectionVariables.get('baseUrl');
+      const donantesRaw = pm.response.json();
+      const donantes = Array.isArray(donantesRaw) ? donantesRaw : (donantesRaw && donantesRaw.content ? donantesRaw.content : []);
+
+      if (Array.isArray(donantes)) {
+          donantes.forEach(function (donante) {
+              pm.sendRequest({
+                  url: baseUrl + '/api/personas/' + donante.id,
+                  method: 'DELETE'
+              }, function (err, res) {
+                  console.log('donante ' + donante.id + ' -> ' + (res ? res.code : err));
+              });
+          });
+      }
+
+      pm.test('dispara el borrado de ' + donantes.length + ' donante(s)', function () { pm.expect(true).to.be.true; });
+    language: text/javascript
+order: 4000

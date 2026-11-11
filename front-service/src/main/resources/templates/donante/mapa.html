@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entidades beneficiarias · DonaTrack</title>
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/donante-mapa.css}">
+</head>
+<body class="beneficiary-map-page">
+    <div th:replace="~{fragments/navbar :: navbar}"></div>
+
+    <main class="map-main sidebar-collapsed">
+        <aside class="donor-sidebar" id="donorInfoPanel" aria-label="Historial de donaciones">
+            <header class="sidebar-heading">
+                <div>
+                    <p class="sidebar-eyebrow">Mi actividad</p>
+                    <h1>Historial Donaciones</h1>
+                </div>
+                <span class="history-count" id="historyCount"
+                      th:text="${#lists.size(historialDonaciones)}">0</span>
+            </header>
+
+            <div class="history-controls">
+                <label class="visually-hidden" for="historySearch">Buscar en el historial</label>
+                <div class="history-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="historySearch" type="search" placeholder="Buscar donación..."
+                           autocomplete="off">
+                </div>
+                <div class="history-control-row">
+                    <label class="visually-hidden" for="historyStatus">Filtrar por estado</label>
+                    <select id="historyStatus" aria-label="Filtrar por estado">
+                        <option value="">Todos los estados</option>
+                        <option value="EN_DEPOSITO">En depósito</option>
+                        <option value="PENDIENTE_ASIGNACION">Pendiente</option>
+                        <option value="ASIGNADO">Asignada</option>
+                        <option value="LISTA_PARA_ENTREGAR">Lista para entregar</option>
+                        <option value="EN_TRASLADO">En traslado</option>
+                        <option value="ENTREGADO">Entregada</option>
+                        <option value="ENTREGA_FALLIDA">Entrega fallida</option>
+                        <option value="VENCIDO">Vencida</option>
+                    </select>
+                    <label class="visually-hidden" for="historySort">Ordenar historial</label>
+                    <select id="historySort" aria-label="Ordenar historial">
+                        <option value="newest">Más recientes</option>
+                        <option value="oldest">Más antiguas</option>
+                        <option value="name">Nombre</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="in-progress-button" id="toggleInProgress" type="button"
+                    aria-pressed="false">
+                <i class="bi bi-truck" aria-hidden="true"></i>
+                <span>Ver entregas en proceso</span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </button>
+
+            <p class="history-filter-notice" id="historyFilterNotice" aria-live="polite"></p>
+            <section class="history-list" id="historyList" aria-label="Donaciones anteriores">
+                <button class="history-card" type="button"
+                        th:each="donacion : ${historialDonaciones}"
+                        th:attr="data-id=${donacion.id},
+                                 data-name=${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'},
+                                 data-category=${donacion.categoriaBienName ?: ''},
+                                 data-subcategory=${donacion.subcategoriaName ?: ''},
+                                 data-status=${donacion.estado ?: 'N/A'},
+                                 data-entity=${donacion.entidadBeneficiaria ?: ''},
+                                 data-date=${donacion.fechaEntrega != null ? donacion.fechaEntrega : ''}">
+                    <span class="history-card-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                    <span class="history-card-content">
+                        <span class="history-card-title"
+                              th:text="${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'}">Donación</span>
+                        <span class="history-card-meta">
+                            <span th:text="${donacion.entidadBeneficiaria ?: 'Destino pendiente'}">Entidad</span>
+                            <span aria-hidden="true"> · </span>
+                            <span th:text="${donacion.fechaEntrega != null ? donacion.fechaEntrega : 'Sin fecha'}">Fecha</span>
+                        </span>
+                        <span class="history-card-status"
+                              th:classappend="${'status-' + #strings.toLowerCase(donacion.estado ?: 'na')}"
+                              th:text="${#strings.replace(donacion.estado ?: 'N/A', '_', ' ')}">Estado</span>
+                    </span>
+                    <i class="bi bi-chevron-right history-card-arrow" aria-hidden="true"></i>
+                </button>
+                <p class="history-empty" id="historyEmpty"
+                   th:if="${#lists.isEmpty(historialDonaciones)}">
+                    Todavía no hay donaciones en tu historial.
+                </p>
+                <p class="history-empty" id="historyNoResults" hidden>
+                    No se encontraron donaciones con esos filtros.
+                </p>
+            </section>
+        </aside>
+
+        <button class="map-corner-toggle map-corner-toggle-left" id="toggleDonorInfo"
+                type="button" aria-expanded="false" aria-controls="donorInfoPanel"
+                aria-label="Mostrar historial de donaciones">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        <section class="beneficiary-map" aria-label="Mapa de entidades beneficiarias">
+            <div id="beneficiaryMap" class="ddsi-map" role="application"
+                 aria-label="Mapa interactivo de entidades beneficiarias"></div>
+            <button class="map-corner-toggle map-corner-toggle-right" id="toggleMapOptions"
+                    type="button" aria-expanded="false" aria-controls="mapOptionsPanel"
+                    aria-label="Abrir opciones del mapa">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+            <aside class="map-drawer map-drawer-right" id="mapOptionsPanel" aria-hidden="true">
+                <div class="incentives-heading">
+                    <div><p class="incentives-eyebrow">Tu perfil</p><h2>Objetivos</h2></div>
+                    <i class="bi bi-stars" aria-hidden="true"></i>
+                </div>
+                <p class="incentives-unavailable" th:if="${!incentivosDisponibles}">
+                    No pudimos cargar tus datos de incentivos en este momento.
+                </p>
+                <section class="incentive-section" aria-labelledby="missionTitle"
+                         th:if="${misionDonante != null and !misionDonante.isEmpty()}">
+                    <div class="incentive-section-title">
+                        <h3 id="missionTitle">Misión actual</h3>
+                        <span class="mission-percent" th:text="${porcentajeMision + '%'}">0%</span>
+                    </div>
+                    <p class="mission-name" th:text="${misionDonante.nombreMision}">Nombre de la misión</p>
+                    <p class="mission-description" th:if="${misionDonante.descripcion}"
+                       th:text="${misionDonante.descripcion}">Descripción</p>
+                    <div class="mission-progress" role="progressbar" aria-label="Progreso de la misión"
+                         th:attr="aria-valuenow=${porcentajeMision}, aria-valuemin=0, aria-valuemax=100">
+                        <span th:style="|width:${porcentajeMision}%|"></span>
+                    </div>
+                    <p class="mission-progress-label"
+                       th:text="${progresoMision + ' de ' + objetivoMision + ' completado(s)'}">0 de 0 completados</p>
+                </section>
+                <section class="incentive-section" aria-labelledby="badgesTitle">
+                    <h3 id="badgesTitle">Insignias obtenidas</h3>
+                    <div class="badge-list" th:if="${!#lists.isEmpty(insignias)}">
+                        <article class="badge-item" th:each="insignia : ${insignias}">
+                            <img class="badge-image" th:if="${insignia.urlImagen}"
+                                 th:src="${insignia.urlImagen}" th:alt="${insignia.nombre}">
+                            <span class="badge-icon" th:unless="${insignia.urlImagen}">
+                                <i class="bi bi-award" aria-hidden="true"></i>
+                            </span>
+                            <span class="badge-copy">
+                                <strong th:text="${insignia.nombre}">Insignia</strong>
+                                <small th:if="${insignia.descripcion}" th:text="${insignia.descripcion}">Descripción</small>
+                            </span>
+                        </article>
+                    </div>
+                    <p class="incentives-empty" th:if="${#lists.isEmpty(insignias)}">Todavía no obtuviste insignias.</p>
+                </section>
+                <section class="incentive-section ranking-section" aria-labelledby="rankingTitle">
+                    <div class="incentive-section-title">
+                        <h3 id="rankingTitle">Ranking del mes</h3>
+                        <span class="ranking-period" th:if="${periodoRanking}" th:text="${periodoRanking}">Mes</span>
+                    </div>
+                    <div class="my-ranking-position" th:if="${puestoRanking != null and !puestoRanking.isEmpty() and puestoRanking.puesto != null}">
+                        <span>Tu posición</span><strong th:text="${'#' + puestoRanking.puesto}">#0</strong>
+                    </div>
+                    <p class="incentives-empty" th:if="${puestoRanking == null or puestoRanking.isEmpty() or puestoRanking.puesto == null}">
+                        Todavía no tenés una posición publicada.
+                    </p>
+                    <ol class="ranking-list" th:if="${!#lists.isEmpty(rankingTop3)}">
+                        <li th:each="puesto : ${rankingTop3}">
+                            <span class="ranking-number" th:text="${puesto.puesto}">1</span>
+                            <span class="ranking-name" th:text="${puesto.nombreUsuario}">Colaborador</span>
+                        </li>
+                    </ol>
+                    <p class="incentives-empty" th:if="${#lists.isEmpty(rankingTop3)}">El top 3 mensual todavía no está disponible.</p>
+                </section>
+            </aside>
+            <button class="entities-button" id="openEntities" type="button"
+                    aria-haspopup="dialog" aria-controls="entitiesDialog">
+                Entidades beneficiarias
+            </button>
+            <p class="map-selection-notice" id="mapSelectionNotice" aria-live="polite"></p>
+            <p class="map-notice">Seleccioná una entidad para ver su ubicación y sus datos.
+                Geocodificación: <a href="https://www.openstreetmap.org/copyright"
+                                    target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>.
+            </p>
+        </section>
+    </main>
+
+    <div class="entities-modal" id="entitiesDialog" aria-hidden="true">
+        <button class="entities-backdrop" type="button" data-close-entities
+                aria-label="Cerrar listado de entidades"></button>
+        <section class="entities-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="entitiesTitle">
+            <button class="entities-close" type="button" data-close-entities
+                    aria-label="Cerrar">&times;</button>
+            <h1 id="entitiesTitle">Entidades beneficiarias</h1>
+            <label class="visually-hidden" for="entitiesFilter">Buscar entidad</label>
+            <input id="entitiesFilter" class="entities-filter" type="search"
+                   placeholder="Buscar por nombre..." autocomplete="off">
+            <p class="entity-selection-message" id="entitySelectionMessage" aria-live="polite"></p>
+            <div class="entities-list" id="entitiesList" aria-live="polite">
+                <p class="entities-empty" id="entitiesEmpty"
+                   th:if="${#lists.isEmpty(entidades)}">
+                    No hay entidades disponibles en este momento.
+                </p>
+                <article class="entity-card" th:each="entidad : ${entidades}">
+                    <button class="entity-card-select" type="button"
+                            th:attr="data-id=${entidad.id},
+                                     data-name=${entidad.razonSocial ?: ''},
+                                     data-rubro=${entidad.rubro ?: ''},
+                                     data-lat=${entidad.direccion != null ? entidad.direccion.latitud : ''},
+                                     data-lon=${entidad.direccion != null ? entidad.direccion.longitud : ''}">
+                        <span class="entity-title" role="heading" aria-level="2"
+                              th:text="${entidad.razonSocial ?: 'Entidad beneficiaria'}">Entidad beneficiaria</span>
+                        <span class="entity-rubro" th:if="${entidad.rubro}"
+                              th:text="${entidad.rubro}">Rubro</span>
+                        <span class="entity-address" th:if="${entidad.direccion != null}">
+                            <span th:text="${entidad.direccion.calleUno ?: ''}">Calle</span>
+                            <span th:if="${entidad.direccion.altura != null}"
+                                  th:text="${' ' + entidad.direccion.altura}"> 123</span>
+                            <span th:if="${entidad.direccion.ciudad}"
+                                  th:text="${' · ' + entidad.direccion.ciudad}"> · Ciudad</span>
+                            <span th:if="${entidad.direccion.provincia}"
+                                  th:text="${' · ' + entidad.direccion.provincia}"> · Provincia</span>
+                        </span>
+                    </button>
+                </article>
+                <p class="entities-empty" id="entitiesNoMatch" hidden>
+                    No se encontraron entidades con ese nombre.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/donante-mapa.js}"></script>
+</body>
+</html>
