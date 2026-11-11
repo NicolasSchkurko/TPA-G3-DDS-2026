@@ -21,6 +21,7 @@
                 <div>
                     <p class="sidebar-eyebrow">Mi actividad</p>
                     <h1>Historial Donaciones</h1>
+                    <p class="text-muted small mb-0">Tu misión progresa cuando la donación figura como Entregada.</p>
                 </div>
                 <span class="history-count" id="historyCount"
                       th:text="${#lists.size(historialDonaciones)}">0</span>
@@ -90,7 +91,7 @@
                         </span>
                         <span class="history-card-status"
                               th:classappend="${'status-' + #strings.toLowerCase(donacion.estado ?: 'na')}"
-                              th:text="${#strings.replace(donacion.estado ?: 'N/A', '_', ' ')}">Estado</span>
+                              th:text="${donacion.estado == 'ENTREGADO' ? 'Entregada' : #strings.replace(donacion.estado ?: 'N/A', '_', ' ')}">Estado</span>
                     </span>
                     <i class="bi bi-chevron-right history-card-arrow" aria-hidden="true"></i>
                 </button>
@@ -142,6 +143,10 @@
                     </div>
                     <p class="mission-progress-label"
                        th:text="${progresoMision + ' de ' + objetivoMision + ' completado(s)'}">0 de 0 completados</p>
+                    <p class="mission-delivery-note" role="note">
+                        <span class="mission-delivery-note-icon" aria-hidden="true">!</span>
+                        <span>Solo las donaciones con estado <strong>Entregada</strong> hacen progresar las misiones.</span>
+                    </p>
                 </section>
                 <section class="incentive-section" aria-labelledby="badgesTitle">
                     <h3 id="badgesTitle">Insignias obtenidas</h3>
