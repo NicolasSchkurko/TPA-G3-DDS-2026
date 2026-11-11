@@ -66,3 +66,4 @@ build/
 # Si hay que compartirlos, se saca la parte de credenciales y se sube solo esa.
 /CONFIG-MYSQL.md
 /CONFIG-RABBITMQ.md
+/opencode.json

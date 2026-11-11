@@ -4,12 +4,18 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SincronizacionPerfiles {
 
+    private static final int TAMANO_BLOQUE_SINCRONIZACION = 500;
+
     private final RepositorioPerfiles repositorioPerfiles;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public SincronizacionPerfiles(RepositorioPerfiles repositorioPerfiles) {
         this.repositorioPerfiles = repositorioPerfiles;
@@ -39,8 +50,6 @@ public class SincronizacionPerfiles {
             Categoria categoria,
             Map<UUID, Integer> posicionesAnteriores
     ) {
-        List<Perfil> perfiles = repositorioPerfiles.findAllByCategoriaActual(categoria);
-
         Map<Integer, Mision> misionesPorPosicion = categoria.getCategoriaMisiones().stream()
                 .collect(Collectors.toMap(
                         cm -> cm.getPosicion(),
@@ -48,6 +57,33 @@ public class SincronizacionPerfiles {
                         (primera, segunda) -> primera
                 ));
 
+        Pageable pagina = PageRequest.of(0, TAMANO_BLOQUE_SINCRONIZACION,
+                Sort.by("idUsuario"));
+        while (true) {
+            Page<Perfil> perfilesDeLaPagina =
+                    repositorioPerfiles.findByCategoriaActual(categoria, pagina);
+            if (perfilesDeLaPagina.isEmpty()) {
+                return;
+            }
+
+            reacomodarPerfiles(perfilesDeLaPagina.getContent(), misionesPorPosicion,
+                    posicionesAnteriores, categoria);
+            repositorioPerfiles.saveAll(perfilesDeLaPagina.getContent());
+            repositorioPerfiles.flush();
+            perfilesDeLaPagina.forEach(entityManager::detach);
+
+            if (!perfilesDeLaPagina.hasNext()) {
+                return;
+            }
+            pagina = pagina.next();
+        }
+    }
+
+    /** Reacomoda los donantes de una página según la nueva secuencia de misiones. */
+    private void reacomodarPerfiles(List<Perfil> perfiles,
+                                    Map<Integer, Mision> misionesPorPosicion,
+                                    Map<UUID, Integer> posicionesAnteriores,
+                                    Categoria categoria) {
         for (Perfil perfil : perfiles) {
             if (perfil.getProgresoMisionActual() == null
                     || perfil.getProgresoMisionActual().getMision() == null) {
@@ -77,8 +113,6 @@ public class SincronizacionPerfiles {
 
             perfil.cambiarMision(nuevaMision, misionActual);
         }
-
-        repositorioPerfiles.saveAll(perfiles);
     }
 
     /**
@@ -116,14 +150,28 @@ public class SincronizacionPerfiles {
      */
     @Transactional
     public void reiniciarProgresoDeMision(UUID idMision) {
-        List<Perfil> perfiles = repositorioPerfiles.findAllByMisionActual(idMision);
-
-        for (Perfil perfil : perfiles) {
-            if (perfil.getProgresoMisionActual() != null) {
-                perfil.getProgresoMisionActual().reiniciarProgreso();
+        Pageable pagina = PageRequest.of(0, TAMANO_BLOQUE_SINCRONIZACION,
+                Sort.by("idUsuario"));
+        while (true) {
+            Page<Perfil> perfilesDeLaPagina =
+                    repositorioPerfiles.findByMisionActualPaginado(idMision, pagina);
+            if (perfilesDeLaPagina.isEmpty()) {
+                return;
             }
-        }
 
-        repositorioPerfiles.saveAll(perfiles);
+            for (Perfil perfil : perfilesDeLaPagina) {
+                if (perfil.getProgresoMisionActual() != null) {
+                    perfil.getProgresoMisionActual().reiniciarProgreso();
+                }
+            }
+            repositorioPerfiles.saveAll(perfilesDeLaPagina.getContent());
+            repositorioPerfiles.flush();
+            perfilesDeLaPagina.forEach(entityManager::detach);
+
+            if (!perfilesDeLaPagina.hasNext()) {
+                return;
+            }
+            pagina = pagina.next();
+        }
     }
 }

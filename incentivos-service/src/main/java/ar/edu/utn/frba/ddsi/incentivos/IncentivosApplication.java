@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Arranque del servicio. {@code @EnableScheduling} habilita los tres schedulers (constancia,
- * ranking mensual y reintentos de publicaciones a n8n).
+ * Arranque del servicio. {@code @EnableScheduling} habilita los schedulers (constancia,
+ * ranking mensual, reintentos de publicaciones a n8n y reintentos de notificaciones).
  */
 @SpringBootApplication
 @EnableScheduling

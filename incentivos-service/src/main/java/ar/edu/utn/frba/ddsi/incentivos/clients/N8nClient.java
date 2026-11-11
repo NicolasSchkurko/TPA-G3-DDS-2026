@@ -7,8 +7,10 @@ import ar.edu.utn.frba.ddsi.incentivos.services.PublicacionesN8nService.Publicac
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -24,11 +26,14 @@ public class N8nClient {
     private String n8nUrl;
     private final PublicacionesN8nService publicaciones;
     private final RestTemplate restTemplate;
+    private final TaskExecutor n8nExecutor;
 
     public N8nClient(RestTemplate restTemplate,
-                     PublicacionesN8nService publicaciones) {
+                     PublicacionesN8nService publicaciones,
+                     @Qualifier("n8nExecutor") TaskExecutor n8nExecutor) {
         this.restTemplate = restTemplate;
         this.publicaciones = publicaciones;
+        this.n8nExecutor = n8nExecutor;
     }
 
     /**
@@ -42,11 +47,10 @@ public class N8nClient {
     public void encolarInsignia(MisionCompletada event) {
         PerfilPublicacionDTO publicar = new PerfilPublicacionDTO(
             "en el centro debe decir " + event.insigniaObtenida(),
-            ", por ganar la insignia " + event.insigniaObtenida()
-                + " tras haber completado la mision " + event.misionAnterior(),
-                "discord",
-                event.nombreUsuario(),
-                event.idUsuario()
+            event.nombreUsuario() + " ganó la insignia " + event.insigniaObtenida()
+                + " tras haber completado la misión " + event.misionAnterior(),
+            event.nombreUsuario(),
+            event.idUsuario()
         );
         publicaciones.encolar(publicar);
     }
@@ -68,18 +72,21 @@ public class N8nClient {
             }
 
             PublicacionReclamada reclamada = siguiente.orElseThrow();
-            try {
-                restTemplate.postForEntity(n8nUrl, reclamada.contenido(), void.class);
-                publicaciones.confirmar(reclamada.id());
-                log.info("Publicacion {} enviada a {} en el intento {}",
-                        reclamada.id(), reclamada.contenido().getRedSocial(),
-                        reclamada.intentos());
-            } catch (RestClientException exception) {
-                publicaciones.reintentar(reclamada.id(), LocalDateTime.now(),
-                        exception.getMessage());
-                log.warn("No se pudo enviar la publicacion {} en el intento {}; se reintentara",
-                        reclamada.id(), reclamada.intentos(), exception);
-            }
+            n8nExecutor.execute(() -> enviar(reclamada));
+        }
+    }
+
+    private void enviar(PublicacionReclamada reclamada) {
+        try {
+            restTemplate.postForEntity(n8nUrl, reclamada.contenido(), void.class);
+            publicaciones.confirmar(reclamada.id());
+            log.info("Publicacion {} enviada a n8n en el intento {}",
+                    reclamada.id(), reclamada.intentos());
+        } catch (RestClientException exception) {
+            publicaciones.reintentar(reclamada.id(), LocalDateTime.now(),
+                    exception.getMessage());
+            log.warn("No se pudo enviar la publicacion {} en el intento {}; se reintentara",
+                    reclamada.id(), reclamada.intentos(), exception);
         }
     }
 }

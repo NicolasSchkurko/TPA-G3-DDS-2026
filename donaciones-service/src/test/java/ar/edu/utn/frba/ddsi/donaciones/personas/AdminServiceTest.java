@@ -106,4 +106,31 @@ public class AdminServiceTest {
     assertEquals("Carlos Modificado", actualizado.getNombreAMostrar());
   }
 
+
+  @Test
+  @DisplayName("El alta usa el id de Keycloak que recibe en el DTO")
+  void crearAdmin_usaElIdDeKeycloak() {
+    UUID idKeycloak = UUID.randomUUID();
+    AdminDTO dto = new AdminDTO();
+    dto.setId(idKeycloak.toString());
+    dto.setNombreAMostrar("Admin Keycloak");
+    dto.setNombre("Ana");
+    dto.setApellido("Admin");
+    dto.setEdad(30);
+    dto.setNumeroDeDocumento(30123456);
+    dto.setGenero("MUJER");
+    MediosContactoDTO contacto = new MediosContactoDTO();
+    contacto.setTipo("WHATSAPP");
+    contacto.setValor("1122334455");
+    dto.setMedioDeContacto(contacto);
+
+    AdminDTO resultado = adminService.crearAdministrador(dto);
+
+    assertEquals(idKeycloak.toString(), resultado.getId());
+    verify(repositorioPersonas).registrarPersona(any(Humana.class));
+    ArgumentCaptor<Administrador> captor = ArgumentCaptor.forClass(Administrador.class);
+    verify(repositorioAdministradores).guardar(captor.capture());
+    assertEquals(idKeycloak, captor.getValue().getId());
+  }
+
 }

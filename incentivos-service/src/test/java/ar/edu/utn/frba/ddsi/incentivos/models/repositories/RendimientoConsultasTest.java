@@ -193,4 +193,59 @@ class RendimientoConsultasTest {
                     .contains("NULLIF(TRIM(entidad_beneficiaria), '')");
         }
     }
+
+    @Nested
+    @DisplayName("la consulta del scheduler de constancia pagina en SQL")
+    class ConstanciaPaginada {
+
+        @Test
+        @DisplayName("no usa JOIN FETCH y tiene countQuery y EntityGraph")
+        void constanciaPaginaEnSql() throws Exception {
+            var metodo = ar.edu.utn.frba.ddsi.incentivos.models.repositories
+                    .SpringRepositories.RepositorioPerfiles.class
+                    .getMethod("buscarPerfilesConMisionQueRequiereConstancia",
+                            org.springframework.data.domain.Pageable.class);
+
+            var query = metodo.getAnnotation(
+                    org.springframework.data.jpa.repository.Query.class);
+            var entityGraph = metodo.getAnnotation(
+                    org.springframework.data.jpa.repository.EntityGraph.class);
+
+            assertThat(query.value())
+                    .as("con JOIN FETCH + Pageable, Hibernate pagina en memoria")
+                    .doesNotContainIgnoringCase("join fetch");
+            assertThat(query.countQuery())
+                    .as("sin countQuery explícito la consulta de conteo no puede llevar FETCH")
+                    .isNotBlank();
+            assertThat(entityGraph)
+                    .as("las relaciones se hidratan con EntityGraph, no con FETCH")
+                    .isNotNull();
+            assertThat(entityGraph.attributePaths())
+                    .contains("progresoMisionActual",
+                            "progresoMisionActual.mision",
+                            "progresoMisionActual.mision.reglaDeProgreso");
+        }
+    }
+
+    @Nested
+    @DisplayName("el camino de donaciones no hidrata insignias")
+    class DonacionesSinInsignias {
+
+        @Test
+        @DisplayName("findByIdParaDonacion excluye insigniasObtenidas del EntityGraph")
+        void findByIdParaDonacionNoTraeInsignias() throws Exception {
+            var metodo = ar.edu.utn.frba.ddsi.incentivos.models.repositories
+                    .SpringRepositories.RepositorioPerfiles.class
+                    .getMethod("findByIdParaDonacion", java.util.UUID.class);
+
+            var entityGraph = metodo.getAnnotation(
+                    org.springframework.data.jpa.repository.EntityGraph.class);
+
+            assertThat(entityGraph).isNotNull();
+            assertThat(entityGraph.attributePaths())
+                    .doesNotContain("insigniasObtenidas")
+                    .contains("categoriaActual", "progresoMisionActual",
+                            "progresoMisionActual.mision");
+        }
+    }
 }

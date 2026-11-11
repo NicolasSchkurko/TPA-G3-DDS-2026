@@ -1,10 +1,13 @@
 package ar.edu.utn.frba.ddsi.front;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
@@ -13,9 +16,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,6 +35,9 @@ class FrontApplicationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private IncentivosClient incentivosClient;
 
     @Test
     void contextLoads() {
@@ -48,6 +57,21 @@ class FrontApplicationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Camisas")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ROPA")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/detalle-donacion.css")));
+    }
+
+    @Test
+    void landingRendersFeaturedDonations() throws Exception {
+        when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
+                new DonacionDestacadaDTO(
+                        UUID.randomUUID(), LocalDateTime.of(2026, 5, 1, 10, 0),
+                        12, "ALIMENTOS", "MERCEARIA", "Comedor Los Piletones")));
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("Donaciones destacadas")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("Comedor Los Piletones")));
     }
 
     @Test

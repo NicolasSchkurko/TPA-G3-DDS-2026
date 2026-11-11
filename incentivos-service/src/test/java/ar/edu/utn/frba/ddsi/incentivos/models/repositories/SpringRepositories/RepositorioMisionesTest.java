@@ -16,7 +16,7 @@ import org.mockito.Answers;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("conseguirMisiones: respeta el orden del admin")
-class RepositorioMisionesOrdenTest {
+class RepositorioMisionesTest {
 
     // CALLS_REAL_METHODS corre conseguirMisiones de verdad; solo findAllById queda simulado.
     private final RepositorioMisiones repo =

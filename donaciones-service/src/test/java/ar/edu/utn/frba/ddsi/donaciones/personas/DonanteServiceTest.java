@@ -50,6 +50,8 @@ import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Method;
 import org.springframework.transaction.annotation.Transactional;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorCatalogo;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorIncentivos;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
 
 public class DonanteServiceTest {
 
@@ -106,6 +108,36 @@ public class DonanteServiceTest {
     verify(repositorioDonaciones, never()).desvincularDonante(any());
     verify(repositorioFormularios, never()).desvincularDonante(any());
     verify(repositorioDonantes, never()).eliminarPorId(any());
+  }
+
+  @Test
+  @DisplayName("La baja se encola en la outbox y se intenta después del commit")
+  void eliminarPersona_encolaLaBajaEnLaOutbox() {
+    GestorIncentivos gestorIncentivos = mock(GestorIncentivos.class);
+    UUID donanteId = UUID.randomUUID();
+    UUID outboxId = UUID.randomUUID();
+    Donante donanteMock = mock(Donante.class);
+    when(repositorioDonantes.buscarPorId(donanteId)).thenReturn(Optional.of(donanteMock));
+    when(gestorIncentivos.encolarEliminacionPerfil(donanteId)).thenReturn(outboxId);
+
+    DonanteService service = new DonanteService(
+        repositorioPersonas,
+        repositorioCiudades,
+        fabricaEstrategias,
+        incentivosClient,
+        repositorioDonantes,
+        repositorioDonaciones,
+        repositorioFormularios,
+        new GestorGeoref(null, false),
+        executorImportacion,
+        gestorIncentivos);
+
+    service.eliminarPersona(donanteId);
+
+    verify(donanteMock).darDeBaja();
+    verify(gestorIncentivos).encolarEliminacionPerfil(donanteId);
+    verify(gestorIncentivos).intentarAhora(outboxId);
+    verify(incentivosClient, never()).eliminarPerfil(any());
   }
 
   @Test

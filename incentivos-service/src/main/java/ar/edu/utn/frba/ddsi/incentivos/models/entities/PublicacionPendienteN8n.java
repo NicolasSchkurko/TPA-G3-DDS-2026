@@ -34,9 +34,6 @@ public class PublicacionPendienteN8n {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String mensaje;
 
-    @Column(nullable = false, length = 100)
-    private String redSocial;
-
     @Column(nullable = false, length = 500)
     private String nombreUsuario;
 
@@ -57,10 +54,12 @@ public class PublicacionPendienteN8n {
     @Column(length = 2000)
     private String ultimoError;
 
+    @Column(nullable = false)
+    private boolean descartada;
+
     public PublicacionPendienteN8n(PerfilPublicacionDTO publicacion, LocalDateTime ahora) {
         this.prompt = publicacion.getPrompt();
         this.mensaje = publicacion.getMensaje();
-        this.redSocial = publicacion.getRedSocial();
         this.nombreUsuario = publicacion.getNomUsuario();
         this.idUsuario = publicacion.getIdUsuario();
         this.fechaCreacion = ahora;
@@ -68,7 +67,7 @@ public class PublicacionPendienteN8n {
     }
 
     public PerfilPublicacionDTO comoDto() {
-        return new PerfilPublicacionDTO(prompt, mensaje, redSocial, nombreUsuario, idUsuario);
+        return new PerfilPublicacionDTO(prompt, mensaje, nombreUsuario, idUsuario);
     }
 
     public void reclamarHasta(LocalDateTime vencimiento) {
@@ -78,6 +77,13 @@ public class PublicacionPendienteN8n {
 
     public void reintentarEn(LocalDateTime proximoIntento, String error) {
         this.proximoIntento = proximoIntento;
+        this.leaseHasta = null;
+        this.ultimoError = error == null ? null : error.substring(0, Math.min(error.length(), 2000));
+    }
+
+    /** Marca la fila como descartada: se deja de reintentar. */
+    public void descartar(String error) {
+        this.descartada = true;
         this.leaseHasta = null;
         this.ultimoError = error == null ? null : error.substring(0, Math.min(error.length(), 2000));
     }

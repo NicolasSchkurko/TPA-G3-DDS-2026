@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * incentivos del incidente en que donaciones mandó el alta sin nombreUsuario), y el alta en
  * lote valida y delega como corresponde.
  */
-public class PerfilAltaValidacionTest {
+public class PerfilControllerTest {
 
   private MockMvc mockMvc;
   private PerfilService perfilService;
@@ -120,12 +120,12 @@ public class PerfilAltaValidacionTest {
   }
 
   @Test
-  @DisplayName("PUT /api/perfiles/interno/{idUsuario} propaga el cambio de nombre sin requerir Admin-Id")
+  @DisplayName("PUT /api/perfiles/sincronizacion/{idUsuario} propaga el cambio de nombre")
   void actualizacionInterna_noRequiereAdminId() throws Exception {
     UUID id = UUID.randomUUID();
     PerfilDonanteDTO dto = new PerfilDonanteDTO(id, "Nuevo Nombre", "DONANTE");
 
-    mockMvc.perform(put("/api/perfiles/interno/" + id)
+    mockMvc.perform(put("/api/perfiles/sincronizacion/" + id)
             .contentType(MediaType.APPLICATION_JSON)
             .content(new ObjectMapper().writeValueAsString(dto)))
         .andExpect(status().isOk());

@@ -5,7 +5,10 @@
     "description": "Pruebas DIRECTAS de los dos webhooks de n8n, con el mismo payload que manda cada servicio.\n\n- incentivos-service -> POST /webhook/incentivos (payload = PerfilPublicacionDTO)\n- notificaciones-service -> POST /webhook/notificaciones (payload = NotificacionPayload)\n\nOJO: cada webhook tiene que estar ACTIVO en n8n (toggle arriba a la derecha), si no devuelve 404 'webhook is not registered'."
   },
   "variable": [
-    { "key": "n8nUrl", "value": "https://n8n-production-8208.up.railway.app" }
+    {
+      "key": "n8nUrl",
+      "value": "https://n8n-production-8208.up.railway.app"
+    }
   ],
   "item": [
     {
@@ -24,18 +27,26 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"prompt\": \"ilustracion festiva de un donante con una insignia\",\n  \"mensaje\": \"Ana gano la insignia Primer Paso tras completar la mision Primera donacion\",\n  \"redSocial\": \"discord\",\n  \"nomUsuario\": \"Ana\",\n  \"idUsuario\": \"11111111-1111-1111-1111-111111111111\"\n}"
+          "raw": "{\n  \"prompt\": \"ilustracion festiva de un donante con una insignia\",\n  \"mensaje\": \"Ana gano la insignia Primer Paso tras completar la mision Primera donacion\",\n  \"nomUsuario\": \"Ana\",\n  \"idUsuario\": \"11111111-1111-1111-1111-111111111111\"\n}"
         },
         "url": {
           "raw": "{{n8nUrl}}/webhook/incentivos",
-          "host": ["{{n8nUrl}}"],
-          "path": ["webhook", "incentivos"]
+          "host": [
+            "{{n8nUrl}}"
+          ],
+          "path": [
+            "webhook",
+            "incentivos"
+          ]
         },
-        "description": "Payload = PerfilPublicacionDTO de incentivos-service. Campos: prompt, mensaje, redSocial (discord | gmail), nomUsuario, idUsuario."
+        "description": "Payload = PerfilPublicacionDTO de incentivos-service. Campos: prompt, mensaje, nomUsuario, idUsuario."
       }
     },
     {
@@ -54,7 +65,10 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -62,8 +76,13 @@
         },
         "url": {
           "raw": "{{n8nUrl}}/webhook/notificaciones",
-          "host": ["{{n8nUrl}}"],
-          "path": ["webhook", "notificaciones"]
+          "host": [
+            "{{n8nUrl}}"
+          ],
+          "path": [
+            "webhook",
+            "notificaciones"
+          ]
         },
         "description": "Payload = NotificacionPayload de notificaciones-service. El workflow hace switch por body.canal: email | whatsapp | telefono."
       }
@@ -84,7 +103,10 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -92,8 +114,13 @@
         },
         "url": {
           "raw": "{{n8nUrl}}/webhook/notificaciones",
-          "host": ["{{n8nUrl}}"],
-          "path": ["webhook", "notificaciones"]
+          "host": [
+            "{{n8nUrl}}"
+          ],
+          "path": [
+            "webhook",
+            "notificaciones"
+          ]
         }
       }
     },
@@ -113,7 +140,10 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -121,8 +151,13 @@
         },
         "url": {
           "raw": "{{n8nUrl}}/webhook/notificaciones",
-          "host": ["{{n8nUrl}}"],
-          "path": ["webhook", "notificaciones"]
+          "host": [
+            "{{n8nUrl}}"
+          ],
+          "path": [
+            "webhook",
+            "notificaciones"
+          ]
         }
       }
     }

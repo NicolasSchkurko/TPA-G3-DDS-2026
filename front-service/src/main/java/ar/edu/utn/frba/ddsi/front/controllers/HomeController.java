@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ public class HomeController {
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
     private final DonacionesClient donacionesClient;
+    private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
 
     @Value("${servicio.donaciones.url}")
@@ -37,8 +39,11 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
-    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
+    public HomeController(DonacionesClient donacionesClient,
+                          IncentivosClient incentivosClient,
+                          KeycloakRegistrationClient keycloakRegistrationClient) {
         this.donacionesClient = donacionesClient;
+        this.incentivosClient = incentivosClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
     }
 
@@ -61,17 +66,18 @@ public class HomeController {
     }
 
     @PostMapping("/register")
-    public String register(@RequestParam Map<String, String> form, Model model) {
+    public String register(@RequestParam Map<String, String> form, Model model,
+                           Authentication authentication) {
         String userId = null;
         try {
-            String role = rolParaTipoRegistro(form.get("tipoRegistro"));
+            String role = rolParaTipoRegistro(form.get("tipoRegistro"), authentication);
             String username = form.get("username");
             String password = form.get("password");
             if (username == null || username.trim().length() < 3 || password == null || password.length() < 8) {
                 throw new IllegalArgumentException("Ingresá un usuario de al menos 3 caracteres y una contraseña de al menos 8 caracteres.");
             }
             userId = keycloakRegistrationClient.crearUsuario(username.trim(), password, role);
-            donacionesClient.registrarUsuario(form.get("tipoRegistro"), form);
+            donacionesClient.registrarUsuario(form.get("tipoRegistro"), form, userId);
             model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
         } catch (IllegalArgumentException e) {
             eliminarCuentaSiCorresponde(userId);
@@ -94,13 +100,27 @@ public class HomeController {
         return "register";
     }
 
-    private static String rolParaTipoRegistro(String tipoRegistro) {
+    private static String rolParaTipoRegistro(String tipoRegistro, Authentication authentication) {
         if (tipoRegistro == null) throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         return switch (tipoRegistro) {
             case "DONANTE" -> "DONANTE";
             case "ENTIDAD" -> "ENTIDAD";
+            case "ADMIN" -> {
+                if (!esAdmin(authentication)) {
+                    throw new IllegalArgumentException(
+                            "Solo un administrador puede crear otro administrador.");
+                }
+                yield "ADMIN";
+            }
             default -> throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         };
+    }
+
+    private static boolean esAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 
     private void eliminarCuentaSiCorresponde(String userId) {
@@ -113,8 +133,8 @@ public class HomeController {
     }
 
     /**
-     * Landing pública: no depende de los microservicios, así que puede mostrarse
-     * aunque el backend no esté levantado.
+     * Landing pública: si incentivos no responde, la lista de destacadas queda vacía y el
+     * landing se sigue mostrando.
      */
     @GetMapping({"/", "/landing"})
     public String landing(Authentication authentication, Model model) {
@@ -122,9 +142,9 @@ public class HomeController {
                 && authentication.isAuthenticated()
                 && authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_DONANTE"))
-                && authentication.getAuthorities().stream()
-                .noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+                && !esAdmin(authentication);
         model.addAttribute("esDonante", esDonante);
+        model.addAttribute("destacadas", incentivosClient.obtenerDonacionesDestacadas());
         model.addAttribute("entidades", esDonante
                 ? donacionesClient.obtenerEntidades()
                 : Collections.emptyList());

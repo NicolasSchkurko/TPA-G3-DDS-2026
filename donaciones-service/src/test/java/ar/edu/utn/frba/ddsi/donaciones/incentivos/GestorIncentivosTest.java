@@ -181,6 +181,39 @@ class GestorIncentivosTest {
         () -> client.actualizarPerfil(UUID.randomUUID(), new IDDTO()));
   }
 
+  @Test
+  @DisplayName("encolarEliminacionPerfil persiste el tipo y el usuario, sin payload")
+  void encolarEliminacionPersisteElTipo() {
+    RepositorioDeNotificacionesIncentivosPendientes repo =
+        mock(RepositorioDeNotificacionesIncentivosPendientes.class);
+    UUID idUsuario = UUID.randomUUID();
+
+    gestorCon(repo, mock(IncentivosClient.class)).encolarEliminacionPerfil(idUsuario);
+
+    ArgumentCaptor<NotificacionIncentivosPendiente> captor =
+        ArgumentCaptor.forClass(NotificacionIncentivosPendiente.class);
+    verify(repo).save(captor.capture());
+    assertEquals(TipoNotificacionIncentivos.ELIMINAR_PERFIL, captor.getValue().getTipo());
+    assertEquals(idUsuario, captor.getValue().getIdUsuario());
+  }
+
+  @Test
+  @DisplayName("la baja de perfil también se procesa desde la outbox")
+  void procesarPendientesEnviaEliminacionDePerfil() throws Exception {
+    RepositorioDeNotificacionesIncentivosPendientes repo =
+        mock(RepositorioDeNotificacionesIncentivosPendientes.class);
+    IncentivosClient client = mock(IncentivosClient.class);
+    UUID idUsuario = UUID.randomUUID();
+    NotificacionIncentivosPendiente pendiente = new NotificacionIncentivosPendiente(
+        TipoNotificacionIncentivos.ELIMINAR_PERFIL, idUsuario, "{}", LocalDateTime.now());
+    when(repo.buscarDisponibles(any(), any())).thenReturn(List.of(pendiente), List.of());
+
+    gestorCon(repo, client).procesarPendientes();
+
+    verify(client).eliminarPerfil(idUsuario);
+    verify(repo).deleteById(pendiente.getId());
+  }
+
   private GestorIncentivos gestorCon(RepositorioDeNotificacionesIncentivosPendientes repo,
                                      IncentivosClient client) {
     return new GestorIncentivos(repo, client, mapper, mock(PlatformTransactionManager.class));

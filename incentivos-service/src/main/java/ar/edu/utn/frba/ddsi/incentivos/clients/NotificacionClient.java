@@ -7,9 +7,15 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.NotificacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.services.NotificacionesPendientesService;
+import ar.edu.utn.frba.ddsi.incentivos.services.NotificacionesPendientesService.NotificacionReclamada;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -22,16 +28,22 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Service
 public class NotificacionClient {
 
+    private static final int MAX_POR_CICLO = 50;
+
     private final RabbitTemplate rabbitTemplate;
     private final DonacionClient donacionClient;
-    private final NotificacionesPendientes repositorioPendientes;
+    private final NotificacionesPendientesService pendientesService;
+    private final TaskExecutor notificacionExecutor;
 
     public NotificacionClient(RabbitTemplate rabbitTemplate,
                               DonacionClient donacionClient,
-                              NotificacionesPendientes repositorioPendientes) {
+                              NotificacionesPendientesService pendientesService,
+                              @Qualifier("notificacionExecutor")
+                              TaskExecutor notificacionExecutor) {
         this.rabbitTemplate = rabbitTemplate;
         this.donacionClient = donacionClient;
-        this.repositorioPendientes = repositorioPendientes;
+        this.pendientesService = pendientesService;
+        this.notificacionExecutor = notificacionExecutor;
     }
 
     /**
@@ -51,7 +63,7 @@ public class NotificacionClient {
             log.error("Error al publicar la notificación para {}, guardando en pendientes",
                     dto.getDireccionDeContacto(), e);
 
-            repositorioPendientes.guardar(dto);
+            pendientesService.encolar(dto);
             throw new EnvioNotificacionException(dto);
         }
     }
@@ -59,7 +71,7 @@ public class NotificacionClient {
     /** Le avisa al donante que terminó una misión y qué insignia ganó. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarMisionCompletada(MisionCompletada event) {
-        enviar(
+        notificacionExecutor.execute(() -> enviar(
                 donacionClient.obtenerContactoPersona(event.idUsuario()),
                 "¡Misión completada!",
                 crearMensajeMisionCompletada(
@@ -67,23 +79,60 @@ public class NotificacionClient {
                         event.insigniaObtenida(),
                         event.impactoDonacion().getEntidadBeneficiaria()
                 )
-        );
+        ));
     }
 
     /** Le avisa al donante que tiene una misión nueva disponible. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioMision(MisionCambiada event) {
-        enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
-                "Nueva misión disponible",
-                crearMensajeMision(event.misionAnterior(), event.misionNueva()));
+        notificacionExecutor.execute(() ->
+                enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
+                        "Nueva misión disponible",
+                        crearMensajeMision(event.misionAnterior(), event.misionNueva())));
     }
 
     /** Le avisa al donante que avanzó de categoría. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notificarCambioCategoria(CategoriaNuevaPublicar event) {
-        enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
-                "Nueva categoría",
-                crearMensajeCategoria(event.categoriaAnterior(), event.categoriaNueva()));
+        notificacionExecutor.execute(() ->
+                enviar(donacionClient.obtenerContactoPersona(event.idUsuario()),
+                        "Nueva categoría",
+                        crearMensajeCategoria(event.categoriaAnterior(), event.categoriaNueva())));
+    }
+
+    /**
+     * Reintenta las notificaciones que quedaron en la outbox. Publica fuera de la transacción
+     * de reclamo, igual que la outbox de n8n.
+     */
+    @Scheduled(
+            fixedDelayString = "${servicio.notificaciones.outbox.intervalo-reintento-ms:30000}",
+            initialDelayString = "${servicio.notificaciones.outbox.retraso-inicial-ms:10000}"
+    )
+    public void procesarNotificacionesPendientes() {
+        for (int procesadas = 0; procesadas < MAX_POR_CICLO; procesadas++) {
+            Optional<NotificacionReclamada> siguiente =
+                    pendientesService.reclamarSiguiente(LocalDateTime.now());
+            if (siguiente.isEmpty()) {
+                return;
+            }
+
+            NotificacionReclamada reclamada = siguiente.orElseThrow();
+            try {
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NOTIFICACIONES,
+                        RabbitMQConfig.RK_INCENTIVO,
+                        reclamada.contenido());
+                pendientesService.confirmar(reclamada.id());
+                log.info("Notificación pendiente {} publicada en el intento {}",
+                        reclamada.id(), reclamada.intentos());
+            } catch (Exception e) {
+                pendientesService.reintentar(reclamada.id(), LocalDateTime.now(),
+                        e.getMessage());
+                log.warn("No se pudo publicar la notificación pendiente {} en el intento {}; "
+                                + "se reintentará: {}",
+                        reclamada.id(), reclamada.intentos(), e.getMessage());
+            }
+        }
     }
 
     private void enviar(MedioContacto contacto, String asunto, String cuerpo) {
@@ -102,7 +151,7 @@ public class NotificacionClient {
                     )
             );
         } catch (EnvioNotificacionException e) {
-            log.error("Falló el envío de notificación '{}' - se guardó en pendientes", asunto);
+            log.debug("La notificación '{}' quedó en la outbox de notificaciones", asunto);
         }
     }
 

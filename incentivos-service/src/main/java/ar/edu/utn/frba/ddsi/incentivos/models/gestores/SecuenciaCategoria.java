@@ -12,17 +12,26 @@ import org.springframework.stereotype.Component;
 public class SecuenciaCategoria {
 
     /**
-     * Corrige la secuencia cuando una categoría cambia de posición. Una posición fuera de
-     * rango es un error, no un "no hacer nada".
+     * Corrige la secuencia cuando una categoría cambia de posición. Si no tenía posición
+     * (se creó sin ella), la incorpora como un alta. Una posición fuera de rango es un
+     * error, no un "no hacer nada".
      *
      * @param posicionMaxima la posición más alta realmente ocupada.
-     * @throws IllegalArgumentException si la posición está fuera de {@code [1, max]}
+     * @throws IllegalArgumentException si la posición está fuera de {@code [1, max]}, o de
+     *                                  {@code [1, max + 1]} cuando la categoría no tenía
+     *                                  posición.
      */
     public void desplazarParaActualizar(RepositorioCategorias repo,
                                         Integer posicionAnterior,
                                         Integer posicionNueva,
                                         Integer posicionMaxima) {
-        if (posicionNueva == null || posicionAnterior == null || posicionNueva.equals(posicionAnterior)) {
+        if (posicionNueva == null || posicionNueva.equals(posicionAnterior)) {
+            return;
+        }
+
+        // La categoría no estaba en la secuencia (se creó sin posición): entrar es un alta.
+        if (posicionAnterior == null) {
+            desplazarParaCrear(repo, posicionNueva, posicionMaxima);
             return;
         }
 

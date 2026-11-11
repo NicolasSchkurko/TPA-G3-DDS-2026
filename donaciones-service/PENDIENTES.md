@@ -4,10 +4,9 @@
 
 El backlog técnico detallado debajo se mantiene como lista de trabajo del servicio. Contrastado con
 E1-E5: existen dominio de donaciones, segmentación, necesidades, importación CSV, estados e historial,
-APIs REST y persistencia relacional. Siguen abiertos los riesgos ya enumerados, especialmente estados
-faltantes/trazabilidad, fecha real de entrega, consistencia del matchmaking, transacciones y notificación
-asíncrona. Para cerrar los entregables del TP también falta versionar diagramas de clases/ERD y contratos
-API actualizados (ver backlog raíz). E6 corresponde principalmente a `front-service`.
+APIs REST y persistencia relacional. No hay pendientes técnicos abiertos en este módulo. Para cerrar los
+entregables del TP todavía falta versionar diagramas de clases/ERD y contratos API actualizados (ver
+backlog raíz). E6 corresponde principalmente a `front-service`.
 
 ---
 
@@ -24,9 +23,11 @@ No hay pendientes abiertos.
 
 ## Corregidos
 
+- **—** El alta de administradores usa el `sub` de Keycloak como `id` de `Administrador`; el rol se valida en el front y el endpoint queda detrás de la ACL de red. `AdminService` rechaza un alta sin ese id. Cobertura en `AdminServiceTest` y `AdminAclTest`.
+
 - **43.** "Consultar rankings" no está expuesto en donaciones — descartado por diseño: el ranking de donantes vive en `incentivos-service` (`GET /api/rankings/...`) y donaciones delega esa consulta.
 
-- **37.** Se eliminaron las 15 fachadas de `models/repositories/repos/`; services y gestores inyectan las interfaces `RepositorioDe...` directo, con `default` methods para la lógica de cada entidad. La lógica cruzada se movió a `GestorCatalogo` (país/provincia/ciudad y categoría/subcategoría) y a `GestorAsignaciones.agregarDonacionANecesidad`; el claim de eventos quedó como `INSERT` nativo en `RepositorioDeEventosProcesados`. En incentivos, el buffer en memoria `RepositorioNotificacionesPendientes` se movió a `models/gestores/NotificacionesPendientes`. Tests: donaciones 197, incentivos 337.
+- **37.** Se eliminaron las 15 fachadas de `models/repositories/repos/`; services y gestores inyectan las interfaces `RepositorioDe...` directo, con `default` methods para la lógica de cada entidad. La lógica cruzada se movió a `GestorCatalogo` (país/provincia/ciudad y categoría/subcategoría) y a `GestorAsignaciones.agregarDonacionANecesidad`; el claim de eventos quedó como `INSERT` nativo en `RepositorioDeEventosProcesados`. En incentivos, las notificaciones fallidas pasaron de un buffer en memoria a una outbox durable (`notificacion_pendiente`). Tests: donaciones 197, incentivos 337.
 
 - **36.** Se normalizaron las subcarpetas de donaciones a minúsculas: `models/sheduler`→`models/scheduler`, `exceptions/CsvExceptions`→`exceptions/csvexceptions`, `RabbitMQ`→`messaging`, `dto/entidadBeneficiaria`→`dto/entidadbeneficiaria`, `dto/personaDonante`→`dto/personadonante`, y los DTOs sueltos (`DireccionDTO`, `PropuestaAsignacionDTO`, `ResultadoMatchmakingDTO`, `AsignarPropuestaRequestDTO`) a `dto/direccion` y `dto/matchmaking`. `models/entities` se mantiene PascalCase como en incentivos. Sin cambios de comportamiento; suite completa en verde.
 
@@ -91,7 +92,7 @@ No hay pendientes abiertos.
 - **46.** `PUT /api/admins/{id}` insertaba un admin nuevo en cada modificación - `AdminService` reutiliza la entidad original y `RepositorioAdministradores.actualizar` fuerza `idOriginal` antes de `save()`.
 - **45.** `EventosListener`: transacción y requeue en hot loop - aislada la transacción en `GestorEventosLogistica`, configurado retry/backoff en `application.properties` con `default-requeue-rejected=false`, y cursor `ultimoIdProcesado` actualizado solo tras commit exitoso.
 - **44.** Los schedulers corrían sin transacción (LazyInitializationException) - `@Transactional` agregado en `AsignacionScheduler.ejecutarAsignacion`, `ActividadDonanteScheduler.revisarActividadDonantes` y `DonanteService.revisarActividades`.
-- **35.** Dar de baja un donante no borraba confiablemente su perfil en incentivos - local DB commit se asegura primero con `@Transactional` + `flush()`, y llamada a `incentivosClient.eliminarPerfil` se sincroniza `afterCommit` con `try/catch` para no abortar ante caída externa.
+- **35.** Dar de baja un donante no borraba confiablemente su perfil en incentivos - el soft delete local se confirma con `@Transactional` + `flush()` y la baja se encola ahora en la outbox durable `notificacion_incentivos_pendiente` (`ELIMINAR_PERFIL`) dentro de la misma transacción. El intento inmediato corre en `afterCommit` y el scheduler reintenta con lease/backoff; una caída de incentivos ya no pierde el aviso. Se eliminó la reconciliación periódica por cron; el front expone `POST /api/reconciliacion/{idUsuario}` como hook puntual.
 - **34.** Tras donar, el donante no se podía dar de baja por violación de FK - implementado `desvincularDonante` en `Donacion` y `Formulario` antes de eliminar al donante localmente.
 
 Un bullet por arreglo; el número es el ID estable del punto original («sin ID» = arreglos de integración que no tenían punto propio). Los residuales que siguen abiertos quedan anotados en el bullet.

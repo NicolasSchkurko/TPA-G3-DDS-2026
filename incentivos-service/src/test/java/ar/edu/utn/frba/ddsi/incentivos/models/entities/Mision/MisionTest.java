@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Mision.actualizar")
-class MisionActualizarTest {
+class MisionTest {
 
     /** La misión con su nombre, su texto y los datos propios de la insignia. */
     private Mision mision(String nombre, String descripcion,

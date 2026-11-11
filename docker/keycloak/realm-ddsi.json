@@ -26,6 +26,7 @@
         "http://localhost:8080/*"
       ],
       "webOrigins": ["http://localhost:8080"],
+      "defaultClientScopes": ["profile", "email", "roles", "web-origins", "acr", "basic"],
       "attributes": {
         "post.logout.redirect.uris": "http://localhost:8080/"
       },

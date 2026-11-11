@@ -76,6 +76,8 @@ El servicio de logística mantiene el cumplimiento estricto del enunciado: no re
 
 ## Corregidos
 
+- **—** El front valida los roles; el servicio acepta solo tráfico de servicios internos o IPs permitidas (`IPS_INTERNAS`/`SERVICIOS_INTERNOS`). Cobertura en `CamionAclTest`.
+
 - **71.** El callback resolvía un `findById` por cada ítem y recorría listas completas de camiones e ítems por asignación — ahora `PlanificadorRutasService` trae todos los ítems con un único `findAllById`, valida los ids faltantes y `PlanificadorDeRutas` arma `Map<patente, Camion>` y `Map<UUID, ItemEntrega>` una sola vez. Cobertura en `PlanificadorRutasServiceTest`.
 
 - **73.** La ruta no tenía forma de dibujarse en el mapa — `Direccion`/`DireccionDTO` ya transportaban lat/lon y `RutaDTO` las exponía, así que se reemplazó el host ficticio de `urlSeguimiento` por una URL configurable al front (`LOGISTICA_SEGUIMIENTO_URL`), y el front incorporó `LogisticasClient` + `GET /seguimiento/{idRuta}`, que une las coordenadas de las paradas en un GeoJSON (`LineString` + puntos) y lo dibuja con `DDSIMap.addGeoJson`. Cobertura en `SeguimientoControllerTest`.

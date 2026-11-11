@@ -9,7 +9,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SecuenciaCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -35,20 +34,18 @@ public class CategoriaService {
     private final RepositorioPerfiles repoPerfiles;
     private final SecuenciaCategoria gestorSecuencia;
     private final SincronizacionPerfiles gestorSincronizacion;
-    private final ValidadorAdmin validadorAdmin;
 
     public CategoriaService(RepositorioCategorias repoCategorias,
                             RepositorioMisiones repoMisiones,
                             RepositorioPerfiles repoPerfiles,
                             SecuenciaCategoria gestorSecuencia,
-                            SincronizacionPerfiles gestorSincronizacion,
-                            ValidadorAdmin validadorAdmin) {
+                            SincronizacionPerfiles gestorSincronizacion
+    ) {
         this.repoCategorias = repoCategorias;
         this.repoMisiones = repoMisiones;
         this.repoPerfiles = repoPerfiles;
         this.gestorSecuencia = gestorSecuencia;
         this.gestorSincronizacion = gestorSincronizacion;
-        this.validadorAdmin = validadorAdmin;
     }
 
     /**
@@ -81,7 +78,6 @@ public class CategoriaService {
      */
     @Transactional
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
-        validadorAdmin.verificarPermisos(idAdmin);
         List<Mision> misiones = repoMisiones.conseguirMisiones(dto.getMisiones());
 
         Integer posicion = dto.getPosicionSecuencia();
@@ -111,7 +107,6 @@ public class CategoriaService {
      */
     @Transactional
     public CategoriaDTO actualizarCategoria(UUID idAdmin, UUID id, CategoriaDTO dto) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         Categoria categoriaActual = repoCategorias.findById(id)
                 .orElseThrow(() -> new InexistenteException(
@@ -136,14 +131,8 @@ public class CategoriaService {
 
         Integer destino = categoriaModificada.getPosicionSecuencia();
         if (destino != null) {
-            // La posición tiene que estar libre, salvo que sea la misma que ya tenía esta
-            // categoría (el caso normal de editar el nombre).
-            if (!destino.equals(categoriaActual.getPosicionSecuencia())
-                    && repoCategorias.existsByPosicionSecuencia(destino)) {
-                throw new ConflictoException(
-                        "Ya hay una categoría en la posición " + destino + ".");
-            }
-
+            // La posición de destino puede estar ocupada: el gestor corre en bloque a las
+            // categorías del medio y valida el rango permitido.
             gestorSecuencia.desplazarParaActualizar(
                     repoCategorias,
                     categoriaActual.getPosicionSecuencia(),
@@ -168,7 +157,6 @@ public class CategoriaService {
      */
     @Transactional
     public void eliminarCategoria(UUID idAdmin, UUID id) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         Categoria categoria = repoCategorias.obtenerPorId(id);
         if (categoria == null) {

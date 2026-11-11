@@ -13,6 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PersonaDonanteDTO {
     private UUID id;
+    private Boolean activo;
     private String nombre;
     private String apellido;
     private String nombreDeUsuario;

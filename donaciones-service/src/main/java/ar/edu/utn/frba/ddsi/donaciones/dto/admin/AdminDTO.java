@@ -27,7 +27,11 @@ public class AdminDTO {
         MedioDeContacto contacto = (this.medioDeContacto != null) ? this.medioDeContacto.toDomain() : null;
         if (contacto == null) throw new IllegalArgumentException("El administrador debe tener un medio de contacto asignado.");
         Humana humano = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen);
-        return new Administrador(humano, contacto, this.nombreAMostrar);
+        Administrador admin = new Administrador(humano, contacto, this.nombreAMostrar);
+        if (this.id != null && !this.id.isBlank()) {
+            admin.setId(UUID.fromString(this.id.trim()));
+        }
+        return admin;
     }
 
     public static AdminDTO from(Administrador admin) {

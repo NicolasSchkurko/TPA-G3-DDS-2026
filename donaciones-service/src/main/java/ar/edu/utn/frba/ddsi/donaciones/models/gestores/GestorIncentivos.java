@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.Repositori
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +62,12 @@ public class GestorIncentivos {
     @Transactional
     public UUID encolarActualizacionPerfil(UUID idUsuario, IDDTO dto) {
         return encolar(TipoNotificacionIncentivos.ACTUALIZACION_PERFIL, idUsuario, dto);
+    }
+
+    /** Encola la baja del perfil en la transacción que da de baja al donante. */
+    @Transactional
+    public UUID encolarEliminacionPerfil(UUID idUsuario) {
+        return encolar(TipoNotificacionIncentivos.ELIMINAR_PERFIL, idUsuario, Map.of());
     }
 
     private UUID encolar(TipoNotificacionIncentivos tipo, UUID idUsuario, Object payload) {
@@ -142,6 +149,8 @@ public class GestorIncentivos {
                 case ACTUALIZACION_PERFIL -> incentivosClient.actualizarPerfil(
                         reclamada.idUsuario(),
                         objectMapper.readValue(reclamada.payloadJson(), IDDTO.class));
+                case ELIMINAR_PERFIL -> incentivosClient.eliminarPerfil(
+                        reclamada.idUsuario());
                 default -> throw new IllegalStateException(
                         "Tipo de notificación a incentivos desconocido: " + reclamada.tipo());
             }

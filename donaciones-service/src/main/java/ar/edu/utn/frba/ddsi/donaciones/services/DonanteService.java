@@ -288,9 +288,10 @@ public class DonanteService {
    * personales sensibles (persona y dirección), preservando intacta la clave foránea del donante
    * en donaciones y formularios para evitar NullPointerExceptions en trazabilidad logística.
    *
-   * <p>Punto 35: Notifica la baja a incentivos-service SOLO una vez confirmado el soft delete
-   * local en la base de datos (después del commit o flush), capturando cualquier excepción para que
-   * caídas o demoras de incentivos no aborten la baja local ni provoquen inconsistencias.
+   * <p>Punto 35: Encola la baja en la outbox durable de incentivos dentro de la misma
+   * transacción del soft delete; después del commit intenta enviarla. Si incentivos está caído,
+   * el scheduler de la outbox la reintenta con backoff. Así la baja local no se pierde ni
+   * aborta por una falla remota.
    */
   @Transactional(rollbackFor = Exception.class)
   public void eliminarPersona(UUID id) {
@@ -303,26 +304,21 @@ public class DonanteService {
     repositorioDonantes.actualizar(id, donante);
     repositorioDonantes.flush();
 
-    Runnable notificarIncentivos = () -> {
-      try {
-        incentivosClient.eliminarPerfil(id);
-      } catch (Exception e) {
-        log.warn("No se pudo notificar la baja a incentivos-service para el donante {}: {}", id, e.getMessage());
-      }
-    };
-
-    if (TransactionSynchronizationManager.isActualTransactionActive()) {
-      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-        @Override
-        public void afterCommit() {
-          notificarIncentivos.run();
+    if (gestorIncentivos != null) {
+      UUID outboxId = gestorIncentivos.encolarEliminacionPerfil(id);
+      ejecutarDespuesDelCommit(() -> gestorIncentivos.intentarAhora(outboxId));
+    } else if (incentivosClient != null) {
+      ejecutarDespuesDelCommit(() -> {
+        try {
+          incentivosClient.eliminarPerfil(id);
+        } catch (Exception e) {
+          log.warn("No se pudo notificar la baja a incentivos-service para el donante {}: {}",
+              id, e.getMessage());
         }
       });
-    } else {
-      notificarIncentivos.run();
     }
 
-    System.out.println("Donante dado de baja con éxito.");
+    log.info("Donante {} dado de baja", id);
   }
 
   public UUID importarDonantes(MultipartFile file, List<MapeoCSV> mapeosCsv) {

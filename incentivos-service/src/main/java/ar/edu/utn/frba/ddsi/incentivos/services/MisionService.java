@@ -12,7 +12,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -34,20 +33,18 @@ public class MisionService {
     private final RepositorioCategorias repoCategorias;
     private final MisionFactory misionFactory;
     private final SincronizacionPerfiles gestorSincronizacion;
-    private final ValidadorAdmin validadorAdmin;
 
     public MisionService(RepositorioMisiones repoMisiones,
                        RepositorioPerfiles repoPerfiles,
                        RepositorioCategorias repoCategorias,
                        MisionFactory misionFactory,
-                       SincronizacionPerfiles gestorSincronizacion,
-                       ValidadorAdmin validadorAdmin) {
+                       SincronizacionPerfiles gestorSincronizacion
+    ) {
         this.repoMisiones = repoMisiones;
         this.repoPerfiles = repoPerfiles;
         this.repoCategorias = repoCategorias;
         this.misionFactory = misionFactory;
         this.gestorSincronizacion = gestorSincronizacion;
-        this.validadorAdmin = validadorAdmin;
     }
 
     /** Lista paginada, con filtro opcional por nombre, insignia objetivo o atributo. */
@@ -77,7 +74,6 @@ public class MisionService {
      */
     @Transactional
     public MisionDTO crearMision(UUID idAdmin, MisionDTO dto) {
-        validadorAdmin.verificarPermisos(idAdmin);
         Mision mision = construirMision(idAdmin, dto);
         repoMisiones.save(mision);
         return MisionDTO.desdeEntidad(mision);
@@ -89,7 +85,6 @@ public class MisionService {
      */
     @Transactional
     public MisionDTO actualizarMision(UUID idAdmin, UUID idMision, MisionDTO dto) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         Mision misionActual = repoMisiones.findById(idMision)
                 .orElseThrow(() -> new InexistenteException(
@@ -114,7 +109,6 @@ public class MisionService {
      */
     @Transactional
     public void eliminarMision(UUID idAdmin, UUID idMision) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         Mision mision = repoMisiones.findById(idMision)
                 .orElseThrow(() -> new InexistenteException(

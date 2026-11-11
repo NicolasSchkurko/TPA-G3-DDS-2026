@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.incentivos.models.gestores;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,8 +13,10 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
+import jakarta.persistence.EntityManager;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -23,18 +26,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("Punto 30: quitar una misión de una categoría no bloquea al donante")
-class SincronizacionPerfilesMisionRemovidaTest {
+class SincronizacionPerfilesTest {
 
     private RepositorioPerfiles repoPerfiles;
+    private EntityManager entityManager;
     private SincronizacionPerfiles sincronizacion;
 
     @BeforeEach
     void setUp() {
         repoPerfiles = mock(RepositorioPerfiles.class);
+        entityManager = mock(EntityManager.class);
         sincronizacion = new SincronizacionPerfiles(repoPerfiles);
+        ReflectionTestUtils.setField(sincronizacion, "entityManager", entityManager);
         when(repoPerfiles.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -71,7 +79,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
     private Categoria categoriaConDos(Perfil donante) {
         Categoria categoria = new Categoria("Colaborador", null, 2,
                 List.of(mision("A"), mision("B")));
-        when(repoPerfiles.findAllByCategoriaActual(categoria)).thenReturn(List.of(donante));
+        when(repoPerfiles.findByCategoriaActual(eq(categoria), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(donante)));
         return categoria;
     }
 
@@ -108,7 +116,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
             Perfil donante = donanteEn(a);
 
             Categoria categoria = new Categoria("Colaborador", null, 2, List.of(b, mision("C")));
-            when(repoPerfiles.findAllByCategoriaActual(categoria)).thenReturn(List.of(donante));
+            when(repoPerfiles.findByCategoriaActual(eq(categoria), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(donante)));
 
             sincronizacion.actualizarMisionesPorCambioDeCategoria(
                     categoria, dondeEstaba(a, 1));
@@ -140,7 +148,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
             Perfil donante = donanteEn(c);
 
             Categoria vacia = new Categoria("Colaborador", null, 0, List.of());
-            when(repoPerfiles.findAllByCategoriaActual(vacia)).thenReturn(List.of(donante));
+            when(repoPerfiles.findByCategoriaActual(eq(vacia), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(donante)));
 
             sincronizacion.actualizarMisionesPorCambioDeCategoria(
                     vacia, dondeEstaba(c, 3));
@@ -162,7 +170,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
             Mision b = mision("B");
             Perfil donante = donanteEn(b);
             Categoria categoria = new Categoria("Colaborador", null, 2, List.of(a, b));
-            when(repoPerfiles.findAllByCategoriaActual(categoria)).thenReturn(List.of(donante));
+            when(repoPerfiles.findByCategoriaActual(eq(categoria), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(donante)));
 
             sincronizacion.actualizarMisionesPorCambioDeCategoria(
                     categoria, dondeEstaba(b, 2));
@@ -182,7 +190,7 @@ class SincronizacionPerfilesMisionRemovidaTest {
             Perfil donante = donanteEn(a);
 
             Categoria categoria = new Categoria("Colaborador", null, 2, List.of(a, b));
-            when(repoPerfiles.findAllByCategoriaActual(categoria)).thenReturn(List.of(donante));
+            when(repoPerfiles.findByCategoriaActual(eq(categoria), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(donante)));
 
             sincronizacion.actualizarMisionesPorCambioDeCategoria(
                     categoria, dondeEstaba(a, 1));
@@ -190,6 +198,34 @@ class SincronizacionPerfilesMisionRemovidaTest {
             assertThat(donante.getProgresoMisionActual().getMision().getNombreMision())
                     .isEqualTo("A");
             verify(repoPerfiles).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("reiniciar progreso también pagina y resetea cada perfil")
+        void reiniciarProgresoPagina() {
+            UUID idMision = UUID.randomUUID();
+            Perfil perfil = mock(Perfil.class);
+            ProgresoMision progreso = mock(ProgresoMision.class);
+            when(perfil.getProgresoMisionActual()).thenReturn(progreso);
+            when(repoPerfiles.findByMisionActualPaginado(eq(idMision), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(perfil)));
+
+            sincronizacion.reiniciarProgresoDeMision(idMision);
+
+            verify(progreso).reiniciarProgreso();
+            verify(repoPerfiles).saveAll(List.of(perfil));
+        }
+
+        @Test
+        @DisplayName("después de guardar la página libera los perfiles del persistence context")
+        void liberaLaPagina() {
+            Mision c = mision("C");
+            Perfil donante = donanteEn(c);
+
+            sincronizacion.actualizarMisionesPorCambioDeCategoria(
+                    categoriaConDos(donante), dondeEstaba(c, 3));
+
+            verify(entityManager).detach(donante);
         }
 
         @Test

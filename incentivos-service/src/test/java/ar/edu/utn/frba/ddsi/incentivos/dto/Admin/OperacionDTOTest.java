@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("OperacionDTO: el valor esperado tiene que volver como texto plano")
-class OperacionDTOValorEsperadoTest {
+class OperacionDTOTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -20,15 +20,19 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.InsigniaObtenida;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.ProgresoMision;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioDonaciones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,8 +54,15 @@ public class PerfilService {
     /** Reintentos de una donación que perdió la carrera de concurrencia. */
     private static final int MAX_INTENTOS_CONCURRENCIA = 3;
 
+    /** Espera mínima y máxima antes de reintentar una carrera de concurrencia. */
+    private static final long RETRASO_MINIMO_MS = 20;
+    private static final long RETRASO_MAXIMO_MS = 100;
+
     /** Perfiles por bloque en la pasada de constancia: chico para el heap, grande para amortizar transacciones. */
     private static final int TAMANO_BLOQUE_CONSTANCIA = 500;
+
+    /** Perfiles por transacción en el alta en lote. */
+    private static final int TAMANO_BLOQUE_LOTE = 100;
 
     private final RepositorioPerfiles repositorioPerfiles;
     private final RepositorioCategorias repositorioCategorias;
@@ -60,18 +71,16 @@ public class PerfilService {
     /** Inyectado a mano: el reintento necesita abrir una transacción nueva sin pasar por el proxy. */
     private final TransactionTemplate transactionTemplate;
 
-    private final ValidadorAdmin validadorAdmin;
 
     public PerfilService(RepositorioPerfiles repositorioPerfiles,
                          RepositorioCategorias repositorioCategorias,
                          RepositorioDonaciones repositorioDonaciones,
-                         TransactionTemplate transactionTemplate,
-                         ValidadorAdmin validadorAdmin) {
+                         TransactionTemplate transactionTemplate
+    ) {
         this.repositorioPerfiles = repositorioPerfiles;
         this.repositorioCategorias = repositorioCategorias;
         this.repositorioDonaciones = repositorioDonaciones;
         this.transactionTemplate = transactionTemplate;
-        this.validadorAdmin = validadorAdmin;
     }
 
     /**
@@ -114,11 +123,28 @@ public class PerfilService {
 
     /** El cuerpo de un bloque, dentro de su propia transacción. */
     private void recalcularConstanciaDe(List<Perfil> perfiles) {
-        perfiles.forEach(perfil -> perfil.verificarProgresoMision(
-                repositorioDonaciones.findByIdUsuarioAndIdMisionOrderByFechaEntregaAsc(
-                        perfil.getIdUsuario(),
-                        perfil.getProgresoMisionActual().getMision().getIdMision())
-        ));
+        List<UUID> idsUsuarios = perfiles.stream().map(Perfil::getIdUsuario).toList();
+        Set<UUID> misiones = perfiles.stream()
+                .map(perfil -> perfil.getProgresoMisionActual().getMision().getIdMision())
+                .collect(Collectors.toSet());
+
+        // Una sola consulta por bloque: antes era una por perfil.
+        Map<UUID, List<ImpactoDonacion>> donacionesPorUsuario = repositorioDonaciones
+                .buscarDonacionesQueProgresaronDePerfiles(idsUsuarios, misiones)
+                .stream()
+                .collect(Collectors.groupingBy(ImpactoDonacion::getIdUsuario));
+
+        for (Perfil perfil : perfiles) {
+            UUID idMision = perfil.getProgresoMisionActual().getMision().getIdMision();
+            List<ImpactoDonacion> donacionesDelPerfil =
+                    donacionesPorUsuario.getOrDefault(perfil.getIdUsuario(), List.of())
+                            .stream()
+                            .filter(donacion -> Objects.equals(
+                                    donacion.getIdMision(), idMision))
+                            .toList();
+
+            perfil.verificarProgresoMision(donacionesDelPerfil);
+        }
 
         repositorioPerfiles.saveAll(perfiles);
     }
@@ -140,36 +166,107 @@ public class PerfilService {
      * Alta en lote: la importación CSV de donaciones manda hasta 500 perfiles por llamada.
      * Un perfil que ya existe se saltea (reintentar una importación parcial es idempotente) y
      * una fila rota no tumba el resto: el motivo queda en {@code errores}.
-     * Cada ítem se persiste en su propia transacción para que un fallo en la base de datos
-     * no marque la sesión en rollback-only ni anule a los perfiles válidos del lote.
+     * La categoría base se resuelve una sola vez y los perfiles se persisten con
+     * {@code saveAll} en bloques acotados; si un bloque falla, se reintenta ítem por ítem
+     * para aislar la fila rota.
      */
     public ResultadoLotePerfilesDTO crearPerfilesEnLote(List<PerfilDonanteDTO> perfiles) {
+        if (perfiles.isEmpty()) {
+            return new ResultadoLotePerfilesDTO(0, 0, List.of());
+        }
+
+        Optional<Categoria> categoriaBase = repositorioCategorias.obtenerCategoriaBase();
+        if (categoriaBase.isEmpty()) {
+            String mensaje = "No existe la categoría base configurada";
+            List<String> errores = perfiles.stream()
+                    .map(perfil -> perfil.getIdUsuario() + ": " + mensaje)
+                    .toList();
+            return new ResultadoLotePerfilesDTO(0, 0, errores);
+        }
+
         int creados = 0;
         int yaExistian = 0;
         List<String> errores = new ArrayList<>();
 
-        for (PerfilDonanteDTO perfil : perfiles) {
-            try {
-                Boolean creado = transactionTemplate.execute(status -> {
-                    if (repositorioPerfiles.existsById(perfil.getIdUsuario())) {
-                        return false;
-                    }
-                    crearPerfilNuevo(perfil);
-                    return true;
-                });
+        for (int desde = 0; desde < perfiles.size(); desde += TAMANO_BLOQUE_LOTE) {
+            List<PerfilDonanteDTO> bloque = perfiles.subList(
+                    desde, Math.min(desde + TAMANO_BLOQUE_LOTE, perfiles.size()));
 
-                if (Boolean.TRUE.equals(creado)) {
-                    creados++;
-                } else {
-                    yaExistian++;
-                }
+            ResultadoBloque resultado =
+                    procesarBloque(bloque, categoriaBase.get());
+            creados += resultado.creados();
+            yaExistian += resultado.yaExistian();
+            errores.addAll(resultado.errores());
+        }
+
+        return new ResultadoLotePerfilesDTO(creados, yaExistian, errores);
+    }
+
+    /** Persiste un bloque con saveAll; si falla, reintenta ítem por ítem para aislar el error. */
+    private ResultadoBloque procesarBloque(List<PerfilDonanteDTO> bloque,
+                                           Categoria categoriaBase) {
+        List<UUID> ids = bloque.stream().map(PerfilDonanteDTO::getIdUsuario).toList();
+        Set<UUID> existentes = new HashSet<>(
+                repositorioPerfiles.buscarIdsExistentes(ids));
+
+        int yaExistian = 0;
+        Set<UUID> idsDelBloque = new HashSet<>();
+        List<PerfilDonanteDTO> nuevos = new ArrayList<>();
+        for (PerfilDonanteDTO perfil : bloque) {
+            if (existentes.contains(perfil.getIdUsuario())
+                    || !idsDelBloque.add(perfil.getIdUsuario())) {
+                yaExistian++;
+            } else {
+                nuevos.add(perfil);
+            }
+        }
+
+        if (nuevos.isEmpty()) {
+            return new ResultadoBloque(0, yaExistian, List.of());
+        }
+
+        try {
+            Integer creados = transactionTemplate.execute(estado -> {
+                List<Perfil> perfilesNuevos = nuevos.stream()
+                        .map(perfil -> construirPerfil(perfil, categoriaBase))
+                        .toList();
+                repositorioPerfiles.saveAll(perfilesNuevos);
+                repositorioPerfiles.flush();
+                return perfilesNuevos.size();
+            });
+            return new ResultadoBloque(
+                    creados == null ? 0 : creados, yaExistian, List.of());
+        } catch (Exception bloqueFallido) {
+            log.warn("Fallo el bloque de perfiles; se reintenta ítem por ítem: {}",
+                    bloqueFallido.getMessage());
+            return reintentarUnoPorUno(nuevos, categoriaBase, yaExistian);
+        }
+    }
+
+    private ResultadoBloque reintentarUnoPorUno(List<PerfilDonanteDTO> nuevos,
+                                                Categoria categoriaBase,
+                                                int yaExistian) {
+        int creados = 0;
+        List<String> errores = new ArrayList<>();
+
+        for (PerfilDonanteDTO perfil : nuevos) {
+            try {
+                transactionTemplate.executeWithoutResult(estado -> {
+                    repositorioPerfiles.save(construirPerfil(perfil, categoriaBase));
+                    repositorioPerfiles.flush();
+                });
+                creados++;
             } catch (Exception e) {
-                log.warn("Fallo al persistir perfil en lote {}: {}", perfil.getIdUsuario(), e.getMessage());
+                log.warn("Fallo al persistir perfil en lote {}: {}",
+                        perfil.getIdUsuario(), e.getMessage());
                 errores.add(formatearError(perfil.getIdUsuario(), e));
             }
         }
 
-        return new ResultadoLotePerfilesDTO(creados, yaExistian, errores);
+        return new ResultadoBloque(creados, yaExistian, errores);
+    }
+
+    private record ResultadoBloque(int creados, int yaExistian, List<String> errores) {
     }
 
     private String formatearError(UUID idUsuario, Exception e) {
@@ -181,18 +278,20 @@ public class PerfilService {
     }
 
     private PerfilDTO crearPerfilNuevo(PerfilDonanteDTO dto) {
-        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
-
         Categoria categoriaBase = repositorioCategorias.obtenerCategoriaBase()
                 .orElseThrow(() -> new CategoriaBaseInexistenteException(
                         "No existe la categoría base configurada"));
 
-        // El agregado arma su propio estado inicial: categoría y primera misión.
-        nuevo.iniciarEn(categoriaBase);
-
-        Perfil guardado = repositorioPerfiles.save(nuevo);
+        Perfil guardado = repositorioPerfiles.save(construirPerfil(dto, categoriaBase));
         repositorioPerfiles.flush();
         return convertirPerfilADTO(guardado);
+    }
+
+    private Perfil construirPerfil(PerfilDonanteDTO dto, Categoria categoriaBase) {
+        Perfil nuevo = new Perfil(dto.getIdUsuario(), dto.getNombreUsuario());
+        // El agregado arma su propio estado inicial: categoría y primera misión.
+        nuevo.iniciarEn(categoriaBase);
+        return nuevo;
     }
 
     /** El perfil completo de un donante, con su categoría y su misión en curso. */
@@ -278,11 +377,33 @@ public class PerfilService {
                 log.warn("Carrera de concurrencia al aplicar la donacion {} de {}; "
                                 + "intento {} de {}",
                         dto.getIdDonacion(), idUsuario, intento, MAX_INTENTOS_CONCURRENCIA);
+
+                if (intento < MAX_INTENTOS_CONCURRENCIA) {
+                    esperarReintento(intento);
+                }
             }
         }
 
         // Se agotaron los intentos: el handler traduce la excepción a 409.
         throw ultimaFalla;
+    }
+
+    /** Espera con backoff exponencial y jitter antes de reintentar una carrera. */
+    void esperarReintento(int intento) {
+        long retraso = retrasoMilisegundos(intento);
+        try {
+            Thread.sleep(retraso);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Se interrumpió el reintento de la donación", e);
+        }
+    }
+
+    /** Retraso del intento indicado, acotado entre {@code RETRASO_MINIMO_MS} y el máximo. */
+    static long retrasoMilisegundos(int intento) {
+        long maximo = Math.min(RETRASO_MAXIMO_MS, RETRASO_MINIMO_MS * (1L << intento));
+        return ThreadLocalRandom.current().nextLong(RETRASO_MINIMO_MS, maximo + 1);
     }
 
     /**
@@ -306,7 +427,7 @@ public class PerfilService {
             return Boolean.TRUE.equals(yaProcesada.get().getCompletMision());
         }
 
-        Perfil p = repositorioPerfiles.findById(idUsuario)
+        Perfil p = repositorioPerfiles.findByIdParaDonacion(idUsuario)
                                       .filter(Perfil::isActivo)
                                       .orElseThrow(InexistenteException::new);
 
@@ -387,7 +508,6 @@ public class PerfilService {
      */
     @Transactional
     public PerfilDTO actualizarDatosPerfil(UUID idUsuario, UUID idAdmin, PerfilDTO dto) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         if (idUsuario == null) {
             throw new IllegalArgumentException("El ID del usuario no puede ser nulo");
@@ -397,8 +517,8 @@ public class PerfilService {
                                       .filter(Perfil::isActivo)
                                       .orElseThrow(InexistenteException::new);
 
-        if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isEmpty()) {
-            p.cambiarNombre(dto.getNombreUsuario());
+        if (dto.getNombreUsuario() != null && !dto.getNombreUsuario().isBlank()) {
+            p.cambiarNombre(dto.getNombreUsuario().trim());
         }
 
         Perfil actualizado = repositorioPerfiles.save(p);
@@ -485,7 +605,6 @@ public class PerfilService {
      */
     @Transactional
     public void eliminarPerfil(UUID idUsuario, UUID idAdmin) {
-        validadorAdmin.verificarPermisos(idAdmin);
 
         Perfil perfil = repositorioPerfiles.findById(idUsuario)
                 .filter(Perfil::isActivo)
@@ -497,7 +616,7 @@ public class PerfilService {
     /**
      * Variante sin autenticación para el borrado en cascada que dispara donaciones-service al
      * eliminar un donante: la baja ya la autorizó donaciones-service, así que exigir
-     * {@code Admin-Id} acá solo duplicaría (mal) esa validación. Idempotente -- si el donante
+     * una autorización de admin acá solo duplicaría (mal) esa validación. Idempotente -- si el donante
      * nunca llegó a donar o ya fue dado de baja, no falla -- para que donaciones-service no
      * tenga que distinguir "ya no tenía perfil" de "se dio de baja bien".
      */

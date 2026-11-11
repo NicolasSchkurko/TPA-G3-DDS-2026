@@ -58,6 +58,7 @@
                             <option value="" disabled selected hidden>Seleccioná una opción</option>
                             <option value="DONANTE">Donante</option>
                             <option value="ENTIDAD">Entidad beneficiaria</option>
+                            <option sec:authorize="hasRole('ADMIN')" value="ADMIN">Administrador</option>
                         </select>
                     </div>
 

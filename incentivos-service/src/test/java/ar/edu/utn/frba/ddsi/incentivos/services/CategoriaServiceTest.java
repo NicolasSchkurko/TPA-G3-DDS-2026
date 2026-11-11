@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.incentivos.services;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -13,11 +14,11 @@ import ar.edu.utn.frba.ddsi.incentivos.exceptions.InexistenteException;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil.Categoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SecuenciaCategoria;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,8 +47,7 @@ class CategoriaServiceTest {
                 repoMisiones,
                 repoPerfiles,
                 gestorSecuencia,
-                mock(SincronizacionPerfiles.class),
-                mock(ValidadorAdmin.class)
+                mock(SincronizacionPerfiles.class)
         );
     }
 
@@ -146,6 +146,39 @@ class CategoriaServiceTest {
             service.agregarCategoria(ADMIN, dto("Plata", 3));
 
             verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3, gestorSecuencia.posicionMaxima(repoCategorias));
+        }
+    }
+
+    @Nested
+    @DisplayName("Actualizar una categoría")
+    class Actualizar {
+
+        private UUID id;
+        private Categoria categoria;
+
+        @BeforeEach
+        void preparar() {
+            id = UUID.randomUUID();
+            categoria = new Categoria("Bronce", null, 1, List.of());
+            when(repoCategorias.findById(id)).thenReturn(Optional.of(categoria));
+            when(repoMisiones.conseguirMisiones(any())).thenReturn(List.of());
+            when(repoCategorias.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(gestorSecuencia.posicionMaxima(repoCategorias)).thenReturn(3);
+        }
+
+        @Test
+        @DisplayName("mover a una posición ocupada reordena en vez de dar 409")
+        void moverAPosicionOcupadaReordena() {
+            // La posición 2 ya está ocupada por otra categoría. El guard viejo consultaba
+            // esto y lanzaba un 409 espurio; el fix ya no debe consultarlo.
+            when(repoCategorias.existsByPosicionSecuencia(2)).thenReturn(true);
+
+            service.actualizarCategoria(ADMIN, id, dto("Bronce", 2));
+
+            verify(gestorSecuencia).desplazarParaActualizar(repoCategorias, 1, 2, 3);
+            verify(repoCategorias).save(categoria);
+            verify(repoCategorias, never()).existsByPosicionSecuencia(any());
+            assertThat(categoria.getPosicionSecuencia()).isEqualTo(2);
         }
     }
 }

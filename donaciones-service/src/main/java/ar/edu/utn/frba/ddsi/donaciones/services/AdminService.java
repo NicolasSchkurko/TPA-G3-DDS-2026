@@ -40,6 +40,10 @@ public class AdminService {
     }
 
     public AdminDTO crearAdministrador(AdminDTO dto) {
+        if (dto.getId() == null || dto.getId().isBlank()) {
+            throw new IllegalArgumentException(
+                    "El administrador necesita el id de su cuenta de Keycloak.");
+        }
         Administrador nuevoAdmin = dto.toDomain();
         // La Humana vive en su propio repositorio (RepositorioDePersonas), igual que Juridica
         // para EntidadBeneficiaria: se registra explícitamente antes de guardar el Administrador.

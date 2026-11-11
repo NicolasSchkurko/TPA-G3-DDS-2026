@@ -25,6 +25,11 @@
       "key": "donacionesUrl",
       "value": "http://localhost:8084",
       "description": "Puerto del servicio de donaciones para crear el administrador requerido en operaciones protegidas"
+    },
+    {
+      "key": "adminId",
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "description": "UUID de Keycloak del admin (o uno de prueba); ya no se usa como credencial."
     }
   ],
   "item": [
@@ -43,7 +48,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"nombreAMostrar\":\"Admin Postman Incentivos\",\"nombre\":\"Test\",\"apellido\":\"Incentivos\",\"edad\":35,\"numeroDeDocumento\":{{$randomInt}},\"genero\":\"OTRO\",\"medioDeContacto\":{\"tipo\":\"EMAIL\",\"valor\":\"{{$randomEmail}}\"}}"
+              "raw": "{\"id\":\"{{adminId}}\",\"nombreAMostrar\":\"Admin Postman Incentivos\",\"nombre\":\"Test\",\"apellido\":\"Incentivos\",\"edad\":35,\"numeroDeDocumento\":{{$randomInt}},\"genero\":\"OTRO\",\"medioDeContacto\":{\"tipo\":\"EMAIL\",\"valor\":\"{{$randomEmail}}\"}}"
             },
             "url": {
               "raw": "{{donacionesUrl}}/api/admins",
@@ -317,10 +322,6 @@
             "method": "PUT",
             "header": [
               {
-                "key": "Admin-Id",
-                "value": "{{adminId}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -365,12 +366,7 @@
           "name": "Eliminar un perfil",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Admin-Id",
-                "value": "{{adminId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/perfiles/:idUsuario",
               "host": [

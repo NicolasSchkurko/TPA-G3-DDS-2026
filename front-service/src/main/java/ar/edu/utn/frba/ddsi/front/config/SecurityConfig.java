@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
                 .requestMatchers(HttpMethod.GET, "/donaciones/{id}").permitAll()
                 .requestMatchers("/panel", "/donaciones/**", "/donantes/**", "/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/reconciliacion/**").hasRole("ADMIN")
                 .requestMatchers("/donante/**").hasRole("DONANTE")
                 .requestMatchers("/chofer/**").hasRole("CHOFER")
                 .requestMatchers("/entidad/**").hasRole("ENTIDAD")

@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -16,13 +17,18 @@ import org.springframework.stereotype.Repository;
 public interface RepositorioPublicacionesPendientes
         extends JpaRepository<PublicacionPendienteN8n, UUID> {
 
-    /** Trae las publicaciones disponibles ordenadas por creación; el service toma la primera. */
+    /**
+     * Trae las publicaciones disponibles ordenadas por creación. El {@code Pageable} acota
+     * el bloqueo pesimista a la fila que se va a reclamar.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PublicacionPendienteN8n p "
-            + "WHERE p.proximoIntento <= :ahora "
+            + "WHERE p.descartada = false "
+            + "AND p.proximoIntento <= :ahora "
             + "AND (p.leaseHasta IS NULL OR p.leaseHasta <= :ahora) "
             + "ORDER BY p.fechaCreacion, p.id")
     List<PublicacionPendienteN8n> buscarSiguienteParaEnviar(
-            @Param("ahora") LocalDateTime ahora
+            @Param("ahora") LocalDateTime ahora,
+            Pageable pageable
     );
 }
