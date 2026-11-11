@@ -2,9 +2,11 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
+import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,8 +29,13 @@ public class HomeController {
 
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
+    private static final String CONFLICTO_DE_PERFIL =
+            "Ese perfil ya está vinculado a otra cuenta. Iniciá sesión con la cuenta original "
+                    + "o contactá a un administrador.";
+
     private final DonacionesClient donacionesClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
+    private final PoliticaDeReclamo politicaDeReclamo;
 
     @Value("${servicio.donaciones.url}")
     private String donacionesUrl;
@@ -42,9 +49,17 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
-    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
+    @Autowired
+    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient,
+                          PoliticaDeReclamo politicaDeReclamo) {
         this.donacionesClient = donacionesClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
+        this.politicaDeReclamo = politicaDeReclamo;
+    }
+
+    /** Compatibilidad con los stubs de tests (verificación de email desactivada). */
+    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
+        this(donacionesClient, keycloakRegistrationClient, new PoliticaDeReclamo(false));
     }
 
     @GetMapping("/login")
@@ -120,12 +135,20 @@ public class HomeController {
                     datos.put("username", username);
                     datos.put("keycloakSub", userId);
                     perfilId = donacionesClient.registrarUsuario(form.get("tipoRegistro"), datos);
+                } else if (!politicaDeReclamo.puedeReclamar(identidadPrevia.isVinculada(), false)) {
+                    // El perfil ya está reclamado por otra cuenta: no se puede apropiar.
+                    eliminarCuentaSiCorresponde(userId);
+                    model.addAttribute("error", CONFLICTO_DE_PERFIL);
+                    return "register";
                 } else if (userId != null) {
-                    // El perfil existía: lo vinculamos con esta cuenta de Keycloak.
+                    // Perfil huérfano: lo vinculamos con esta cuenta de Keycloak.
                     try {
                         donacionesClient.vincularIdentidad(userId, role, perfilId);
                     } catch (Exception mappingError) {
+                        eliminarCuentaSiCorresponde(userId);
                         log.warn("No se pudo vincular el perfil existente de {} ({}): {}", username, role, mappingError.getMessage());
+                        model.addAttribute("error", CONFLICTO_DE_PERFIL);
+                        return "register";
                     }
                 }
             } catch (IllegalArgumentException e) {
@@ -151,7 +174,12 @@ public class HomeController {
                 ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO identidad = userId != null
                         ? donacionesClient.buscarIdentidadPorSub(userId) : null;
                 if (identidad == null) {
-                    identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                    // El fallback por email solo puede traer un perfil huérfano:
+                    // nunca se heredan roles de un perfil ya reclamado por otra cuenta.
+                    IdentidadDTO porEmail = donacionesClient.buscarIdentidadPorEmail(email);
+                    if (porEmail != null && politicaDeReclamo.puedeReclamar(porEmail.isVinculada(), false)) {
+                        identidad = porEmail;
+                    }
                 }
                 if (identidad != null) {
                     if (identidad.getRoles() != null) {
@@ -282,6 +310,12 @@ public class HomeController {
         } catch (Exception e) {
             log.error("No se pudo revertir el alta de la cuenta de Keycloak {}", userId, e);
         }
+    }
+
+    /** Términos y condiciones y política de privacidad. Página pública. */
+    @GetMapping("/terminos")
+    public String terminos() {
+        return "terminos";
     }
 
     /**

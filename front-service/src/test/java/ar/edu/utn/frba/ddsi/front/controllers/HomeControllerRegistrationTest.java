@@ -135,6 +135,84 @@ class HomeControllerRegistrationTest {
         assertTrue(keycloakClient.deleted);
     }
 
+
+    @Test
+    void unPerfilHuerfanoExistenteSeReclamaConLaCuentaNueva() {
+        DonacionesClientStub donacionesClient = new DonacionesClientStub();
+        UUID perfilId = UUID.fromString("222e4567-e89b-12d3-a456-426614174000");
+        donacionesClient.identidad = entidadIdentidad(perfilId, false);
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertEquals("register", controller.register(formularioEntidad("entidad@example.com"), model));
+
+        assertEquals("Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.",
+                model.getAttribute("msg"));
+        assertTrue(donacionesClient.vincularLlamado);
+        assertEquals("ENTIDAD", donacionesClient.vinculadoConRol);
+        assertEquals(perfilId, donacionesClient.vinculadoConPerfil);
+        org.junit.jupiter.api.Assertions.assertFalse(keycloakClient.deleted);
+    }
+
+    @Test
+    void unPerfilVinculadoAOtraCuentaNoSeReclamaYSeRevierteLaCuenta() {
+        DonacionesClientStub donacionesClient = new DonacionesClientStub();
+        UUID perfilId = UUID.fromString("222e4567-e89b-12d3-a456-426614174000");
+        donacionesClient.identidad = entidadIdentidad(perfilId, true);
+        donacionesClient.vincularError =
+                new IllegalStateException("Ese perfil ya está vinculado a otra cuenta.");
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertEquals("register", controller.register(formularioEntidad("entidad@example.com"), model));
+
+        assertEquals("Ese perfil ya está vinculado a otra cuenta. Iniciá sesión con la cuenta original "
+                        + "o contactá a un administrador.",
+                model.getAttribute("error"));
+        assertTrue(keycloakClient.deleted);
+        org.junit.jupiter.api.Assertions.assertFalse(donacionesClient.vincularLlamado);
+    }
+
+    @Test
+    void siElVinculoDelPerfilFallaSeRevierteLaCuenta() {
+        DonacionesClientStub donacionesClient = new DonacionesClientStub();
+        UUID perfilId = UUID.fromString("222e4567-e89b-12d3-a456-426614174000");
+        donacionesClient.identidad = entidadIdentidad(perfilId, false);
+        donacionesClient.vincularError =
+                new IllegalStateException("Ese perfil ya está vinculado a otra cuenta.");
+        KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, keycloakClient);
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertEquals("register", controller.register(formularioEntidad("entidad@example.com"), model));
+
+        assertEquals("Ese perfil ya está vinculado a otra cuenta. Iniciá sesión con la cuenta original "
+                        + "o contactá a un administrador.",
+                model.getAttribute("error"));
+        assertTrue(keycloakClient.deleted);
+    }
+
+    private static Map<String, String> formularioEntidad(String email) {
+        return Map.of(
+                "username", "nueva-entidad",
+                "password", "password-segura",
+                "tipoRegistro", "ENTIDAD",
+                "email", email,
+                "razonSocial", "Entidad Ejemplo"
+        );
+    }
+
+    private static ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO entidadIdentidad(UUID entidadId, boolean vinculada) {
+        ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO dto = new ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO();
+        dto.setEmail("entidad@example.com");
+        dto.setEntidadId(entidadId);
+        dto.setVinculada(vinculada);
+        dto.setRoles(java.util.List.of("ENTIDAD"));
+        return dto;
+    }
+
     private static class DonacionesClientStub extends DonacionesClient {
         private HttpClientErrorException error;
         private String tipoRegistro;
@@ -144,9 +222,15 @@ class HomeControllerRegistrationTest {
             super(RestClient.builder().build(), "http://localhost");
         }
 
+        private ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO identidad;
+        private RuntimeException vincularError;
+        private boolean vincularLlamado;
+        private String vinculadoConRol;
+        private UUID vinculadoConPerfil;
+
         @Override
         public ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO buscarIdentidadPorEmail(String email) {
-            return null;
+            return identidad;
         }
 
         @Override
@@ -156,7 +240,12 @@ class HomeControllerRegistrationTest {
 
         @Override
         public void vincularIdentidad(String sub, String rol, UUID perfilId) {
-            // no-op: no hay backend en los tests
+            vincularLlamado = true;
+            if (vincularError != null) {
+                throw vincularError;
+            }
+            vinculadoConRol = rol;
+            vinculadoConPerfil = perfilId;
         }
 
         @Override

@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -35,7 +36,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
+                .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso", "/terminos",
                         "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
                 .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()
@@ -62,13 +63,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    GrantedAuthoritiesMapper keycloakAuthoritiesMapper(DonacionesClient donacionesClient) {
+    GrantedAuthoritiesMapper keycloakAuthoritiesMapper(DonacionesClient donacionesClient,
+                                                      PoliticaDeReclamo politicaDeReclamo) {
         return source -> {
             List<GrantedAuthority> authorities = new ArrayList<>(source);
             String email = null;
             String sub = null;
+            OidcIdToken idToken = null;
             for (GrantedAuthority authority : source) {
                 if (!(authority instanceof OidcUserAuthority oidcAuthority)) continue;
+                if (idToken == null) {
+                    idToken = oidcAuthority.getIdToken();
+                }
                 Map<String, Object> realmAccess = oidcAuthority.getIdToken().getClaimAsMap("realm_access");
                 if (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> roles) {
                     for (Object role : roles) {
@@ -99,7 +105,9 @@ public class SecurityConfig {
                         }
                     } else if (email != null) {
                         IdentidadDTO porEmail = donacionesClient.buscarIdentidadPorEmail(email);
-                        if (porEmail != null && porEmail.getRoles() != null) {
+                        if (porEmail != null && porEmail.getRoles() != null
+                                && politicaDeReclamo.puedeReclamar(porEmail.isVinculada(),
+                                        politicaDeReclamo.emailVerificado(idToken))) {
                             for (String role : porEmail.getRoles()) {
                                 if (role == null || role.isBlank()) continue;
                                 authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));

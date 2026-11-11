@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -28,19 +29,33 @@ public class KeycloakRegistrationClient {
     private final String realm;
     private final String clientId;
     private final String clientSecret;
+    private final boolean verificacionHabilitada;
 
+    @Autowired
     public KeycloakRegistrationClient(RestClient.Builder builder,
                                       @Value("${keycloak.token-uri}") String tokenUri,
                                       @Value("${keycloak.admin-base-uri}") String adminBaseUri,
                                       @Value("${keycloak.realm}") String realm,
                                       @Value("${keycloak.registration-client-id}") String clientId,
-                                      @Value("${keycloak.registration-client-secret}") String clientSecret) {
+                                      @Value("${keycloak.registration-client-secret}") String clientSecret,
+                                      @Value("${keycloak.verification.enabled:false}") boolean verificacionHabilitada) {
         this.restClient = builder.build();
         this.tokenUri = tokenUri;
         this.adminBaseUri = adminBaseUri;
         this.realm = realm;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.verificacionHabilitada = verificacionHabilitada;
+    }
+
+    /** Compatibilidad con los stubs de tests (verificación desactivada). */
+    public KeycloakRegistrationClient(RestClient.Builder builder,
+                                      String tokenUri,
+                                      String adminBaseUri,
+                                      String realm,
+                                      String clientId,
+                                      String clientSecret) {
+        this(builder, tokenUri, adminBaseUri, realm, clientId, clientSecret, false);
     }
 
     public String crearUsuario(String username, String password, String email, String role) {
@@ -64,7 +79,7 @@ public class KeycloakRegistrationClient {
         nuevoUsuario.put("username", username);
         nuevoUsuario.put("enabled", true);
         if (email != null && !email.isBlank()) nuevoUsuario.put("email", email.trim().toLowerCase());
-        nuevoUsuario.put("emailVerified", true);
+        nuevoUsuario.put("emailVerified", !verificacionHabilitada);
         nuevoUsuario.put("firstName", nombre);
         nuevoUsuario.put("lastName", apellido);
         nuevoUsuario.put("credentials", List.of(Map.of("type", "password", "value", password, "temporary", false)));
@@ -84,6 +99,24 @@ public class KeycloakRegistrationClient {
             throw e;
         }
         return userId;
+    }
+
+    /**
+     * Marca el email de la cuenta como verificado mediante la Admin API de Keycloak.
+     * No se usa mientras la verificación está desactivada; queda para el flujo de verificación por mail.
+     */
+    public void marcarEmailVerificado(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("El identificador de la cuenta es obligatorio.");
+        }
+        String token = obtenerToken();
+        Map<String, Object> actualizacion = new LinkedHashMap<>();
+        actualizacion.put("emailVerified", true);
+        restClient.put().uri(adminBaseUri + "/realms/{realm}/users/{userId}", realm, userId.trim())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(actualizacion)
+                .retrieve().toBodilessEntity();
     }
 
     /** Asigna roles de realm al usuario. Los roles que no existen se omiten con un aviso. */

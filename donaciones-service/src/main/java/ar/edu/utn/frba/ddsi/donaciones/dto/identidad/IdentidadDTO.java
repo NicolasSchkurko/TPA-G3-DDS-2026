@@ -19,6 +19,8 @@ public class IdentidadDTO {
     private UUID donanteId;
     private UUID adminId;
     private List<String> roles = new ArrayList<>();
+    /** true si alguno de los perfiles encontrados tiene un sub de Keycloak asignado. */
+    private boolean vinculada;
 
     public boolean tieneRol(String rol) {
         return rol != null && roles != null && roles.contains(rol.toUpperCase());

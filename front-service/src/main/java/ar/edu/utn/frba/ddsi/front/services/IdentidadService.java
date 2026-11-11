@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.services;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.slf4j.Logger;
@@ -8,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,9 +28,17 @@ public class IdentidadService {
     private static final Logger log = LoggerFactory.getLogger(IdentidadService.class);
 
     private final DonacionesClient donacionesClient;
+    private final PoliticaDeReclamo politicaDeReclamo;
 
-    public IdentidadService(DonacionesClient donacionesClient) {
+    @Autowired
+    public IdentidadService(DonacionesClient donacionesClient, PoliticaDeReclamo politicaDeReclamo) {
         this.donacionesClient = donacionesClient;
+        this.politicaDeReclamo = politicaDeReclamo;
+    }
+
+    /** Compatibilidad con los tests sin Spring: verificación de email desactivada. */
+    public IdentidadService(DonacionesClient donacionesClient) {
+        this(donacionesClient, new PoliticaDeReclamo(false));
     }
 
     /** Entidad beneficiaria del usuario autenticado, si está vinculada y el backend responde. */
@@ -120,13 +130,20 @@ public class IdentidadService {
         if (identidad == null) {
             return Optional.empty();
         }
+        if (!politicaDeReclamo.puedeReclamar(identidad.isVinculada(),
+                politicaDeReclamo.emailVerificado(authentication))) {
+            log.info("El perfil del rol {} ya está vinculado a otra cuenta; no se reclama.", rol);
+            return Optional.empty();
+        }
         UUID id = idDe(identidad, rol);
         if (id != null && sub != null) {
             try {
                 donacionesClient.vincularIdentidad(sub, rol, id);
                 log.info("Vínculo auto-curado para la cuenta (rol {}).", rol);
             } catch (Exception e) {
+                // El vínculo falló: no se otorga acceso a un perfil que no se pudo reclamar.
                 log.warn("No se pudo auto-curar el vínculo de la cuenta (rol {}): {}", rol, e.getMessage());
+                return Optional.empty();
             }
         }
         return Optional.ofNullable(id);

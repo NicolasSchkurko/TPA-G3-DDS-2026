@@ -121,4 +121,45 @@ class IdentidadServiceTest {
     when(repositorioDonantes.buscarPorId(inexistente)).thenReturn(Optional.empty());
     assertThrows(EntityNotFoundException.class, () -> service.vincular(SUB, "DONANTE", inexistente));
   }
+
+  @Test
+  void porEmailMarcaLosPerfilesYaVinculados() {
+    Donante donante = new Donante();
+    donante.setKeycloakSub(SUB);
+    when(repositorioDonantes.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.of(donante));
+    when(repositorioEntidades.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.empty());
+    when(repositorioAdministradores.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.empty());
+
+    IdentidadDTO dto = service.porEmail("ana@test.com");
+
+    assertTrue(dto.isVinculada());
+    assertEquals(donante.getId(), dto.getDonanteId());
+    assertEquals(java.util.List.of("DONANTE"), dto.getRoles());
+  }
+
+  @Test
+  void porEmailConPerfilesHuerfanosNoMarcaVinculada() {
+    Donante donante = new Donante();
+    EntidadBeneficiaria entidad = new EntidadBeneficiaria();
+    when(repositorioDonantes.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.of(donante));
+    when(repositorioEntidades.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.of(entidad));
+    when(repositorioAdministradores.buscarPorEmailContacto("ana@test.com")).thenReturn(Optional.empty());
+
+    IdentidadDTO dto = service.porEmail("ana@test.com");
+
+    assertFalse(dto.isVinculada());
+    assertEquals(java.util.List.of("ENTIDAD", "DONANTE"), dto.getRoles());
+  }
+
+  @Test
+  void porSubMarcaVinculadaCuandoEncuentraPerfiles() {
+    Donante donante = new Donante();
+    when(repositorioDonantes.buscarPorKeycloakSub(SUB)).thenReturn(Optional.of(donante));
+    when(repositorioEntidades.buscarPorKeycloakSub(SUB)).thenReturn(Optional.empty());
+    when(repositorioAdministradores.buscarPorKeycloakSub(SUB)).thenReturn(Optional.empty());
+
+    IdentidadDTO dto = service.porSub(SUB);
+
+    assertTrue(dto.isVinculada());
+  }
 }

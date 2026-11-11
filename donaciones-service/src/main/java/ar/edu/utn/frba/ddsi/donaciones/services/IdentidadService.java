@@ -48,13 +48,25 @@ public class IdentidadService {
         IdentidadDTO dto = new IdentidadDTO();
         dto.setEmail(normalizado);
 
-        repositorioEntidades.buscarPorEmailContacto(normalizado)
-                .ifPresent(entidad -> dto.setEntidadId(entidad.getId()));
-        repositorioDonantes.buscarPorEmailContacto(normalizado)
-                .ifPresent(donante -> dto.setDonanteId(donante.getId()));
-        repositorioAdministradores.buscarPorEmailContacto(normalizado)
-                .ifPresent(admin -> dto.setAdminId(admin.getId()));
+        boolean[] vinculada = {false};
 
+        repositorioEntidades.buscarPorEmailContacto(normalizado)
+                .ifPresent(entidad -> {
+                    dto.setEntidadId(entidad.getId());
+                    vinculada[0] |= entidad.getKeycloakSub() != null;
+                });
+        repositorioDonantes.buscarPorEmailContacto(normalizado)
+                .ifPresent(donante -> {
+                    dto.setDonanteId(donante.getId());
+                    vinculada[0] |= donante.getKeycloakSub() != null;
+                });
+        repositorioAdministradores.buscarPorEmailContacto(normalizado)
+                .ifPresent(admin -> {
+                    dto.setAdminId(admin.getId());
+                    vinculada[0] |= admin.getKeycloakSub() != null;
+                });
+
+        dto.setVinculada(vinculada[0]);
         completarRoles(dto);
         return dto;
     }
@@ -64,13 +76,25 @@ public class IdentidadService {
         String normalizado = validarSub(sub);
 
         IdentidadDTO dto = new IdentidadDTO();
-        repositorioEntidades.buscarPorKeycloakSub(normalizado)
-                .ifPresent(entidad -> dto.setEntidadId(entidad.getId()));
-        repositorioDonantes.buscarPorKeycloakSub(normalizado)
-                .ifPresent(donante -> dto.setDonanteId(donante.getId()));
-        repositorioAdministradores.buscarPorKeycloakSub(normalizado)
-                .ifPresent(admin -> dto.setAdminId(admin.getId()));
+        boolean[] encontrada = {false};
 
+        repositorioEntidades.buscarPorKeycloakSub(normalizado)
+                .ifPresent(entidad -> {
+                    dto.setEntidadId(entidad.getId());
+                    encontrada[0] = true;
+                });
+        repositorioDonantes.buscarPorKeycloakSub(normalizado)
+                .ifPresent(donante -> {
+                    dto.setDonanteId(donante.getId());
+                    encontrada[0] = true;
+                });
+        repositorioAdministradores.buscarPorKeycloakSub(normalizado)
+                .ifPresent(admin -> {
+                    dto.setAdminId(admin.getId());
+                    encontrada[0] = true;
+                });
+
+        dto.setVinculada(encontrada[0]);
         completarRoles(dto);
         return dto;
     }
