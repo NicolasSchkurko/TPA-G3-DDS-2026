@@ -26,10 +26,10 @@ public class Administrador {
     @Column(name = "keycloak_sub", unique = true, length = 36)
     private String keycloakSub;
 
-    // ManyToOne (no OneToOne): la Humana vive en su propio repositorio (RepositorioPersonas),
+    // ManyToOne (no OneToOne): la Humana vive en su propio repositorio (RepositorioDePersonas),
     // igual que Juridica para EntidadBeneficiaria. Sin cascade REMOVE: dar de baja el
     // administrador no debe borrar la Persona asociada. Se registra explícitamente vía
-    // RepositorioPersonas antes de guardar el Administrador (ver AdminService).
+    // RepositorioDePersonas antes de guardar el Administrador (ver AdminService).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "humano_id")
     private Humana humano;

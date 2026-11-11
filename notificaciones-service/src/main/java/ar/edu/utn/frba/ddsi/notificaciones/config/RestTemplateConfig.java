@@ -3,8 +3,11 @@ package ar.edu.utn.frba.ddsi.notificaciones.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.http.HttpClient;
+import java.time.Duration;
 
 /**
  * El {@code RestTemplate} de n8n, con timeouts: la llamada corre en el hilo del {@code @RabbitListener}.
@@ -27,9 +30,12 @@ public class RestTemplateConfig {
                             + "ms, read=" + readTimeoutMs + "ms.");
         }
 
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(connectTimeoutMs);
-        factory.setReadTimeout(readTimeoutMs);
+        // El HttpClient del JDK mantiene un pool de conexiones keep-alive entre llamadas.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
         return new RestTemplate(factory);
     }

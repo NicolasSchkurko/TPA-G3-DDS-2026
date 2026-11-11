@@ -16,8 +16,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.Estrategi
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import ar.edu.utn.frba.ddsi.donaciones.exceptions.EventoYaProcesadoException;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEventosProcesados;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEventosProcesados;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,22 +36,35 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class GestorEventosLogistica {
   private static final Logger log = LoggerFactory.getLogger(GestorEventosLogistica.class);
 
-  private final RepositorioDonaciones repositorioDonaciones;
+  private final RepositorioDeDonaciones repositorioDonaciones;
   private final FabricaEstrategiasNotificacion fabricaEstrategias;
   private final IncentivosClient incentivosClient;
-  private final RepositorioEventosProcesados repoEventosProcesados;
+  private final RepositorioDeEventosProcesados repoEventosProcesados;
   private final ObjectMapper objectMapper;
+  private final GestorIncentivos gestorIncentivos;
 
-  public GestorEventosLogistica(RepositorioDonaciones repositorioDonaciones,
+  public GestorEventosLogistica(RepositorioDeDonaciones repositorioDonaciones,
                                 FabricaEstrategiasNotificacion fabricaEstrategias,
                                 IncentivosClient incentivosClient,
-                                RepositorioEventosProcesados repoEventosProcesados,
+                                RepositorioDeEventosProcesados repoEventosProcesados,
                                 ObjectMapper objectMapper) {
+    this(repositorioDonaciones, fabricaEstrategias, incentivosClient,
+        repoEventosProcesados, objectMapper, null);
+  }
+
+  @Autowired
+  public GestorEventosLogistica(RepositorioDeDonaciones repositorioDonaciones,
+                                FabricaEstrategiasNotificacion fabricaEstrategias,
+                                IncentivosClient incentivosClient,
+                                RepositorioDeEventosProcesados repoEventosProcesados,
+                                ObjectMapper objectMapper,
+                                GestorIncentivos gestorIncentivos) {
     this.repositorioDonaciones = repositorioDonaciones;
     this.fabricaEstrategias = fabricaEstrategias;
     this.incentivosClient = incentivosClient;
     this.repoEventosProcesados = repoEventosProcesados;
     this.objectMapper = objectMapper;
+    this.gestorIncentivos = gestorIncentivos;
   }
 
   @Transactional(rollbackFor = Exception.class)
@@ -146,14 +160,20 @@ public class GestorEventosLogistica {
       UUID donanteId = donacion.getDonante() != null ? donacion.getDonante().getId() : null;
       if (donanteId != null) {
         IncentivosDonacionDTO dto = IncentivosDonacionDTO.desde(donacion);
-        Runnable notificarIncentivos = () -> {
-          try {
-            incentivosClient.notificarImpactoDonacion(donanteId, dto);
-          } catch (Exception e) {
-            log.warn("No se pudo notificar el impacto a incentivos-service para la donación {} (donante {}): {}",
-                idDonacion, donanteId, e.getMessage());
-          }
-        };
+        Runnable notificarIncentivos;
+        if (gestorIncentivos != null) {
+          UUID outboxId = gestorIncentivos.encolarImpacto(donanteId, dto);
+          notificarIncentivos = () -> gestorIncentivos.intentarAhora(outboxId);
+        } else {
+          notificarIncentivos = () -> {
+            try {
+              incentivosClient.notificarImpactoDonacion(donanteId, dto);
+            } catch (Exception e) {
+              log.warn("No se pudo notificar el impacto a incentivos-service para la donación {} (donante {}): {}",
+                  idDonacion, donanteId, e.getMessage());
+            }
+          };
+        }
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
           TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

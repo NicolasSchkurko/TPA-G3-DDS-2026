@@ -5,7 +5,7 @@ MongoDB, consistente con E3-E5. Se mantienen abajo los riesgos técnicos vigente
 serialización HTTP externa, tolerancia a fallas del proveedor/broker, concurrencia distribuida y trazado
 real de rutas. E3 también solicita documentación de APIs (Postman y Swagger/OpenAPI); hay colección
 Postman, pero no se encontró configuración OpenAPI versionada. E6 requiere que el front consuma estos
-flujos con autenticación; actualmente no hay cliente de logística en `front-service`.
+flujos con autenticación; el front ya tiene un cliente de logística para el seguimiento público de rutas.
 
 ---
 # Pendientes técnicos de `logisticas-service`
@@ -22,396 +22,12 @@ rompe cuando pasa, y qué tan fácil es que pase.
 
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
-| 1 | 64 | Alta | `DonacionListener` duerme el hilo con `Thread.sleep` y no aborta ante interrupción, bloqueando el pool AMQP |
-| 2 | 60 | Alta | `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper` |
-| 3 | 61 | Alta | `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales |
-| 4 | 68 | Media | `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write) |
-| 5 | 65 | Media | `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM |
-| 6 | 66 | Media | `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red |
-| 7 | 67 | Media | `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster |
-| 8 | 49 | Media | RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer |
-| 9 | 31 | Media | Callback del simulador: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta |
-| 10 | 48 | Media | Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida |
-| 11 | 43 | Media | El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException` |
-| 12 | 44 | Media | Los listados devuelven la tabla entera: sin paginar, una respuesta crece sin techo |
-| 13 | 17 | Media | El planificador resetea la carga de los camiones y nunca la persiste |
-| 14 | 69 | Media | La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa |
-| 15 | 62 | Media | `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer` |
-| 16 | 37 | Baja | El CRUD de camiones/choferes devuelve 500 para errores de validación |
-| 17 | 40 | Baja | Los gestores están nombrados por entidad y mezclan reglas de negocio con persistencia |
-| 18 | 42 | Baja | Paquetes de primer nivel y ubicación de clientes, scheduler y eventos distintos al resto de los servicios |
-| 19 | 70 | Baja | El planificador simulado podría usar OSRM para matriz/trazado y una heurística local para la asignación |
-| 20 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
+| 1 | 74 | Baja | El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local |
+| 2 | 20 | Informativa | Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones |
 
 ---
 
-## 60. `ProveedorRutasExternoHttp` falla en tiempo de ejecución al serializar `ItemEntrega` con `LocalDateTime` por falta de `JavaTimeModule` en su `ObjectMapper`
-
-**Estado:** abierto  
-**Severidad:** alta  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java:24-60`
-
-### Qué pasa
-
-En `ProveedorRutasExternoHttp`:
-
-```java
-public ProveedorRutasExternoHttp(String urlApiExterna) {
-  this.httpClient = HttpClient.newHttpClient();
-  this.urlApiExterna = urlApiExterna;
-  this.objectMapper = new ObjectMapper();
-}
-...
-Map<String, Object> payload = new HashMap<>();
-payload.put("donaciones", lote);
-payload.put("camiones", camionesDisponibles);
-
-String jsonPayload = objectMapper.writeValueAsString(payload);
-```
-
-1. `objectMapper` se instancia directamente con `new ObjectMapper()` sin registrar `JavaTimeModule` ni invocar `findAndRegisterModules()`.
-2. `lote` contiene instancias de `ItemEntrega`, que incluye `private LocalDateTime fechaCambioEstado;` y una lista de `EventoLogistica` (que también posee `private LocalDateTime fecha;`).
-3. Por defecto, Jackson lanza `InvalidDefinitionException: Java 8 date/time type java.time.LocalDateTime not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling`.
-4. La excepción es atrapada por el bloque `catch (Exception e)` de la línea 57, logueando el fallo sin enviar jamás la petición HTTP al proveedor externo. Toda llamada con este proveedor falla de inmediato.
-5. Adicionalmente, `HttpClient` y `HttpRequest` no configuran timeouts, y `sendAsync` no tiene bloque `.exceptionally(...)` para manejar fallos de conexión o caídas del servicio externo.
-
-### Cómo se dispara
-
-Configurar el bean `ProveedorRutasExternoHttp` en `LogisticaConfig` y disparar una planificación manual o automática.
-
-### Propuesta de arreglo
-
-Registrar `new JavaTimeModule()` en el `ObjectMapper` (o inyectar el `ObjectMapper` configurado por Spring Boot), configurar timeouts en la petición HTTP y encadenar `.exceptionally(...)` en el `CompletableFuture`.
-
----
-
-## 61. `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas` ante entidades o direcciones con datos parciales
-
-**Estado:** abierto  
-**Severidad:** alta  
-**Archivos:** `services/EntregaService.java:450-465`, `controllers/EntregaController.java:28-37`
-
-### Qué pasa
-
-En `EntregaService.convertirADireccionDTO`:
-
-```java
-private DireccionDTO convertirADireccionDTO(Entidad entidad){
-  return new DireccionDTO(
-      entidad.getIdEntidadBeneficiaria(),
-      entidad.getDireccionDestino().getCalle1(),
-      entidad.getDireccionDestino().getCalle2(),
-      entidad.getDireccionDestino().getAltura(),
-      entidad.getDireccionDestino().getPiso(),
-      entidad.getDireccionDestino().getDepartamento(),
-      entidad.getDireccionDestino().getCiudad().getNombre(),
-      entidad.getDireccionDestino().getCiudad().getProvincia().getNombre(),
-      entidad.getDireccionDestino().getCiudad().getProvincia().getPais().getNombre()
-  );
-}
-```
-
-Y en `convertirABienDTO`:
-
-```java
-private BienDTO convertirABienDTO(ItemEntrega item){
-  return new BienDTO(item.getCantidad(), item.getUnidad().getNombre(), item.getEstado().toString(), item.getFechaCambioEstado(), item.getFotoComprobante(), convertirADireccionDTO(item.getEntidadDestino()), convertirEventosADTO(item.getEventos()));
-}
-```
-
-A diferencia de `EntregaService.findById` (líneas 107-122), que implementa verificaciones de nulidad exhaustivas para `entidadDestino`, `direccionDestino`, `ciudad`, `provincia`, `pais`, `unidad` y `estado`, los métodos `convertirADireccionDTO` y `convertirABienDTO` desreferencian directamente toda la cadena de navegación.
-
-Si existe un solo ítem en la base de datos con `entidadDestino` nula, dirección destino nula, o alguna relación geográfica sin completar, la invocación de `GET /api/entregas` o `GET /api/entregas/no-recibidas` falla con HTTP 500 por `NullPointerException`, bloqueando la visualización de todos los ítems del sistema.
-
-### Cómo se dispara
-
-Consultar `GET /api/entregas` o `GET /api/entregas/no-recibidas` existiendo en base de datos un ítem con dirección o entidad incompleta.
-
-### Propuesta de arreglo
-
-Replicar en `convertirADireccionDTO` y `convertirABienDTO` las comprobaciones de nulidad presentes en `findById`.
-
----
-
-## 31. Callback del simulador de rutas: URL fijada a `localhost:8086`, sin timeouts y descarta status de respuesta
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:23-53`
-
-### Qué pasa
-
-En `ProveedorRutasExternoSimulado`:
-
-1. **URL fijada en el código:** La URL del callback está cableada como constante estática:
-   ```java
-   private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
-   ```
-   Si el servicio corre en otro puerto (`SERVER_PORT != 8086`) o en un contenedor Docker en red puente, el callback intenta conectarse a un host o puerto erróneo y las rutas calculadas nunca regresan.
-2. **Sin timeouts en el cliente HTTP:**
-   ```java
-   HttpClient httpClient = HttpClient.newHttpClient();
-   HttpRequest request = HttpRequest.newBuilder()
-           .uri(URI.create(URL_CALLBACK_LOCAL))
-           .header("Content-Type", "application/json")
-           .POST(HttpRequest.BodyPublishers.ofString(jsonRutas))
-           .build();
-   ```
-   Ni el `HttpClient` define `connectTimeout` ni la `HttpRequest` define `.timeout()`. Si el callback tarda en responder o no acepta conexiones, el hilo de `CompletableFuture.runAsync` queda bloqueado indefinidamente.
-3. **Código de estado descartado:**
-   ```java
-   HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-   System.out.println("Respuesta del servidor: " + response.body());
-   ```
-   Se descarta `response.statusCode()`. Si el endpoint de callback responde 400 Bad Request o 500 Internal Server Error (ej. fallas en deserialización o validación), el simulador lo ignora sin reintentar ni registrar un error estructurado, provocando que el lote de ítems se pierda en silencio y permanezca bloqueado o sin asignación.
-
-### Cómo se dispara
-
-- Levantar la aplicación en un puerto distinto al 8086 (`-Dserver.port=8080`).
-- Simular indisponibilidad o error 500 en el endpoint de recepción del callback durante la planificación nocturna: la falla es silenciosa.
-
-### Propuesta de arreglo
-
-1. Extraer la URL de callback a una propiedad inyectable (`logistica.callback-url` o resolver dinámicamente según `server.port`) en `application.properties`.
-2. Configurar timeouts explícitos de conexión y lectura en `HttpClient` y `HttpRequest` (ej. `Duration.ofSeconds(5)`).
-3. Validar `response.statusCode() == 200` y loguear un error explícito ante respuestas fallidas o excepciones de red.
-
----
-
-## 48. Un fallo del broker al publicar después del commit deja el 500, el cambio aplicado y la notificación perdida
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/gestores/GestorPublicacionEventos.java:140-159`, `messaging/ProductorEventosLogistica.java:30-40`, `controllers/EntregaController.java:80-92`
-
-### Qué pasa
-
-`publicarAlCommit` registra una sincronización `afterCommit` que invoca `productorEventos.publicar(evento)`. Si RabbitMQ no está disponible en ese instante, la excepción se propaga fuera del interceptor de transacciones cuando la transacción de base de datos **ya fue confirmada**:
-
-- El ítem queda actualizado en la base de datos (por ejemplo a `ENTREGADA`).
-- El evento queda persistido en `evento_logistica`.
-- El cliente HTTP recibe un **500 Internal Server Error** con el stack trace o mensaje interno.
-- El evento nunca llegó al broker: `donaciones-service` no notifica.
-- Al reintentar la llamada HTTP por el 500, el endpoint rechaza con 400 ("no está en camino") porque el estado ya cambió.
-
-### Propuesta de arreglo
-
-Atrapar la excepción de RabbitMQ dentro de `afterCommit` y loguear como advertencia, o implementar un patrón Transactional Outbox con reintentos para publicación asíncrona.
-
----
-
-## 43. El manejo de errores está repetido en cada controller: 404 ante campos obligatorios ausentes y 500 ante `IllegalStateException`
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `controllers/CamionController.java:101-106`, `controllers/ChoferController.java:104-109`, `controllers/RutaController.java:80-99`, `controllers/EntregaController.java:44-52`, `services/RutaService.java:156-164`
-
-### Qué pasa
-
-No existe un `@ControllerAdvice` o `@RestControllerAdvice` global. Cada controlador maneja excepciones manualmente con bloques `try/catch` dispersos, lo que genera inconsistencias graves y códigos HTTP erróneos:
-
-1. **Traducción errónea de validaciones a 404:**
-   - En `ChoferController.cambiarEstadoDisponibilidad` y `CamionController.cambiarEstadoDisponibilidad`: si se omite el campo obligatorio `disponible` en el body JSON, el servicio lanza `IllegalArgumentException("El campo 'disponible' es obligatorio.")`. El controller atrapa `IllegalArgumentException` y responde **404 Not Found** en lugar de 400 Bad Request, informando falsamente que el recurso no existe.
-   - En contraste, `EntregaController.actualizarEstadoEntrega` traduce `IllegalArgumentException` a 400 Bad Request, mientras que `EntregaController.obtenerPorId` la traduce a 404.
-2. **Fugas de `IllegalStateException` que devuelven 500:**
-   - En `RutaController.terminarRuta`:
-     ```java
-     @PatchMapping("/chofer/{idChofer}/terminar")
-     public ResponseEntity<String> terminarRuta(@PathVariable UUID idChofer) {
-       try {
-         rutaService.terminarRuta(idChofer);
-         return ResponseEntity.ok("Ruta finalizada correctamente...");
-       } catch (IllegalArgumentException e) {
-         return ResponseEntity.badRequest().body(e.getMessage());
-       } catch (Exception e) {
-         return ResponseEntity.internalServerError().body("Error interno al finalizar la ruta: " + e.getMessage());
-       }
-     }
-     ```
-     Si un chofer intenta terminar una ruta sin tener una en curso, `RutaService.rutaDelChoferPorEstado` lanza:
-     ```java
-     throw new IllegalStateException("No se encontró una ruta en estado EN_CURSO para el chofer " + idChofer);
-     ```
-     A diferencia de `RutaController.iniciarRuta` (que atrapa `IllegalArgumentException | IllegalStateException` y responde 400), `terminarRuta` solo atrapa `IllegalArgumentException`. La `IllegalStateException` cae en `catch (Exception e)` y responde **500 Internal Server Error**, filtrando detalles internos de la aplicación ante un error que es estrictamente de precondición o estado de negocio (400/409/422).
-
-### Cómo se dispara
-
-- Enviar `PATCH /api/choferes/{id}/disponibilidad` con `{}` → Devuelve 404 en lugar de 400.
-- Enviar `PATCH /api/rutas/chofer/{id}/terminar` sin una ruta activa → Devuelve 500 en lugar de 400/409.
-
-### Propuesta de arreglo
-
-Crear un `@RestControllerAdvice` global (`GlobalExceptionHandler`) que centralice el manejo de excepciones:
-- `IllegalArgumentException` o `MethodArgumentNotValidException` → HTTP 400 Bad Request.
-- `NoSuchElementException` o excepciones custom `RecursoNoEncontradoException` → HTTP 404 Not Found.
-- `IllegalStateException` → HTTP 400 Bad Request o 409 Conflict / 422 Unprocessable Entity.
-- Eliminar los bloques `try/catch` manuales y duplicados en todos los controllers para que deleguen en el advice central.
-
----
-
-## 44. Los listados devuelven la tabla entera: falta paginación
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `controllers/CamionController.java:31-34`, `controllers/ChoferController.java:31-34`, `controllers/EntregaController.java:28-31`, `controllers/RutaController.java:26-29`
-
-### Qué pasa
-
-Los endpoints de listado (`GET /api/camiones`, `GET /api/choferes`, `GET /api/entregas`, `GET /api/rutas`) devuelven todos los registros llamando a `findAll()` sin soporte para `Pageable`. En producción el tamaño de la respuesta crece sin límite.
-
-### Propuesta de arreglo
-
-Implementar paginación con `Pageable` y `@PageableDefault` devolviendo `Page<DTO>` o listas paginadas.
-
----
-
-## 17. El planificador resetea la carga de los camiones y nunca la persiste
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:59-73`, `Scheduler/PlanificadorDeRutasScheduler.java:64-70`
-
-### Qué pasa
-
-El simulador crea copias locales de `Camion` y resetea su carga ocupada (`copia.resetearCargaOcupada()`) para simular la asignación en memoria. Sin embargo, una vez asignados los ítems y generada la ruta, el estado de ocupación de los camiones (`pesoOcupado`, `volumenOcupado`) nunca se persiste en `repoCamiones`. Las columnas en la base de datos quedan siempre en 0.
-
-### Propuesta de arreglo
-
-Persistir el estado de carga acumulado de los camiones tras la asignación, o derivar la ocupación directamente de las rutas activas persistidas.
-
----
-
-## 69. La ruta no persiste ni expone el trazado por calles: el front no puede dibujarla en el mapa
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/Ruta/Ruta.java`, `models/entities/Parada/Parada.java`, `services/PlanificadorRutasService.java` (`procesarCallbackRutas`), `controllers/RutaController.java`, `dto/rutas/RutaDTO.java`, `dto/entrega/DireccionDTO.java`, `models/entities/Direccion/Direccion.java`, `models/gestores/GestorPublicacionEventos.java:51`
-
-### Qué pasa
-
-`Ruta` guarda las `paradas` y un `urlSeguimiento`, pero no guarda el trazado que sigue el camión por las calles. `Parada` guarda una `Direccion` sin latitud/longitud, y `DireccionDTO` tampoco transporta coordenadas. A su vez, el callback del planificador solo acepta un `Map<patente, List<UUID idDonacion>>`; aunque el proveedor externo devuelva una geometría, `procesarCallbackRutas` la descarta.
-
-`RutaController` expone `GET /api/rutas/{id}` con las paradas, pero no existe ningún endpoint que devuelva un GeoJSON o un `LineString`. `urlSeguimiento` es solo un enlace armado en `GestorPublicacionEventos`; no reemplaza la geometría de la ruta.
-
-### Cómo se dispara
-
-Cualquier intento del front de mostrar una ruta en el mapa. Sin coordenadas ni polyline, el navegador solo podría dibujar líneas rectas entre paradas, y ni siquiera eso porque las paradas tampoco tienen lat/lon.
-
-### Propuesta de arreglo
-
-1. Al planificar o recibir el callback, obtener el trazado real por calles con un motor de ruteo (OSRM/ORS o el mismo proveedor externo) usando las paradas en orden. Guardar por ruta:
-   - `List<Coordenada>` o GeoJSON `LineString`;
-   - `distanciaMetros`, `duracionSegundos`, `provider`, `fechaCalculo`.
-   Se puede embeber en `Ruta` o usar una colección `trazado_ruta` separada; una polyline típica entra cómodamente en el límite de 16 MB de Mongo.
-   También hay que guardar `latitud`/`longitud` en `Direccion`/`Parada` (depende del pendiente 75 de `donaciones-service`).
-2. Exponer `GET /api/rutas/{id}/geojson` (o `/trazado`) con `Content-Type: application/geo+json` y `Cache-Control`/`ETag`. Si la ruta todavía no tiene geometría, devolver 404 o 204; no recalcularla en el request.
-3. Hacer que `front-service` actúe de BFF: proxy del endpoint y el navegador solo hace `fetch` + `DDSIMap.addGeoJson`. La API key del proveedor queda siempre en el backend.
-4. Cachear por firma de paradas ordenadas para no recalcular; invalidar si cambia una parada, el camión o la fecha. Manejar el fallo del proveedor con reintento/fallback sin romper la creación de la ruta.
-5. Normalizar la respuesta a GeoJSON en el backend (no guardar el JSON crudo del proveedor) para que el front no dependa de HERE/TomTom/OSRM.
-6. Tests: ruta con geometría, ruta sin geometría (204/404) y callback que no descarte el trazado si el proveedor lo manda.
-
----
-
-## 62. `CamionService.update` desvincula incondicionalmente el chofer asignado al camión si el DTO no envía `idChofer`
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `services/CamionService.java:60-65`, `models/gestores/GestorCamiones.java:16-28`
-
-### Qué pasa
-
-En `CamionService.update`:
-
-```java
-public CamionDTO update(String patente, CamionDTO dto) {
-  Chofer nuevoChofer = dto.getIdChofer() != null ? repoChoferes.findById(dto.getIdChofer())
-          .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado")): null;
-  Camion camionExistente = gestorCamiones.actualizarCamion(patente, nuevoChofer, dto.getCapacidadVolumen(), dto.getAltura(), dto.getCapacidadCarga(), dto.getDisponible());
-  return convertirADTO(camionExistente);
-}
-```
-
-Y en `GestorCamiones.actualizarCamion`:
-
-```java
-public Camion actualizarCamion(String patente, Chofer nuevoChofer, Double capacidadVolumen, Double altura, Double capacidadCarga, Boolean disponible){
-    Camion camionExistente = repoCamiones.findById(patente)
-            .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado"));
-
-    camionExistente.setChofer(nuevoChofer);
-    if (capacidadVolumen != null) camionExistente.setCapacidadVolumen(capacidadVolumen);
-    if (altura != null) camionExistente.setAltura(altura);
-    if (capacidadCarga != null) camionExistente.setCapacidadCarga(capacidadCarga);
-    if (disponible != null) camionExistente.setDisponible(disponible);
-
-    repoCamiones.save(camionExistente);
-    return camionExistente;
-}
-```
-
-A diferencia de los demás atributos que se actualizan condicionalmente solo si vienen informados (`!= null`), la asignación del chofer es incondicional (`camionExistente.setChofer(nuevoChofer)`).
-
-Si un cliente o frontend envía un `PUT /api/camiones/{patente}` para modificar un dato operativo (por ejemplo actualizar la disponibilidad o la capacidad de carga) sin incluir la propiedad `idChofer` en el body JSON, `nuevoChofer` se resuelve como `null`. Como resultado, se remueve silenciosamente el chofer asignado al camión, pudiendo desvincular choferes asignados a rutas activas o programadas.
-
-### Cómo se dispara
-
-Enviar una petición `PUT /api/camiones/{patente}` con un payload que no contenga `idChofer`. El chofer que tenía asignado el camión se elimina.
-
-### Propuesta de arreglo
-
-En `CamionService.update` o `GestorCamiones.actualizarCamion`, solo actualizar el chofer si `dto.getIdChofer()` está presente en la petición, o proveer endpoints explícitos para vincular/desvincular choferes.
-
----
-
-## 37. El CRUD de camiones/choferes devuelve 500 para errores de validación
-
-**Estado:** abierto  
-**Severidad:** baja  
-**Archivos:** `controllers/CamionController.java:51-63`, `controllers/ChoferController.java:51-63`
-
-### Qué pasa
-
-`POST /api/camiones` y `POST /api/choferes` no usan anotaciones de validación (`@Valid`) ni manejan errores de campos requeridos faltantes. Si se envía un payload sin campos requeridos, el guardado falla con excepciones de integridad o nulos que se traducen en HTTP 500 en lugar de 400 Bad Request.
-
-### Propuesta de arreglo
-
-Agregar anotaciones de validación (`@NotNull`, `@NotBlank`) en `CamionDTO` y `ChoferDTO`, marcar los métodos de controller con `@Valid` y capturar `MethodArgumentNotValidException`.
-
----
-
-## 40. Los gestores están nombrados por entidad y mezclan reglas con persistencia
-
-**Estado:** abierto  
-**Severidad:** baja  
-**Archivos:** `models/gestores/GestorCamiones.java`, `models/gestores/GestorPublicacionEventos.java`
-
-### Qué pasa
-
-`GestorCamiones` mezcla actualización de entidad con persistencia directa en base de datos. La capa de gestores no tiene una responsabilidad homogénea ni desacoplada de la persistencia frente a los services.
-
-### Propuesta de arreglo
-
-Refactorizar gestores para que contengan exclusivamente lógica de dominio y políticas de negocio, delegando la persistencia a la capa de servicios o repositorios.
-
----
-
-## 42. Paquetes de primer nivel y ubicación de clientes, scheduler y eventos
-
-**Estado:** abierto  
-**Severidad:** baja  
-**Archivos:** `RabbitMQ/`, `Scheduler/`, `messaging/`
-
-### Qué pasa
-
-`RabbitMQ/` y `Scheduler/` son paquetes en PascalCase ubicados en el nivel raíz del código fuente, en discrepancia con las convenciones estándar de nombres de paquetes en Java y con la estructura modular del resto de los microservicios del proyecto.
-
-### Propuesta de arreglo
-
-Renombrar los paquetes a minúsculas (`rabbitmq`, `scheduler`) y ubicarlos bajo convenciones estándar (`config`, `scheduler`, `messaging`).
-
----
-
-## 70. El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local
+## 74. El planificador simulado podría resolver la parte geográfica con OSRM y la asignación con una heurística local
 
 **Estado:** abierto  
 **Severidad:** baja  
@@ -425,11 +41,11 @@ Hoy `LogisticaConfig` registra `ProveedorRutasExternoSimulado`, que agrupa las e
 
 Crear `ProveedorRutasExternoOsrm implements ProveedorRutasExterno`:
 
-1. Obtener lat/lon de cada parada (depende del pendiente 75 de `donaciones-service`).
+1. Usar el lat/lon que ya viene en cada parada.
 2. Pedir a OSRM `/table` la matriz de duraciones/distancias.
 3. Resolver la asignación con una heurística Java simple: vecino más cercano + capacidad de peso/volumen, trabajando sobre copias de los `Camion` para no mutar los documentos de Mongo antes de persistir.
 4. Pedir a OSRM `/route` por cada camión para obtener el `LineString` por calles.
-5. Guardar el trazado (pendiente 69) y disparar el callback actual con `Map<patente, List<UUID>>`.
+5. Guardar el trazado por calles y reemplazar la línea entre paradas que hoy dibuja el front. Después, disparar el callback actual con `Map<patente, List<UUID>>`.
 
 Elegir la implementación por property en `LogisticaConfig`, por ejemplo `planificador.proveedor=osrm|simulado`.
 
@@ -448,42 +64,6 @@ Es una mejora de calidad y realismo, no un bug: el simulador actual permite cump
 
 ---
 
-## 49. RepositorioRutas escanea la colección entera de rutas en memoria (`findAll().stream()`) en cada búsqueda de ruta o chofer
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/repositories/RepositorioRutas.java:15-45`, `services/EntregaService.java:381,392,405`
-
-### Qué pasa
-
-`RepositorioRutas` define tres métodos `default` en la interfaz de MongoDB:
-
-```java
-default Optional<Ruta> findByIdDonacion(UUID idDonacion) {
-    return this.findAll().stream().filter(...).findFirst();
-}
-
-default Optional<Ruta> findByChofer(Chofer chofer) {
-    return this.findAll().stream().filter(...).findFirst();
-}
-
-default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
-    return this.findAll().stream().filter(...).findFirst();
-}
-```
-
-Cada vez que una entrega cambia de estado en `EntregaService`, o se verifica la asignación de un chofer en `PlanificadorRutasService`, se ejecuta `this.findAll()`. En MongoDB esto descarga **todos los documentos de la colección `ruta` a través de la red**, los deserializa completos a objetos Java en el heap y realiza una búsqueda secuencial O(N) en memoria descartando el resto. Con cientos o miles de rutas históricas, esto colapsa la red, la memoria y el rendimiento.
-
-### Cómo se dispara
-
-Cualquier invocación a `actualizarEstado` en `EntregaService` o asignación de choferes en el planificador.
-
-### Propuesta de arreglo
-
-Eliminar los métodos `default` con `this.findAll().stream()` y reemplazarlos por consultas declaradas de Spring Data MongoDB (`@Query` o derived query methods), aprovechando índices de Mongo sobre `paradas.items.id_donacion` y `camionAsignado.chofer.idChofer`.
-
----
-
 ## 20. Verificado: logística no invoca a `donaciones-service` ni incentivos ni habla con notificaciones
 
 **Estado:** verificado, sin cambios necesarios  
@@ -494,168 +74,17 @@ El servicio de logística mantiene el cumplimiento estricto del enunciado: no re
 
 ---
 
-## 64. `DonacionListener` duerme el hilo con `Thread.sleep` y no aborta ante interrupción, bloqueando el pool AMQP
-
-**Estado:** abierto  
-**Severidad:** alta  
-**Archivos:** `RabbitMQ/DonacionListener.java:82-89`
-
-### Qué pasa
-
-En `DonacionListener`:
-
-```java
-private void dormir() {
-    try {
-        Thread.sleep(esperaMs);
-    } catch (InterruptedException interrumpido) {
-        Thread.currentThread().interrupt();
-        log.debug("Se interrumpió la espera entre reintentos");
-    }
-}
-```
-
-Durante un reintento por fallo, el listener duerme el hilo de Spring AMQP de forma síncrona durante 2 segundos (`esperaMs`). Si se acumulan mensajes fallidos, todos los hilos del consumidor quedan retenidos en espera activa durmiendo, impidiendo que el servicio procese mensajes válidos que esperan en la cola.
-Además, si el hilo es interrumpido durante el apagado del contexto, el bloque `catch` restablece el flag con `interrupt()` pero el bucle `for (int intento = 1; intento <= intentos; intento++)` **nunca verifica `Thread.currentThread().isInterrupted()`**, por lo que continúa ejecutando reintentos contra un contexto que está cerrándose.
-
-### Cómo se dispara
-
-Cualquier falla transitoria o error al procesar una donación entrante desde RabbitMQ.
-
-### Propuesta de arreglo
-
-Eliminar el `Thread.sleep` manual y configurar el reintento a nivel del container de Spring AMQP con un `RetryTemplate` / `StatefulRetryOperationsInterceptor` o dead-lettering con TTL en RabbitMQ. En `dormir()` o en el bucle `for`, verificar `Thread.currentThread().isInterrupted()` y lanzar `AmqpRejectAndDontRequeueException` inmediatamente.
-
----
-
-## 65. `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`, saturando hilos compartidos de la JVM
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java:34-52`
-
-### Qué pasa
-
-`ProveedorRutasExternoSimulado.solicitarPlanificacion` lanza una tarea asíncrona:
-
-```java
-CompletableFuture.runAsync(() -> {
-    try {
-        Thread.sleep(2000);
-        ...
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    } ...
-});
-```
-
-Al no pasarle un `Executor` explícito, `CompletableFuture.runAsync` delega en el pool estático `ForkJoinPool.commonPool()` de la JVM. Este pool tiene una cantidad muy limitada de hilos (igual a la cantidad de cores de CPU) y está pensado para procesamiento intensivo de cómputo en memoria, no para esperas bloqueantes ni llamadas HTTP por red. Bloquear este pool con `Thread.sleep(2000)` y peticiones HTTP reduce la capacidad de paralelismo de streams paralelos y otros componentes asíncronos en toda la JVM.
-
-### Cómo se dispara
-
-Cada ejecución de la planificación de rutas (automática o manual) que utilice el proveedor simulado.
-
-### Propuesta de arreglo
-
-Inyectar un `TaskExecutor` configurado en Spring (`ThreadPoolTaskExecutor`) dedicado para tareas en segundo plano del módulo de rutas, pasando el executor como segundo argumento: `CompletableFuture.runAsync(..., executor)`.
-
----
-
-## 66. `ProveedorRutasExternoHttp` usa `sendAsync` sin handler de excepciones descartando fallas de red
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java:47-56`
-
-### Qué pasa
-
-En `ProveedorRutasExternoHttp.solicitarPlanificacion`:
-
-```java
-httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-        .thenAccept(response -> {
-            if (response.statusCode() >= 400) {
-                log.error(...);
-            } else {
-                log.info(...);
-            }
-        });
-```
-
-Se llama a `httpClient.sendAsync().thenAccept(...)` pero **no se encadena ningún `.exceptionally(...)` ni `.handle(...)`**.
-Si ocurre un error de resolución DNS, falla de conexión TCP, caída del servidor externo o timeout, el `CompletableFuture` subyacente se completa de forma excepcional. Como nadie consume esa excepción, Java la descarta en silencio y en los logs del servicio no queda ningún registro del fallo, aparentando que la solicitud continúa en curso cuando en realidad murió.
-
-### Cómo se dispara
-
-Cualquier caída o indisponibilidad de la API externa de ruteo configurada.
-
-### Propuesta de arreglo
-
-Agregar `.exceptionally(ex -> { log.error("Fallo la llamada HTTP al proveedor externo de rutas", ex); return null; })` y configurar un timeout explícito en `HttpRequest.newBuilder().timeout(Duration.ofSeconds(10))`.
-
----
-
-## 67. `PlanificadorRutasService.asignarChoferes` usa `synchronized` local que no previene colisiones entre réplicas en clúster
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `services/PlanificadorRutasService.java:84`
-
-### Qué pasa
-
-El método `asignarChoferes` declara:
-
-```java
-public synchronized List<Ruta> asignarChoferes(List<Ruta> rutas)
-```
-
-La sincronización se realiza sobre el monitor del bean singleton en memoria (`this`). En una arquitectura de microservicios con múltiples réplicas (por ejemplo, dos o más contenedores de `logisticas-service`), cada contenedor posee su propia instancia de la JVM y su propio monitor. Si dos callbacks de planificación llegan en paralelo a distintas réplicas, ambas ingresan simultáneamente a `asignarChoferes`, leen los mismos choferes disponibles y asignan el mismo chofer a dos rutas distintas concurrentemente.
-
-### Cómo se dispara
-
-Planificación concurrente o callbacks simultáneos recibidos con más de 1 réplica activa del servicio de logística.
-
-### Propuesta de arreglo
-
-Coordinar la exclusión mutua de la asignación mediante un bloqueo pesimista en base de datos (`findAndModify` atómico en MongoDB sobre el chofer / camion) o un cerrojo distribuido (ShedLock o Redis).
-
----
-
-## 68. `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (dual-write)
-
-**Estado:** abierto  
-**Severidad:** media  
-**Archivos:** `services/EntregaService.java:367, 384, 395, 404`
-
-### Qué pasa
-
-En `actualizarEstado`:
-
-```java
-@Transactional
-public void actualizarEstado(UUID idDonacion, ActualizacionEntregaDTO request) {
-    ...
-    case "ENTREGADA":
-        repoItemEntrega.save(gestorPublicacionEventos.publicarEntregaConfirmada(item, rutaEntregada, request.getFotoUrl()));
-        sincronizarItemEnRuta(rutaEntregada, item);
-        break;
-    ...
-    repoItemEntrega.save(item);
-}
-```
-
-`gestorPublicacionEventos.publicarEntregaConfirmada(...)` emite el mensaje a RabbitMQ sincrónicamente antes de que la transacción de base de datos confirme. Si la sincronización de la ruta en MongoDB (`repoRutas.save(ruta)`) o el commit de la transacción de Spring falla a continuación, el evento en el broker ya fue emitido y entregado a `donaciones-service` e `incentivos-service`, provocando que el sistema considere entregada una donación cuya persistencia falló localmente.
-
-### Cómo se dispara
-
-Cualquier fallo de conexión a base de datos, error de concurrencia optimista o excepción en el commit posterior a la emisión a RabbitMQ.
-
-### Propuesta de arreglo
-
-Registrar la publicación del evento en RabbitMQ para ejecutarse en el callback `afterCommit()` mediante `TransactionSynchronizationManager`, asegurando que el mensaje solo viaje si la base de datos confirmó los cambios exitosamente.
-
----
-
 ## Corregidos
+
+- **71.** El callback resolvía un `findById` por cada ítem y recorría listas completas de camiones e ítems por asignación — ahora `PlanificadorRutasService` trae todos los ítems con un único `findAllById`, valida los ids faltantes y `PlanificadorDeRutas` arma `Map<patente, Camion>` y `Map<UUID, ItemEntrega>` una sola vez. Cobertura en `PlanificadorRutasServiceTest`.
+
+- **73.** La ruta no tenía forma de dibujarse en el mapa — `Direccion`/`DireccionDTO` ya transportaban lat/lon y `RutaDTO` las exponía, así que se reemplazó el host ficticio de `urlSeguimiento` por una URL configurable al front (`LOGISTICA_SEGUIMIENTO_URL`), y el front incorporó `LogisticasClient` + `GET /seguimiento/{idRuta}`, que une las coordenadas de las paradas en un GeoJSON (`LineString` + puntos) y lo dibuja con `DDSIMap.addGeoJson`. Cobertura en `SeguimientoControllerTest`.
+
+- **72.** El Dockerfile de logística no pasaba flags JVM y el compose no limitaba la memoria — el `ENTRYPOINT` ahora usa `-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError` y el servicio declara `mem_limit: 512m`, por lo que el heap se calcula contra el límite del contenedor.
+
+- **69.** Los eventos de trazabilidad crecían sin cota dentro de cada `ItemEntrega` y el polling cargaba toda la colección — el ítem ahora conserva solo el último evento, `GET /api/eventos` pagina con `desdeId` + `limite` (máximo 500) y `evento_logistica.fecha` tiene TTL de 30 días con `auto-index-creation` habilitado. Cobertura en `EventoLogisticaServiceTest`, `GestorPublicacionEventosTest` y `EventoLogisticaSecuenciaTest`.
+
+- **70.** El driver de Mongo usaba `maxPoolSize=100` por instancia y no tenía timeouts — `MongoConfig` aplica pool 20/2 y timeouts de selección/conexión/lectura (5 s/5 s/10 s), configurables por `MONGODB_POOL_*`/`MONGODB_*_TIMEOUT_MS`. Cobertura en `MongoConfigTest`.
 
 - **59** — `RutaService.terminarRuta` persistía instancias desactualizadas de `Camion` y `Chofer` embebidas en `Ruta`, disparando `OptimisticLockingFailureException` y pisando datos → Causa raíz: `terminarRuta` tomaba el camión y chofer directamente del snapshot embebido en el documento `Ruta` en lugar de sus repositorios correspondientes. Al persistir con `@Version`, si el camión o chofer fueron editados durante el día, fallaba con excepción de concurrencia optimista o sobreescribía los datos vigentes, además de provocar `NullPointerException` ante rutas sin camión. Solución: se recargan las entidades vigentes mediante `repoChoferes.findById(idChofer)` y `repoCamiones.findById(patente)` con guardas defensivas ante nulos antes de actualizar disponibilidad y persistir. Tests de regresión agregados en `RutaServiceTerminarRutaTest` (validando persistencia de entidades frescas con version superior y ruta sin camión). Archivos: `RutaService.java`, `RutaServiceTerminarRutaTest.java`.
 
@@ -712,3 +141,346 @@ Registrar la publicación del evento en RabbitMQ para ejecutarse en el callback 
 - **28** — Publicación de evento dentro de transacción → movida a `afterCommit`.
 - **33** — Credenciales de BD hardcodeadas → `.env` desacoplado.
 - **39** — Cron corría a las 02:00 UTC en lugar de ART → `zone` explícita en `@Scheduled`.
+
+### 60. `ProveedorRutasExternoHttp` no serializaba `LocalDateTime` por falta de `JavaTimeModule`
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttpTest.java`
+
+### Qué pasaba
+
+El `ObjectMapper` se creaba con `new ObjectMapper()` sin `JavaTimeModule`. Al serializar el lote con `ItemEntrega`/`EventoLogistica` (que tienen `LocalDateTime`), Jackson lanzaba `InvalidDefinitionException`, el `catch (Exception e)` la tragaba y nunca se enviaba la petición HTTP al proveedor externo.
+
+### Qué se cambió
+
+Se registran los módulos con `findAndRegisterModules()` y se desactiva `WRITE_DATES_AS_TIMESTAMPS` para enviar las fechas en ISO-8601, igual que el `ObjectMapper` de Spring Boot.
+
+### Cómo se verificó
+
+Se agregó `ProveedorRutasExternoHttpTest`, que levanta un `HttpServer` local y comprueba que el lote llega con `"fechaCambioEstado":"2026-01-02T03:04:05"`. Falla sin el arreglo (timeout del latch, porque no se envía el request). Suite completa de `logisticas-service`: 82 tests, 0 fallos, `BUILD SUCCESS`.
+
+### 64. `DonacionListener` no abortaba ante interrupción (el `Thread.sleep` acotado se mantiene)
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/messaging/DonacionListener.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/messaging/DonacionListenerCarreraTest.java`
+
+### Qué pasaba
+
+Cuando el hilo se interrumpía (típico al apagarse el contexto), el `catch (InterruptedException)` restablecía el flag pero el bucle `for` no verificaba `isInterrupted()`: seguía reintentando contra un servicio que se estaba cerrando.
+
+### Qué se cambió
+
+`dormir()` ahora devuelve `false` si la espera fue interrumpida y el bucle corta ahí lanzando `AmqpRejectAndDontRequeueException`. El `Thread.sleep` acotado (2 s × 2) sigue siendo la estrategia documentada: no se migró al retry del container porque `RetryTemplate`/`FixedBackOffPolicy` también duerme el hilo consumidor; para no bloquear haría falta retry diferido con DLQ + TTL y republicación, que es un cambio aparte.
+
+### Cómo se verificó
+
+Test `DonacionListenerCarreraTest.interrupcionAbortaLosReintentos`: interrumpe el hilo durante la espera y verifica que `procesarPeticion` se invocó una sola vez (sin el arreglo se invocaba 3). Suite completa de `logisticas-service`: 83 tests, 0 fallos, `BUILD SUCCESS`.
+
+### 61. `EntregaService.convertirADireccionDTO` y `convertirABienDTO` causan `NullPointerException` en `GET /api/entregas`
+
+**Estado:** corregido
+**Severidad:** alta
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/services/EntregaService.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/services/EntregaServiceFindAllDatosParcialesTest.java`
+
+### Qué pasaba
+
+`convertirABienDTO` y `convertirADireccionDTO` desreferenciaban sin guardas `unidad`, `estado`, `entidadDestino`, `direccionDestino`, `ciudad`, `provincia` y `pais`. Un solo ítem con datos parciales en MongoDB hacía fallar con 500 `GET /api/entregas` y `GET /api/entregas/no-recibidas`.
+
+### Qué se cambió
+
+Se agregaron las guardas de nulidad que ya tenía `findById`, devolviendo `null` para los campos ausentes (incluida la dirección completa cuando falta entidad o dirección destino).
+
+### Cómo se verificó
+
+`EntregaServiceFindAllDatosParcialesTest` arma ítems con cada eslabón nulo (unidad/estado/entidad, dirección, ciudad, provincia, país) y verifica que los listados devuelven todos los DTOs. Sin el arreglo falla con NPE en `unidad.getNombre()`. Suite completa de `logisticas-service`: 85 tests, 0 fallos, `BUILD SUCCESS`.
+
+### 68. `EntregaService.actualizarEstado` publica eventos al broker dentro de la transacción SQL (desactualizado: ya usa `afterCommit`)
+
+**Estado:** corregido (ya estaba resuelto)
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorPublicacionEventos.java`, `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/services/EntregaService.java`
+
+### Qué pasaba
+
+El pendiente describía una publicación al broker dentro de la transacción de base de datos (dual-write), con el evento pudiendo salir aunque el commit fallara.
+
+### Qué se cambió
+
+Nada: al revisar el código actual, `GestorPublicacionEventos.publicarAlCommit` ya difiere la publicación a `afterCommit` con `TransactionSynchronizationManager`, y solo publica en el momento cuando no hay transacción activa. Los tres caminos de `EntregaService.actualizarEstado` (ENTREGADA, NO_RECIBIDA, PENDIENTE) pasan por `guardarEventoDeItem` → `publicarAlCommit`.
+
+### Cómo se verificó
+
+Tests existentes en `GestorPublicacionEventosTest`: "Con transacción abierta el evento NO se publica hasta el commit" y "Un rollback deja el evento sin publicar". Suite completa de `logisticas-service`: `BUILD SUCCESS`.
+
+### 65. `ProveedorRutasExternoSimulado` ejecuta I/O y sleep en `ForkJoinPool.commonPool()`
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java`, `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/config/LogisticaConfig.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimuladoTest.java`
+
+### Qué pasaba
+
+`solicitarPlanificacion` llamaba `CompletableFuture.runAsync(task)` sin executor, así que el `Thread.sleep(2000)` y el POST corrían en el `ForkJoinPool.commonPool()` de la JVM, pensado para cómputo y no para esperas bloqueantes.
+
+### Qué se cambió
+
+Se inyecta un `ThreadPoolTaskExecutor` dedicado (`ejecutorRuteo`: un hilo, cola sin tope, daemon, prefijo `ruteo-`) y se usa `runAsync(task, executor)`. La cola sin tope mantiene la semántica del `commonPool` (encola, no rechaza) y serializa las planificaciones.
+
+### Cómo se verificó
+
+`ProveedorRutasExternoSimuladoTest` verifica que la tarea se entrega al executor provisto y que la cola no está acotada. Suite completa de `logisticas-service`: 87 tests, 0 fallos, `BUILD SUCCESS`. Los timeouts del `send` quedan para el punto 31.
+
+### 31. Callback del simulador de rutas: URL fija, sin timeouts y status descartado
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimulado.java`, `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/config/LogisticaConfig.java`, `logisticas-service/src/main/resources/application.properties`, `logisticas-service/.env.example`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoSimuladoTest.java`
+
+### Qué pasaba
+
+La URL del callback estaba cableada a `http://localhost:8086`, el `HttpClient`/`HttpRequest` no tenían timeouts y el `statusCode()` de la respuesta se descartaba: con otro puerto o ante un 4xx/5xx, el lote calculado se perdía en silencio.
+
+### Qué se cambió
+
+La URL sale de `logistica.callback-url` (`LOGISTICA_CALLBACK_URL`), con default que sigue a `server.port`. Se configuró `connectTimeout` de 5 s y `timeout` de request de 10 s. Se valida que el status sea 2xx y se loguea `ERROR` con URL, status y body cuando no lo es; el log de excepción también incluye la URL.
+
+### Cómo se verificó
+
+`ProveedorRutasExternoSimuladoTest` usa `ApplicationContextRunner` para verificar property → `@Value` → POST real contra un `HttpServer` en puerto aleatorio, y otro test captura el `ERROR` de un callback 500. Con la URL fija el test de cableado falla. Suite completa de `logisticas-service`: 89 tests, 0 fallos, `BUILD SUCCESS`.
+
+### 48. Un fallo del broker al publicar después del commit dejaba el 500 y la notificación perdida
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorPublicacionEventos.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorPublicacionEventosTest.java`
+
+### Qué pasaba
+
+`afterCommit` llamaba `productorEventos.publicar(evento)` sin proteger la excepción. Con RabbitMQ caído, la transacción ya había commiteado y el evento estaba persistido, pero la excepción salía hasta el controller: el cliente recibía 500 y al reintentar 400 porque el estado ya había avanzado.
+
+### Qué se cambió
+
+La publicación pasa por `publicarProtegido`, que atrapa `RuntimeException` y loguea `ERROR` con tipo e id del evento, sin propagar. Se usa tanto en `afterCommit` como en el camino sin transacción.
+
+### Cómo se verificó
+
+`GestorPublicacionEventosTest.unFalloDelBrokerTrasElCommitNoSePropaga` simula un fallo del productor y verifica que el commit no lanza, que se intentó publicar y que el evento quedó persistido; sin el fix falla con la `AmqpException` propagada. Suite completa de `logisticas-service`: 90 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límite conocido:** el evento queda en `evento_logistica`, pero no hay republicación automática; recuperarlo requiere replay manual. El outbox con reintentos es un cambio mayor aparte.
+
+### 44. Los listados devolvían la tabla entera
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/controllers/{Camion,Chofer,Entrega,Ruta}Controller.java`, `.../services/{Camion,Chofer,Entrega,Ruta}Service.java`, `.../models/repositories/RepositorioChoferes.java`, `.../dto/entrega/BienDTO.java`, `logisticas-service/src/test/java/.../services/PaginacionListadosTest.java`, `.../controllers/CamionControllerPaginacionTest.java`, `postman/ciclo-completo.postman_collection.json`
+
+### Qué pasaba
+
+`GET /api/camiones`, `/choferes`, `/entregas` y `/rutas` hacían `findAll()` y devolvían todos los registros; la respuesta crecía sin límite.
+
+### Qué se cambió
+
+Los cuatro listados reciben `@ParameterObject @PageableDefault(size = 20) Pageable` y devuelven `Page<DTO>`; el `Pageable` llega al repositorio y se mapea con `Page.map`. Choferes pasó a `@Query("{ 'activo': { $ne: false } }")` para paginar con el filtro de activos en la base (equivalente a `isActivo()`, que incluye `null`/ausente). `BienDTO` ahora expone `idDonacion`, porque `/entregas` dejó de devolver el array `idsDonaciones`. Se actualizó el test de Postman de `/rutas` a `.content`.
+
+### Cómo se verificó
+
+`PaginacionListadosTest` verifica que el `Pageable` llegue al repositorio y que se devuelva la página; `CamionControllerPaginacionTest` prueba con `MockMvc` que sin parámetros el default es page 0 / size 20 (con fallback distinto para asegurar que viene de la anotación); `EntregaServiceFindAllDatosParcialesTest` fija `idDonacion` por ítem. Suite completa de `logisticas-service`: 94 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** `/entregas/no-recibidas` quedó sin paginar (no estaba entre los cuatro endpoints del punto) y no se fijó un `sort` default, así que el orden entre páginas no está garantizado. Cambio de contrato: `/entregas` ya no devuelve `idsDonaciones`; cada ítem trae `idDonacion`.
+
+### 43. Manejo de errores repetido y códigos HTTP incorrectos en los controllers
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/controllers/GlobalExceptionHandler.java` (nuevo), `.../exceptions/RecursoNoEncontradoException.java` (nuevo), `.../controllers/{Camion,Chofer,Entrega,Ruta}Controller.java`, `.../services/{Camion,Chofer,Entrega,Ruta}Service.java`, `.../models/gestores/GestorCamiones.java`, `logisticas-service/src/test/java/.../controllers/{GlobalExceptionHandlerTest,ErrorHandlingControllersTest}.java` (nuevos), tests existentes adaptados, `postman/ciclo-completo.postman_collection.json`
+
+### Qué pasaba
+
+Cada controller tenía su propio `try/catch` y no coincidían: una validación faltante devolvía 404 y un `IllegalStateException` de precondición devolvía 500. La raíz era que `IllegalArgumentException` se usaba tanto para "no encontrado" como para "pedido inválido".
+
+### Qué se cambió
+
+Se creó un `@RestControllerAdvice` (`GlobalExceptionHandler`) que mapea `RecursoNoEncontradoException`→404, `IllegalArgumentException`→400, `IllegalStateException`→409 y `DuplicateKeyException`→409. Los servicios ahora lanzan `RecursoNoEncontradoException` para los recursos ausentes y dejaron `IllegalArgumentException` solo para validación. Se eliminaron los `try/catch` de los cuatro controllers y se actualizaron las anotaciones OpenAPI y la descripción de Postman.
+
+### Cómo se verificó
+
+`GlobalExceptionHandlerTest` cubre cada mapeo; `ErrorHandlingControllersTest` verifica por MockMvc que `GET` inexistente da 404, disponibilidad sin `disponible` da 400 y terminar sin ruta activa da 409. Se comprobó el rojo forzando los handlers a 500 (fallaban con `expected:<400/409> but was:<500>`). Suite completa de `logisticas-service`: 101 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límite conocido:** al mapear `IllegalStateException`→409 también quedan como 409 dos ISE internas raras (fallo de serialización de payload y carrera al resolver una entidad); si se quiere distinguir, hace falta un tipo propio de conflicto de estado y dejar las internas en 500.
+
+### 66. `ProveedorRutasExternoHttp` descartaba en silencio las fallas de red
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttp.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/ProveedorRutasExterno/ProveedorRutasExternoHttpTest.java`
+
+### Qué pasaba
+
+`sendAsync(...).thenAccept(...)` no tenía `.exceptionally`: ante DNS, conexión rechazada o timeout, el `CompletableFuture` quedaba excepcional y la excepción se descartaba sin log. Tampoco había timeouts.
+
+### Qué se cambió
+
+Se agregó `connectTimeout` de 5 s, `timeout` de 10 s en el request, `orTimeout` de 10 s sobre el futuro (el timeout del request no cubre la lectura del body en Java 21/25) y un `.exceptionally` que loguea `ERROR` con la URL y el stack trace.
+
+### Cómo se verificó
+
+`ProveedorRutasExternoHttpTest.unaFallaDeRedSeLoguea` apunta a un puerto cerrado y, con un appender de Logback, verifica que se emite un `ERROR` con la URL y el throwable. Sin el `.exceptionally` el test falla por timeout del latch. Suite completa de `logisticas-service`: 102 tests, 0 fallos, `BUILD SUCCESS`.
+
+### 49. RepositorioRutas escaneaba la colección entera de rutas en memoria
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/repositories/RepositorioRutas.java`, `.../services/RutaService.java`, `.../services/EntregaService.java`, `.../test/.../models/repositories/RepositorioRutasQueriesTest.java` (nuevo), tests de rutas actualizados
+
+### Qué pasaba
+
+`RepositorioRutas` resolvía las búsquedas por donación y por chofer+estado con métodos `default` que hacían `findAll().stream()`. Cada cambio de estado de una entrega o cada inicio/fin de ruta bajaba toda la colección `ruta` a la JVM para filtrar en memoria.
+
+### Qué se cambió
+
+Se reemplazaron por derived queries `findFirstByParadasItemsIdDonacion` y `findFirstByCamionAsignadoChoferIdChoferAndEstado`. El `First` mantiene el resultado limitado a 1 (conserva la semántica del viejo `findFirst()` y evita el `IncorrectResultSizeDataAccessException` de un `@Query` con `Optional`). Se eliminó `findByChofer`, que no tenía usos, y se actualizaron los call sites y stubs. Además, `PlanificadorRutasService.asignarChoferes` y `PlanificadorDeRutasScheduler` dejaron de hacer `repoRutas.findAll()` y ahora usan `findByEstadoIn(PROGRAMADA, EN_CURSO)`.
+
+### Cómo se verificó
+
+`RepositorioRutasQueriesTest` verifica por reflexión que las búsquedas no son `default` ni `@Query` manual (son derived `findFirstBy`, con los nombres de propiedad Java que el mapping resuelve a `_id`). Al reintroducir un `@Query`/`findAll()` el test falla. Suite completa de `logisticas-service`: 103 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** no se crean índices (`spring.data.mongodb.auto-index-creation` apagado), así que Mongo sigue haciendo COLLSCAN aunque ya no transfiera el histórico a la JVM. `findFirstBy...` mantiene el comportamiento previo de devolver la primera ruta si la donación aparece en más de una.
+
+### 62. `CamionService.update` desvinculaba el chofer si el DTO no enviaba `idChofer`
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorCamiones.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/services/CamionServiceUpdateChoferTest.java` (nuevo)
+
+### Qué pasaba
+
+`GestorCamiones.actualizarCamion` hacía `camionExistente.setChofer(nuevoChofer)` incondicionalmente. Un `PUT /api/camiones/{patente}` que mandaba solo `disponible` o la capacidad resolvía `nuevoChofer = null` y desvinculaba silenciosamente al chofer.
+
+### Qué se cambió
+
+La asignación del chofer pasó a ser condicional (`if (nuevoChofer != null)`), igual que el resto de los campos del DTO. Desvincular queda como operación explícita (`ChoferService.delete`, `RutaService.terminarRuta`), no como efecto de un PUT parcial.
+
+### Cómo se verificó
+
+`CamionServiceUpdateChoferTest` cubre: sin `idChofer` conserva el chofer y actualiza los demás campos; con `idChofer` válido lo actualiza; con `idChofer` inexistente o inactivo devuelve `RecursoNoEncontrado` sin tocar el camión. Sin el `if` el primer caso falla. Suite completa de `logisticas-service`: 107 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Nota:** un `"idChofer": null` explícito tampoco desvincula (no se distingue de ausente); ningún caller dependía de eso. `POST /camiones` sigue ignorando `idChofer` (preexistente, fuera de este punto).
+
+### 67. `PlanificadorRutasService.asignarChoferes` usaba `synchronized` local
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/services/PlanificadorRutasService.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/services/PlanificadorRutasServiceAsignarChoferesTest.java`
+
+### Qué pasaba
+
+`asignarChoferes` era `synchronized`, pero el monitor es por JVM. Con dos o más réplicas, dos callbacks concurrentes leían los mismos choferes disponibles y podían asignar el mismo chofer a dos rutas.
+
+### Qué se cambió
+
+Se reemplazó el lock local por un reclamo atómico en Mongo (`buscarChofer`): `findAndModify` con filtro `_id` + `disponible=true` + `activo≠false`, update `$set disponible=false` y `$inc version=1`, `returnNew(true)`. Si otra réplica ganó el claim, la ruta se reintenta con el próximo candidato. Si falla el guardado posterior, `liberarChofer` libera con CAS por `version` y se re-propaga la excepción original (con `addSuppressed` si la liberación también falla). La ruta se persiste al final, y una ruta sin camión ya no se persiste.
+
+### Cómo se verificó
+
+`PlanificadorRutasServiceAsignarChoferesTest` cubre el filtro/update del claim, el `returnNew`, el caso de otra réplica (claim `null`), el reintento con otro chofer, la ruta sin camión, la falla de parada (ruta no persistida + liberación), la liberación con CAS y la preservación de la excepción original. Sin el claim atómico el test de otra réplica falla. Suite completa de `logisticas-service`: 114 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** no hay transacción multi-documento; un crash entre el claim y el save, o un timeout con escritura ya aplicada, puede dejar un chofer ocupado o liberar de más. El camión no se compensa en fallos parciales. El filtro `_id` con UUID no tiene test contra Mongo real.
+
+### 17. El planificador reseteaba la carga de los camiones y nunca la persistía
+
+**Estado:** corregido
+**Severidad:** media
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/PlanificadorDeRutas.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/models/entities/PlanificadorDeRutas/PlanificadorDeRutasTest.java`, `logisticas-service/src/test/java/ar/edu/utn/frba/ddsi/logisticas/services/PlanificadorRutasServicePersistenciaCargaTest.java` (nuevo)
+
+### Qué pasaba
+
+El simulador creaba copias locales de `Camion` y reseteaba su carga para asignar los ítems en memoria. La ocupación (`pesoOcupado`, `volumenOcupado`) se calculaba sólo sobre esas copias y nunca se escribía en `repoCamiones`: la base quedaba siempre en 0.
+
+### Qué se cambió
+
+Al reconstruir cada ruta en `PlanificadorDeRutas.procesarCallbackRutas` se setea la ocupación del camión desde `pesoTotalCargadoKg()` y `volumenTotalCargadoM3()` de la ruta. El `Camion` es el mismo objeto que luego `PlanificadorRutasService.asignarChoferes` guarda para las rutas que consiguen chofer; las rutas sin chofer no se persisten (punto 57).
+
+### Cómo se verificó
+
+`PlanificadorDeRutasTest` verifica que el camión queda con la carga de la ruta (10 kg / 0.01 m³) y `PlanificadorRutasServicePersistenciaCargaTest` cubre el camino completo callback → `asignarChoferes`, capturando el `Camion` que recibe `repoCamiones.save`. Sin los setters el test unitario falla con `expected: <10.0> but was: <0.0>`. Suite completa de `logisticas-service`: 116 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** en un fallo parcial el camión puede quedar guardado con la ocupación de una ruta que no se persistió. El invariante “disponible ⇒ vacío” no lo fuerza `CamionService.cambiarDisponibilidad`. `ciudadDestinoActual` no se persiste (hoy nadie lee el valor de la base).
+
+### 37. El CRUD de camiones/choferes devolvía 500 para errores de validación
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/pom.xml`, `dto/camion/CamionDTO.java`, `dto/camion/CamionesDTO.java`, `dto/chofer/ChoferDTO.java`, `dto/chofer/ChoferesDTO.java`, `controllers/CamionController.java`, `controllers/ChoferController.java`, `controllers/GlobalExceptionHandler.java`, `services/CamionService.java`, `test/.../controllers/ValidacionControllersTest.java` (nuevo), `test/.../services/CamionServiceConvertirDTOTest.java` (nuevo)
+
+### Qué pasaba
+
+`POST /api/camiones` y `POST /api/choferes` (y los endpoints de registro masivo) no validaban campos requeridos. Un payload incompleto llegaba al servicio y terminaba en excepción de integridad/NPE, traducida a 500.
+
+### Qué se cambió
+
+Se agregó `spring-boot-starter-validation` y constraints en los DTO (`patente`, capacidades y `nombre` obligatorios; listas masivas `@NotNull` + `@Valid` en cascada, incluidos elementos `null`). Los POST usan `@Valid`; los PUT quedaron sin validar para preservar la actualización parcial. `GlobalExceptionHandler` traduce `MethodArgumentNotValidException` a 400 con `campo: mensaje`. Además, si un camión nuevo no trae `disponible`, queda en `true` (igual que choferes y evita el NPE del scheduler).
+
+### Cómo se verificó
+
+`ValidacionControllersTest` cubre POST incompletos (400, sin tocar el servicio), cascada en los masivos, elemento `null`, payloads válidos (201) y el cuerpo `campo: mensaje`. `CamionServiceConvertirDTOTest` cubre el default de `disponible`. Sin `@Valid` los POST incompletos devuelven 201 y los tests fallan. Suite completa de `logisticas-service`: 128 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** no se validan rangos (`@Positive`); documentos viejos con `disponible: null` en Mongo podrían romper al scheduler (preexistente).
+
+### 40. Los gestores mezclaban reglas de negocio con persistencia
+
+**Estado:** corregido (alcance: `GestorCamiones`)
+**Severidad:** baja
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/models/gestores/GestorCamiones.java`, `.../services/CamionService.java`, `.../test/.../services/CamionServiceUpdateChoferTest.java`
+
+### Qué pasaba
+
+`GestorCamiones.actualizarCamion` hacía `findById` y `save` además de aplicar los cambios del request. La persistencia quedaba decidida por el gestor y no por el service.
+
+### Qué se cambió
+
+El gestor quedó puro: `actualizarCamion` recibe el `Camion` ya cargado, aplica los cambios y lo devuelve; `resetearCamion` ya era puro. `CamionService.update` resuelve el chofer, carga el camión (404 si no existe), llama al gestor y persiste. Se conservó la precedencia original de los errores (chofer antes que camión). Se agregaron tests para patente inexistente y se verifica que los caminos de error no guardan.
+
+### Cómo se verificó
+
+Comportamiento sin cambios; lo cubren `CamionServiceUpdateChoferTest` (5 casos) y la suite completa de `logisticas-service`: 129 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Excepción documentada:** `GestorPublicacionEventos` conserva sus repositorios porque implementa el patrón outbox (persiste el evento antes de publicar en `afterCommit`) y en `publicarReingresoDeposito` guarda el ítem que `RutaService.terminarRuta` no persiste. Su responsabilidad es homogénea (publicación de eventos); separar la persistencia obligaría a mover la semántica transaccional a los services sin beneficio funcional.
+
+### 42. Paquetes de primer nivel en PascalCase (`RabbitMQ/`, `Scheduler/`)
+
+**Estado:** corregido
+**Severidad:** baja
+**Corregido:** 2026-11-08 · sin commit
+**Archivos:** `logisticas-service/src/main/java/ar/edu/utn/frba/ddsi/logisticas/messaging/DonacionListener.java`, `.../scheduler/PlanificadorDeRutasScheduler.java`, tests homónimos, `controllers/PlanificadorDeRutasController.java`, `ConfiguracionArranqueTest.java`, `controllers/PlanificadorDeRutasControllerTest.java`
+
+### Qué pasaba
+
+`RabbitMQ/` y `Scheduler/` eran paquetes en PascalCase en la raíz del código, contra la convención Java y el resto de los microservicios.
+
+### Qué se cambió
+
+`DonacionListener` pasó al paquete existente `messaging` (junto a `ProductorEventosLogistica`) y `PlanificadorDeRutasScheduler` a `scheduler`. Se actualizaron las declaraciones `package` y los imports de main y tests. No se tocó lógica ni configuración; los beans siguen bajo el paquete base escaneado por `@SpringBootApplication`.
+
+### Cómo se verificó
+
+`git mv` preservó los cuatro archivos como renames; no quedan referencias a `logisticas.RabbitMQ` ni `logisticas.Scheduler` (grep) ni directorios viejos. Los tests se descubren en los nuevos paquetes. Suite completa de `logisticas-service`: 129 tests, 0 fallos, `BUILD SUCCESS`.
+
+**Límites conocidos:** el rename `Scheduler/` → `scheduler/` difiere sólo en mayúsculas; conviene verificar un checkout en filesystem case-insensitive (Windows/macOS). No hay test de contexto que detecte un component scan roto; la verificación de referencias fue por grep.

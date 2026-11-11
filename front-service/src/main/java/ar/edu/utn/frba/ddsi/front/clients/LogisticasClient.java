@@ -1,10 +1,10 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -81,6 +81,19 @@ public class LogisticasClient {
         } catch (Exception e) {
             log.error("Error al obtener rutas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
+        }
+    }
+
+    /** Detalle de una ruta (para el mapa público de seguimiento por token/id). */
+    public JsonNode obtenerRuta(UUID idRuta) {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/rutas/{id}", idRuta)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (Exception e) {
+            log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
+            return null;
         }
     }
 }

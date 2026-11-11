@@ -7,7 +7,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mensaje.MedioContacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.CategoriaNuevaPublicar;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCompletada;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.NotificacionesPendientes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
@@ -24,11 +24,11 @@ public class NotificacionClient {
 
     private final RabbitTemplate rabbitTemplate;
     private final DonacionClient donacionClient;
-    private final RepositorioNotificacionesPendientes repositorioPendientes;
+    private final NotificacionesPendientes repositorioPendientes;
 
     public NotificacionClient(RabbitTemplate rabbitTemplate,
                               DonacionClient donacionClient,
-                              RepositorioNotificacionesPendientes repositorioPendientes) {
+                              NotificacionesPendientes repositorioPendientes) {
         this.rabbitTemplate = rabbitTemplate;
         this.donacionClient = donacionClient;
         this.repositorioPendientes = repositorioPendientes;

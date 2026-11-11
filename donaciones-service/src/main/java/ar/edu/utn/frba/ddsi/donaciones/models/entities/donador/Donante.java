@@ -13,6 +13,7 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -36,6 +37,9 @@ public class Donante {
 
     private LocalDateTime fechaBaja;
 
+    /** Último aviso de inactividad enviado; evita repetirlo mientras siga inactivo (punto 67). */
+    private LocalDate ultimaNotificacionInactividad;
+
     // Lado inverso: el dueño de la relación es Formulario.donante (@JoinColumn donante_id).
     // Sin cascade acá: agregar/quitar un Formulario de esta lista no debe alterar su ciclo de
     // vida. Antes estaba @Transient: nunca se cargaba desde la base (obtenerTodos() siempre
@@ -49,10 +53,10 @@ public class Donante {
     @JoinColumn(name = "direccion_id")
     private Direccion direccion;
 
-    // ManyToOne (no OneToOne): la Persona vive en su propio repositorio (RepositorioPersonas),
+    // ManyToOne (no OneToOne): la Persona vive en su propio repositorio (RepositorioDePersonas),
     // igual que Administrador.humano / EntidadBeneficiaria.personaJuridica. Sin cascade REMOVE:
     // dar de baja el donante no debe borrar la Persona asociada. Se registra explícitamente vía
-    // RepositorioPersonas antes de guardar el Donante (ver DonanteService).
+    // RepositorioDePersonas antes de guardar el Donante (ver DonanteService).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "persona_id")
     private Persona persona;

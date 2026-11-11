@@ -6,9 +6,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.W
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.AdministradorJpaRepository;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDePersonas;
 import ar.edu.utn.frba.ddsi.donaciones.services.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,20 +19,54 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 public class AdminServiceTest {
 
-  private RepositorioAdministradores repositorioAdministradores;
-  private RepositorioPersonas repositorioPersonas;
+  private RepositorioDeAdministradores repositorioAdministradores;
+  private RepositorioDePersonas repositorioPersonas;
   private AdminService adminService;
 
   @BeforeEach
   void setUp() {
-    repositorioAdministradores = mock(RepositorioAdministradores.class);
-    repositorioPersonas = mock(RepositorioPersonas.class);
+    repositorioAdministradores = mock(RepositorioDeAdministradores.class);
+    repositorioPersonas = mock(RepositorioDePersonas.class);
     adminService = new AdminService(repositorioAdministradores, repositorioPersonas);
+  }
+
+  @Test
+  @DisplayName("Punto 65: el PUT conserva la Humana existente y no deja una persona huérfana")
+  void actualizarAdmin_conservaLaHumanaExistente() {
+    UUID adminId = UUID.randomUUID();
+    Humana humanoExistente = new Humana("Carlos", "Gomez", 35, 30123456, Genero.HOMBRE);
+    Administrador adminExistente = new Administrador(
+        humanoExistente, new Whatsapp("1122334455"), "Carlos Admin");
+    adminExistente.setId(adminId);
+
+    when(repositorioAdministradores.buscarPorId(adminId)).thenReturn(Optional.of(adminExistente));
+
+    AdminDTO dto = new AdminDTO();
+    dto.setNombreAMostrar("Carlos Modificado");
+    dto.setNombre("Carlos");
+    dto.setApellido("Gomez Actualizado");
+    dto.setEdad(36);
+    dto.setNumeroDeDocumento(30123456);
+    dto.setGenero("HOMBRE");
+    MediosContactoDTO contacto = new MediosContactoDTO();
+    contacto.setTipo("WHATSAPP");
+    contacto.setValor("1199887766");
+    dto.setMedioDeContacto(contacto);
+
+    adminService.actualizarAdmin(adminId, dto);
+
+    ArgumentCaptor<Administrador> captor = ArgumentCaptor.forClass(Administrador.class);
+    verify(repositorioAdministradores).actualizar(eq(adminId), captor.capture());
+    assertSame(humanoExistente, captor.getValue().getHumano(),
+        "no debe reemplazarse la Humana existente por la instancia nueva del DTO");
+    verify(repositorioPersonas).modificarPersona(eq(humanoExistente.getId()), any(Humana.class));
+    verify(repositorioPersonas, never()).registrarPersona(any());
   }
 
   @Test
@@ -73,27 +106,4 @@ public class AdminServiceTest {
     assertEquals("Carlos Modificado", actualizado.getNombreAMostrar());
   }
 
-  @Test
-  @DisplayName("Punto 46: RepositorioAdministradores.actualizar fuerza el ID original antes de save en caso de recibir objeto nuevo")
-  void repositorioAdministradores_actualizar_asignaIdOriginalAntesDeGuardar() {
-    AdministradorJpaRepository jpaRepo = mock(AdministradorJpaRepository.class);
-    RepositorioAdministradores repo = new RepositorioAdministradores(jpaRepo);
-
-    UUID idOriginal = UUID.randomUUID();
-    when(jpaRepo.existsById(idOriginal)).thenReturn(true);
-
-    Administrador nuevoObjetoConOtroId = new Administrador(
-        new Humana("Test", "Admin", 40, 12345678, Genero.OTRO),
-        new Whatsapp("11223344"),
-        "Test Admin"
-    );
-
-    repo.actualizar(idOriginal, nuevoObjetoConOtroId);
-
-    ArgumentCaptor<Administrador> captor = ArgumentCaptor.forClass(Administrador.class);
-    verify(jpaRepo, times(1)).save(captor.capture());
-
-    Administrador guardado = captor.getValue();
-    assertEquals(idOriginal, guardado.getId(), "Debe reasignar el idOriginal antes de ejecutar save para que Hibernate haga UPDATE y no INSERT");
-  }
 }

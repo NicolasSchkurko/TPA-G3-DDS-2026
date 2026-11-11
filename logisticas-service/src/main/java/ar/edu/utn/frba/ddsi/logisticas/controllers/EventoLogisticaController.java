@@ -32,7 +32,9 @@ public class EventoLogisticaController {
   @GetMapping
   public ResponseEntity<EventoLogisticaResponseDTO> obtenerEventos(
       @Parameter(description = "ID del último evento que el cliente ya procesó. Se devolverán los eventos con ID estrictamente mayor a este valor. Omitido o 0 significan 'desde el principio'.", example = "15")
-      @RequestParam(required = false, defaultValue = "0") Long desdeId) {
-    return ResponseEntity.ok(eventoService.obtenerEventosNuevos(desdeId));
+      @RequestParam(required = false, defaultValue = "0") Long desdeId,
+      @Parameter(description = "Cantidad máxima de eventos a devolver (1 a 500).", example = "100")
+      @RequestParam(required = false, defaultValue = "100") Integer limite) {
+    return ResponseEntity.ok(eventoService.obtenerEventosNuevos(desdeId, limite));
   }
 }

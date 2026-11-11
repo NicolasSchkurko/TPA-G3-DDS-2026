@@ -4,26 +4,24 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionResumenDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorCatalogo;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEntidadesBeneficiarias;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioSubcategoriasDeBienes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDePersonas;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,29 +29,28 @@ import java.util.stream.Collectors;
 @Service
 public class EntidadBeneficiariaService {
 
-    private final RepositorioPersonas repositorioPersonas;
-    private final RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes;
-    private final RepositorioCiudades repositorioCiudades;
-    private final RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
-    private final RepositorioNecesidades repositorioNecesidades;
+    private final RepositorioDePersonas repositorioPersonas;
+    private final GestorCatalogo gestorCatalogo;
+    private final RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
+    private final RepositorioDeNecesidades repositorioNecesidades;
     private final GestorGeoref gestorGeoref;
 
     /** Constructor de conveniencia para tests que no ejercitan geocoding. */
-    public EntidadBeneficiariaService(RepositorioPersonas repositorioPersonas, RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes, RepositorioCiudades repositorioCiudades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades) {
-        this(repositorioPersonas, repositorioSubcategoriasDeBienes, repositorioCiudades,
+    public EntidadBeneficiariaService(RepositorioDePersonas repositorioPersonas, GestorCatalogo gestorCatalogo, RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioDeNecesidades repositorioNecesidades) {
+        this(repositorioPersonas, gestorCatalogo,
                 repositorioEntidadesBeneficiarias, repositorioNecesidades, new GestorGeoref(null, false));
     }
 
     @Autowired
-    public EntidadBeneficiariaService(RepositorioPersonas repositorioPersonas, RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes, RepositorioCiudades repositorioCiudades, RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioNecesidades repositorioNecesidades, GestorGeoref gestorGeoref) {
+    public EntidadBeneficiariaService(RepositorioDePersonas repositorioPersonas, GestorCatalogo gestorCatalogo, RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias, RepositorioDeNecesidades repositorioNecesidades, GestorGeoref gestorGeoref) {
         this.repositorioPersonas = repositorioPersonas;
-        this.repositorioSubcategoriasDeBienes = repositorioSubcategoriasDeBienes;
-        this.repositorioCiudades = repositorioCiudades;
+        this.gestorCatalogo = gestorCatalogo;
         this.repositorioEntidadesBeneficiarias = repositorioEntidadesBeneficiarias;
         this.repositorioNecesidades = repositorioNecesidades;
         this.gestorGeoref = gestorGeoref;
     }
 
+    @Transactional(readOnly = true)
     public List<EntidadBeneficiariaDTO> obtenerTodas() {
         return repositorioEntidadesBeneficiarias.obtenerTodas().stream()
                 .filter(EntidadBeneficiaria::isActiva)
@@ -61,10 +58,12 @@ public class EntidadBeneficiariaService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Page<EntidadBeneficiariaDTO> obtenerTodas(Pageable pageable) {
         return repositorioEntidadesBeneficiarias.obtenerTodasActivas(pageable).map(EntidadBeneficiariaDTO::from);
     }
 
+    @Transactional(readOnly = true)
     public EntidadBeneficiariaDTO obtenerEntidadPorId(UUID id) {
         EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró la entidad con ID: " + id));
@@ -116,6 +115,7 @@ public class EntidadBeneficiariaService {
         System.out.println("Entidad beneficiaria dada de baja con éxito.");
     }
 
+    @Transactional(readOnly = true)
     public List<NecesidadDTO> obtenerNecesidades(UUID idEntidad) {
         EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
         if (entidad == null) throw new IllegalArgumentException("No se encontró la entidad con ID: " + idEntidad);
@@ -127,7 +127,7 @@ public class EntidadBeneficiariaService {
 
     @Transactional(rollbackFor = Exception.class)
     public NecesidadDTO agregarNecesidad(UUID idEntidad, NecesidadDTO dto) {
-        SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
+        SubcategoriaBien subcategoria = gestorCatalogo.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
         Necesidad necesidad = dto.toDomain(subcategoria);
         Necesidad necesidadPersistida = crearNecesidad(necesidad);
         repositorioEntidadesBeneficiarias.agregarNecesidadAEntidad(idEntidad, necesidadPersistida);
@@ -144,7 +144,7 @@ public class EntidadBeneficiariaService {
             throw new IllegalArgumentException("La necesidad " + idNecesidad + " no pertenece a la entidad " + idEntidad);
         }
 
-        SubcategoriaBien subcategoria = repositorioSubcategoriasDeBienes.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
+        SubcategoriaBien subcategoria = gestorCatalogo.obtenerOCrearSubcategoria(dto.getNombreCategoria(), dto.getNombreSubcategoria());
         Necesidad necesidadActualizada = dto.toDomain(subcategoria);
 
         return NecesidadDTO.from(repositorioNecesidades.modificarNecesidad(idNecesidad, necesidadActualizada));
@@ -166,8 +166,9 @@ public class EntidadBeneficiariaService {
         System.out.println("Necesidad dada de baja con éxito.");
     }
 
-    public List<DonacionDTO> obtenerDonaciones(UUID idEntidad) {
-        return obtenerDonacionesDeEntidad(idEntidad).stream().map(DonacionDTO::from).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<DonacionResumenDTO> obtenerDonaciones(UUID idEntidad) {
+        return obtenerDonacionesDeEntidad(idEntidad).stream().map(DonacionResumenDTO::from).collect(Collectors.toList());
     }
 
     private void registrarEntidad(EntidadBeneficiaria nuevaEntidad) {
@@ -180,21 +181,18 @@ public class EntidadBeneficiariaService {
     }
 
     private List<Donacion> obtenerDonacionesDeEntidad(UUID idEntidad) {
-        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad).orElse(null);
-        if (entidad != null) {
-            return entidad.verDonaciones();
-        } else {
-            System.err.println("Entidad no encontrada.");
-            return new ArrayList<>();
-        }
+        EntidadBeneficiaria entidad = repositorioEntidadesBeneficiarias.buscarPorId(idEntidad)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la entidad con ID: " + idEntidad));
+        return entidad.verDonaciones();
     }
 
     // Resuelve (o crea) la Ciudad/Provincia/Pais del catálogo geográfico compartido ANTES de
     // construir el domain object, para evitar que Direccion apunte a una Ciudad nunca persistida
-    // (eso rompía merge() con EntityNotFoundException, ver RepositorioCiudades).
+    // (eso rompía merge() con EntityNotFoundException, ver RepositorioDeCiudades).
     private Ciudad resolverCiudad(DireccionDTO direccionDTO) {
         if (direccionDTO == null) return null;
-        return repositorioCiudades.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
+        return gestorCatalogo.obtenerOCrearCiudad(direccionDTO.getPais(), direccionDTO.getProvincia(), direccionDTO.getCiudad());
     }
 
     private Necesidad crearNecesidad(Necesidad nuevoNecesidad) {

@@ -106,10 +106,9 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-ddsi_app}
       DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: tpa
-      RABBITMQ_PASSWORD: tpa-local
+      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
+    # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
@@ -219,6 +218,8 @@ services:
       RABBITMQ_PASSWORD: tpa-local
       MONGODB_URI: mongodb://mongodb:27017/logistica?replicaSet=rs0
       MONGODB_DB_NAME: logistica
+      LOGISTICA_SEGUIMIENTO_URL: http://localhost:8080/seguimiento/
+    mem_limit: 512m
     depends_on:
       rabbitmq:
         condition: service_healthy

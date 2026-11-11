@@ -22,4 +22,6 @@ ARG SERVICE_NAME=notificaciones-service
 COPY --from=builder /app/${SERVICE_NAME}/target/${SERVICE_NAME}-*.jar app.jar
 
 EXPOSE 8083
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Heap atado al límite del contenedor y OOM con exit code visible.
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]

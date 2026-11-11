@@ -8,11 +8,6 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/** Un evento de logística tal como viaja por el broker.
- *
- *  <p>Existe porque {@code EventoLogistica} lleva el payload serializado a mano: mandar la entidad
- *  sería un JSON dentro de un JSON. Los nombres de los campos son contrato con donaciones-service.
- *  */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -36,6 +36,7 @@ public class NotificacionViaje extends EstrategiaMensaje {
                 ),
                 TipoDeMensaje.CAMBIO_ESTADO
         );
+        mensaje.setUrlMapa(dto.getUrlRuta());
 
         servicioNotificaciones.enviarNotificacionAMediosDeContacto(
                 dto.getContactoDonante(),

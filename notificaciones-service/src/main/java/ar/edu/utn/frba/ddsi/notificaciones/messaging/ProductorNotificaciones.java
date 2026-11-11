@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 /** Publica avisos en el exchange de notificaciones. Manda DTOs, nunca entidades. */
 @Service
 public class ProductorNotificaciones {
@@ -26,11 +28,15 @@ public class ProductorNotificaciones {
 
     /** Publica el aviso de una notificación ya guardada, para que se despache. */
     public void enviar(Notificacion notificacion) {
+        enviar(notificacion.getId(), notificacion.getTipoMedioDeContacto(),
+                notificacion.getDireccionDeContacto());
+    }
+
+    /** Republica el aviso sin cargar la entidad completa (camino del scheduler). */
+    public void enviar(UUID id, String tipoMedioDeContacto, String direccionDeContacto) {
         log.info("[PRODUCTOR] Publicando aviso de la notificación {} al exchange {} (rk={})",
-                notificacion.getId(), RabbitConfig.EXCHANGE_NOTIFICACIONES, RabbitConfig.RK_AVISO);
+                id, RabbitConfig.EXCHANGE_NOTIFICACIONES, RabbitConfig.RK_AVISO);
         enviar(RabbitConfig.RK_AVISO, new ConsumidorNotificaciones.AvisoNotificacion(
-                notificacion.getId().toString(),
-                notificacion.getTipoMedioDeContacto(),
-                notificacion.getDireccionDeContacto()));
+                id.toString(), tipoMedioDeContacto, direccionDeContacto));
     }
 }

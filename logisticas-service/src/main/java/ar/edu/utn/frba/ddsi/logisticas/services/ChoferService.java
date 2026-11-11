@@ -1,47 +1,43 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
+import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class ChoferService {
   private final RepositorioChoferes repoChoferes;
-  private final RepositorioCamiones repoCamiones;
+  private final GestorChoferes gestorChoferes;
 
-  public ChoferService(RepositorioChoferes repoChoferes, RepositorioCamiones repoCamiones) {
+  public ChoferService(RepositorioChoferes repoChoferes, GestorChoferes gestorChoferes) {
     this.repoChoferes = repoChoferes;
-    this.repoCamiones = repoCamiones;
+    this.gestorChoferes = gestorChoferes;
   }
 
-  // --- MÉTODOS CRUD ---
-  public ChoferesDTO findAll() {
-    List<Chofer> choferes = repoChoferes.findAll();
-    return new ChoferesDTO(choferes.stream()
-            .filter(Chofer::isActivo)
-            .map(this::convertirAChoferDTO)
-            .collect(Collectors.toList()));
+  public Page<ChoferDTO> findAll(Pageable pageable) {
+    return repoChoferes.findActivos(pageable).map(chofer -> new ChoferDTO().aplicar(chofer));
   }
 
   public ChoferDTO findById(UUID id) {
     Chofer chofer = repoChoferes.findById(id)
             .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    return convertirAChoferDTO(chofer);
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+    return new ChoferDTO().aplicar(chofer);
   }
 
   public ChoferDTO create(ChoferDTO dto) {
-    Chofer nuevoChofer = convertirChoferDTO(dto);
+    Chofer nuevoChofer = dto.toDomain();
     repoChoferes.save(nuevoChofer);
-    return convertirAChoferDTO(nuevoChofer);
+    return new ChoferDTO().aplicar(nuevoChofer);
   }
 
   public ChoferesDTO createMultiple(ChoferesDTO dtos) {
@@ -50,40 +46,12 @@ public class ChoferService {
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
-    Chofer choferExistente = repoChoferes.findById(id)
-            .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-
-    if (dto.getNombre() != null) {
-      choferExistente.setNombre(dto.getNombre());
-    }
-    if (dto.getDisponible() != null) {
-      choferExistente.setDisponible(dto.getDisponible());
-    }
-
-    repoChoferes.save(choferExistente);
-    return convertirAChoferDTO(choferExistente);
+    Chofer actualizado = gestorChoferes.actualizar(id, dto.getNombre(), dto.getDisponible());
+    return new ChoferDTO().aplicar(actualizado);
   }
 
-  /**
-   * Da de baja lógica al chofer y desvincula el camión si tenía uno asignado.
-   * Preserva el registro histórico para trazabilidad de rutas en MongoDB.
-   */
   public void delete(UUID id) {
-    Chofer chofer = repoChoferes.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-
-    if (!chofer.isActivo()) {
-      throw new IllegalArgumentException("Chofer no encontrado");
-    }
-
-    chofer.darDeBaja();
-    repoChoferes.save(chofer);
-
-    repoCamiones.findByChofer_IdChofer(id).ifPresent(camion -> {
-      camion.eliminarChofer();
-      repoCamiones.save(camion);
-    });
+    gestorChoferes.darDeBaja(id);
   }
 
   public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
@@ -92,34 +60,7 @@ public class ChoferService {
     }
 
     boolean disponible = body.get("disponible");
-
-    Chofer chofer = repoChoferes.findById(id)
-            .filter(Chofer::isActivo)
-            .orElseThrow(() -> new IllegalArgumentException("Chofer no encontrado"));
-    if (disponible) {
-      chofer.disponible();
-    } else {
-      chofer.ocupado();
-    }
-    repoChoferes.save(chofer);
+    gestorChoferes.cambiarDisponibilidad(id, disponible);
     return disponible ? "Chofer marcado como disponible." : "Chofer marcado como ocupado.";
-  }
-
-  // --- MAPPERS ---
-
-  private ChoferDTO convertirAChoferDTO(Chofer chofer){
-    if (chofer == null) return null;
-    ChoferDTO dto = new ChoferDTO();
-    dto.setIdChofer(chofer.getIdChofer());
-    dto.setNombre(chofer.getNombre());
-    dto.setDisponible(chofer.isDisponible());
-    dto.setActivo(chofer.isActivo());
-    return dto;
-  }
-
-  private Chofer convertirChoferDTO(ChoferDTO dto){
-    if (dto == null) return null;
-    boolean esDisponible = dto.getDisponible() == null || dto.getDisponible();
-    return new Chofer(UUID.randomUUID(), dto.getNombre(), esDisponible);
   }
 }

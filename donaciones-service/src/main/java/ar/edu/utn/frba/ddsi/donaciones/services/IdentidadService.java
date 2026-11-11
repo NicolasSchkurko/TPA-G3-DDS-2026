@@ -4,9 +4,9 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.identidad.IdentidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEntidadesBeneficiarias;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -26,13 +26,13 @@ public class IdentidadService {
 
     private static final java.util.Set<String> ROLES_VALIDOS = java.util.Set.of("DONANTE", "ENTIDAD", "ADMIN");
 
-    private final RepositorioEntidadesBeneficiarias repositorioEntidades;
-    private final RepositorioDonantes repositorioDonantes;
-    private final RepositorioAdministradores repositorioAdministradores;
+    private final RepositorioDeEntidadesBeneficiarias repositorioEntidades;
+    private final RepositorioDeDonantes repositorioDonantes;
+    private final RepositorioDeAdministradores repositorioAdministradores;
 
-    public IdentidadService(RepositorioEntidadesBeneficiarias repositorioEntidades,
-                            RepositorioDonantes repositorioDonantes,
-                            RepositorioAdministradores repositorioAdministradores) {
+    public IdentidadService(RepositorioDeEntidadesBeneficiarias repositorioEntidades,
+                            RepositorioDeDonantes repositorioDonantes,
+                            RepositorioDeAdministradores repositorioAdministradores) {
         this.repositorioEntidades = repositorioEntidades;
         this.repositorioDonantes = repositorioDonantes;
         this.repositorioAdministradores = repositorioAdministradores;

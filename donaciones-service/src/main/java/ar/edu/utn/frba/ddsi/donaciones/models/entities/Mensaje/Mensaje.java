@@ -9,6 +9,8 @@ public class Mensaje {
     private String asunto;
     private String cuerpo;
     private TipoDeMensaje tipoDeMensaje;
+    /** Opcional: link estructurado a un mapa/adjunto, para no dejarlo solo pegado en el cuerpo. */
+    private String urlMapa;
 
     public Mensaje(String asunto, String cuerpo, TipoDeMensaje tipoDeMensaje) {
         this.asunto = asunto;

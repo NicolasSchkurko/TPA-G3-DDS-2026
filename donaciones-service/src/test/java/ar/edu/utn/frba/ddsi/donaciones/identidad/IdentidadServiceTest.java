@@ -4,9 +4,9 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.identidad.IdentidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioEntidadesBeneficiarias;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEntidadesBeneficiarias;
 import ar.edu.utn.frba.ddsi.donaciones.services.IdentidadService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,16 +25,16 @@ class IdentidadServiceTest {
   private static final String SUB = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
   private static final String OTRO_SUB = "b2c3d4e5-f6a7-8901-bcde-f01234567891";
 
-  private RepositorioEntidadesBeneficiarias repositorioEntidades;
-  private RepositorioDonantes repositorioDonantes;
-  private RepositorioAdministradores repositorioAdministradores;
+  private RepositorioDeEntidadesBeneficiarias repositorioEntidades;
+  private RepositorioDeDonantes repositorioDonantes;
+  private RepositorioDeAdministradores repositorioAdministradores;
   private IdentidadService service;
 
   @BeforeEach
   void setUp() {
-    repositorioEntidades = Mockito.mock(RepositorioEntidadesBeneficiarias.class);
-    repositorioDonantes = Mockito.mock(RepositorioDonantes.class);
-    repositorioAdministradores = Mockito.mock(RepositorioAdministradores.class);
+    repositorioEntidades = Mockito.mock(RepositorioDeEntidadesBeneficiarias.class);
+    repositorioDonantes = Mockito.mock(RepositorioDeDonantes.class);
+    repositorioAdministradores = Mockito.mock(RepositorioDeAdministradores.class);
     service = new IdentidadService(repositorioEntidades, repositorioDonantes, repositorioAdministradores);
   }
 

@@ -7,7 +7,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.dao.DuplicateKeyException;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,10 +32,11 @@ public class ChoferController {
 
     // --- CRUD ---
 
-    @Operation(summary = "Listar todos los choferes")
+    @Operation(summary = "Listar choferes activos de forma paginada")
     @GetMapping
-    public ResponseEntity<ChoferesDTO> obtenerTodos() {
-        return ResponseEntity.ok(choferService.findAll());
+    public ResponseEntity<Page<ChoferDTO>> obtenerTodos(
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(choferService.findAll(pageable));
     }
 
     @Operation(summary = "Obtener un chofer por ID")
@@ -41,11 +46,7 @@ public class ChoferController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(choferService.findById(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        return ResponseEntity.ok(choferService.findById(id));
     }
 
     @Operation(summary = "Registrar un nuevo chofer")
@@ -55,19 +56,9 @@ public class ChoferController {
             @ApiResponse(responseCode = "409", description = "El chofer ya se encuentra registrado")
     })
     @PostMapping
-    public ResponseEntity<?> crearChofer(@RequestBody ChoferDTO request) {
-        try {
-            ChoferDTO nuevo = choferService.create(request);
-            return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
-        } catch (DuplicateKeyException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Ya existe un chofer registrado con ese identificador");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al registrar el chofer: " + e.getMessage());
-        }
+    public ResponseEntity<?> crearChofer(@Valid @RequestBody ChoferDTO request) {
+        ChoferDTO nuevo = choferService.create(request);
+        return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Registrar múltiples choferes")
@@ -77,19 +68,9 @@ public class ChoferController {
             @ApiResponse(responseCode = "409", description = "Conflicto por clave duplicada")
     })
     @PostMapping("/registrar")
-    public ResponseEntity<?> registrarChoferes(@RequestBody ChoferesDTO choferes) {
-        try {
-            ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
-            return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
-        } catch (DuplicateKeyException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Error de clave duplicada al registrar los choferes");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al registrar choferes: " + e.getMessage());
-        }
+    public ResponseEntity<?> registrarChoferes(@Valid @RequestBody ChoferesDTO choferes) {
+        ChoferesDTO nuevosChoferes = choferService.createMultiple(choferes);
+        return new ResponseEntity<>(nuevosChoferes, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Actualizar datos de un chofer")
@@ -99,11 +80,7 @@ public class ChoferController {
     })
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarChofer(@PathVariable UUID id, @RequestBody ChoferDTO request) {
-        try {
-            return ResponseEntity.ok(choferService.update(id, request));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        return ResponseEntity.ok(choferService.update(id, request));
     }
 
     @Operation(summary = "Eliminar un chofer")
@@ -113,12 +90,8 @@ public class ChoferController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarChofer(@PathVariable UUID id) {
-        try {
-            choferService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        choferService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     // --- OPERACIONES DE NEGOCIO ---
@@ -126,17 +99,13 @@ public class ChoferController {
     @Operation(summary = "Actualizar la disponibilidad de un chofer")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Falta el campo 'disponible'"),
         @ApiResponse(responseCode = "404", description = "Chofer no encontrado")
     })
     @PatchMapping("/{id}/estado")
     public ResponseEntity<String> cambiarEstadoDisponibilidad(
         @PathVariable UUID id,
         @RequestBody Map<String, Boolean> body) {
-        try {
-            String mensaje = choferService.cambiarDisponibilidad(id, body);
-            return ResponseEntity.ok(mensaje);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        return ResponseEntity.ok(choferService.cambiarDisponibilidad(id, body));
     }
 }

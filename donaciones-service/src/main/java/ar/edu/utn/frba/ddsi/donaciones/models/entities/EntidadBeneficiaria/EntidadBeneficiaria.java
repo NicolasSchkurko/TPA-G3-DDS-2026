@@ -44,7 +44,7 @@ public class EntidadBeneficiaria {
     private Direccion direccion;
 
     // Unidireccional: Necesidad no tiene referencia de vuelta hacia EntidadBeneficiaria.
-    // Sin REMOVE ni orphanRemoval: Necesidad vive en su propio repositorio (RepositorioNecesidades)
+    // Sin REMOVE ni orphanRemoval: Necesidad vive en su propio repositorio (RepositorioDeNecesidades)
     // y está referenciada por Donacion.necesidad (@ManyToOne sin cascade).
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "entidad_beneficiaria_id")

@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.data.mongodb.core.index.Indexed;
+import java.lang.reflect.Field;
 
 class EventoLogisticaSecuenciaTest {
 
@@ -28,4 +31,14 @@ class EventoLogisticaSecuenciaTest {
             assertNotEquals(evento1.getId(), evento2.getId(), "Los IDs generados deben ser distintos");
         });
     }
+
+  @Test
+  @DisplayName("Punto 69: fecha tiene TTL de 30 días")
+  void fechaTieneTtlDe30Dias() throws NoSuchFieldException {
+    Field fecha = EventoLogistica.class.getDeclaredField("fecha");
+    Indexed indexed = fecha.getAnnotation(Indexed.class);
+    assertThat(indexed).isNotNull();
+    assertThat(indexed.expireAfterSeconds()).isEqualTo(2_592_000);
+  }
+
 }
