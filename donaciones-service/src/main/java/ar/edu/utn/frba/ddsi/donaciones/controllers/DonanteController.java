@@ -1,14 +1,15 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.ReporteImportacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.ReporteImportacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -131,7 +132,7 @@ public class DonanteController {
 
   @Operation(summary = "Agregar medio de contacto a donante")
   @PostMapping("/{id}/medios-contacto")
-  public ResponseEntity<?> agregarMedioContacto(@PathVariable UUID id, @RequestBody MediosContactoDTO dto) {
+  public ResponseEntity<?> agregarMedioContacto(@PathVariable UUID id, @Valid @RequestBody MediosContactoDTO dto) {
     try {
       PersonaDonanteDTO actualizada = donanteService.agregarMedioContacto(id, dto);
       return new ResponseEntity<>(actualizada, HttpStatus.CREATED);

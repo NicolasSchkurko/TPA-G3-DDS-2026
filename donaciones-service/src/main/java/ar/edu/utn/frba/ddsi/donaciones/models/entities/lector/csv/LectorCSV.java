@@ -1,9 +1,9 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv;
 
-import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ArchivoCsvSinEncabezadosException;
-import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ConversorNuloException;
-import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.EncabezadoCsvDuplicadoException;
-import ar.edu.utn.frba.ddsi.donaciones.exceptions.CsvExceptions.ErrorAlLeerCsvException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.csvexceptions.ArchivoCsvSinEncabezadosException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.csvexceptions.ConversorNuloException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.csvexceptions.EncabezadoCsvDuplicadoException;
+import ar.edu.utn.frba.ddsi.donaciones.exceptions.csvexceptions.ErrorAlLeerCsvException;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.Lector;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.ResultadoLectura;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.filaconverter.FilaConverter;
@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
@@ -52,6 +53,16 @@ public class LectorCSV<T> implements Lector<T> {
   @Override
   public ResultadoLectura<T> importar(InputStream contenido) {
     List<T> resultados = new ArrayList<>();
+    ResultadoLectura<T> resumen = importar(contenido, resultados::add);
+    return new ResultadoLectura<>(resultados, resumen.getErrores(), resumen.getTotalFilas());
+  }
+
+  /**
+   * Variante streaming: entrega cada fila convertida al consumidor sin retener la lista
+   * completa. La usa la importación CSV para no acumular todos los donantes en memoria
+   * (punto 78). Los errores de conversión o del consumidor se acumulan por fila.
+   */
+  public ResultadoLectura<T> importar(InputStream contenido, Consumer<T> consumidor) {
     // Antes cada fila descartada solo se logueaba (logger.warning) y se perdía: el caller no
     // tenía forma de saber cuántas ni por qué. Ahora se acumulan y se devuelven junto al resultado.
     List<String> errores = new ArrayList<>();
@@ -66,14 +77,14 @@ public class LectorCSV<T> implements Lector<T> {
 
       while ((valoresFila = lectorDeArchivo.readNext()) != null) {
         numeroLinea++;
-        procesarYGuardarFila(valoresFila, encabezados, numeroLinea, resultados, errores);
+        procesarYGuardarFila(valoresFila, encabezados, numeroLinea, consumidor, errores);
       }
 
     } catch (IOException | CsvException e) {
       throw new ErrorAlLeerCsvException("Ocurrió un problema inesperado al leer el contenido del CSV", e);
     }
 
-    return new ResultadoLectura<>(resultados, errores, numeroLinea - 1);
+    return new ResultadoLectura<>(List.of(), errores, numeroLinea - 1);
   }
 
   /**
@@ -99,12 +110,12 @@ public class LectorCSV<T> implements Lector<T> {
    * Procesa una fila del CSV, vinculando cada valor con su encabezado correspondiente.
    * Luego utiliza el conversor para crear un objeto del tipo T.
    */
-  private void procesarYGuardarFila(String[] valoresFila, String[] encabezados, int numeroLinea, List<T> resultados, List<String> errores) {
+  private void procesarYGuardarFila(String[] valoresFila, String[] encabezados, int numeroLinea, Consumer<T> consumidor, List<String> errores) {
     Map<String, String> filaMapeada = vincularEncabezadosConValores(valoresFila, encabezados);
 
     try {
       T objetoConvertido = conversor.convertir(Collections.unmodifiableMap(filaMapeada));
-      resultados.add(objetoConvertido);
+      consumidor.accept(objetoConvertido);
     } catch (Exception e) {
       String mensaje = String.format("Línea %d: %s", numeroLinea, e.getMessage());
       logger.warning("Fila descartada: " + mensaje);

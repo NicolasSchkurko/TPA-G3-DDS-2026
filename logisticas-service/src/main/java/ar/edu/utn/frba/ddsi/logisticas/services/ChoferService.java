@@ -4,7 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferesDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
-import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,14 +16,13 @@ import java.util.UUID;
 @Service
 public class ChoferService {
   private final RepositorioChoferes repoChoferes;
-  private final RepositorioCamiones repoCamiones;
+  private final GestorChoferes gestorChoferes;
 
-  public ChoferService(RepositorioChoferes repoChoferes, RepositorioCamiones repoCamiones) {
+  public ChoferService(RepositorioChoferes repoChoferes, GestorChoferes gestorChoferes) {
     this.repoChoferes = repoChoferes;
-    this.repoCamiones = repoCamiones;
+    this.gestorChoferes = gestorChoferes;
   }
 
-  // --- MÉTODOS CRUD ---
   public Page<ChoferDTO> findAll(Pageable pageable) {
     return repoChoferes.findActivos(pageable).map(chofer -> new ChoferDTO().aplicar(chofer));
   }
@@ -47,36 +46,12 @@ public class ChoferService {
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
-    Chofer choferExistente = repoChoferes.findById(id)
-            .filter(Chofer::isActivo)
-            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
-
-    if (dto.getNombre() != null) {
-      choferExistente.setNombre(dto.getNombre());
-    }
-    if (dto.getDisponible() != null) {
-      choferExistente.setDisponible(dto.getDisponible());
-    }
-
-    repoChoferes.save(choferExistente);
-    return new ChoferDTO().aplicar(choferExistente);
+    Chofer actualizado = gestorChoferes.actualizar(id, dto.getNombre(), dto.getDisponible());
+    return new ChoferDTO().aplicar(actualizado);
   }
 
   public void delete(UUID id) {
-    Chofer chofer = repoChoferes.findById(id)
-            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
-
-    if (!chofer.isActivo()) {
-      throw new RecursoNoEncontradoException("Chofer no encontrado");
-    }
-
-    chofer.darDeBaja();
-    repoChoferes.save(chofer);
-
-    repoCamiones.findByChofer_IdChofer(id).ifPresent(camion -> {
-      camion.eliminarChofer();
-      repoCamiones.save(camion);
-    });
+    gestorChoferes.darDeBaja(id);
   }
 
   public String cambiarDisponibilidad(UUID id, Map<String, Boolean> body){
@@ -85,19 +60,7 @@ public class ChoferService {
     }
 
     boolean disponible = body.get("disponible");
-
-    Chofer chofer = repoChoferes.findById(id)
-            .filter(Chofer::isActivo)
-            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
-    if (disponible) {
-      chofer.disponible();
-    } else {
-      chofer.ocupado();
-    }
-    repoChoferes.save(chofer);
+    gestorChoferes.cambiarDisponibilidad(id, disponible);
     return disponible ? "Chofer marcado como disponible." : "Chofer marcado como ocupado.";
   }
-
-  // --- MAPPERS ---
-
 }

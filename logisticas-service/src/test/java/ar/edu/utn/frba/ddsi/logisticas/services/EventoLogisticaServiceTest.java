@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.logisticas.services;
 import ar.edu.utn.frba.ddsi.logisticas.dto.evento.EventoLogisticaResponseDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.EventoLogistica.EventoLogistica;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioEventoLogistica;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,10 +18,13 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -43,28 +47,28 @@ class EventoLogisticaServiceTest {
     @Test
     @DisplayName("Consulta desde el id EXACTO: el repositorio ya devuelve los mayores")
     void consultaDesdeElIdExacto() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(15L)).thenReturn(List.of(evento(16)));
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(eq(15L), any(Pageable.class))).thenReturn(List.of(evento(16)));
 
         servicio().obtenerEventosNuevos(15L);
 
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(15L);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(eq(15L), any(Pageable.class));
     }
 
     @Test
     @DisplayName("No le resta uno al id que le manda el cliente")
     void noLeRestaUno() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong())).thenReturn(List.of());
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong(), any(Pageable.class))).thenReturn(List.of());
 
         servicio().obtenerEventosNuevos(100L);
 
-        verify(repoEventos, never()).findByIdGreaterThanOrderByIdAsc(99L);
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(100L);
+        verify(repoEventos, never()).findByIdGreaterThanOrderByIdAsc(eq(99L), any(Pageable.class));
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(eq(100L), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Devuelve los eventos que el repositorio trae, ya convertidos a DTO")
     void devuelveLosEventosConvertidos() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(15L))
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(eq(15L), any(Pageable.class)))
                 .thenReturn(List.of(evento(16), evento(17)));
 
         EventoLogisticaResponseDTO respuesta = servicio().obtenerEventosNuevos(15L);
@@ -78,18 +82,18 @@ class EventoLogisticaServiceTest {
     @Test
     @DisplayName("Un desdeId null no revienta: se interpreta como 0, o sea 'mandame todo'")
     void unDesdeIdNullNoRevienta() {
-        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong())).thenReturn(List.of(evento(1)));
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(anyLong(), any(Pageable.class))).thenReturn(List.of(evento(1)));
 
         assertThatCode(() -> servicio().obtenerEventosNuevos(null)).doesNotThrowAnyException();
 
-        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(0L);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(eq(0L), any(Pageable.class));
     }
 
     @Test
     @DisplayName("El repositorio es una derived query, no un default que filtra en memoria")
     void elRepositorioEsUnaDerivedQuery() throws NoSuchMethodException {
         Method metodo = RepositorioEventoLogistica.class
-                .getMethod("findByIdGreaterThanOrderByIdAsc", Long.class);
+                .getMethod("findByIdGreaterThanOrderByIdAsc", Long.class, Pageable.class);
 
         assertThat(metodo.isDefault())
                 .as("con cuerpo propio el ORDER BY no lo garantiza nadie")
@@ -97,4 +101,31 @@ class EventoLogisticaServiceTest {
 
         assertThat(metodo.getName()).isEqualTo("findByIdGreaterThanOrderByIdAsc");
     }
+
+    @Test
+    @DisplayName("Punto 69: sin límite explícito el polling pide 100")
+    void elLimitePorDefectoEsCien() {
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(eq(0L), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        servicio().obtenerEventosNuevos(0L, null);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(eq(0L), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("Punto 69: el polling limita la cantidad y capea en 500")
+    void limitaLaCantidadYLaCapea() {
+        when(repoEventos.findByIdGreaterThanOrderByIdAsc(eq(0L), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        servicio().obtenerEventosNuevos(0L, 1000);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(repoEventos).findByIdGreaterThanOrderByIdAsc(eq(0L), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(500);
+    }
+
 }

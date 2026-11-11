@@ -1,8 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionResumenDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -124,7 +124,7 @@ public class EntidadBeneficiariaController {
 
     @Operation(summary = "Ver donaciones")
     @GetMapping("/{id}/donaciones")
-    public ResponseEntity<List<DonacionDTO>> obtenerDonaciones(@PathVariable UUID id) {
+    public ResponseEntity<List<DonacionResumenDTO>> obtenerDonaciones(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(service.obtenerDonaciones(id));
         } catch (IllegalArgumentException e) {

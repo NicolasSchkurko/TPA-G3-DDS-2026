@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 
@@ -65,6 +67,19 @@ class ConfiguracionArranqueTest {
 
         // Y la expresion del cron no se toca: sigue siendo a las 2.
         assertThat(programado.cron()).isEqualTo("0 0 2 * * ?");
+    }
+
+    @Test
+    @DisplayName("Punto 72: el contenedor acota el heap y la memoria")
+    void elContenedorAcotaLaMemoria() throws IOException {
+        String dockerfile = Files.readString(Path.of("Dockerfile"));
+        assertThat(dockerfile)
+                .contains("-XX:MaxRAMPercentage=70.0")
+                .contains("-XX:+ExitOnOutOfMemoryError");
+
+        String compose = Files.readString(Path.of("..", "docker-compose.yml"));
+        assertThat(compose)
+                .containsPattern("(?s)logisticas-service:.*?mem_limit:\\s*512m");
     }
 
     @Test

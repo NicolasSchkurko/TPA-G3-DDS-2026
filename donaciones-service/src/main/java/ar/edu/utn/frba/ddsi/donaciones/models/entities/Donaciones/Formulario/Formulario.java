@@ -22,13 +22,13 @@ public class Formulario {
     @Id
     private UUID id = UUID.randomUUID();
 
-    // ManyToOne (no OneToOne): el Donante vive en su propio repositorio (RepositorioDonantes).
+    // ManyToOne (no OneToOne): el Donante vive en su propio repositorio (RepositorioDeDonantes).
     // Sin cascade REMOVE: eliminar el formulario no debe borrar el Donante asociado.
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "donante_id")
     private Donante donante;
 
-    // Los Bien ya se persisten individualmente vía RepositorioBienes antes de armar el
+    // Los Bien ya se persisten individualmente vía RepositorioDeBienes antes de armar el
     // Formulario (ver DonacionService.procesarFormulario). Mismo criterio que Donacion.bienes:
     // cascade PERSIST/MERGE (no ALL), sin orphanRemoval, ya que cada Bien también queda referenciado
     // desde la Donacion segmentada correspondiente (columnas donacion_id/formulario_id separadas

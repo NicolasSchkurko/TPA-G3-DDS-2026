@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,8 @@ public class EventoLogistica {
   @Field(name = "tipo_evento")
   private String tipoEvento;
 
+  /** TTL de 30 días: la colección es un buffer de polling, no el histórico permanente. */
+  @Indexed(expireAfterSeconds = 2_592_000)
   @Field(name = "fecha")
   private LocalDateTime fecha;
 

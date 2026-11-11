@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.logisticas.dto.chofer.ChoferDTO;
 import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +48,7 @@ class ChoferServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ChoferService(repoChoferes, repoCamiones);
+        service = new ChoferService(repoChoferes, new GestorChoferes(repoChoferes, repoCamiones));
     }
 
     // --- delete ---

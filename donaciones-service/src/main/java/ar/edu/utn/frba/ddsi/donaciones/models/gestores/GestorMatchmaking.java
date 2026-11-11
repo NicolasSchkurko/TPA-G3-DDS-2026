@@ -2,7 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeResultadosMatchmaking;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;

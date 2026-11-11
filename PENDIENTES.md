@@ -145,22 +145,22 @@ Ninguna caída impide arrancar a los demás; lo que cambia es qué deja de funci
 
 ---
 
-## 6. Cuatro de los cinco servicios no tienen techo de memoria: el heap se dimensiona contra la RAM del host
+## 6. Tres de los cinco servicios no tienen techo de memoria: el heap se dimensiona contra la RAM del host
 
 **Estado:** abierto
 **Severidad:** alta
-**Archivos:** `docker-compose.yml` (secciones de incentivos, donaciones, logísticas y front), `*/Dockerfile` (líneas 25 de incentivos y logísticas; línea 30 de donaciones y front)
+**Archivos:** `docker-compose.yml` (secciones de incentivos, donaciones y front), `*/Dockerfile` (línea 25 de incentivos; línea 30 de donaciones y front)
 
 ### Qué pasa
 
-Solo `notificaciones-service` declara `mem_limit: 512m` y flags JVM; los otros cuatro no declaran
-`mem_limit` ni `deploy.resources.limits.memory`. Sin límite de cgroup, la JVM de esos cuatro toma
-como referencia la memoria del **host**, no la que el servicio necesita:
+Solo `notificaciones-service` y `logisticas-service` declaran `mem_limit` y flags JVM; los otros
+tres no declaran `mem_limit` ni `deploy.resources.limits.memory`. Sin límite de cgroup, la JVM de
+esos tres toma como referencia la memoria del **host**, no la que el servicio necesita:
 
 - `donaciones-service` y `front-service` usan `-XX:MaxRAMPercentage=75.0`. En un host de 15 GB eso
   permite un heap de hasta ~11 GB por servicio.
-- `incentivos-service` y `logisticas-service` no pasan ningún flag JVM, así que usan el default
-  `MaxRAMPercentage=25`: hasta ~3.75 GB de heap cada uno en el mismo host.
+- `incentivos-service` no pasa ningún flag JVM, así que usa el default `MaxRAMPercentage=25`:
+  hasta ~3.75 GB de heap en el mismo host.
 
 Los servicios son chicos y no necesitan ese techo. El riesgo aparece con los picos ya registrados
 en cada backlog (rankings, matchmaking, importación CSV, eventos de logística): la JVM crece porque
@@ -174,13 +174,13 @@ cualquiera de los barridos masivos documentados en los pendientes de cada módul
 
 ### Propuesta de arreglo
 
-1. Definir `mem_limit` para los cuatro servicios restantes en `docker-compose.yml` (por ejemplo
+1. Definir `mem_limit` para los tres servicios restantes en `docker-compose.yml` (por ejemplo
    384-512 MB para los servicios de dominio y 256-384 MB para el front).
 2. Alinear cada Dockerfile con `-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError` para que el
    heap se calcule contra el límite del contenedor y un OOM termine con un exit code visible en
    lugar de quedar colgado.
-3. Revisar los puntos de Dockerfile de `incentivos-service` (64) y `logisticas-service` (72),
-   que son los dos módulos sin flags JVM.
+3. Revisar los puntos de Dockerfile de `incentivos-service` (64), `donaciones-service` y
+   `front-service`. `logisticas-service` ya quedó cubierto por su punto 72.
 
 ---
 
