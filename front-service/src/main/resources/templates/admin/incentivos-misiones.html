@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incentivos · Misiones y categorías — DDSI</title>
+    <meta name="description" content="Administración de misiones y categorías de incentivos">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" th:href="@{/css/tokens.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" href="../../static/css/incentivos-admin.css" th:href="@{/css/incentivos-admin.css}">
+</head>
+
+<body>
+
+<header class="encabezado">
+    <div class="encabezado-contenido">
+
+        <a href="/landing" th:href="@{/}" class="logo">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
+        </a>
+
+        <nav class="nav-links-admin">
+            <a href="#">Quiénes somos</a>
+            <a> - </a>
+            <a href="#">Qué hacemos</a>
+            <a> - </a>
+            <a href="#">Contactanos</a>
+        </nav>
+
+        <div class="usuario-administrador">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="foto de usuario">
+
+            <div class="datos-usuario">
+                <span th:text="${(nombre ?: '') + ' ' + (apellido ?: '')}">Nombre Apellido</span>
+                <span th:text="${rol}">Administrador</span>
+            </div>
+        </div>
+
+    </div>
+</header>
+
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="main-content">
+
+    <div class="page-header">
+        <div>
+            <h1>Incentivos a donantes</h1>
+            <p class="subtitle">Gestioná las misiones, sus insignias y la secuencia de categorías.</p>
+        </div>
+        <div class="page-header-actions">
+            <a class="btn-ghost" th:href="@{/admin/incentivos/rankings}">Ver rankings →</a>
+            <button class="btn-primary" type="button" onclick="openMisionModal()">Nueva misión</button>
+        </div>
+    </div>
+
+    <!-- ============================ MISIONES ============================ -->
+    <section class="section-block">
+
+        <div class="card-head">
+            <div>
+                <h2 class="section-title">Misiones</h2>
+                <p class="section-subtitle">Cada misión tiene una regla de progreso y una insignia objetivo.</p>
+            </div>
+            <span class="badge badge-muted"
+                  th:text="|${misiones != null ? #lists.size(misiones) : 0} misiones|">0 misiones</span>
+        </div>
+
+        <div class="card" th:if="${!#lists.isEmpty(misiones)}">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Misión</th>
+                    <th>Insignia objetivo</th>
+                    <th>Regla</th>
+                    <th>Progreso</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <tr th:each="m : ${misiones}">
+                    <td>
+                        <strong th:text="${m.nombreMision}">5 donaciones de arroz</strong>
+                        <span class="period-key" th:text="${m.descripcion}">Sumar 5 donaciones con bienes de arroz.</span>
+                    </td>
+
+                    <td>
+                        <span class="chip" th:text="${m.insigniaObjetivo}">Frecuente</span>
+                    </td>
+
+                    <td>
+                        <span class="chip chip-neutral" th:text="${m.regla?.atributo}">CANTIDAD_BIENES</span>
+                        <span class="chip" th:text="${m.regla?.operacion?.tipoOperacion}">SUPERA_CANTIDAD</span>
+                    </td>
+
+                    <td>
+                        <span th:text="${m.regla?.operacion?.progresoObjetivo}">5</span>
+
+                        <span class="period-key" th:if="${m.regla?.constancia != null}"
+                              th:text="|constancia: ${m.regla?.constancia?.cantidad} ${m.regla?.constancia?.unidadTiempo}|">
+                            constancia: 1 MONTHS
+                        </span>
+
+                        <span class="period-key"
+                              th:if="${m.regla?.constancia == null and m.regla?.operacion?.tipoOperacion == 'COINCIDENCIAS'}"
+                              th:text="|valor: ${m.regla?.operacion?.valorEsperado}|">
+                            valor: PENDIENTE
+                        </span>
+
+                        <span class="period-key"
+                              th:if="${m.regla?.constancia == null and m.regla?.operacion?.tipoOperacion != 'COINCIDENCIAS'}"
+                              th:text="|cantidad esperada: ${m.regla?.operacion?.cantidad}|">
+                            cantidad esperada: 10
+                        </span>
+                    </td>
+
+                    <td>
+                        <div class="actions-cell">
+                            <button class="btn-sm btn-green" type="button"
+                                    th:attr="data-edit-action=@{/admin/incentivos/misiones/{id}(id=${m.idMision})},
+                                             data-nombre=${m.nombreMision},
+                                             data-descripcion=${m.descripcion},
+                                             data-insignia=${m.insigniaObjetivo},
+                                             data-insignia-desc=${m.insigniaDescripcion},
+                                             data-insignia-img=${m.insigniaUrlImagen},
+                                             data-atributo=${m.regla?.atributo},
+                                             data-tipo-op=${m.regla?.operacion?.tipoOperacion},
+                                             data-progreso=${m.regla?.operacion?.progresoObjetivo},
+                                             data-cantidad=${m.regla?.operacion?.cantidad},
+                                             data-valor=${m.regla?.operacion?.valorEsperado},
+                                             data-const-cant=${m.regla?.constancia?.cantidad},
+                                             data-const-unidad=${m.regla?.constancia?.unidadTiempo}"
+                                    onclick="openMisionModal(this)">Editar</button>
+
+                            <button class="btn-sm btn-outline-danger" type="button"
+                                    th:attr="data-delete-action=@{/admin/incentivos/misiones/{id}/eliminar(id=${m.idMision})},
+                                             data-nombre=${m.nombreMision}"
+                                    onclick="openDeleteMisionModal(this)">Dar de baja</button>
+                        </div>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card empty-state" th:if="${#lists.isEmpty(misiones)}">
+            <div class="empty-illustration">🏅</div>
+            <h2>Todavía no hay misiones</h2>
+            <p>Creá la primera misión para que los donantes tengan un objetivo.</p>
+            <button class="btn-primary" type="button" onclick="openMisionModal()">Nueva misión</button>
+        </div>
+
+    </section>
+
+    <!-- ============================ CATEGORÍAS ============================ -->
+    <section class="section-block">
+
+        <div class="card-head">
+            <div>
+                <h2 class="section-title">Categorías</h2>
+                <p class="section-subtitle">Ordenan el programa de incentivos. La posición se reacomoda sola al borrar.</p>
+            </div>
+            <div class="page-header-actions">
+                <span class="badge badge-muted"
+                      th:text="|${categorias != null ? #lists.size(categorias) : 0} categorías|">0 categorías</span>
+                <button class="btn-primary" type="button" onclick="openCategoriaModal()">Nueva categoría</button>
+            </div>
+        </div>
+
+        <div class="card" th:if="${!#lists.isEmpty(categorias)}">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Posición</th>
+                    <th>Nombre</th>
+                    <th>Misiones</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="c : ${categorias}">
+                    <td>
+                        <span class="chip chip-neutral" th:text="${c.posicionSecuencia}">1</span>
+                    </td>
+                    <td>
+                        <strong th:text="${c.nombre}">Principiantes</strong>
+                    </td>
+                    <td th:text="|${c.misiones != null ? #lists.size(c.misiones) : 0} misiones|">2 misiones</td>
+                    <td>
+                        <div class="actions-cell">
+                            <button class="btn-sm btn-green" type="button"
+                                    th:attr="data-edit-action=@{/admin/incentivos/categorias/{id}(id=${c.idCategoria})},
+                                             data-nombre=${c.nombre},
+                                             data-pos=${c.posicionSecuencia}"
+                                    onclick="openCategoriaModal(this)">Editar</button>
+
+                            <button class="btn-sm btn-outline-danger" type="button"
+                                    th:attr="data-delete-action=@{/admin/incentivos/categorias/{id}/eliminar(id=${c.idCategoria})},
+                                             data-nombre=${c.nombre}"
+                                    onclick="openDeleteCategoriaModal(this)">Dar de baja</button>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card empty-state" th:if="${#lists.isEmpty(categorias)}">
+            <div class="empty-illustration">📚</div>
+            <h2>Todavía no hay categorías</h2>
+            <p>Armá la secuencia de categorías que van a desbloquear los donantes.</p>
+            <button class="btn-primary" type="button" onclick="openCategoriaModal()">Nueva categoría</button>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- ============ MODAL: alta / edición de misión ============ -->
+<div class="modal-overlay" id="misionModal" hidden>
+    <div class="modal-box">
+        <h3 id="misionModalTitle">Nueva misión</h3>
+        <p>Definí qué tiene que hacer el donante y qué insignia gana.</p>
+
+        <form method="post" id="misionForm" th:action="@{/admin/incentivos/misiones}">
+            <div class="form-grid">
+
+                <div class="field">
+                    <label for="f-nombre">Nombre de la misión <span class="req">*</span></label>
+                    <input id="f-nombre" name="nombreMision" required maxlength="120"
+                           placeholder="Ej.: 5 donaciones de arroz">
+                </div>
+
+                <div class="field">
+                    <label for="f-descripcion">Descripción</label>
+                    <textarea id="f-descripcion" name="descripcion" rows="2" maxlength="500"
+                              placeholder="Qué ve el donante en su perfil"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label for="f-insignia">Insignia objetivo <span class="req">*</span></label>
+                        <input id="f-insignia" name="insigniaObjetivo" required maxlength="80"
+                               placeholder="Ej.: Frecuente">
+                    </div>
+                    <div class="field">
+                        <label for="f-insignia-desc">Descripción de la insignia</label>
+                        <input id="f-insignia-desc" name="insigniaDescripcion" maxlength="200">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="f-insignia-img">URL de la imagen de la insignia</label>
+                    <input id="f-insignia-img" name="insigniaUrlImagen" type="url" placeholder="https://...">
+                    <span class="hint">Se guarda la URL, no los bytes.</span>
+                </div>
+
+                <div class="form-subtitle">Regla de progreso</div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label for="f-atributo">Atributo medido <span class="req">*</span></label>
+                        <select id="f-atributo" name="regla.atributo" required>
+                            <option value="">Elegí un atributo</option>
+                            <option value="ESTADO">Estado</option>
+                            <option value="CATEGORIA">Categoría</option>
+                            <option value="CANTIDAD_BIENES">Cantidad de bienes</option>
+                            <option value="SUBCATEGORIA">Subcategoría</option>
+                            <option value="ENTIDAD">Entidad</option>
+                            <option value="FECHA">Fecha</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="f-tipo-op">Operación <span class="req">*</span></label>
+                        <select id="f-tipo-op" name="regla.operacion.tipoOperacion" required
+                                onchange="toggleOperacion()">
+                            <option value="SUPERA_CANTIDAD">Supera una cantidad</option>
+                            <option value="VALORES_DISTINTOS">Valores distintos</option>
+                            <option value="COINCIDENCIAS">Coincidencias</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label for="f-progreso">Progreso objetivo <span class="req">*</span></label>
+                        <input id="f-progreso" name="regla.operacion.progresoObjetivo"
+                               type="number" min="1" required placeholder="Ej.: 5">
+                        <span class="hint">Cuántas veces se cumple para completar la misión.</span>
+                    </div>
+
+                    <div class="field" id="fieldCantidad">
+                        <label for="f-cantidad">Cantidad esperada <span class="req">*</span></label>
+                        <input id="f-cantidad" name="regla.operacion.cantidad" type="number" min="1"
+                               placeholder="Ej.: 10">
+                        <span class="hint">Requerida en "Supera una cantidad" y "Valores distintos".</span>
+                    </div>
+
+                    <div class="field" id="fieldValor" hidden>
+                        <label for="f-valor">Valor esperado <span class="req">*</span></label>
+                        <input id="f-valor" name="regla.operacion.valorEsperado" maxlength="100"
+                               placeholder="Ej.: arroz">
+                        <span class="hint">Requerida en "Coincidencias".</span>
+                    </div>
+                </div>
+
+                <div class="check-field">
+                    <label>
+                        <input type="checkbox" id="f-constancia" onchange="toggleConstancia()">
+                        Misión con constancia
+                    </label>
+                    <span class="hint">Solo si el donante debe mantener un ritmo (ej.: donar todos los meses).</span>
+                </div>
+
+                <div class="form-row" id="constanciaFields" hidden>
+                    <div class="field">
+                        <label for="f-const-cant">Cantidad de unidades <span class="req">*</span></label>
+                        <input id="f-const-cant" name="regla.constancia.cantidad" type="number" min="1">
+                    </div>
+                    <div class="field">
+                        <label for="f-const-unidad">Unidad de tiempo <span class="req">*</span></label>
+                        <select id="f-const-unidad" name="regla.constancia.unidadTiempo">
+                            <option value="MINUTES">Minutos</option>
+                            <option value="HOURS">Horas</option>
+                            <option value="DAYS">Días</option>
+                            <option value="WEEKS">Semanas</option>
+                            <option value="MONTHS">Meses</option>
+                            <option value="YEARS">Años</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn-secondary" type="button" onclick="closeModal('misionModal')">Cancelar</button>
+                    <button class="btn-primary" type="submit">Guardar misión</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============ MODAL: alta / edición de categoría ============ -->
+<div class="modal-overlay" id="categoriaModal" hidden>
+    <div class="modal-box">
+        <h3 id="categoriaModalTitle">Nueva categoría</h3>
+        <p>Definí el nombre y, si querés, la posición en la secuencia.</p>
+
+        <form method="post" id="categoriaForm" th:action="@{/admin/incentivos/categorias}">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="f-cat-nombre">Nombre <span class="req">*</span></label>
+                    <input id="f-cat-nombre" name="nombre" required maxlength="80" placeholder="Ej.: Frecuentes">
+                </div>
+
+                <div class="field">
+                    <label for="f-cat-pos">Posición en la secuencia</label>
+                    <input id="f-cat-pos" name="posicionSecuencia" type="number" min="1" placeholder="Ej.: 3">
+                    <span class="hint">Opcional: sin posición queda al final.</span>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn-secondary" type="button" onclick="closeModal('categoriaModal')">Cancelar</button>
+                    <button class="btn-primary" type="submit">Guardar categoría</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============ MODAL: confirmar baja ============ -->
+<div class="modal-overlay" id="deleteModal" hidden>
+    <div class="modal-box">
+        <h3>¿Dar de baja?</h3>
+        <p id="deleteModalText">Esta acción no se puede deshacer.</p>
+        <form method="post" id="deleteForm" action="#">
+            <div class="modal-actions">
+                <button class="btn-secondary" type="button" onclick="closeModal('deleteModal')">Cancelar</button>
+                <button class="btn-danger" type="submit">Sí, dar de baja</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    /* ==========================================================
+       Solo UI: los datos los trae Thymeleaf.
+       ========================================================== */
+
+    /* Acciones de alta renderizadas por Thymeleaf (respetan el context path). */
+    const MISION_CREATE_ACTION = document.getElementById('misionForm').getAttribute('action');
+    const CATEGORIA_CREATE_ACTION = document.getElementById('categoriaForm').getAttribute('action');
+
+    /* ---------- Genérico ---------- */
+    function closeModal(id) { document.getElementById(id).hidden = true; }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.hidden = true);
+        }
+    });
+
+    function set(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = (value == null || value === 'undefined' || value === 'null') ? '' : value;
+    }
+
+    function escapeHtml(texto) {
+        const div = document.createElement('div');
+        div.textContent = texto == null ? '' : texto;
+        return div.innerHTML;
+    }
+
+    /* ---------- Misiones ---------- */
+    function openMisionModal(btn) {
+        const form = document.getElementById('misionForm');
+        const title = document.getElementById('misionModalTitle');
+
+        if (btn) {                                   /* edición */
+            const d = btn.dataset;
+            title.textContent = 'Editar misión';
+            form.setAttribute('action', d.editAction);
+            form.reset();                            /* limpia lo que quedó de la edición anterior */
+
+            set('f-nombre', d.nombre);
+            set('f-descripcion', d.descripcion);
+            set('f-insignia', d.insignia);
+            set('f-insignia-desc', d.insigniaDesc);
+            set('f-insignia-img', d.insigniaImg);
+            set('f-atributo', d.atributo);
+            set('f-tipo-op', d.tipoOp);
+            set('f-progreso', d.progreso);
+            set('f-cantidad', d.cantidad);
+            set('f-valor', d.valor);
+
+            document.getElementById('f-constancia').checked = !!d.constCant;
+            toggleConstancia();
+            set('f-const-cant', d.constCant);
+            set('f-const-unidad', d.constUnidad);
+        } else {                                     /* alta */
+            title.textContent = 'Nueva misión';
+            form.setAttribute('action', MISION_CREATE_ACTION);
+            form.reset();
+            document.getElementById('f-constancia').checked = false;
+            toggleConstancia();
+        }
+
+        toggleOperacion();
+        document.getElementById('misionModal').hidden = false;
+    }
+
+    function toggleOperacion() {
+        const esCoincidencias = document.getElementById('f-tipo-op').value === 'COINCIDENCIAS';
+
+        document.getElementById('fieldCantidad').hidden = esCoincidencias;
+        document.getElementById('fieldValor').hidden = !esCoincidencias;
+
+        const cantidad = document.getElementById('f-cantidad');
+        const valor = document.getElementById('f-valor');
+        cantidad.disabled = esCoincidencias;
+        valor.disabled = !esCoincidencias;
+        cantidad.required = !esCoincidencias;
+        valor.required = esCoincidencias;
+    }
+
+    function toggleConstancia() {
+        const activa = document.getElementById('f-constancia').checked;
+
+        document.getElementById('constanciaFields').hidden = !activa;
+
+        const cant = document.getElementById('f-const-cant');
+        const unidad = document.getElementById('f-const-unidad');
+        cant.disabled = !activa;
+        unidad.disabled = !activa;
+        cant.required = activa;
+        unidad.required = activa;
+    }
+
+    function openDeleteMisionModal(btn) {
+        document.getElementById('deleteModalText').innerHTML =
+            'Se dará de baja la misión <strong>' + escapeHtml(btn.dataset.nombre) +
+            '</strong>. El avance de los donantes se pierde.';
+        document.getElementById('deleteForm').setAttribute('action', btn.dataset.deleteAction);
+        document.getElementById('deleteModal').hidden = false;
+    }
+
+    /* ---------- Categorías ---------- */
+    function openCategoriaModal(btn) {
+        const form = document.getElementById('categoriaForm');
+        const title = document.getElementById('categoriaModalTitle');
+
+        if (btn) {
+            title.textContent = 'Editar categoría';
+            form.setAttribute('action', btn.dataset.editAction);
+            set('f-cat-nombre', btn.dataset.nombre);
+            set('f-cat-pos', btn.dataset.pos);
+        } else {
+            title.textContent = 'Nueva categoría';
+            form.setAttribute('action', CATEGORIA_CREATE_ACTION);
+            form.reset();
+        }
+        document.getElementById('categoriaModal').hidden = false;
+    }
+
+    function openDeleteCategoriaModal(btn) {
+        document.getElementById('deleteModalText').innerHTML =
+            'Se dará de baja la categoría <strong>' + escapeHtml(btn.dataset.nombre) +
+            '</strong>. La secuencia se reacomoda sola.';
+        document.getElementById('deleteForm').setAttribute('action', btn.dataset.deleteAction);
+        document.getElementById('deleteModal').hidden = false;
+    }
+
+    /* Estado inicial del formulario de misión. */
+    toggleOperacion();
+    toggleConstancia();
+</script>
+</body>
+</html>
