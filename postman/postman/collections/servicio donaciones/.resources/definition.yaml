@@ -1,0 +1,20 @@
+$kind: collection
+description: |-
+  Endpoints mas importantes de donaciones-service, verificados contra los controllers (AdminController, DonanteController, EntidadBeneficiariaController, DonacionController).
+
+  La coleccion tiene dos carpetas, pensadas para usos distintos:
+
+  1. 'Flujo completo': un unico flujo de punta a punta -- crea un admin, un donante y una entidad (con una necesidad), registra una donacion de ese donante, corre el matchmaking, la asigna a la entidad, verifica que aparezca en 'donaciones asignadas' de esa entidad, y al final BORRA todo lo que creo (donacion -> necesidad -> entidad -> donante -> admin, en ese orden por las FK). Como se autolimpia, correrlo muchas veces no va dejando basura ni entidades 'repetidas': antes el cuit de la entidad venia fijo ('20-12345678-9') y el borrado de entidad/donante estaba en una carpeta aparte que si no se corria dejaba la entidad vieja dando vueltas -- por eso cada corrida 'parecia' crear siempre la misma entidad. Ahora el cuit es random y el flujo se borra a si mismo.
+
+  2. 'Limpieza total (todas las entidades)': una escoba aparte, independiente de las variables que vaya dejando 'Flujo completo', para barrer TODO lo que haya quedado de corridas viejas (antes de este fix, o de pruebas manuales sueltas desde la app). Lista cada recurso y borra uno por uno con pm.sendRequest, en orden seguro para las FK: donaciones -> entidades (y sus necesidades) -> donantes -> admins. Pensada para correrse sola, de vez en cuando, no como parte del flujo de prueba normal.
+
+  Ojo con 'Cambiar estado de donacion' (si se usa suelta, fuera del flujo): GestorAsignaciones.parseEstado() solo acepta EN_DEPOSITO, PENDIENTE_ASIGNACION, ASIGNADO, ENTREGADO y VENCIDO como string valido, aunque el enum Estado tambien tiene EN_TRASLADO -- mandar ese valor tira 400.
+variables:
+  baseUrl: http://localhost:8084
+  adminId: "123e4567-e89b-12d3-a456-426614174000"
+  donanteId: ""
+  donanteNombre: ""
+  entidadId: ""
+  necesidadId: ""
+  donacionId: ""
+  posicionPropuesta: "1"

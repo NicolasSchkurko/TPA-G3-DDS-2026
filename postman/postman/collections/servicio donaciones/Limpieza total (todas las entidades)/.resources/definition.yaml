@@ -1,0 +1,3 @@
+$kind: collection
+description: "Escoba independiente del 'Flujo completo': no usa sus variables, sino que lista cada recurso con GET y borra TODO lo que encuentra con pm.sendRequest. Pensada para correrse sola cuando quedaron datos de pruebas viejas (manuales, de corridas interrumpidas, o de antes de este fix). Correr las 5 en orden (de arriba hacia abajo) porque las donaciones y los formularios referencian donante/entidad por FK."
+order: 2000

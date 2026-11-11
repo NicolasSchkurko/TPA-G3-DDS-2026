@@ -247,6 +247,7 @@ services:
       KEYCLOAK_ADMIN_BASE_URI: http://keycloak:8080/admin
       KEYCLOAK_REGISTRATION_CLIENT_ID: front-registration
       KEYCLOAK_REGISTRATION_CLIENT_SECRET: front-registration-dev-secret
+      KEYCLOAK_ACCOUNT_RETURN_URI: http://localhost:8080/donante/mapa
       # La app usa endpoints internos para backchannel y el issuer público en los tokens.
       KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ddsi
       KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/auth

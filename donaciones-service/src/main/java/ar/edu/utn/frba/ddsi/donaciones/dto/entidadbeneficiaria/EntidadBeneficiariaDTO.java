@@ -1,6 +1,8 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
@@ -20,6 +22,7 @@ public class EntidadBeneficiariaDTO {
     private String cuit;
     private String tipoJuridico;
     private String telefono;
+    private String correoElectronico;
     private DireccionDTO direccion;
     private UUID id;
     private Boolean activa;
@@ -47,6 +50,13 @@ public class EntidadBeneficiariaDTO {
                 Telefono tel = new Telefono(this.telefono);
                 juridica.agregarMedioDeContacto(tel);
                 juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(tel);
+            }
+            if (this.correoElectronico != null && !this.correoElectronico.isBlank()) {
+                Mail mail = new Mail(this.correoElectronico);
+                juridica.agregarMedioDeContacto(mail);
+                if (juridica.getMediosDeContacto().getMedioDeContactoPredeterminado() == null) {
+                    juridica.getMediosDeContacto().setMedioDeContactoPredeterminado(mail);
+                }
             }
         }
 
@@ -77,9 +87,21 @@ public class EntidadBeneficiariaDTO {
             dto.setTipoJuridico(entidad.getPersonaJuridica().getTipoJuridico() != null
                     ? entidad.getPersonaJuridica().getTipoJuridico().name()
                     : null);
-            if (entidad.getPersonaJuridica().getMediosDeContacto() != null &&
-                    entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado() != null) {
-                dto.setTelefono(entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado().getValor());
+            if (entidad.getPersonaJuridica().getMediosDeContacto() != null) {
+                MedioDeContacto predeterminado =
+                        entidad.getPersonaJuridica().getMediosDeContacto().getMedioDeContactoPredeterminado();
+                if (predeterminado instanceof Telefono) {
+                    dto.setTelefono(predeterminado.getValor());
+                }
+                if (entidad.getPersonaJuridica().getMediosDeContacto().getListaMediosDeContacto() != null) {
+                    entidad.getPersonaJuridica().getMediosDeContacto().getListaMediosDeContacto().forEach(medio -> {
+                        if (medio instanceof Telefono && dto.getTelefono() == null) {
+                            dto.setTelefono(medio.getValor());
+                        } else if (medio instanceof Mail && dto.getCorreoElectronico() == null) {
+                            dto.setCorreoElectronico(medio.getValor());
+                        }
+                    });
+                }
             }
         }
 
