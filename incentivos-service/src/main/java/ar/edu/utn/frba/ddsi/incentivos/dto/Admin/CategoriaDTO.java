@@ -14,6 +14,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CategoriaDTO {
 
+    private UUID idCategoria;
+
     @NotBlank(message = "La categoría requiere un nombre")
     private String nombre;
 
@@ -43,10 +45,12 @@ public class CategoriaDTO {
                                          .map(cm -> cm.getMision().getIdMision())
                                          .toList();
 
-        return new CategoriaDTO(
+        CategoriaDTO dto = new CategoriaDTO(
             categoria.getNombre(),
             categoria.getPosicionSecuencia(),
             idMisiones
         );
+        dto.setIdCategoria(categoria.getIdCategoria());
+        return dto;
     }
 }
