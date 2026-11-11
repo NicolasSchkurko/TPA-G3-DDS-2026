@@ -131,7 +131,8 @@ public class IncentivosClient {
             restTemplate.put(url, dto);
             log.debug("Perfil actualizado en incentivos para {}", idUsuario);
         } catch (Exception e) {
-            log.warn("No se pudo actualizar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
+            log.error("No se pudo actualizar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
+            throw e;
         }
     }
 

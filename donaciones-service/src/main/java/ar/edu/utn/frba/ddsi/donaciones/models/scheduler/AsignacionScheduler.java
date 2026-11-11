@@ -1,0 +1,22 @@
+package ar.edu.utn.frba.ddsi.donaciones.models.scheduler;
+
+import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+@Component
+public class AsignacionScheduler {
+
+    private final DonacionService donacionService;
+
+    public AsignacionScheduler(DonacionService donacionService) {
+        this.donacionService = donacionService;
+    }
+
+    @Scheduled(cron = "0 0 18,0,2,4,6,8 * * *")
+    @Transactional(rollbackFor = Exception.class)
+    public void ejecutarAsignacion() {
+        donacionService.ejecutarMatchmakingADemanda();
+    }
+}

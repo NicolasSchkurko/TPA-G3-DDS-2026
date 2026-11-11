@@ -11,15 +11,16 @@ import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorPublicacionEventos;
+import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntrega;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -50,11 +51,18 @@ class RutaServiceTest {
     @Mock private RepositorioRutas repoRutas;
     @Mock private RepositorioChoferes repoChoferes;
     @Mock private RepositorioItemEntrega repoItemEntrega;
-    @Mock private GestorCamiones gestorCamiones;
+    private final GestorCamiones gestorCamiones = new GestorCamiones();
     @Mock private RepositorioCamiones repoCamiones;
     @Mock private GestorPublicacionEventos gestorPublicacionEventos;
 
-    @InjectMocks private RutaService rutaService;
+    private RutaService rutaService;
+
+    @BeforeEach
+    void setUp() {
+        GestorRutas gestorRutas = new GestorRutas(repoRutas, repoItemEntrega);
+        rutaService = new RutaService(repoRutas, repoChoferes, gestorCamiones,
+                repoCamiones, gestorPublicacionEventos, gestorRutas);
+    }
 
     // --- iniciar ruta ---
 
@@ -71,7 +79,7 @@ class RutaServiceTest {
         rutaProgramada.setEstado(EstadoRuta.PROGRAMADA);
         rutaProgramada.setUrlSeguimiento(null);
 
-        String urlEsperada = "https://donaciones-app.example.com/seguimiento/" + rutaProgramada.getIdRuta();
+        String urlEsperada = "http://localhost:8080/seguimiento/" + rutaProgramada.getIdRuta();
 
         when(repoChoferes.findById(idChofer)).thenReturn(Optional.of(chofer));
         when(repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(chofer.getIdChofer(), EstadoRuta.PROGRAMADA)).thenReturn(Optional.of(rutaProgramada));

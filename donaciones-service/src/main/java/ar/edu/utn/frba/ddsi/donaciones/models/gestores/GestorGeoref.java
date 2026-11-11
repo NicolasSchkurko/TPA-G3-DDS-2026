@@ -4,7 +4,7 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.GeorefClient;
 import ar.edu.utn.frba.ddsi.donaciones.clients.GeorefException;
 import ar.edu.utn.frba.ddsi.donaciones.dto.georef.GeorefDTOs;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.DireccionJpaRepository;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDirecciones;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -40,7 +41,7 @@ public class GestorGeoref {
     public static final int TAMANO_LOTE = 1000;
 
     private final GeorefClient georefClient;
-    private final DireccionJpaRepository repositorioDirecciones;
+    private final RepositorioDeDirecciones repositorioDirecciones;
     private final TransactionTemplate transaccion;
     private final boolean habilitado;
 
@@ -54,7 +55,7 @@ public class GestorGeoref {
     @Autowired
     public GestorGeoref(
             GeorefClient georefClient,
-            DireccionJpaRepository repositorioDirecciones,
+            RepositorioDeDirecciones repositorioDirecciones,
             PlatformTransactionManager transactionManager,
             @Value("${geocoding.enabled:true}") boolean habilitado) {
         this.georefClient = georefClient;
@@ -66,6 +67,15 @@ public class GestorGeoref {
 
     public boolean isEnabled() {
         return habilitado;
+    }
+
+    /** Direcciones pendientes para el backfill nocturno; el scheduler no conoce el repositorio. */
+    public List<Direccion> buscarPendientes(LocalDateTime limite, int intentosMaximos, int tamano) {
+        if (!habilitado || repositorioDirecciones == null || tamano <= 0) {
+            return List.of();
+        }
+        return repositorioDirecciones.buscarPendientesGeocoding(
+                limite, intentosMaximos, PageRequest.of(0, tamano));
     }
 
     public void geocodificarAlta(Direccion direccion) {

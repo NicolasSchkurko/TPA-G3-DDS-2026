@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.direccion;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;

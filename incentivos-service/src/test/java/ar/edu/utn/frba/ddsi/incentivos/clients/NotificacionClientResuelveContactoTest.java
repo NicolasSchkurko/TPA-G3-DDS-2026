@@ -14,7 +14,7 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImp
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.events.MisionCambiada;
-import ar.edu.utn.frba.ddsi.incentivos.models.repositories.RepositorioNotificacionesPendientes;
+import ar.edu.utn.frba.ddsi.incentivos.models.gestores.NotificacionesPendientes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ class NotificacionClientResuelveContactoTest {
         client = new NotificacionClient(
                 rabbitTemplate,
                 donacionClient,
-                mock(RepositorioNotificacionesPendientes.class));
+                mock(NotificacionesPendientes.class));
     }
 
     private static MisionCambiada evento() {

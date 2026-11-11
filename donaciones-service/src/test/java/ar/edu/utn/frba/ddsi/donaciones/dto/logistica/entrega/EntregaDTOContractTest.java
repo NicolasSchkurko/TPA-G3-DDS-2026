@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

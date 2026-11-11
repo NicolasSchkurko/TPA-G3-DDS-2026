@@ -40,6 +40,9 @@ public class MediosDeContacto {
     }
 
     public void agregarMedioDeContacto(MedioDeContacto medioDeContacto) {
+        if (medioDeContacto == null) {
+            throw new IllegalArgumentException("El medio de contacto no puede ser nulo");
+        }
         this.listaMediosDeContacto.add(medioDeContacto);
     }
 

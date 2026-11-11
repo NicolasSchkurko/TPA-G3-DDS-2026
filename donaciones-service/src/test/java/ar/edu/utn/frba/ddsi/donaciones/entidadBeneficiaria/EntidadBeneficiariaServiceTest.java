@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.entidadBeneficiaria;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.EntidadBeneficiariaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.entidadBeneficiaria.NecesidadDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -13,7 +13,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.*;
 import ar.edu.utn.frba.ddsi.donaciones.services.EntidadBeneficiariaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,31 +26,38 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorCatalogo;
 
 public class EntidadBeneficiariaServiceTest {
 
-    private RepositorioPersonas repositorioPersonas;
-    private RepositorioSubcategoriasDeBienes repositorioSubcategoriasDeBienes;
-    private RepositorioCiudades repositorioCiudades;
-    private RepositorioEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
-    private RepositorioNecesidades repositorioNecesidades;
+    private RepositorioDePersonas repositorioPersonas;
+    private GestorCatalogo gestorCatalogo;
+    private RepositorioDeEntidadesBeneficiarias repositorioEntidadesBeneficiarias;
+    private RepositorioDeNecesidades repositorioNecesidades;
     private EntidadBeneficiariaService service;
 
     @BeforeEach
     void setUp() {
-        repositorioPersonas = mock(RepositorioPersonas.class);
-        repositorioSubcategoriasDeBienes = mock(RepositorioSubcategoriasDeBienes.class);
-        repositorioCiudades = mock(RepositorioCiudades.class);
-        repositorioEntidadesBeneficiarias = mock(RepositorioEntidadesBeneficiarias.class);
-        repositorioNecesidades = mock(RepositorioNecesidades.class);
+        repositorioPersonas = mock(RepositorioDePersonas.class);
+        gestorCatalogo = mock(GestorCatalogo.class);
+        repositorioEntidadesBeneficiarias = mock(RepositorioDeEntidadesBeneficiarias.class);
+        repositorioNecesidades = mock(RepositorioDeNecesidades.class);
 
         service = new EntidadBeneficiariaService(
                 repositorioPersonas,
-                repositorioSubcategoriasDeBienes,
-                repositorioCiudades,
+                gestorCatalogo,
                 repositorioEntidadesBeneficiarias,
                 repositorioNecesidades
         );
+    }
+
+    @Test
+    @DisplayName("Punto 68: obtenerDonaciones de una entidad inexistente lanza 404, no 200 con []")
+    void obtenerDonaciones_entidadInexistente_lanzaError() {
+        UUID id = UUID.randomUUID();
+        when(repositorioEntidadesBeneficiarias.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> service.obtenerDonaciones(id));
     }
 
     @Test

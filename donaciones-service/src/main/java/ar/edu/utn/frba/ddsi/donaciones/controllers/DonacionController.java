@@ -1,16 +1,15 @@
 package ar.edu.utn.frba.ddsi.donaciones.controllers;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.AsignarPropuestaRequestDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.ResultadoMatchmakingDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.matchmaking.AsignarPropuestaRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.matchmaking.ResultadoMatchmakingDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.CambioEstadoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.donaciones.DonacionDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioRequestDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.FormularioResumenDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.FormularioRequestDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.FormularioResumenDTO;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonacionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -26,11 +25,9 @@ import java.util.UUID;
 public class DonacionController {
 
   private final DonacionService donacionService;
-  private final RabbitTemplate rabbitTemplate;
 
-  public DonacionController(DonacionService donacionService, RabbitTemplate rabbitTemplate) {
+  public DonacionController(DonacionService donacionService) {
     this.donacionService = donacionService;
-    this.rabbitTemplate = rabbitTemplate;
   }
 
   @Operation(summary = "Crear una Donación")

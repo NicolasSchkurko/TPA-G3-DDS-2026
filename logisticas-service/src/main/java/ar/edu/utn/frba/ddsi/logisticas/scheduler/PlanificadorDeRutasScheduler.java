@@ -12,7 +12,6 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioItemEntreg
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,21 +24,11 @@ public class PlanificadorDeRutasScheduler {
   private static final Logger log = LoggerFactory.getLogger(PlanificadorDeRutasScheduler.class);
 
   static final String ZonaPlanificacion = "America/Argentina/Buenos_Aires";
-  private static final int TAMANO_LOTE_MAXIMO = 100;
-
   private final RepositorioItemEntrega repoItemEntrega;
   private final RepositorioCamiones repoCamiones;
   private final RepositorioRutas repoRutas;
   private final PlanificadorDeRutas planificadorDominio;
 
-  public PlanificadorDeRutasScheduler(
-          ProveedorRutasExterno proveedorExterno,
-          RepositorioItemEntrega repoItemEntrega,
-          RepositorioCamiones repoCamiones) {
-    this(proveedorExterno, repoItemEntrega, repoCamiones, null);
-  }
-
-  @Autowired
   public PlanificadorDeRutasScheduler(
           ProveedorRutasExterno proveedorExterno,
           RepositorioItemEntrega repoItemEntrega,
@@ -58,13 +47,12 @@ public class PlanificadorDeRutasScheduler {
     List<Camion> camionesDisponibles;
 
     try {
-      Set<UUID> idsItemsEnRutasActivas = (repoRutas != null)
-              ? repoRutas.findByEstadoIn(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)).stream()
-                  .flatMap(ruta -> ruta.obtenerTodosLosItems().stream())
-                  .map(ItemEntrega::getIdDonacion)
-                  .filter(Objects::nonNull)
-                  .collect(Collectors.toSet())
-              : Collections.emptySet();
+      Set<UUID> idsItemsEnRutasActivas = repoRutas
+              .findByEstadoIn(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)).stream()
+              .flatMap(ruta -> ruta.obtenerTodosLosItems().stream())
+              .map(ItemEntrega::getIdDonacion)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
 
       itemsPendientes = repoItemEntrega.findByEstado(EstadoEntrega.PENDIENTE).stream()
               .filter(item -> !idsItemsEnRutasActivas.contains(item.getIdDonacion()))

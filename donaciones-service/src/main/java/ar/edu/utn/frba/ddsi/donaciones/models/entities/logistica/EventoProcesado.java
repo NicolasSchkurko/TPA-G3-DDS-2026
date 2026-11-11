@@ -19,7 +19,7 @@ import lombok.Setter;
  * del estado de memoria de cada contenedor.
  *
  * <p>La fila se inserta al comienzo de la transacción de procesamiento (ver {@code
- * RepositorioEventosProcesados.reclamar}). Si el evento falla, el rollback la borra y el
+ * RepositorioDeEventosProcesados.reclamar}). Si el evento falla, el rollback la borra y el
  * mecanismo de reintentos puede reprocesarlo; si la transacción commitea, la fila queda
  * como constancia de que el evento ya fue procesado con éxito.
  */
