@@ -103,6 +103,22 @@ public class DonacionesClient {
                 .toList();
     }
 
+    /** Busca el perfil de donante por su ID de dominio. */
+    public PersonaDonanteDTO obtenerDonantePorId(UUID id) {
+        if (id == null) {
+            return null;
+        }
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/api/personas/{id}", id)
+                    .retrieve()
+                    .body(PersonaDonanteDTO.class);
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el perfil de donante {} desde {}: {}", id, baseUrl, e.getMessage());
+            return null;
+        }
+    }
+
     private List<PersonaDonanteDTO> cargarDonantes() {
         int pageSize = 100;
         PageResponse<PersonaDonanteDTO> page = restClient.get()

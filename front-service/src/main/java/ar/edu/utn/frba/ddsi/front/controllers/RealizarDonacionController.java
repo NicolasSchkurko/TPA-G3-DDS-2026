@@ -115,6 +115,16 @@ public class RealizarDonacionController {
             return Optional.empty();
         }
 
+        // En cuentas con varios roles, resolvemos primero la identidad vinculada al correo
+        // y cargamos el perfil por su ID. La búsqueda por medios de contacto queda como respaldo.
+        var identidad = donacionesClient.buscarIdentidadPorEmail(correo);
+        if (identidad != null && identidad.getDonanteId() != null) {
+            PersonaDonanteDTO perfil = donacionesClient.obtenerDonantePorId(identidad.getDonanteId());
+            if (perfil != null) {
+                return Optional.of(perfil);
+            }
+        }
+
         List<PersonaDonanteDTO> donantes = donacionesClient.buscarDonantesPorCorreo(correo);
         if (donantes.isEmpty()) {
             model.addAttribute("error", "El correo de tu cuenta no coincide con el correo de contacto de ningún perfil de donante.");
