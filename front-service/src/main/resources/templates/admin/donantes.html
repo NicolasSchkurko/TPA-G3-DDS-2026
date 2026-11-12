@@ -14,22 +14,14 @@
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<!-- ===== Banner: Administrar donantes ===== -->
-<section class="banner-seccion">
-    <img class="banner-imagen"
-         src="../../static/images/donante.jpg"
-         th:src="@{/images/donante.jpg}"
-         alt="Donantes">
-    <div class="banner-overlay"></div>
-    <div class="banner-contenido">
-        <a th:href="@{/admin}" class="banner-volver">
-            <i class="bi bi-arrow-left"></i> Volver al panel
-        </a>
-        <h1>Administrar donantes</h1>
-        <p>Buscá, actualizá, eliminá o importá donantes registrados en el sistema</p>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="'Administrar donantes'">Administración</h1>
+        <p class="admin-page-lead" th:text="'Buscá, actualizá, eliminá o importá los donantes registrados.'">Gestioná los datos del sistema.</p>
     </div>
-</section>
-
+    <a class="btn btn-secondary" th:href="@{/admin}" th:text="'Volver al panel'">Volver</a>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
     <!-- ===== Mensajes de resultado ===== -->

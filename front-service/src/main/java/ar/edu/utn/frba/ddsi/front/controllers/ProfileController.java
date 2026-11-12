@@ -4,6 +4,8 @@ import ar.edu.utn.frba.ddsi.front.services.IdentidadService;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.front.services.SeguimientoService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.core.Authentication;
@@ -21,6 +23,8 @@ public class ProfileController {
     private final DonacionesClient donacionesClient;
     private final IncentivosClient incentivosClient;
     private final IdentidadService identidadService;
+    private final SeguimientoService seguimientoService;
+    private final ObjectMapper objectMapper;
     private final String keycloakIssuerUri;
     private final String keycloakClientId;
     private final String keycloakAccountReturnUri;
@@ -28,12 +32,16 @@ public class ProfileController {
     public ProfileController(DonacionesClient donacionesClient,
                              IncentivosClient incentivosClient,
                              IdentidadService identidadService,
+                             SeguimientoService seguimientoService,
+                             ObjectMapper objectMapper,
                              @Value("${keycloak.issuer-uri}") String keycloakIssuerUri,
                              @Value("${keycloak.client-id}") String keycloakClientId,
                              @Value("${keycloak.account-return-uri}") String keycloakAccountReturnUri) {
         this.donacionesClient = donacionesClient;
         this.incentivosClient = incentivosClient;
         this.identidadService = identidadService;
+        this.seguimientoService = seguimientoService;
+        this.objectMapper = objectMapper;
         this.keycloakIssuerUri = keycloakIssuerUri;
         this.keycloakClientId = keycloakClientId;
         this.keycloakAccountReturnUri = keycloakAccountReturnUri;
@@ -66,7 +74,16 @@ public class ProfileController {
                 ? List.of()
                 : donacionesClient.obtenerDonacionesDeDonante(idDonante);
         model.addAttribute("historialDonaciones", historial);
+        model.addAttribute("seguimientoDonanteJson", toJson(seguimientoService.construirDonante(historial)));
         return "donante/mapa";
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{}";
+        }
     }
 
     private void cargarIncentivosDonante(UUID idDonante, Model model) {

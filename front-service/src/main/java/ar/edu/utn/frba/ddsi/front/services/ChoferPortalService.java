@@ -35,10 +35,14 @@ public class ChoferPortalService {
 
     private final LogisticasClient logisticasClient;
     private final ObjectMapper objectMapper;
+    private final SeguimientoTokenService tokenService;
 
-    public ChoferPortalService(LogisticasClient logisticasClient, ObjectMapper objectMapper) {
+    public ChoferPortalService(LogisticasClient logisticasClient,
+                               ObjectMapper objectMapper,
+                               SeguimientoTokenService tokenService) {
         this.logisticasClient = logisticasClient;
         this.objectMapper = objectMapper;
+        this.tokenService = tokenService;
     }
 
     public ChoferDashboardDTO construir(Authentication authentication, int historialPagina) {
@@ -54,6 +58,9 @@ public class ChoferPortalService {
         dashboard.setChofer(chofer.get());
 
         LogisticaDTOs.Ruta activa = logisticasClient.obtenerRutaActivaDelChofer(chofer.get().getIdChofer());
+        if (activa != null) {
+            activa.setTokenSeguimiento(tokenService.generar(activa.getIdRuta()));
+        }
         dashboard.setRutaActiva(activa);
         dashboard.setCamion(camionDe(chofer.get(), activa));
 
@@ -68,6 +75,7 @@ public class ChoferPortalService {
 
         dashboard.setHistorial(historial.getContent().stream()
                 .filter(ruta -> activa == null || !Objects.equals(ruta.getIdRuta(), activa.getIdRuta()))
+                .peek(ruta -> ruta.setTokenSeguimiento(tokenService.generar(ruta.getIdRuta())))
                 .toList());
         dashboard.setHistorialPagina(pagina);
         dashboard.setHistorialTotalPaginas(historial.getTotalPages());
@@ -234,6 +242,19 @@ public class ChoferPortalService {
     private void construirGeojson(ChoferDashboardDTO dashboard) {
         List<List<Double>> coordenadas = new ArrayList<>();
         List<Map<String, Object>> paradas = new ArrayList<>();
+
+        LogisticaDTOs.Deposito deposito = dashboard.getRutaActiva() != null
+                ? dashboard.getRutaActiva().getDeposito() : null;
+        if (deposito != null && deposito.tieneCoordenadas()) {
+            coordenadas.add(List.of(deposito.getLongitud(), deposito.getLatitud()));
+            Map<String, Object> puntoDeposito = new LinkedHashMap<>();
+            puntoDeposito.put("parada", 0);
+            puntoDeposito.put("estado", "deposito");
+            puntoDeposito.put("direccion", deposito.getEtiqueta() != null ? deposito.getEtiqueta() : "Depósito");
+            puntoDeposito.put("entregadas", 0);
+            puntoDeposito.put("total", 0);
+            paradas.add(puntoDeposito);
+        }
 
         for (ChoferDashboardDTO.ParadaVista parada : dashboard.getParadas()) {
             LogisticaDTOs.DireccionLogistica direccion = parada.getDireccion();

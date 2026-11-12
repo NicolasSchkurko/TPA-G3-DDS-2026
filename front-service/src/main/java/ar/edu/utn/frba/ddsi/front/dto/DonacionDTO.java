@@ -66,7 +66,7 @@ public class DonacionDTO {
             case "PENDIENTE_ASIGNACION" -> "Pendiente de asignación";
             case "ASIGNADO" -> "Asignada";
             case "LISTA_PARA_ENTREGAR" -> "Lista para entregar";
-            case "EN_TRASLADO" -> "En traslado";
+            case "EN_TRASLADO" -> "En camino";
             case "ENTREGADO" -> "Entregada";
             case "ENTREGA_FALLIDA" -> "Entrega fallida";
             case "VENCIDO" -> "Vencida";

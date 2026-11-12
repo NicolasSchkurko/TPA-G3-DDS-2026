@@ -1,20 +1,118 @@
+/* El shell y los componentes ya normalizan tipografía, fondo y márgenes. */
 * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font, system-ui, -apple-system, "Segoe UI", sans-serif);
-    background-color: #f6f7f8;
-    color: #292d32;
 }
 
 /* CONTENIDO PRINCIPAL */
 .main-admin {
+    width: 100%;
     max-width: 1250px;
-    margin: 40px auto;
+    margin: var(--gap-4) auto var(--gap-6);
     padding: 0 25px;
+}
+
+/* ---------- Encabezado estándar de las pantallas de admin ---------- */
+.admin-page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--gap-4);
+    width: 100%;
+    max-width: 1250px;
+    margin: var(--gap-5) auto var(--gap-4);
+    padding: 0 25px;
+    flex-wrap: wrap;
+}
+
+.admin-page-head .eyebrow {
+    margin: 0 0 var(--gap-1);
+    color: var(--accent-dark);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.admin-page-head h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(24px, 2.4vw, 32px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.admin-page-lead {
+    max-width: 68ch;
+    margin: var(--gap-2) 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.admin-page-head .btn {
+    flex-shrink: 0;
+}
+
+/* ---------- Accesos del panel de administración ---------- */
+.admin-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--gap-3);
+}
+
+.admin-tile {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-3);
+    padding: var(--gap-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    color: var(--ink);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.admin-tile:hover,
+.admin-tile:focus-visible {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.admin-tile-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 20px;
+}
+
+.admin-tile-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.admin-tile-copy strong {
+    font-size: 15px;
+}
+
+.admin-tile-copy span {
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.admin-tile > .bi-arrow-right {
+    margin-left: auto;
+    color: var(--muted);
 }
 
 /* TÍTULO */
@@ -22,7 +120,7 @@ body {
     font-size: 26px;
     font-weight: 600;
     margin-bottom: 25px;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 /* CUADRÍCULA */
@@ -39,7 +137,7 @@ body {
     min-height: 180px;
 
     background-color: white;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 8px;
     overflow: hidden;
 
@@ -61,7 +159,7 @@ body {
     object-position: center;
 
     padding: 0;
-    border-right: 1px solid #dee2e6;
+    border-right: 1px solid var(--line-strong);
 
     transition: transform 0.3s;
 }
@@ -76,12 +174,12 @@ body {
     font-size: 19px;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .item p {
     font-size: 14px;
-    color: #6c757d;
+    color: var(--muted);
     line-height: 1.5;
 }
 
@@ -112,14 +210,14 @@ body {
 .btn-primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #ffffff;
+    color: var(--white);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
     background: var(--accent-dark);
     border-color: var(--accent-dark);
-    color: #ffffff;
+    color: var(--white);
 }
 
 .btn-secondary {
@@ -174,7 +272,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    color: #ffffff;
+    color: var(--white);
 }
 
 .banner-volver {
@@ -190,7 +288,7 @@ body {
 }
 
 .banner-volver:hover {
-    color: #ffffff;
+    color: var(--white);
 }
 
 .banner-contenido h1 {
@@ -227,7 +325,7 @@ body {
     position: absolute;
     left: 14px;
     font-size: 15px;
-    color: #8a9199;
+    color: var(--muted-2);
     pointer-events: none;
 }
 
@@ -235,12 +333,12 @@ body {
     width: 100%;
     height: 44px;
     padding: 0 40px 0 40px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 22px;
-    background-color: #ffffff;
+    background-color: var(--white);
     font-family: inherit;
     font-size: 14.5px;
-    color: #292d32;
+    color: var(--ink-2);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -272,15 +370,15 @@ body {
     border: none;
     border-radius: 50%;
     background: #e9ecef;
-    color: #6c757d;
+    color: var(--muted);
     font-size: 10px;
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .buscador-limpiar:hover {
-    background: #dee2e6;
-    color: #292d32;
+    background: var(--line-strong);
+    color: var(--ink-2);
 }
 
 /* --- Acciones de la barra: registrar + importar --- */
@@ -300,7 +398,7 @@ body {
     border: none;
     border-radius: 22px;
     background-color: #1b7838;
-    color: #ffffff;
+    color: var(--white);
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -316,7 +414,7 @@ body {
     background-color: #155f2d;
     box-shadow: 0 5px 14px rgba(27, 120, 56, 0.42);
     transform: translateY(-1px);
-    color: #ffffff;
+    color: var(--white);
 }
 
 .btn-nuevo i {
@@ -362,11 +460,11 @@ body {
     gap: 8px;
     height: 44px;
     padding: 0 10px 0 14px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 22px;
-    background-color: #ffffff;
+    background-color: var(--white);
     font-size: 13.5px;
-    color: #495057;
+    color: var(--muted);
     max-width: 420px;
 }
 
@@ -386,7 +484,7 @@ body {
     border: none;
     border-radius: 16px;
     background-color: #1b7838;
-    color: #ffffff;
+    color: var(--white);
     font-family: inherit;
     font-size: 13px;
     font-weight: 600;
@@ -407,8 +505,8 @@ body {
     padding: 0;
     border: none;
     border-radius: 50%;
-    background: #f1f3f5;
-    color: #868e96;
+    background: var(--map-bg);
+    color: var(--muted-2);
     font-size: 10px;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
@@ -425,8 +523,8 @@ body {
    eso suma una primera columna angosta para la flecha. */
 .tabla-donantes,
 .tabla-entidades {
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
@@ -448,13 +546,13 @@ body {
 }
 
 .tabla-encabezado {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
+    background-color: var(--map-bg);
+    border-bottom: 2px solid var(--line-strong);
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #6c757d;
+    color: var(--muted);
 }
 
 .tabla-encabezado .col-acciones {
@@ -463,7 +561,7 @@ body {
 
 .fila-donante,
 .fila-entidad {
-    border-bottom: 1px solid #f1f3f5;
+    border-bottom: 1px solid var(--map-bg);
     transition: background 0.15s;
 }
 
@@ -474,7 +572,7 @@ body {
 
 .fila-donante:hover,
 .fila-entidad .fila-principal:hover {
-    background-color: #fafbfc;
+    background-color: var(--map-bg);
 }
 
 .fila-donante .col-donante,
@@ -511,7 +609,7 @@ body {
 .nombre-entidad {
     font-size: 15px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -526,8 +624,8 @@ body {
 }
 
 .badge-humana {
-    background-color: #e7f5ff;
-    color: #1864ab;
+    background-color: var(--accent-soft);
+    color: var(--accent);
 }
 
 .badge-juridica {
@@ -542,7 +640,7 @@ body {
     gap: 4px;
     min-width: 0;
     font-size: 13.5px;
-    color: #495057;
+    color: var(--muted);
 }
 
 .fila-donante .col-contacto i,
@@ -588,7 +686,7 @@ body {
 
 .btn-actualizar {
     background-color: #1b7838;
-    color: #ffffff;
+    color: var(--white);
     box-shadow: 0 2px 6px rgba(27, 120, 56, 0.28);
 }
 
@@ -597,12 +695,12 @@ body {
     background-color: #155f2d;
     box-shadow: 0 4px 12px rgba(27, 120, 56, 0.4);
     transform: translateY(-1px);
-    color: #ffffff;
+    color: var(--white);
 }
 
 .btn-eliminar {
     background-color: #c92a2a;
-    color: #ffffff;
+    color: var(--white);
     box-shadow: 0 2px 6px rgba(201, 42, 42, 0.26);
 }
 
@@ -611,7 +709,7 @@ body {
     background-color: #a51111;
     box-shadow: 0 4px 12px rgba(201, 42, 42, 0.38);
     transform: translateY(-1px);
-    color: #ffffff;
+    color: var(--white);
 }
 
 /* --- Estado vacío / sin resultados --- */
@@ -658,7 +756,7 @@ body {
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #6c757d;
+    color: var(--muted);
     font-size: 13px;
     cursor: pointer;
     transition: background 0.15s, color 0.15s, transform 0.15s;
@@ -671,7 +769,7 @@ body {
 }
 
 .fila-entidad.fila-desplegada {
-    background-color: #fafbfc;
+    background-color: var(--map-bg);
 }
 
 .fila-entidad.fila-desplegada .btn-desplegar {
@@ -728,7 +826,7 @@ body {
     padding: 14px 16px;
     border: 1px solid #e9ecef;
     border-radius: 9px;
-    background-color: #ffffff;
+    background-color: var(--white);
 }
 
 .necesidad-cabecera {
@@ -745,7 +843,7 @@ body {
     min-width: 0;
     font-size: 14.5px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .necesidad-titulo i {
@@ -761,8 +859,8 @@ body {
 }
 
 .badge-recurrente {
-    background-color: #e7f5ff;
-    color: #1864ab;
+    background-color: var(--accent-soft);
+    color: var(--accent);
 }
 
 .badge-extraordinaria {
@@ -774,13 +872,13 @@ body {
 .necesidad-plazo {
     margin: 0;
     font-size: 12.5px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .necesidad-descripcion {
     margin: 0;
     font-size: 13.5px;
-    color: #495057;
+    color: var(--muted);
 }
 
 .necesidad-progreso {
@@ -807,7 +905,7 @@ body {
 .progreso-texto {
     font-size: 12.5px;
     font-weight: 600;
-    color: #495057;
+    color: var(--muted);
 }
 
 /* --- Aviso informativo del formulario de entidad --- */
@@ -821,7 +919,7 @@ body {
     border-radius: 9px;
     background-color: #f1f8ff;
     font-size: 13.5px;
-    color: #1864ab;
+    color: var(--accent);
 }
 
 /* ==================================================================
@@ -836,8 +934,8 @@ body {
 
 .form-seccion {
     padding: 22px 24px;
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
 }
@@ -849,7 +947,7 @@ body {
     margin: 0 0 4px;
     font-size: 17px;
     font-weight: 700;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .form-seccion h2 i {
@@ -860,7 +958,7 @@ body {
 .form-ayuda {
     margin: 0 0 16px;
     font-size: 13.5px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 /* Cuando la sección no tiene texto de ayuda, el aire lo pone la grilla. */
@@ -899,16 +997,16 @@ body {
     margin-bottom: 5px;
     font-size: 13px;
     font-weight: 600;
-    color: #495057;
+    color: var(--muted);
 }
 
 .formulario-admin .form-control,
 .formulario-admin .form-select {
     height: 42px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 8px;
     font-size: 14.5px;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .formulario-admin .form-control:focus,
@@ -942,9 +1040,9 @@ body {
     gap: 2px 12px;
     height: 100%;
     padding: 14px 18px;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--line-strong);
     border-radius: 10px;
-    background-color: #ffffff;
+    background-color: var(--white);
     transition: border-color 0.15s, background 0.15s;
 }
 
@@ -956,12 +1054,12 @@ body {
 
 .opcion-tipo > span strong {
     font-size: 15px;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .opcion-tipo > span small {
     font-size: 12.5px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .opcion-tipo input:checked + span {
@@ -990,9 +1088,9 @@ body {
     gap: 12px;
     flex-wrap: wrap;
     padding: 14px 16px;
-    border: 1px solid #f1f3f5;
+    border: 1px solid var(--map-bg);
     border-radius: 9px;
-    background-color: #fbfcfc;
+    background-color: var(--map-bg);
 }
 
 .fila-repetible .campo {
@@ -1097,10 +1195,10 @@ body {
     align-items: center;
     height: 44px;
     padding: 0 22px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 22px;
-    background-color: #ffffff;
-    color: #495057;
+    background-color: var(--white);
+    color: var(--muted);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
@@ -1108,9 +1206,9 @@ body {
 }
 
 .btn-cancelar-form:hover {
-    background-color: #f1f3f5;
+    background-color: var(--map-bg);
     border-color: #ced4da;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 /* ==================================================================
@@ -1127,10 +1225,10 @@ body {
     gap: 8px;
     height: 44px;
     padding: 0 20px;
-    border: 1px solid #1864ab;
+    border: 1px solid var(--accent);
     border-radius: 22px;
-    background-color: #e7f5ff;
-    color: #1864ab;
+    background-color: var(--accent-soft);
+    color: var(--accent);
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -1142,20 +1240,20 @@ body {
 
 .btn-matchmaking:hover,
 .btn-matchmaking:focus {
-    background-color: #1864ab;
-    color: #ffffff;
+    background-color: var(--accent);
+    color: var(--white);
 }
 
 .btn-matchmaking-activo {
     border-color: #ced4da;
-    background-color: #ffffff;
-    color: #495057;
+    background-color: var(--white);
+    color: var(--muted);
 }
 
 .btn-matchmaking-activo:hover,
 .btn-matchmaking-activo:focus {
-    background-color: #f1f3f5;
-    color: #292d32;
+    background-color: var(--map-bg);
+    color: var(--ink-2);
 }
 
 .contador-boton {
@@ -1166,16 +1264,16 @@ body {
     height: 21px;
     padding: 0 6px;
     border-radius: 11px;
-    background-color: #1864ab;
-    color: #ffffff;
+    background-color: var(--accent);
+    color: var(--white);
     font-size: 12px;
     font-weight: 700;
 }
 
 .btn-matchmaking:hover .contador-boton,
 .btn-matchmaking:focus .contador-boton {
-    background-color: #ffffff;
-    color: #1864ab;
+    background-color: var(--white);
+    color: var(--accent);
 }
 
 .form-ejecutar {
@@ -1190,8 +1288,8 @@ body {
     padding: 0 20px;
     border: none;
     border-radius: 22px;
-    background-color: #292d32;
-    color: #ffffff;
+    background-color: var(--ink-2);
+    color: var(--white);
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -1211,8 +1309,8 @@ body {
    Misma anatomía que la de entidades: la fila envuelve un .fila-principal (la grilla) más un panel
    desplegable. Suma una columna para el badge de estado. */
 .tabla-donaciones {
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
@@ -1234,7 +1332,7 @@ body {
 }
 
 .fila-donacion {
-    border-bottom: 1px solid #f1f3f5;
+    border-bottom: 1px solid var(--map-bg);
     transition: background 0.15s;
 }
 
@@ -1247,7 +1345,7 @@ body {
 }
 
 .fila-donacion .fila-principal:hover {
-    background-color: #fafbfc;
+    background-color: var(--map-bg);
 }
 
 .fila-donacion .col-acciones {
@@ -1259,7 +1357,7 @@ body {
 }
 
 .fila-donacion.fila-desplegada {
-    background-color: #fafbfc;
+    background-color: var(--map-bg);
 }
 
 .fila-donacion.fila-desplegada .btn-desplegar {
@@ -1296,7 +1394,7 @@ body {
 .nombre-donacion {
     font-size: 15px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1310,7 +1408,7 @@ body {
 
 .contador-bienes {
     font-size: 12px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .fila-donacion .col-partes {
@@ -1319,7 +1417,7 @@ body {
     gap: 4px;
     min-width: 0;
     font-size: 13.5px;
-    color: #495057;
+    color: var(--muted);
 }
 
 .fila-donacion .col-partes i {
@@ -1342,7 +1440,7 @@ body {
 
 .fecha-entrega {
     font-size: 12px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 /* --- Badges de estado: un color por etapa del recorrido de la donación --- */
@@ -1356,8 +1454,8 @@ body {
 }
 
 .estado-en-deposito {
-    background-color: #f1f3f5;
-    color: #495057;
+    background-color: var(--map-bg);
+    color: var(--muted);
 }
 
 .estado-pendiente-asignacion {
@@ -1366,8 +1464,8 @@ body {
 }
 
 .estado-asignado {
-    background-color: #e7f5ff;
-    color: #1864ab;
+    background-color: var(--accent-soft);
+    color: var(--accent);
 }
 
 .estado-lista-para-entregar {
@@ -1392,7 +1490,7 @@ body {
 }
 
 .estado-desconocido {
-    background-color: #f1f3f5;
+    background-color: var(--map-bg);
     color: #adb5bd;
 }
 
@@ -1427,7 +1525,7 @@ body {
     padding: 13px 15px;
     border: 1px solid #e9ecef;
     border-radius: 9px;
-    background-color: #ffffff;
+    background-color: var(--white);
 }
 
 .bien-cabecera {
@@ -1444,7 +1542,7 @@ body {
     min-width: 0;
     font-size: 14.5px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .bien-titulo i {
@@ -1454,7 +1552,7 @@ body {
 .bien-detalle {
     margin: 0;
     font-size: 12.5px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 /* --- Propuestas del asignador --- */
@@ -1472,7 +1570,7 @@ body {
     padding: 15px 17px;
     border: 1px solid #e9ecef;
     border-radius: 9px;
-    background-color: #ffffff;
+    background-color: var(--white);
 }
 
 /* La primera del ranking es la que el asignador elegiría: se destaca sin bloquear a las demás. */
@@ -1496,22 +1594,22 @@ body {
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background-color: #f1f3f5;
-    color: #495057;
+    background-color: var(--map-bg);
+    color: var(--muted);
     font-size: 12px;
     font-weight: 700;
 }
 
 .propuesta-recomendada .propuesta-posicion {
     background-color: #1b7838;
-    color: #ffffff;
+    color: var(--white);
 }
 
 .propuesta-entidad {
     min-width: 0;
     font-size: 15px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .badge-recomendada {
@@ -1529,7 +1627,7 @@ body {
 .propuesta-necesidad {
     margin: 0;
     font-size: 13.5px;
-    color: #495057;
+    color: var(--muted);
 }
 
 .propuesta-necesidad i {
@@ -1548,7 +1646,7 @@ body {
     flex-wrap: wrap;
     margin: 0;
     font-size: 12px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .badge-algoritmo {
@@ -1563,7 +1661,7 @@ body {
 .propuesta-contacto {
     margin: 0;
     font-size: 12.5px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .propuesta-contacto i {
@@ -1586,7 +1684,7 @@ body {
     border: none;
     border-radius: 19px;
     background-color: #1b7838;
-    color: #ffffff;
+    color: var(--white);
     font-family: inherit;
     font-size: 13.5px;
     font-weight: 600;
@@ -1640,9 +1738,9 @@ body {
     gap: 2px 11px;
     height: 100%;
     padding: 12px 15px;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--line-strong);
     border-radius: 10px;
-    background-color: #ffffff;
+    background-color: var(--white);
     transition: border-color 0.15s, background 0.15s;
 }
 
@@ -1654,7 +1752,7 @@ body {
 
 .opcion-donante > span strong {
     font-size: 14.5px;
-    color: #292d32;
+    color: var(--ink-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1662,7 +1760,7 @@ body {
 
 .opcion-donante > span small {
     font-size: 12px;
-    color: #868e96;
+    color: var(--muted-2);
 }
 
 .opcion-donante input:checked + span {
@@ -1722,8 +1820,8 @@ body {
     gap: 16px;
     margin-bottom: 18px;
     padding: 18px 22px;
-    background-color: #ffffff;
-    border: 1px solid #dee2e6;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
 }
@@ -1746,7 +1844,7 @@ body {
 .ficha-valor {
     font-size: 14.5px;
     font-weight: 600;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 /* --- Bienes en modo lectura (donación fuera del depósito) --- */
@@ -1754,7 +1852,7 @@ body {
     margin: 0;
     padding-left: 20px;
     font-size: 14px;
-    color: #495057;
+    color: var(--muted);
 }
 
 .lista-bienes-lectura li {
@@ -1774,10 +1872,10 @@ body {
 
 .formulario-admin textarea.form-control {
     height: auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--line-strong);
     border-radius: 8px;
     font-size: 14.5px;
-    color: #292d32;
+    color: var(--ink-2);
 }
 
 .aviso-estado {
@@ -1801,20 +1899,20 @@ body {
     padding: 0 26px;
     border: none;
     border-radius: 22px;
-    background-color: #1864ab;
-    color: #ffffff;
+    background-color: var(--accent);
+    color: var(--white);
     font-family: inherit;
     font-size: 14.5px;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(24, 100, 171, 0.28);
+    box-shadow: 0 2px 8px rgba(27, 120, 56, .28);
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
 }
 
 .btn-cambiar-estado:hover,
 .btn-cambiar-estado:focus {
-    background-color: #145189;
-    box-shadow: 0 4px 12px rgba(24, 100, 171, 0.4);
+    background-color: var(--accent-dark);
+    box-shadow: 0 4px 12px rgba(27, 120, 56, .4);
     transform: translateY(-1px);
 }
 
@@ -1927,6 +2025,8 @@ body {
     }
 
     .buscador {
+        flex: 0 0 auto;
+        width: 100%;
         max-width: none;
     }
 
@@ -1970,6 +2070,13 @@ body {
     .fila-repetible {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .fila-repetible .campo,
+    .fila-repetible .campo-chico {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: none;
     }
 
     .campo-predeterminado {

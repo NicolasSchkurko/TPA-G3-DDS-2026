@@ -6,6 +6,13 @@
     "use strict";
 
     /* ----------------------------- Mapa ----------------------------- */
+    let mapa = null;
+    const paradaMarkers = new Map();
+
+    function prefiereMenosMovimiento() {
+        return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+
     function escapeHtml(value) {
         return String(value == null ? "" : value)
             .replace(/&/g, "&amp;")
@@ -29,6 +36,7 @@
             scrollWheelZoom: false
         });
         if (!map) return;
+        mapa = map;
 
         const layer = window.DDSIMap.addGeoJson(map, geojson, {
             style: function () {
@@ -36,8 +44,10 @@
             },
             pointToLayer: function (feature, latlng) {
                 const estado = feature.properties && feature.properties.estado;
-                const clase = estado === "actual" ? " is-actual" : (estado === "completa" ? " is-completa" : "");
-                const numero = feature.properties && feature.properties.parada ? feature.properties.parada : "";
+                const clase = estado === "deposito" ? " is-deposito"
+                    : (estado === "actual" ? " is-actual" : (estado === "completa" ? " is-completa" : ""));
+                const numero = estado === "deposito" ? "D"
+                    : (feature.properties && feature.properties.parada ? feature.properties.parada : "");
                 const icon = L.divIcon({
                     className: "",
                     html: '<span class="ruta-pin' + clase + '">' + escapeHtml(numero) + "</span>",
@@ -45,13 +55,22 @@
                     iconAnchor: [15, 15],
                     popupAnchor: [0, -16]
                 });
-                return L.marker(latlng, { icon: icon, keyboard: true });
+                const marker = L.marker(latlng, { icon: icon, keyboard: true });
+                const nro = Number(numero);
+                if (estado !== "deposito" && Number.isFinite(nro)) {
+                    paradaMarkers.set(nro, marker);
+                }
+                return marker;
             },
             onEachFeature: function (feature, capa) {
                 if (!feature.geometry || feature.geometry.type !== "Point") return;
                 const p = feature.properties || {};
                 const entregadas = p.entregadas != null ? p.entregadas : 0;
                 const total = p.total != null ? p.total : 0;
+                if (p.estado === "deposito") {
+                    capa.bindPopup("<strong>" + escapeHtml(p.direccion || "Depósito") + "</strong><br>Punto de partida de la ruta");
+                    return;
+                }
                 capa.bindPopup(
                     "<strong>Parada " + escapeHtml(p.parada) + "</strong><br>" +
                     escapeHtml(p.direccion) + "<br>" +
@@ -61,6 +80,50 @@
         });
 
         window.DDSIMap.fit(map, layer, [32, 32]);
+    }
+
+    function enfocarParada(numero) {
+        if (!mapa) return;
+        const marker = paradaMarkers.get(Number(numero));
+        if (!marker) return;
+
+        const isMobile = window.matchMedia("(max-width: 1024px)").matches;
+        if (isMobile) {
+            const panel = document.querySelector(".map-panel");
+            if (panel) {
+                panel.scrollIntoView({
+                    behavior: prefiereMenosMovimiento() ? "auto" : "smooth",
+                    block: "center"
+                });
+            }
+        }
+
+        mapa.flyTo(marker.getLatLng(), Math.max(mapa.getZoom(), 16), {
+            duration: prefiereMenosMovimiento() ? 0 : 0.6
+        });
+        window.setTimeout(function () { marker.openPopup(); }, prefiereMenosMovimiento() ? 0 : 650);
+    }
+
+    /** Click o Enter en una parada mueve y acerca el mapa a ese punto. */
+    function initParadas() {
+        document.querySelectorAll(".parada[data-parada]").forEach(function (parada) {
+            parada.addEventListener("click", function (event) {
+                if (event.target.closest("button, a")) return;
+                enfocarParada(parada.dataset.parada);
+            });
+            parada.addEventListener("keydown", function (event) {
+                if (event.target !== parada) return;
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                enfocarParada(parada.dataset.parada);
+            });
+        });
+
+        document.querySelectorAll(".parada-map-btn[data-parada]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                enfocarParada(button.dataset.parada);
+            });
+        });
     }
 
     /* ----------------------------- Modal de entrega ----------------------------- */
@@ -216,6 +279,7 @@
 
     function iniciar() {
         initMapa();
+        initParadas();
         initEntrega();
         initConfirmaciones();
     }

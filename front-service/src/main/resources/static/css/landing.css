@@ -309,11 +309,11 @@ body.landing a {
     background: var(--status-transit);
 }
 
-.row-status.urgent .status-dot {
+.row-status.pending .status-dot {
     background: var(--status-urgent);
 }
 
-.row-status.urgent {
+.row-status.pending {
     color: var(--status-urgent);
 }
 
@@ -384,8 +384,22 @@ body.landing a {
     background: var(--status-transit);
 }
 
-.legend-dot.urgent {
+.legend-dot.pending {
     background: var(--status-urgent);
+}
+
+.legend-dot.depot {
+    background: var(--ink);
+}
+
+.depot-dot {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--white);
+    border-radius: 50%;
+    background: var(--ink);
+    box-shadow: 0 1px 5px rgba(15, 18, 16, .35);
 }
 
 .map-caption {

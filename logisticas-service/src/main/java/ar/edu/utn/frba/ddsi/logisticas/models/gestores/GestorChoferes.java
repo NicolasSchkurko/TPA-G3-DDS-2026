@@ -19,10 +19,13 @@ public class GestorChoferes {
         this.repoCamiones = repoCamiones;
     }
 
-    public Chofer actualizar(UUID id, String nombre, Boolean disponible) {
+    public Chofer actualizar(UUID id, String nombre, String email, Boolean disponible) {
         Chofer chofer = buscarActivo(id);
         if (nombre != null) {
             chofer.setNombre(nombre);
+        }
+        if (email != null) {
+            chofer.setEmail(email);
         }
         if (disponible != null) {
             chofer.setDisponible(disponible);

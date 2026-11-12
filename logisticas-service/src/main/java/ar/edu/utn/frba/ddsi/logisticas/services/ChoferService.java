@@ -46,7 +46,7 @@ public class ChoferService {
   }
 
   public ChoferDTO update(UUID id, ChoferDTO dto) {
-    Chofer actualizado = gestorChoferes.actualizar(id, dto.getNombre(), dto.getDisponible());
+    Chofer actualizado = gestorChoferes.actualizar(id, dto.getNombre(), dto.getEmail(), dto.getDisponible());
     return new ChoferDTO().aplicar(actualizado);
   }
 

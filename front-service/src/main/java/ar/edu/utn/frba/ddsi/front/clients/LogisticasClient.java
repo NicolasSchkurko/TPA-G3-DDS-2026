@@ -36,10 +36,20 @@ public class LogisticasClient {
     /** Ítems de entrega del depósito. Ojo: es un listado global; filtrar por entidadDestino en el front. */
     public LogisticaDTOs.Bienes obtenerBienes() {
         try {
-            return restClient.get()
-                    .uri(baseUrl + "/entregas")
+            PageResponse<LogisticaDTOs.Bien> page = restClient.get()
+                    .uri(baseUrl + "/entregas?page=0&size=200")
                     .retrieve()
-                    .body(LogisticaDTOs.Bienes.class);
+                    .body(new ParameterizedTypeReference<PageResponse<LogisticaDTOs.Bien>>() {});
+            if (page == null || page.getContent() == null) {
+                return new LogisticaDTOs.Bienes();
+            }
+            LogisticaDTOs.Bienes bienes = new LogisticaDTOs.Bienes();
+            bienes.setBienes(page.getContent());
+            bienes.setIdsDonaciones(page.getContent().stream()
+                    .map(LogisticaDTOs.Bien::getIdDonacion)
+                    .filter(java.util.Objects::nonNull)
+                    .toList());
+            return bienes;
         } catch (Exception e) {
             log.error("Error al obtener entregas desde {}: {}", baseUrl, e.getMessage());
             return null;
@@ -112,6 +122,20 @@ public class LogisticasClient {
             return page != null && page.getContent() != null ? page.getContent() : List.of();
         } catch (Exception e) {
             log.error("Error al obtener choferes desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Rutas activas (programadas o en curso) para mapas de donante y entidad. */
+    public List<LogisticaDTOs.Ruta> obtenerRutasActivas() {
+        try {
+            List<LogisticaDTOs.Ruta> rutas = restClient.get()
+                    .uri(baseUrl + "/rutas/activas")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<LogisticaDTOs.Ruta>>() {});
+            return rutas != null ? rutas : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener rutas activas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
         }
     }

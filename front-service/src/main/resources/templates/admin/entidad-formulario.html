@@ -14,26 +14,14 @@
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<!-- ===== Banner ===== -->
-<section class="banner-seccion">
-    <img class="banner-imagen"
-         src="../../static/images/entidades.jpg"
-         th:src="@{/images/entidades.jpg}"
-         alt="Entidades">
-    <div class="banner-overlay"></div>
-    <div class="banner-contenido">
-        <a th:href="@{/admin/entidades}" class="banner-volver">
-            <i class="bi bi-arrow-left"></i> Volver a entidades
-        </a>
-        <h1 th:text="${edicion} ? 'Actualizar entidad' : 'Registrar entidad'">Registrar entidad</h1>
-        <p th:text="${edicion}
-                      ? 'Modificá los datos de la entidad, su contacto y su domicilio de entrega'
-                      : 'Cargá los datos de la nueva entidad beneficiaria'">
-            Cargá los datos de la nueva entidad beneficiaria
-        </p>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="${edicion ? 'Actualizar entidad' : 'Registrar entidad'}">Administración</h1>
+        <p class="admin-page-lead" th:text="${edicion ? 'Modificá los datos de la entidad, su contacto y su domicilio de entrega.' : 'Cargá los datos de la nueva entidad beneficiaria.'}">Gestioná los datos del sistema.</p>
     </div>
-</section>
-
+    <a class="btn btn-secondary" th:href="@{/admin/entidades}" th:text="'Volver a entidades'">Volver</a>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
     <div th:if="${error}" class="alert alert-danger d-flex align-items-center" role="alert">

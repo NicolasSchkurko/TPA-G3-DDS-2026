@@ -7,7 +7,7 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>DonaTrack · Donaciones en el mapa</title>
     <meta name="description"
-          content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y urgentes en la Ciudad de Buenos Aires.">
+          content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y pendientes en la Ciudad de Buenos Aires.">
 
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
     <link rel="stylesheet" href="/css/landing.css?v=4" th:href="@{/css/landing.css(v=4)}">
@@ -53,7 +53,7 @@
         <aside class="sidebar" aria-label="Donaciones destacadas">
             <div class="sidebar-intro">
                 <h1>Seguí las donaciones en el mapa.</h1>
-                <p>Entregadas, en camino y urgentes de la red solidaria de la Ciudad de Buenos Aires.</p>
+                <p>Entregadas, en camino y pendientes de la red solidaria de la Ciudad de Buenos Aires.</p>
                 <div class="sidebar-actions">
                     <a class="btn btn-primary"
                        sec:authorize="hasRole('DONANTE')"
@@ -140,10 +140,11 @@
             <div class="map-legend" aria-label="Referencias del mapa">
                 <span><i class="legend-dot delivered" aria-hidden="true"></i> Entregada</span>
                 <span><i class="legend-dot transit" aria-hidden="true"></i> En camino</span>
-                <span><i class="legend-dot urgent" aria-hidden="true"></i> Urgente</span>
+                <span><i class="legend-dot pending" aria-hidden="true"></i> Pendiente</span>
+                <span><i class="legend-dot depot" aria-hidden="true"></i> Depósito</span>
             </div>
 
-            <p class="map-caption">Destacadas y entregadas: ubicación de la entidad receptora · Otros puntos: ejemplo</p>
+            <p class="map-caption">Depósito y donaciones de ejemplo · Ubicaciones de entidades beneficiarias</p>
         </section>
     </main>
 

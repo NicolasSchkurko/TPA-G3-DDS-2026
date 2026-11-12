@@ -19,6 +19,7 @@ public class RutaDTO {
     private String estado;
     private String urlSeguimiento;
     private List<ParadaDTO> paradas;
+    private DepositoDTO deposito;
 
     public RutaDTO(UUID idRuta,
                    CamionDTO camionAsignado,

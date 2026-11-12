@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -36,9 +37,10 @@ class SeguimientoControllerTest {
         LogisticasClient cliente = mock(LogisticasClient.class);
         when(cliente.obtenerRuta(idRuta)).thenReturn(ruta);
 
+        SeguimientoTokenService tokens = new SeguimientoTokenService("test-secret");
         ExtendedModelMap model = new ExtendedModelMap();
-        String vista = new SeguimientoController(cliente, objectMapper)
-                .seguimiento(idRuta, model);
+        String vista = new SeguimientoController(cliente, tokens, objectMapper)
+                .seguimiento(tokens.generar(idRuta), model);
 
         assertThat(vista).isEqualTo("seguimiento/ruta");
         assertThat(model.get("hayTrazado")).isEqualTo(true);
@@ -55,17 +57,17 @@ class SeguimientoControllerTest {
     }
 
     @Test
-    @DisplayName("Una ruta inexistente deja el modelo sin trazado, sin romper la vista")
+    @DisplayName("Una ruta inexistente vuelve al inicio")
     void rutaInexistenteNoRompe() throws Exception {
         UUID idRuta = UUID.randomUUID();
         LogisticasClient cliente = mock(LogisticasClient.class);
         when(cliente.obtenerRuta(idRuta)).thenReturn(null);
 
+        SeguimientoTokenService tokens = new SeguimientoTokenService("test-secret");
         ExtendedModelMap model = new ExtendedModelMap();
-        new SeguimientoController(cliente, objectMapper).seguimiento(idRuta, model);
+        String vista = new SeguimientoController(cliente, tokens, objectMapper)
+                .seguimiento(tokens.generar(idRuta), model);
 
-        assertThat(model.get("hayTrazado")).isEqualTo(false);
-        JsonNode geojson = objectMapper.readTree((String) model.get("geojson"));
-        assertThat(geojson.path("features").size()).isZero();
+        assertThat(vista).isEqualTo("redirect:/");
     }
 }

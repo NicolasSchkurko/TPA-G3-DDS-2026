@@ -877,6 +877,23 @@ body {
     margin-top: 16px;
 }
 
+.donante-truck {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--white);
+    box-shadow: 0 2px 8px rgba(15, 18, 16, .28);
+}
+
+.donante-truck svg {
+    width: 17px;
+    height: 17px;
+}
+
 .entity-card {
     overflow: hidden;
     border: 1px solid #e1e5e0;
@@ -982,5 +999,15 @@ body {
 
     .entities-dialog {
         padding: 22px 18px;
+    }
+}
+
+@media (max-width: 860px) {
+    .entities-button {
+        top: 74px;
+    }
+
+    .map-selection-notice {
+        top: 128px;
     }
 }

@@ -14,29 +14,14 @@
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<!-- ===== Banner ===== -->
-<section class="banner-seccion">
-    <img class="banner-imagen"
-         src="../../static/images/donante.jpg"
-         th:src="@{/images/donante.jpg}"
-         alt="Donantes">
-    <div class="banner-overlay"></div>
-    <div class="banner-contenido">
-        <!-- Si vinimos desde otra pantalla del panel (ver el hidden volverA más abajo), cancelar
-             y volver tienen que llevar de nuevo ahí y no al listado de donantes. -->
-        <a th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" class="banner-volver">
-            <i class="bi bi-arrow-left"></i>
-            <span th:text="${volverA != null} ? 'Volver sin registrar' : 'Volver a donantes'">Volver a donantes</span>
-        </a>
-        <h1 th:text="${edicion} ? 'Actualizar donante' : 'Registrar donante'">Registrar donante</h1>
-        <p th:text="${edicion}
-                      ? 'Modificá los datos del donante, su domicilio, sus medios de contacto y sus representantes'
-                      : 'Cargá los datos del nuevo donante: podés agregar domicilio, medios de contacto y representantes'">
-            Cargá los datos del nuevo donante
-        </p>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="${edicion ? 'Actualizar donante' : 'Registrar donante'}">Administración</h1>
+        <p class="admin-page-lead" th:text="${edicion ? 'Modificá los datos del donante, su domicilio, contactos y representantes.' : 'Cargá los datos del nuevo donante y sus datos de contacto.'}">Gestioná los datos del sistema.</p>
     </div>
-</section>
-
+    <a class="btn btn-secondary" th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" th:text="${edicion ? 'Volver a donantes' : 'Volver sin registrar'}">Volver</a>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
     <div th:if="${error}" class="alert alert-danger d-flex align-items-center" role="alert">

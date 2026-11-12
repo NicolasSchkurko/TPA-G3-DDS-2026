@@ -17,6 +17,9 @@ public class SeguimientoDTO {
     private String generadoEn;
     private List<EntregaActiva> entregas = new ArrayList<>();
     private List<CamionEnRuta> camiones = new ArrayList<>();
+    private Double depositoLat;
+    private Double depositoLng;
+    private String depositoEtiqueta;
 
     @Getter @Setter @NoArgsConstructor
     public static class EntregaActiva {
@@ -40,6 +43,9 @@ public class SeguimientoDTO {
         private String ultimaActualizacion; // ISO-8601
         private Integer etaMinutos;
         private String urlSeguimiento;
+        private Integer paradaActual;
+        private String destino;
+        private List<List<Double>> trazado = new ArrayList<>();
         private List<UUID> donaciones = new ArrayList<>();
     }
 }

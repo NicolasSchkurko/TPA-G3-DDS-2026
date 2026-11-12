@@ -42,7 +42,7 @@
             title: "Medicamentos e insumos",
             org: "Centro de Salud N.º 4",
             area: "Parque Patricios",
-            status: "urgent",
+            status: "pending",
             icon: "capsule",
             coords: [-34.6397, -58.4026]
         },
@@ -60,7 +60,15 @@
     const STATUS = {
         delivered: { label: "Entregada", color: "#1b7838" },
         transit: { label: "En camino", color: "#6b7280" },
-        urgent: { label: "Urgente", color: "#b45309" }
+        pending: { label: "Pendiente", color: "#b45309" }
+    };
+
+    const DEPOT = {
+        id: "deposito",
+        title: "Depósito",
+        org: "Punto de partida de las rutas",
+        area: "Depósito",
+        coords: [-34.5986317, -58.4226973]
     };
 
     /* ----------------------------- Estado ----------------------------- */
@@ -223,7 +231,18 @@
             return;
         }
 
-        // Las capas propias del landing van encima del mapa base.
+        // Depósito fijo: punto de partida de todas las rutas.
+        const depotIcon = L.divIcon({
+            className: "depot-marker",
+            html: '<span class="depot-dot" aria-hidden="true"></span>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -12]
+        });
+        L.marker(DEPOT.coords, { icon: depotIcon, title: DEPOT.title })
+            .addTo(map)
+            .bindPopup("<strong>" + escapeHtml(DEPOT.title) + "</strong><br>" + escapeHtml(DEPOT.org));
+
         // Marcadores de donaciones.
         mapDonations().forEach((donation) => {
             const icon = L.divIcon({
@@ -296,7 +315,7 @@
         }
 
         const isMobile = window.matchMedia("(max-width: 860px)").matches;
-        const bounds = L.latLngBounds(mapDonations().map((d) => d.coords));
+        const bounds = L.latLngBounds(mapDonations().map((d) => d.coords).concat([DEPOT.coords]));
         const padding = isMobile ? 48 : 72;
 
         map.fitBounds(bounds, {

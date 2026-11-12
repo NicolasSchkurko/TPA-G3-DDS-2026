@@ -21,7 +21,7 @@
     <section class="map-wrap" aria-label="Mapa de entregas activas">
         <div id="map" role="application" aria-label="Mapa interactivo con los camiones asignados a tu entidad"></div>
         <div class="map-overlay map-overlay-tl">
-            <span class="chip chip-live">En vivo</span>
+            <span class="chip chip-success">Seguimiento por paradas</span>
             <span class="chip chip-demo" th:if="${ubicacionSimulada}">Ubicación simulada</span>
         </div>
         <div class="map-overlay map-overlay-bl">
@@ -59,6 +59,7 @@
                 <span class="chip chip-warning" th:text="${camion.estadoRuta == 'EN_CURSO' ? 'En ruta' : camion.estadoRuta}">En ruta</span>
             </div>
             <p style="margin: 0; font-size: 12.5px; color: var(--muted);">
+                <span th:if="${camion.destino != null}">En camino a <strong th:text="${camion.destino}">destino</strong> · </span>
                 <span th:if="${camion.donaciones != null and !camion.donaciones.isEmpty()}">
                     <span th:text="${camion.donaciones.size()}">2</span> entrega(s) ·
                 </span>
@@ -73,7 +74,7 @@
 
         <div class="seguimiento-foot">
             <span id="lastRefresh" role="status">Actualizado recién</span>
-            <span>Polling cada 12 s</span>
+            <span>Polling cada 30 s</span>
         </div>
     </aside>
 </main>
@@ -87,7 +88,7 @@
 <script th:src="@{/js/entidad/seguimiento.js}" defer></script>
 <script th:inline="javascript">
     window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
-    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 12000}]];
+    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 30000}]];
 </script>
 </body>
 </html>

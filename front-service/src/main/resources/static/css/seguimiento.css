@@ -1,0 +1,170 @@
+/* =========================================================
+   DonaTrack · Mapa público de seguimiento
+   ========================================================= */
+
+.seguimiento-page {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--gap-5) var(--gap-4) var(--gap-6);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-4);
+}
+
+.seguimiento-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--gap-4);
+    flex-wrap: wrap;
+}
+
+.seguimiento-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--hit);
+    margin-bottom: var(--gap-2);
+    padding: 0 var(--gap-2);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.seguimiento-back:hover,
+.seguimiento-back:focus-visible {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+}
+
+.eyebrow {
+    margin: 0 0 var(--gap-1);
+    color: var(--accent-dark);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.seguimiento-head h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(26px, 2.8vw, 36px);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+}
+
+.seguimiento-lead {
+    margin: var(--gap-2) 0 0;
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.55;
+}
+
+.seguimiento-lead strong {
+    color: var(--ink-2);
+}
+
+.seguimiento-map-card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+#map {
+    flex: 1 1 auto;
+    width: 100%;
+    height: min(68vh, 760px);
+    min-height: 420px;
+    background: var(--map-bg);
+}
+
+.seguimiento-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-4);
+    padding: var(--gap-3) var(--gap-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.seguimiento-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.seguimiento-legend .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legend-dot.actual { background: var(--accent); }
+.legend-dot.completada { background: #86c79b; }
+.legend-dot.pendiente { background: #b8c1ba; }
+.legend-dot.deposito { background: var(--ink); }
+
+.seguimiento-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.ruta-pin {
+    display: grid;
+    place-items: center;
+    width: 30px !important;
+    height: 30px !important;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: #2f8f4d;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 1px 5px rgba(15, 18, 16, .28);
+}
+
+.ruta-pin.is-actual {
+    background: var(--accent);
+    transform: scale(1.12);
+}
+
+.ruta-pin.is-completa {
+    background: #7fc596;
+    color: var(--ink);
+}
+
+.ruta-pin.is-deposito {
+    background: var(--ink);
+    box-shadow: 0 0 0 2px var(--ink);
+}
+
+@media (max-width: 720px) {
+    .seguimiento-page {
+        padding: var(--gap-4) var(--gap-3) var(--gap-6);
+    }
+
+    .seguimiento-head {
+        align-items: flex-start;
+    }
+
+    #map {
+        height: 60vh;
+        min-height: 360px;
+    }
+}

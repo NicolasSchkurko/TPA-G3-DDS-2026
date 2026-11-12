@@ -254,7 +254,7 @@
 <script th:src="@{/js/entidad/dashboard.js}" defer></script>
 <script th:inline="javascript">
     window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
-    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 12000}]];
+    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 30000}]];
 </script>
 </body>
 </html>

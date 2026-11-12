@@ -134,7 +134,8 @@
                     <article class="parada"
                              th:each="parada : ${dashboard.paradas}"
                              th:classappend="${parada.actual ? ' is-actual' : (parada.completa ? ' is-completa' : '')}"
-                             th:attr="aria-current=${parada.actual ? 'step' : null}">
+                             th:attr="aria-current=${parada.actual ? 'step' : null}, data-parada=${parada.numero}"
+                             tabindex="0">
                         <div class="parada-head">
                             <div class="parada-id">
                                 <span class="parada-numero" aria-hidden="true">
@@ -150,9 +151,16 @@
                                        th:text="${(parada.direccion.ciudad != null ? parada.direccion.ciudad : '') + (parada.total > 0 ? ' · ' + parada.total + ' paquete(s)' : '')}">Villa Soldati · 2 paquetes</p>
                                 </div>
                             </div>
-                            <span class="chip"
-                                  th:classappend="${parada.actual ? ' chip-actual' : (parada.completa ? ' chip-success' : '')}"
-                                  th:text="${parada.actual ? 'Actual' : (parada.completa ? 'Completada' : 'Pendiente')}">Pendiente</span>
+                            <span class="parada-actions">
+                                <button class="btn btn-ghost btn-sm parada-map-btn"
+                                        type="button"
+                                        th:attr="data-parada=${parada.numero}, aria-label=${'Ver la parada ' + parada.numero + ' en el mapa'}">
+                                    Ver en mapa
+                                </button>
+                                <span class="chip"
+                                      th:classappend="${parada.actual ? ' chip-actual' : (parada.completa ? ' chip-success' : '')}"
+                                      th:text="${parada.actual ? 'Actual' : (parada.completa ? 'Completada' : 'Pendiente')}">Pendiente</span>
+                            </span>
                         </div>
 
                         <p class="parada-hint" th:if="${parada.actual and !dashboard.rutaEnCurso}">
@@ -200,8 +208,9 @@
                         <p class="panel-subtitle">Las paradas en el orden de la ruta, unidas en el mapa.</p>
                     </div>
                     <a class="btn btn-secondary btn-sm"
-                       th:if="${dashboard.rutaActiva != null and dashboard.rutaActiva.idRuta != null}"
-                       th:href="@{/seguimiento/{id}(id=${dashboard.rutaActiva.idRuta})}" target="_blank" rel="noopener">
+                       th:if="${dashboard.rutaActiva != null and dashboard.rutaActiva.tokenSeguimiento != null}"
+                       th:href="@{/seguimiento/{token}(token=${dashboard.rutaActiva.tokenSeguimiento})}"
+                       target="_blank" rel="noopener">
                         Mapa completo
                     </a>
                 </header>
@@ -253,8 +262,9 @@
                     <span class="chip"
                           th:classappend="${ruta.estado == 'FINALIZADA' ? ' chip-success' : (ruta.estado == 'PROGRAMADA' ? ' chip-info' : ' chip-warning')}"
                           th:text="${ruta.estadoEtiqueta()}">Finalizada</span>
-                    <a class="btn btn-secondary btn-sm" th:if="${ruta.idRuta != null}"
-                       th:href="@{/seguimiento/{id}(id=${ruta.idRuta})}" target="_blank" rel="noopener">Ver mapa</a>
+                    <a class="btn btn-secondary btn-sm" th:if="${ruta.tokenSeguimiento != null}"
+                       th:href="@{/seguimiento/{token}(token=${ruta.tokenSeguimiento})}"
+                       target="_blank" rel="noopener">Ver mapa</a>
                 </li>
             </ul>
 

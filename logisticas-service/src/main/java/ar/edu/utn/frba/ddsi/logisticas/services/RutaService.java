@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.services;
 
 import ar.edu.utn.frba.ddsi.logisticas.exceptions.RecursoNoEncontradoException;
+import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.DepositoDTO;
 import ar.edu.utn.frba.ddsi.logisticas.dto.rutas.RutaDTO;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Camion.Camion;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
@@ -15,6 +16,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.gestores.GestorRutas;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioCamiones;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Optional;
@@ -33,6 +35,15 @@ public class RutaService {
   private final GestorPublicacionEventos gestorPublicacionEventos;
   private final GestorRutas gestorRutas;
 
+  @Value("${logistica.deposito.latitud:-34.5986317}")
+  private double depositoLatitud = -34.5986317;
+
+  @Value("${logistica.deposito.longitud:-58.4226973}")
+  private double depositoLongitud = -58.4226973;
+
+  @Value("${logistica.deposito.etiqueta:Depósito}")
+  private String depositoEtiqueta = "Depósito";
+
   public RutaService(RepositorioRutas repoRutas,
                      RepositorioChoferes repoChoferes,
                      GestorCamiones gestorCamiones,
@@ -48,13 +59,20 @@ public class RutaService {
   }
 
   public Page<RutaDTO> findAll(Pageable pageable) {
-      return repoRutas.findAll(pageable).map(ruta -> new RutaDTO().aplicar(ruta));
+      return repoRutas.findAll(pageable).map(this::toDto);
   }
 
   public RutaDTO findById(UUID idRuta) {
     Ruta ruta = repoRutas.findById(idRuta)
             .orElseThrow(() -> new RecursoNoEncontradoException("Ruta no encontrado"));
-    return new RutaDTO().aplicar(ruta);
+    return toDto(ruta);
+  }
+
+  /** Rutas activas (programadas o en curso) para mapas y seguimiento. */
+  public List<RutaDTO> findActivas() {
+    return repoRutas.findByEstadoIn(List.of(EstadoRuta.PROGRAMADA, EstadoRuta.EN_CURSO)).stream()
+            .map(this::toDto)
+            .toList();
   }
 
   /** Historial paginado de las rutas asignadas a un chofer. */
@@ -62,7 +80,7 @@ public class RutaService {
     repoChoferes.findById(idChofer)
             .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
     return repoRutas.findByCamionAsignadoChoferIdChofer(idChofer, pageable)
-            .map(ruta -> new RutaDTO().aplicar(ruta));
+            .map(this::toDto);
   }
 
   /** Ruta que el chofer tiene en curso o programada, si existe. */
@@ -71,7 +89,7 @@ public class RutaService {
             .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
     return repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(idChofer, EstadoRuta.EN_CURSO)
             .or(() -> repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(idChofer, EstadoRuta.PROGRAMADA))
-            .map(ruta -> new RutaDTO().aplicar(ruta));
+            .map(this::toDto);
   }
 
   @Transactional
@@ -132,5 +150,12 @@ public class RutaService {
     return repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(chofer.getIdChofer(), estado)
             .orElseThrow(() -> new IllegalStateException(
                     "No se encontró una ruta en estado " + estado + " para el chofer " + idChofer));
+  }
+
+  /** Arma el DTO con el depósito fijo configurado por entorno. */
+  private RutaDTO toDto(Ruta ruta) {
+    RutaDTO dto = new RutaDTO().aplicar(ruta);
+    dto.setDeposito(new DepositoDTO(depositoLatitud, depositoLongitud, depositoEtiqueta));
+    return dto;
   }
 }

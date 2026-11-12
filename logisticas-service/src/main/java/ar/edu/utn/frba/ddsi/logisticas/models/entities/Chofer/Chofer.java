@@ -26,6 +26,9 @@ public class Chofer {
     @Field(name = "nombre")
     private String nombre;
 
+    @Field(name = "email")
+    private String email;
+
     @Field(name = "disponible")
     private boolean disponible;
 

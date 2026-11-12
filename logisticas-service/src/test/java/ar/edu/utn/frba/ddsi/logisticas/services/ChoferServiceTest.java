@@ -102,6 +102,28 @@ class ChoferServiceTest {
         verify(repoChoferes, never()).deleteById(any());
     }
 
+    @Test
+    @DisplayName("El alta y la edición conservan el email del chofer")
+    void altaYEdicionConservanEmail() {
+        ChoferDTO alta = new ChoferDTO();
+        alta.setNombre("Chofer Mail");
+        alta.setEmail("chofer@ddsi.local");
+
+        ChoferDTO creado = service.create(alta);
+        assertThat(creado.getEmail()).isEqualTo("chofer@ddsi.local");
+
+        Chofer existente = new Chofer(ID_CHOFER, "Chofer Mail", true);
+        existente.setEmail("viejo@ddsi.local");
+        when(repoChoferes.findById(ID_CHOFER)).thenReturn(Optional.of(existente));
+
+        ChoferDTO cambio = new ChoferDTO();
+        cambio.setNombre("Chofer Mail");
+        cambio.setEmail("nuevo@ddsi.local");
+        ChoferDTO actualizado = service.update(ID_CHOFER, cambio);
+
+        assertThat(actualizado.getEmail()).isEqualTo("nuevo@ddsi.local");
+    }
+
     // --- paginación ---
 
     @Test

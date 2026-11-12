@@ -28,9 +28,20 @@ services:
       KC_HOSTNAME: http://localhost:8180
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
+      # Techo de heap y de procesadores para que un login no se lleve puesto el host.
+      JAVA_OPTS_APPEND: "-XX:MaxRAMPercentage=70 -XX:ActiveProcessorCount=2"
     volumes:
       - keycloak-data:/opt/keycloak/data
       - ./docker/keycloak/realm-ddsi.json:/opt/keycloak/data/import/realm-ddsi.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"{ printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000\""]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    mem_limit: 1g
+    cpus: 2.0
+    restart: unless-stopped
 
   # Credenciales simples solo para el entorno local de demostración. No reutilizar
   # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
@@ -49,6 +60,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    mem_limit: 768m
 
   # Broker local. Usa un usuario propio porque RabbitMQ limita `guest` a conexiones locales.
   rabbitmq:
@@ -67,6 +79,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    mem_limit: 512m
 
   mongodb:
     image: mongo:7
@@ -81,6 +94,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    mem_limit: 512m
 
   # n8n local para los webhooks de incentivos y notificaciones. Arranca sin workflows:
   # hay que crear y activar los webhooks `incentivos` y `notificaciones` en el editor
@@ -203,6 +217,7 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
       RABBITMQ_PASSWORD: tpa-local
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
@@ -294,6 +309,9 @@ services:
       KEYCLOAK_LOGOUT_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/logout
       KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:8080/
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
+      SEGUIMIENTO_TOKEN_SECRET: ${SEGUIMIENTO_TOKEN_SECRET:-donatrack-seguimiento-local}
+      SPRING_THYMELEAF_CACHE: "true"
+    mem_limit: 512m
     depends_on:
       keycloak:
         condition: service_started

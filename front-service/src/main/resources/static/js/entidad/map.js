@@ -32,6 +32,7 @@
             : "";
         return "<strong>" + escapeHtml(camion.patente) + "</strong><br>"
             + "Ruta: " + escapeHtml(camion.estadoRuta || "en curso") + "<br>"
+            + (camion.destino ? "En camino a: " + escapeHtml(camion.destino) + "<br>" : "")
             + "ETA aprox.: " + (camion.etaMinutos != null ? camion.etaMinutos + " min" : "sin datos") + "<br>"
             + donaciones + " entrega(s)" + link;
     }
@@ -60,11 +61,24 @@
             .addTo(map)
             .bindPopup("<strong>" + escapeHtml(entidad.razonSocial || "Mi entidad") + "</strong><br>" + escapeHtml(entidad.direccion || ""));
 
-        const ctx = { map: map, homeMarker: homeMarker, markers: new Map() };
+        const ctx = { map: map, homeMarker: homeMarker, markers: new Map(), lines: new Map() };
+        const depositoLat = data && data.depositoLat != null ? Number(data.depositoLat) : NaN;
+        const depositoLng = data && data.depositoLng != null ? Number(data.depositoLng) : NaN;
+        if (Number.isFinite(depositoLat) && Number.isFinite(depositoLng)) {
+            const deposito = L.circleMarker([depositoLat, depositoLng], {
+                radius: 11,
+                color: "#0f1210",
+                weight: 3,
+                fillColor: "#1b7838",
+                fillOpacity: 1
+            }).addTo(map).bindPopup("<strong>" + escapeHtml(data.depositoEtiqueta || "Depósito") + "</strong><br>Punto de partida de las rutas");
+            ctx.deposito = deposito;
+        }
         refresh(ctx, data);
 
         const puntos = [center.slice()];
         ctx.markers.forEach(function (marker) { puntos.push(marker.getLatLng()); });
+        if (ctx.deposito) puntos.push(ctx.deposito.getLatLng());
         if (puntos.length > 1) {
             map.fitBounds(L.latLngBounds(puntos).pad(0.35));
         }
@@ -94,6 +108,21 @@
                     .bindPopup(popupCamion(camion));
                 ctx.markers.set(camion.patente, marker);
             }
+
+            const trazado = Array.isArray(camion.trazado) ? camion.trazado : [];
+            if (trazado.length >= 2) {
+                const puntosRuta = trazado.map(function (p) { return [p[1], p[0]]; });
+                if (ctx.lines.has(camion.patente)) {
+                    ctx.lines.get(camion.patente).setLatLngs(puntosRuta);
+                } else {
+                    ctx.lines.set(camion.patente, L.polyline(puntosRuta, {
+                        color: "#1b7838",
+                        weight: 3,
+                        opacity: 0.5,
+                        dashArray: "6 6"
+                    }).addTo(ctx.map));
+                }
+            }
         });
 
         ctx.markers.forEach(function (marker, patente) {
@@ -102,6 +131,15 @@
                 ctx.markers.delete(patente);
             }
         });
+
+        if (ctx.lines) {
+            ctx.lines.forEach(function (line, patente) {
+                if (!vistos.has(patente)) {
+                    ctx.map.removeLayer(line);
+                    ctx.lines.delete(patente);
+                }
+            });
+        }
     }
 
     window.EntidadMap = { create: create, refresh: refresh };

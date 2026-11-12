@@ -264,7 +264,7 @@ public class EntidadViewController {
         model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), datos.seguimiento(), datos.demo())));
         model.addAttribute("camiones", datos.seguimiento().getCamiones());
         model.addAttribute("entregasActivas", datos.seguimiento().getEntregas());
-        model.addAttribute("pollingMs", 12000);
+        model.addAttribute("pollingMs", 30000);
         return "entidad/seguimiento";
     }
 
@@ -421,14 +421,20 @@ public class EntidadViewController {
         data.put("ubicacionSimulada", seguimiento.isUbicacionSimulada());
         data.put("generadoEn", seguimiento.getGeneradoEn());
         data.put("demo", demo);
+        boolean tieneCoordenadas = entidad.getDireccion() != null
+                && entidad.getDireccion().getLatitud() != null
+                && entidad.getDireccion().getLongitud() != null;
         data.put("entidad", Map.of(
                 "razonSocial", entidad.getRazonSocial() != null ? entidad.getRazonSocial() : "Mi entidad",
                 "direccion", entidad.getDireccion() != null ? entidad.getDireccion().etiqueta() : "Sin dirección",
                 "zona", entidad.getDireccion() != null && entidad.getDireccion().getCiudad() != null ? entidad.getDireccion().getCiudad() : "CABA",
-                "lat", coords[0],
-                "lng", coords[1]));
+                "lat", tieneCoordenadas ? entidad.getDireccion().getLatitud() : coords[0],
+                "lng", tieneCoordenadas ? entidad.getDireccion().getLongitud() : coords[1]));
         data.put("entregas", seguimiento.getEntregas());
         data.put("camiones", seguimiento.getCamiones());
+        data.put("depositoLat", seguimiento.getDepositoLat());
+        data.put("depositoLng", seguimiento.getDepositoLng());
+        data.put("depositoEtiqueta", seguimiento.getDepositoEtiqueta());
         return data;
     }
 

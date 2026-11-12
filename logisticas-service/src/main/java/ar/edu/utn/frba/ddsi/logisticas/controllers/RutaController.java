@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +38,12 @@ public class RutaController {
   @GetMapping("/{id}")
   public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
     return ResponseEntity.ok(rutaService.findById(id));
+  }
+
+  @Operation(summary = "Listar las rutas activas (programadas o en curso)")
+  @GetMapping("/activas")
+  public ResponseEntity<List<RutaDTO>> obtenerActivas() {
+    return ResponseEntity.ok(rutaService.findActivas());
   }
 
   @Operation(summary = "Listar el historial paginado de rutas de un chofer")

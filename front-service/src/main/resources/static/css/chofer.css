@@ -199,6 +199,29 @@
     gap: var(--gap-3);
 }
 
+.parada {
+    cursor: pointer;
+}
+
+.parada-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--gap-2);
+    flex-wrap: wrap;
+}
+
+.parada-map-btn {
+    min-height: 36px;
+    padding: 0 var(--gap-2);
+    font-size: 12px;
+}
+
+.parada-map-btn:hover,
+.parada-map-btn:focus-visible {
+    background: var(--accent-soft);
+}
+
 .parada-id {
     display: flex;
     align-items: flex-start;
@@ -524,7 +547,7 @@
     height: 30px !important;
     border: 2px solid var(--white);
     border-radius: 50%;
-    background: #b8c1ba;
+    background: #2f8f4d;
     color: #fff;
     font-family: var(--font);
     font-size: 12.5px;
@@ -538,7 +561,14 @@
 }
 
 .ruta-pin.is-completa {
-    background: #6fb888;
+    background: #7fc596;
+    color: var(--ink);
+}
+
+.ruta-pin.is-deposito {
+    background: var(--ink);
+    border-color: var(--white);
+    box-shadow: 0 0 0 2px var(--ink);
 }
 
 /* ---------- Responsive ---------- */

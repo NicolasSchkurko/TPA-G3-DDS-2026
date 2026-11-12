@@ -9,7 +9,7 @@
     <link rel="stylesheet" th:href="@{/css/tokens.css}">
     <link rel="stylesheet" th:href="@{/css/terminos.css}">
 </head>
-<body class="legal-body">
+<body class="app legal-body">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 <main class="legal" id="contenido" tabindex="-1">
 
@@ -106,8 +106,7 @@
     </section>
 
     <div class="legal-footer">
-        <a class="legal-back" th:href="@{/}">Volver al inicio</a>
-        <a class="legal-back" th:href="@{/login}" style="background:var(--ink)">Ir a ingresar</a>
+        <a class="btn btn-secondary" th:href="@{/}">Volver al inicio</a>
     </div>
 
 </main>

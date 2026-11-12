@@ -6,60 +6,60 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Administración — DonaTrack</title>
     <meta name="description" content="Panel de administración de DonaTrack">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
 </head>
 
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1>Qué querés gestionar</h1>
+        <p class="admin-page-lead">Donaciones, entidades, donantes y flota en un solo lugar.</p>
+    </div>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
+    <div class="admin-tile-grid">
 
-    <h1 class="mensaje-administrador">Qué querés gestionar</h1>
-
-    <div class="cuadricula">
-
-        <a th:href="@{/admin/donaciones}" class="item">
-            <img src="../../static/images/donaciones.jpg"
-                 th:src="@{/images/donaciones.jpg}"
-                 alt="">
-            <div>
-                <h2>Donaciones</h2>
-                <p>Revisá, editá y asigná las donaciones registradas</p>
-            </div>
+        <a th:href="@{/admin/donaciones}" class="admin-tile">
+            <span class="admin-tile-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+            <span class="admin-tile-copy">
+                <strong>Donaciones</strong>
+                <span>Revisá, editá, cambiá el estado y asigná donaciones.</span>
+            </span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
 
-        <a th:href="@{/admin/entidades}" class="item">
-            <img src="../../static/images/entidades.jpg"
-                 th:src="@{/images/entidades.jpg}"
-                 alt="">
-            <div>
-                <h2>Entidades</h2>
-                <p>Gestioná las entidades beneficiarias y sus necesidades</p>
-            </div>
+        <a th:href="@{/admin/entidades}" class="admin-tile">
+            <span class="admin-tile-icon"><i class="bi bi-buildings" aria-hidden="true"></i></span>
+            <span class="admin-tile-copy">
+                <strong>Entidades</strong>
+                <span>Gestioná entidades beneficiarias y sus necesidades.</span>
+            </span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
 
-        <a th:href="@{/admin/donantes}" class="item">
-            <img src="../../static/images/donante.jpg"
-                 th:src="@{/images/donante.jpg}"
-                 alt="">
-            <div>
-                <h2>Donantes</h2>
-                <p>Buscá, actualizá o importá los donantes registrados</p>
-            </div>
+        <a th:href="@{/admin/donantes}" class="admin-tile">
+            <span class="admin-tile-icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+            <span class="admin-tile-copy">
+                <strong>Donantes</strong>
+                <span>Buscá, actualizá o importá los donantes registrados.</span>
+            </span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
 
-        <a th:href="@{/camiones}" class="item">
-            <img src="../../static/images/camiones.jpg"
-                 th:src="@{/images/camiones.jpg}"
-                 alt="">
-            <div>
-                <h2>Camiones repartidores</h2>
-                <p>Consultá la flota y su estado de disponibilidad</p>
-            </div>
+        <a th:href="@{/camiones}" class="admin-tile">
+            <span class="admin-tile-icon"><i class="bi bi-truck" aria-hidden="true"></i></span>
+            <span class="admin-tile-copy">
+                <strong>Camiones</strong>
+                <span>Consultá la flota y su disponibilidad.</span>
+            </span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
 
     </div>
-
 </main>
 
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>

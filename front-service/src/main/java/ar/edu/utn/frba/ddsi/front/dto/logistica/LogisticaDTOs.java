@@ -54,6 +54,7 @@ public final class LogisticaDTOs {
     @Getter @Setter @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Bien {
+        private UUID idDonacion;
         private Integer cantidad;
         private String unidadDeMedida;
         private String estado;
@@ -110,6 +111,9 @@ public final class LogisticaDTOs {
         private String estado;
         private String urlSeguimiento;
         private List<Parada> paradas = List.of();
+        private Deposito deposito;
+        /** Token opaco que genera el front para enlazar el mapa sin exponer el UUID. */
+        private String tokenSeguimiento;
 
         public boolean enCurso() {
             return estado != null && estado.equalsIgnoreCase("EN_CURSO");
@@ -132,6 +136,18 @@ public final class LogisticaDTOs {
                 case "FINALIZADA" -> "Finalizada";
                 default -> estado;
             };
+        }
+    }
+
+    @Getter @Setter @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Deposito {
+        private Double latitud;
+        private Double longitud;
+        private String etiqueta;
+
+        public boolean tieneCoordenadas() {
+            return latitud != null && longitud != null;
         }
     }
 

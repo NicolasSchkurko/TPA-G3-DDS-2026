@@ -98,6 +98,11 @@ class ChoferViewSmokeTest {
         ruta.setFechaProgramada(LocalDate.now());
         ruta.setEstado("EN_CURSO");
         ruta.setUrlSeguimiento("/seguimiento/" + ruta.getIdRuta());
+        LogisticaDTOs.Deposito deposito = new LogisticaDTOs.Deposito();
+        deposito.setLatitud(-34.5986317);
+        deposito.setLongitud(-58.4226973);
+        deposito.setEtiqueta("Depósito");
+        ruta.setDeposito(deposito);
         ruta.setParadas(List.of(
                 parada("Av. Perito Moreno", 2400, "Villa Soldati", -34.6538, -58.4478,
                         bien("PENDIENTE", 1600, "KG"),

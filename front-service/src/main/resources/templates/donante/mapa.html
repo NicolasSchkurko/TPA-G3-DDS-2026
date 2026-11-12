@@ -49,7 +49,7 @@
                         <option value="PENDIENTE_ASIGNACION">Pendiente</option>
                         <option value="ASIGNADO">Asignada</option>
                         <option value="LISTA_PARA_ENTREGAR">Lista para entregar</option>
-                        <option value="EN_TRASLADO">En traslado</option>
+                        <option value="EN_TRASLADO">En camino</option>
                         <option value="ENTREGADO">Entregada</option>
                         <option value="ENTREGA_FALLIDA">Entrega fallida</option>
                         <option value="VENCIDO">Vencida</option>
@@ -92,7 +92,7 @@
                         </span>
                         <span class="history-card-status"
                               th:classappend="${'status-' + #strings.toLowerCase(donacion.estado ?: 'na')}"
-                              th:text="${donacion.estado == 'ENTREGADO' ? 'Entregada' : #strings.replace(donacion.estado ?: 'N/A', '_', ' ')}">Estado</span>
+                              th:text="${donacion.etiquetaEstado()}">Estado</span>
                     </span>
                     <i class="bi bi-chevron-right history-card-arrow" aria-hidden="true"></i>
                 </button>
@@ -246,6 +246,9 @@
 
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        window.DONANTE_SEGUIMIENTO = JSON.parse(/*[[${seguimientoDonanteJson}]]*/ '{}');
+    </script>
     <script th:src="@{/js/donante-mapa.js}"></script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>

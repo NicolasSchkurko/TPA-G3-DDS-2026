@@ -10,7 +10,7 @@
     const lastUpdateNodes = document.querySelectorAll(".last-update");
 
     const data = window.ENTIDAD_SEGUIMIENTO || {};
-    const pollingMs = window.ENTIDAD_POLLING_MS || 12000;
+    const pollingMs = window.ENTIDAD_POLLING_MS || 30000;
     const ctx = window.EntidadMap ? window.EntidadMap.create("map", data) : null;
 
     let ultimaActualizacion = Date.now();

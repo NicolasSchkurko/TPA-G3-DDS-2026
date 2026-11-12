@@ -239,6 +239,8 @@ class RutaServiceTest {
         verify(repoRutas).findByCamionAsignadoChoferIdChofer(idChofer, pageable);
         assertThat(resultado.getContent()).extracting(RutaDTO::getIdRuta)
                 .containsExactly(ruta.getIdRuta());
+        assertThat(resultado.getContent().get(0).getDeposito().getEtiqueta()).isEqualTo("Depósito");
+        assertThat(resultado.getContent().get(0).getDeposito().getLatitud()).isEqualTo(-34.5986317);
     }
 
     @Test

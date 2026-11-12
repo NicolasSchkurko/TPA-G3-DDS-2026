@@ -16,28 +16,14 @@
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<!-- ===== Banner ===== -->
-<section class="banner-seccion">
-    <img class="banner-imagen"
-         src="../../static/images/donaciones.jpg"
-         th:src="@{/images/donaciones.jpg}"
-         alt="Donaciones">
-    <div class="banner-overlay"></div>
-    <div class="banner-contenido">
-        <a th:href="@{/admin}" class="banner-volver">
-            <i class="bi bi-arrow-left"></i> Volver al panel
-        </a>
-        <h1 th:text="${vistaMatchmaking} ? 'Matchmaking de donaciones' : 'Administrar donaciones'">
-            Administrar donaciones
-        </h1>
-        <p th:text="${vistaMatchmaking}
-                      ? 'Donaciones pendientes de asignación: desplegá cada una y elegí la entidad que propuso el asignador'
-                      : 'Registrá donaciones a nombre de un donante, actualizalas, cambiales el estado o eliminalas'">
-            Registrá donaciones a nombre de un donante
-        </p>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="${vistaMatchmaking ? 'Matchmaking de donaciones' : 'Administrar donaciones'}">Administración</h1>
+        <p class="admin-page-lead" th:text="${vistaMatchmaking ? 'Donaciones pendientes de asignación: desplegá cada una y elegí la entidad propuesta.' : 'Registrá, editá, cambiá el estado y asigná las donaciones del sistema.'}">Gestioná los datos del sistema.</p>
     </div>
-</section>
-
+    <a class="btn btn-secondary" th:href="@{/admin}" th:text="'Volver al panel'">Volver</a>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
     <!-- ===== Mensajes de resultado ===== -->
@@ -124,7 +110,7 @@
 
             <div th:if="${#lists.isEmpty(donaciones)}" class="fila-vacia">
                 <i class="bi bi-box2"></i>
-                <p>No hay donaciones registradas (o el servicio no está respondiendo).</p>
+                <p>Todavía no hay donaciones registradas.</p>
             </div>
 
             <div th:each="donacion : ${donaciones}"

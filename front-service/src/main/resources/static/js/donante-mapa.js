@@ -4,6 +4,11 @@
     let map = null;
     const markersByEntityId = new Map();
     const markersByEntityName = new Map();
+    const truckMarkers = new Map();
+    const truckLines = new Map();
+    let depotMarker = null;
+
+    const TRUCK_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.56l1.48 1.85a1.5 1.5 0 0 1 .33.94v3.15a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H6a2 2 0 1 1-4 0H1.5A1.5 1.5 0 0 1 0 10.5z"/></svg>';
 
     function initMap() {
         if (!window.DDSIMap || !window.DDSIMap.isAvailable()) return;
@@ -25,11 +30,18 @@
                     addEntityMarker(card, Number(card.dataset.lat), Number(card.dataset.lon));
                 }
             });
+            addSeguimiento(window.DONANTE_SEGUIMIENTO || {});
             window.requestAnimationFrame(() => {
                 map.invalidateSize();
-                const markers = Array.from(markersByEntityId.values());
+                const markers = Array.from(markersByEntityId.values())
+                    .concat(Array.from(truckMarkers.values()));
+                if (depotMarker) markers.push(depotMarker);
                 if (markers.length > 0) {
-                    window.DDSIMap.fit(map, window.L.featureGroup(markers), [48, 48]);
+                    const isMobile = window.matchMedia("(max-width: 860px)").matches;
+                    window.DDSIMap.fit(map, window.L.featureGroup(markers), null, {
+                        paddingTopLeft: isMobile ? [32, 150] : [64, 96],
+                        paddingBottomRight: isMobile ? [32, 40] : [64, 64]
+                    });
                 }
             });
         }
@@ -54,15 +66,76 @@
             marker.setLatLng([latitud, longitud]);
             marker.setPopupContent(content);
         } else {
-            marker = window.L.marker([latitud, longitud], {
-                title: name,
-                alt: name
+            marker = window.L.circleMarker([latitud, longitud], {
+                radius: 9,
+                color: "#155f2d",
+                weight: 2,
+                fillColor: "#eef5f0",
+                fillOpacity: 1
             }).addTo(map);
             marker.bindPopup(content);
+            marker.bindTooltip(name, { direction: "top", offset: [0, -8] });
             markersByEntityId.set(id, marker);
         }
         markersByEntityName.set(normalize(name), marker);
         return marker;
+    }
+
+    function addSeguimiento(data) {
+        const depositoLat = data.depositoLat != null ? Number(data.depositoLat) : NaN;
+        const depositoLng = data.depositoLng != null ? Number(data.depositoLng) : NaN;
+        if (Number.isFinite(depositoLat) && Number.isFinite(depositoLng) && !depotMarker) {
+            depotMarker = window.L.circleMarker([depositoLat, depositoLng], {
+                radius: 12,
+                color: "#0f1210",
+                weight: 3,
+                fillColor: "#1b7838",
+                fillOpacity: 1
+            }).addTo(map).bindPopup("<strong>" + escapeHtml(data.depositoEtiqueta || "Depósito") + "</strong><br>Punto de partida de las rutas");
+            depotMarker.bindTooltip(data.depositoEtiqueta || "Depósito", { direction: "top", offset: [0, -10] });
+        }
+
+        const camiones = Array.isArray(data.camiones) ? data.camiones : [];
+        camiones.forEach(function (camion) {
+            const lat = camion.lat != null ? Number(camion.lat) : NaN;
+            const lng = camion.lng != null ? Number(camion.lng) : NaN;
+            if (!camion.patente || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            const popup = "<strong>Camión " + escapeHtml(camion.patente) + "</strong><br>"
+                + "En camino a: " + escapeHtml(camion.destino || "próxima parada") + "<br>"
+                + (camion.donaciones ? camion.donaciones.length + " donación(es)" : "");
+
+            if (truckMarkers.has(camion.patente)) {
+                truckMarkers.get(camion.patente).setLatLng([lat, lng]).setPopupContent(popup);
+            } else {
+                const icon = window.L.divIcon({
+                    className: "",
+                    html: '<div class="donante-truck">' + TRUCK_SVG + "</div>",
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -18]
+                });
+                const marker = window.L.marker([lat, lng], { icon: icon, title: "Camión " + camion.patente })
+                    .addTo(map)
+                    .bindPopup(popup);
+                truckMarkers.set(camion.patente, marker);
+            }
+
+            const trazado = Array.isArray(camion.trazado) ? camion.trazado : [];
+            if (trazado.length >= 2) {
+                const puntos = trazado.map(p => [p[1], p[0]]);
+                if (truckLines.has(camion.patente)) {
+                    truckLines.get(camion.patente).setLatLngs(puntos);
+                } else {
+                    truckLines.set(camion.patente, window.L.polyline(puntos, {
+                        color: "#1b7838",
+                        weight: 3,
+                        opacity: 0.55,
+                        dashArray: "6 6"
+                    }).addTo(map));
+                }
+            }
+        });
     }
 
     function normalize(value) {
@@ -176,12 +249,13 @@
                 .filter((card) => activeStatuses.has(card.dataset.status))
                 .map((card) => markersByEntityName.get(normalize(card.dataset.entity)))
                 .filter(Boolean);
-            const uniqueMarkers = Array.from(new Set(markers));
+            const truckMarkersList = Array.from(truckMarkers.values());
+            const uniqueMarkers = Array.from(new Set(markers.concat(truckMarkersList)));
 
             if (uniqueMarkers.length === 0) {
                 if (mapNotice) {
                     mapNotice.textContent =
-                        "No hay destinos de entregas en proceso con ubicaciones disponibles para mostrar.";
+                        "No hay entregas en proceso con ubicaciones disponibles para mostrar.";
                 }
                 return;
             }

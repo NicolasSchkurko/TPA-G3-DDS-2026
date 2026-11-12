@@ -14,22 +14,14 @@
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<!-- ===== Banner ===== -->
-<section class="banner-seccion">
-    <img class="banner-imagen"
-         src="../../static/images/donaciones.jpg"
-         th:src="@{/images/donaciones.jpg}"
-         alt="Donaciones">
-    <div class="banner-overlay"></div>
-    <div class="banner-contenido">
-        <a th:href="@{/admin/donaciones}" class="banner-volver">
-            <i class="bi bi-arrow-left"></i> Volver a donaciones
-        </a>
-        <h1>Registrar donación</h1>
-        <p>Elegí el donante que la entregó y cargá los bienes que trajo</p>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="'Registrar donación'">Administración</h1>
+        <p class="admin-page-lead" th:text="'Elegí el donante que la entregó y cargá los bienes que trajo.'">Gestioná los datos del sistema.</p>
     </div>
-</section>
-
+    <a class="btn btn-secondary" th:href="@{/admin/donaciones}" th:text="'Volver a donaciones'">Volver</a>
+</header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
     <div th:if="${error}" class="alert alert-danger d-flex align-items-center" role="alert">

@@ -23,7 +23,7 @@
             }
         }
 
-        timer = window.setInterval(tick, intervaloMs || 12000);
+        timer = window.setInterval(tick, intervaloMs || 30000);
 
         return function stop() {
             activo = false;

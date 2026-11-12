@@ -92,16 +92,14 @@
     }
 
     /** Encuadra una capa (o grupo de capas) dentro del viewport. */
-    function fit(map, layer, padding) {
+    function fit(map, layer, padding, options) {
         if (!map || !layer || typeof layer.getBounds !== "function") return;
 
         const bounds = layer.getBounds();
         if (!bounds || !bounds.isValid()) return;
 
-        map.fitBounds(bounds, {
-            padding: padding || [24, 24],
-            animate: false
-        });
+        const fitOptions = Object.assign({ animate: false, padding: padding || [24, 24] }, options || {});
+        map.fitBounds(bounds, fitOptions);
     }
 
     window.DDSIMap = {
