@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
+import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
+import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,6 +80,48 @@ public class IncentivosClient {
         } catch (Exception e) {
             log.warn("No se pudo obtener {} desde {}: {}", descripcion, baseUrl, e.getMessage());
             return Collections.emptyMap();
+        }
+    }
+
+    /** Misiones para la pantalla de administración. */
+    public List<IncentivosAdminDTOs.Mision> obtenerMisiones() {
+        try {
+            PageResponse<IncentivosAdminDTOs.Mision> page = restClient.get()
+                    .uri(baseUrl + "/api/misiones?page=0&size=100")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Mision>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener misiones desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Categorías para la pantalla de administración. */
+    public List<IncentivosAdminDTOs.Categoria> obtenerCategorias() {
+        try {
+            PageResponse<IncentivosAdminDTOs.Categoria> page = restClient.get()
+                    .uri(baseUrl + "/api/categorias?page=0&size=100")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Categoria>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener categorías desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Historial de rankings mensuales. */
+    public List<IncentivosAdminDTOs.RankingMes> obtenerRankings() {
+        try {
+            PageResponse<IncentivosAdminDTOs.RankingMes> page = restClient.get()
+                    .uri(baseUrl + "/api/rankings?page=0&size=100")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.RankingMes>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener rankings desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
         }
     }
 }
