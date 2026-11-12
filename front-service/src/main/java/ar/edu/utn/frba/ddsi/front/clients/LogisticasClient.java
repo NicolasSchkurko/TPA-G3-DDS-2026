@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -25,11 +26,17 @@ public class LogisticasClient {
     private static final Logger log = LoggerFactory.getLogger(LogisticasClient.class);
 
     private final RestClient restClient;
+    private final RestClient clientePatch;
     private final String baseUrl;
 
     public LogisticasClient(RestClient restClient,
                             @Value("${servicio.logisticas.url}") String baseUrl) {
         this.restClient = restClient;
+        // El RestClient de la aplicación usa SimpleClientHttpRequestFactory (HttpURLConnection),
+        // que no soporta PATCH. Usamos JdkClientHttpRequestFactory para los PATCH.
+        this.clientePatch = RestClient.builder()
+                .requestFactory(new JdkClientHttpRequestFactory())
+                .build();
         this.baseUrl = baseUrl;
     }
 
@@ -72,7 +79,7 @@ public class LogisticasClient {
     /** Confirmar (ENTREGADA, requiere fotoUrl) o rechazar (NO_RECIBIDA, requiere justificacion) una entrega. */
     public String actualizarEstadoEntrega(UUID idDonacion, LogisticaDTOs.ActualizacionEntrega dto) {
         try {
-            String response = restClient.patch()
+            String response = clientePatch.patch()
                     .uri(baseUrl + "/entregas/{id}/estado", idDonacion)
                     .body(dto)
                     .retrieve()
@@ -171,7 +178,7 @@ public class LogisticasClient {
     /** El chofer informa el inicio de su ruta programada. */
     public void iniciarRuta(UUID idChofer) {
         try {
-            restClient.patch()
+            clientePatch.patch()
                     .uri(baseUrl + "/rutas/chofer/{id}/iniciar", idChofer)
                     .retrieve()
                     .toBodilessEntity();
@@ -184,7 +191,7 @@ public class LogisticasClient {
     /** El chofer finaliza su ruta activa; las entregas no confirmadas vuelven a depósito. */
     public void terminarRuta(UUID idChofer) {
         try {
-            restClient.patch()
+            clientePatch.patch()
                     .uri(baseUrl + "/rutas/chofer/{id}/terminar", idChofer)
                     .retrieve()
                     .toBodilessEntity();

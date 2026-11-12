@@ -252,7 +252,7 @@ public class AdminController {
     public String mostrarEntidades(@AuthenticationPrincipal OidcUser usuario, Model model) {
         agregarDatosDelAdmin(usuario, model);
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
-        model.addAttribute("entidades", entidades);
+        model.addAttribute("entidade    s", entidades);
         return "admin/entidades";
     }
 
