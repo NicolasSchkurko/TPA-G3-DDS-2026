@@ -11,6 +11,9 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Collections;
 import java.util.List;
+import org.springframework.http.MediaType;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Cliente REST para notificaciones-service. Si el servicio no responde, devuelve una lista
@@ -44,6 +47,27 @@ public class NotificacionesServicioClient {
         } catch (Exception e) {
             log.warn("No se pudieron obtener las notificaciones de {}: {}", destinatario, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    public boolean enviarEmail(String destinatario, String asunto, String cuerpo) {
+        if (destinatario == null || destinatario.isBlank()) return false;
+        Map<String, String> solicitud = new LinkedHashMap<>();
+        solicitud.put("medioDeContacto", "email");
+        solicitud.put("direccionDeContacto", destinatario.trim().toLowerCase());
+        solicitud.put("asuntoMensaje", asunto);
+        solicitud.put("cuerpoMensaje", cuerpo);
+        try {
+            restClient.post()
+                    .uri(baseUrl + "/notificaciones")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(solicitud)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (Exception e) {
+            log.warn("No se pudo solicitar el email a {}: {}", destinatario, e.getMessage());
+            return false;
         }
     }
 }

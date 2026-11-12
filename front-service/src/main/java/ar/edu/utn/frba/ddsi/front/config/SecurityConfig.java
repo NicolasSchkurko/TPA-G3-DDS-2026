@@ -38,7 +38,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**", "/webjars/**", "/favicon.ico", "/favicon.svg").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso", "/terminos",
-                        "/oauth2/**", "/login/oauth2/**").permitAll()
+                        "/verificar", "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(new RegexRequestMatcher("^/perfil/(donante|entidad)/[0-9a-fA-F-]{36}$", "GET")).permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
                 .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()

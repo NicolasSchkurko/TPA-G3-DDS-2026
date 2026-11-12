@@ -32,6 +32,7 @@ public class RestTemplateConfig {
 
         // El HttpClient del JDK mantiene un pool de conexiones keep-alive entre llamadas.
         HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);

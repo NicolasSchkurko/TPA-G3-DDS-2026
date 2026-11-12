@@ -10,6 +10,7 @@ import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaMapaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
+import ar.edu.utn.frba.ddsi.front.services.VerificacionEmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
+
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -48,28 +50,31 @@ public class HomeController {
     private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
     private final PoliticaDeReclamo politicaDeReclamo;
+    private final VerificacionEmailService verificacionEmailService;
 
     @Autowired
     public HomeController(DonacionesClient donacionesClient,
                           IncentivosClient incentivosClient,
                           KeycloakRegistrationClient keycloakRegistrationClient,
-                          PoliticaDeReclamo politicaDeReclamo) {
+                          PoliticaDeReclamo politicaDeReclamo,
+                          VerificacionEmailService verificacionEmailService) {
         this.donacionesClient = donacionesClient;
         this.incentivosClient = incentivosClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
         this.politicaDeReclamo = politicaDeReclamo;
+        this.verificacionEmailService = verificacionEmailService;
     }
 
     /** Compatibilidad con los stubs de tests (sin landing de destacadas). */
     public HomeController(DonacionesClient donacionesClient,
                           KeycloakRegistrationClient keycloakRegistrationClient,
                           PoliticaDeReclamo politicaDeReclamo) {
-        this(donacionesClient, null, keycloakRegistrationClient, politicaDeReclamo);
+        this(donacionesClient, null, keycloakRegistrationClient, politicaDeReclamo, null);
     }
 
     /** Compatibilidad con los stubs de tests (verificación de email desactivada). */
     public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
-        this(donacionesClient, null, keycloakRegistrationClient, new PoliticaDeReclamo(false));
+        this(donacionesClient, null, keycloakRegistrationClient, new PoliticaDeReclamo(false), null);
     }
 
     @GetMapping("/login")
@@ -126,6 +131,8 @@ public class HomeController {
                 model.addAttribute("error", "Ese nombre de usuario ya está en uso. Elegí otro o iniciá sesión.");
                 return "register";
             }
+            // Una cuenta recién creada tiene el mail verificado solo si la verificación está apagada.
+            boolean emailVerificado = !politicaDeReclamo.isVerificacionHabilitada();
 
             // 2) Cuenta en Keycloak (si falla acá no se crea ningún perfil).
             String[] nombreApellido = nombreApellidoPara(form, username);
@@ -153,13 +160,13 @@ public class HomeController {
                         datos.put("keycloakSub", userId);
                     }
                     perfilId = donacionesClient.registrarUsuario(form.get("tipoRegistro"), datos, userId);
-                } else if (!politicaDeReclamo.puedeReclamar(identidadPrevia.isVinculada(), false)) {
+                } else if (identidadPrevia.isVinculada()) {
                     // El perfil ya está reclamado por otra cuenta: no se puede apropiar.
                     eliminarCuentaSiCorresponde(userId);
                     model.addAttribute("error", CONFLICTO_DE_PERFIL);
                     return "register";
-                } else if (userId != null) {
-                    // Perfil huérfano: lo vinculamos con esta cuenta de Keycloak.
+                } else if (userId != null && politicaDeReclamo.puedeReclamar(false, emailVerificado)) {
+                    // Perfil huérfano y mail verificado: lo vinculamos con esta cuenta de Keycloak.
                     try {
                         donacionesClient.vincularIdentidad(userId, role, perfilId);
                     } catch (Exception mappingError) {
@@ -169,6 +176,8 @@ public class HomeController {
                         return "register";
                     }
                 }
+                // Si el mail todavía no está verificado, el perfil importado queda sin vincular:
+                // se vincula solo cuando la persona verifica el mail e inicia sesión (IdentidadService).
             } catch (IllegalArgumentException e) {
                 eliminarCuentaSiCorresponde(userId);
                 model.addAttribute("error", e.getMessage());
@@ -195,7 +204,7 @@ public class HomeController {
                     // El fallback por email solo puede traer un perfil huérfano:
                     // nunca se heredan roles de un perfil ya reclamado por otra cuenta.
                     IdentidadDTO porEmail = donacionesClient.buscarIdentidadPorEmail(email);
-                    if (porEmail != null && politicaDeReclamo.puedeReclamar(porEmail.isVinculada(), false)) {
+                    if (porEmail != null && politicaDeReclamo.puedeReclamar(porEmail.isVinculada(), emailVerificado)) {
                         identidad = porEmail;
                     }
                 }
@@ -221,7 +230,16 @@ public class HomeController {
                 // El alta ya quedó hecha: una falla al sincronizar roles no debe tumbar el registro.
                 log.warn("No se pudieron sincronizar los roles de {} con el email {}: {}", username, email, roleError.getMessage());
             }
-            model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
+            if (politicaDeReclamo.isVerificacionHabilitada() && verificacionEmailService != null) {
+                boolean enviado = verificacionEmailService.enviar(userId, email);
+                model.addAttribute("msg", enviado
+                        ? "Tu cuenta quedó creada. Te enviamos un correo a " + email
+                          + " para verificarla: abrí el link antes de ingresar."
+                        : "Tu cuenta quedó creada, pero no pudimos enviarte el correo de verificación. "
+                          + "Intentá ingresar más tarde.");
+            } else {
+                model.addAttribute("msg", "Tu cuenta quedó creada. Ya podés ingresar con tu usuario y contraseña.");
+            }
         } catch (IllegalArgumentException e) {
             eliminarCuentaSiCorresponde(userId);
             model.addAttribute("error", e.getMessage());

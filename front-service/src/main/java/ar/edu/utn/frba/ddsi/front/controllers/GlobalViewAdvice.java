@@ -3,12 +3,14 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.services.EntidadContext;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesUsuarioService;
+import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.util.List;
 import java.util.Set;
@@ -27,11 +29,14 @@ public class GlobalViewAdvice {
 
     private final EntidadContext entidadContext;
     private final NotificacionesUsuarioService notificacionesUsuarioService;
+    private final PoliticaDeReclamo politicaDeReclamo;
 
     public GlobalViewAdvice(EntidadContext entidadContext,
-                            NotificacionesUsuarioService notificacionesUsuarioService) {
+                            NotificacionesUsuarioService notificacionesUsuarioService,
+                            PoliticaDeReclamo politicaDeReclamo) {
         this.entidadContext = entidadContext;
         this.notificacionesUsuarioService = notificacionesUsuarioService;
+        this.politicaDeReclamo = politicaDeReclamo;
     }
 
     @ModelAttribute("rolesDisponibles")
@@ -51,6 +56,15 @@ public class GlobalViewAdvice {
     @ModelAttribute("usuarioNombre")
     public String usuarioNombre(Authentication authentication) {
         return authentication != null ? authentication.getName() : "";
+    }
+
+    /** true si la verificación está prendida y la persona logueada todavía no verificó su correo. */
+    @ModelAttribute("emailSinVerificar")
+    public boolean emailSinVerificar(Authentication authentication, HttpSession session) {
+        if (!politicaDeReclamo.isVerificacionHabilitada()) return false;
+        if (Boolean.TRUE.equals(session.getAttribute("emailVerificadoEnSesion"))) return false;
+        if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser usuario)) return false;
+        return !Boolean.TRUE.equals(usuario.getEmailVerified());
     }
 
     /** URL de la bandeja de avisos: la enriquecida de entidad o la genérica del sistema. */
