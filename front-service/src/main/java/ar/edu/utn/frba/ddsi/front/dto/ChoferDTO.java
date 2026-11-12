@@ -18,6 +18,11 @@ public class ChoferDTO {
     private Boolean disponible;
     private Boolean activo;
 
+    public ChoferDTO(String nombre, Boolean disponible) {
+        this.nombre = nombre;
+        this.disponible = disponible;
+    }
+
     public boolean estaActivo() {
         return activo == null || activo;
     }

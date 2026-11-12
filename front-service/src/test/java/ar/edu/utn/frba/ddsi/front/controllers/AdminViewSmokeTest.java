@@ -66,7 +66,8 @@ class AdminViewSmokeTest {
         for (String path : List.of("/admin", "/admin/donaciones", "/admin/donaciones?vista=matchmaking",
                 "/admin/entidades", "/admin/donantes", "/admin/donaciones/nuevo",
                 "/admin/donantes/nuevo", "/admin/entidades/nuevo", "/admin/camiones",
-                "/admin/camiones/nuevo", "/admin/rutas", "/admin/entregas-no-recibidas",
+                "/admin/camiones/nuevo", "/admin/choferes", "/admin/choferes/nuevo",
+                "/admin/rutas", "/admin/entregas-no-recibidas",
                 "/admin/donaciones?vista=vencidas", "/admin/donantes/importar/" + java.util.UUID.randomUUID())) {
             mockMvc.perform(get(path).session(sessionAdmin()))
                     .andExpect(status().isOk());

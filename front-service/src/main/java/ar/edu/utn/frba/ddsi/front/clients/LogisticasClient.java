@@ -294,6 +294,33 @@ public class LogisticasClient {
         }
     }
 
+    /** Crea un chofer (POST /api/choferes). */
+    public ChoferDTO crearChofer(ChoferDTO chofer) {
+        try {
+            return restClient.post()
+                    .uri(baseUrl + "/choferes")
+                    .body(chofer)
+                    .retrieve()
+                    .body(ChoferDTO.class);
+        } catch (Exception e) {
+            log.error("Error al crear el chofer en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Elimina un chofer (DELETE /api/choferes/{id}). */
+    public void eliminarChofer(UUID idChofer) {
+        try {
+            restClient.delete()
+                    .uri(baseUrl + "/choferes/{id}", idChofer)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al eliminar el chofer {} en {}: {}", idChofer, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
     /** Cambia disponibilidad (PATCH /api/camiones/{patente}/estado). */
     public String cambiarDisponibilidad(String patente, boolean disponible) {
         java.util.Map<String, Boolean> body = new java.util.HashMap<>();

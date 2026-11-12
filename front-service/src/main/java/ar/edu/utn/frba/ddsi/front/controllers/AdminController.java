@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
 import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import ar.edu.utn.frba.ddsi.front.dto.BienDonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.ChoferDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EdicionDonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
@@ -152,6 +153,74 @@ public class AdminController {
             redirect.addFlashAttribute("error", "No se pudo cambiar la disponibilidad: " + e.getMessage());
         }
         return "redirect:/admin/camiones";
+    }
+
+    @GetMapping("/admin/choferes")
+    public String listarChoferes(Model model) {
+        model.addAttribute("choferes", logisticasClient.obtenerChoferes());
+        return "admin/choferes";
+    }
+
+    @GetMapping("/admin/choferes/nuevo")
+    public String nuevoChofer(Model model) {
+        ChoferDTO chofer = new ChoferDTO();
+        chofer.setDisponible(true);
+        chofer.setActivo(true);
+        model.addAttribute("chofer", chofer);
+        model.addAttribute("edicion", false);
+        return "admin/chofer-formulario";
+    }
+
+    @PostMapping("/admin/choferes/nuevo")
+    public String crearChofer(@ModelAttribute ChoferDTO chofer, RedirectAttributes redirect) {
+        try {
+            logisticasClient.crearChofer(chofer);
+            redirect.addFlashAttribute("exito", "Chofer registrado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló el alta del chofer: {}", e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo registrar el chofer: " + e.getMessage());
+        }
+        return "redirect:/admin/choferes";
+    }
+
+    @GetMapping("/admin/choferes/{id}/editar")
+    public String editarChofer(@PathVariable UUID id, Model model, RedirectAttributes redirect) {
+        ChoferDTO chofer = logisticasClient.obtenerChoferes().stream()
+                .filter(c -> id.equals(c.getIdChofer()))
+                .findFirst().orElse(null);
+        if (chofer == null) {
+            redirect.addFlashAttribute("error", "No encontramos el chofer que querés editar.");
+            return "redirect:/admin/choferes";
+        }
+        model.addAttribute("chofer", chofer);
+        model.addAttribute("edicion", true);
+        model.addAttribute("idChofer", id);
+        return "admin/chofer-formulario";
+    }
+
+    @PostMapping("/admin/choferes/{id}/actualizar")
+    public String actualizarChofer(@PathVariable UUID id, @ModelAttribute ChoferDTO chofer, RedirectAttributes redirect) {
+        chofer.setIdChofer(id);
+        try {
+            logisticasClient.actualizarChofer(chofer);
+            redirect.addFlashAttribute("exito", "Chofer actualizado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló la actualización del chofer {}: {}", id, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo actualizar el chofer: " + e.getMessage());
+        }
+        return "redirect:/admin/choferes";
+    }
+
+    @PostMapping("/admin/choferes/{id}/eliminar")
+    public String eliminarChofer(@PathVariable UUID id, RedirectAttributes redirect) {
+        try {
+            logisticasClient.eliminarChofer(id);
+            redirect.addFlashAttribute("exito", "Chofer eliminado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló la baja del chofer {}: {}", id, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo eliminar el chofer: " + e.getMessage());
+        }
+        return "redirect:/admin/choferes";
     }
 
     @GetMapping("/admin/rutas")
