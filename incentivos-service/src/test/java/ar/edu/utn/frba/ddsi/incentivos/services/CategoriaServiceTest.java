@@ -126,26 +126,27 @@ class CategoriaServiceTest {
     class Crear {
 
         @Test
-        @DisplayName("rechaza una posición que ya está ocupada")
-        void rechazaUnaPosicionOcupada() {
+        @DisplayName("inserta en una posición ocupada y abre el hueco")
+        void insertaEnUnaPosicionOcupada() {
             when(repoCategorias.existsByPosicionSecuencia(3)).thenReturn(true);
-
-            assertThatThrownBy(() -> service.agregarCategoria(ADMIN, dto("Plata", 3)))
-                    .isInstanceOf(ConflictoException.class)
-                    .hasMessageContaining("posición 3");
-
-            verify(repoCategorias, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("acepta una posición libre y abre el hueco")
-        void aceptaUnaPosicionLibre() {
-            when(repoCategorias.existsByPosicionSecuencia(3)).thenReturn(false);
             when(repoCategorias.save(any())).thenAnswer(i -> i.getArgument(0));
 
             service.agregarCategoria(ADMIN, dto("Plata", 3));
 
+            verify(repoCategorias, never()).existsByPosicionSecuencia(3);
             verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 3, gestorSecuencia.posicionMaxima(repoCategorias));
+            verify(repoCategorias).save(any());
+        }
+
+        @Test
+        @DisplayName("sin posición explícita agrega la categoría al final")
+        void creaAlFinalCuandoNoSeIndicaPosicion() {
+            when(gestorSecuencia.posicionMaxima(repoCategorias)).thenReturn(3);
+            when(repoCategorias.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            service.agregarCategoria(ADMIN, dto("Plata", null));
+
+            verify(gestorSecuencia).desplazarParaCrear(repoCategorias, 4, 3);
         }
     }
 

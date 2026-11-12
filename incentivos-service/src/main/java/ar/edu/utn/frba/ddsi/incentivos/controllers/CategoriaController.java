@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.security.Principal;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,11 +91,11 @@ public class CategoriaController {
     })
     @PostMapping("/admin")
     public ResponseEntity<CategoriaDTO> crearCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody CategoriaDTO request
     ) {
-        CategoriaDTO nuevaCategoria = service.agregarCategoria(idDe(principal), request);
+        CategoriaDTO nuevaCategoria = service.agregarCategoria(idAdmin, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevaCategoria);
     }
 
@@ -111,13 +111,13 @@ public class CategoriaController {
     })
     @PutMapping("/admin/{id}")
     public ResponseEntity<CategoriaDTO> actualizarCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la categoría a actualizar", required = true)
             @PathVariable UUID id,
             @Valid @RequestBody CategoriaDTO categoria
     ) {
-        return ResponseEntity.ok(service.actualizarCategoria(idDe(principal), id, categoria));
+        return ResponseEntity.ok(service.actualizarCategoria(idAdmin, id, categoria));
     }
 
     @Operation(
@@ -131,16 +131,12 @@ public class CategoriaController {
     })
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<Void> eliminarCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la categoría a eliminar", required = true)
             @PathVariable UUID id
     ) {
-        service.eliminarCategoria(idDe(principal), id);
+        service.eliminarCategoria(idAdmin, id);
         return ResponseEntity.noContent().build();
-    }
-
-    private static UUID idDe(Principal principal) {
-        return UUID.fromString(principal.getName());
     }
 }

@@ -90,6 +90,16 @@ class CategoriaTest {
     }
 
     @Test
+    @DisplayName("permite quitar todas las misiones al editar una categoría")
+    void permiteQuitarTodasLasMisionesAlEditar() {
+        Categoria categoria = categoriaCon(mision("A"), mision("B"));
+
+        categoria.actualizarCon(new Categoria("Categoria", null, 1, List.of()));
+
+        assertThat(categoria.getCategoriaMisiones()).isEmpty();
+    }
+
+    @Test
     @DisplayName("la ultima mision de la secuencia no tiene siguiente")
     void laUltimaMisionNoTieneSiguiente() {
         // No hace falta un esUltimaMision: siguienteMision == null ya responde eso.
