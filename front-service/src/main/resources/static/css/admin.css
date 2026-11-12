@@ -211,6 +211,21 @@ body {
     min-width: 0;
 }
 
+.btn-guardar {
+    background-color: #0d6efd !important;
+    border: 1px solid #0d6efd !important;
+    color: white !important;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.btn-guardar:hover {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+    color: white !important;
+}
+
 /* ==================================================================
    ADMINISTRAR DONANTES (/admin/donantes)
    ================================================================== */

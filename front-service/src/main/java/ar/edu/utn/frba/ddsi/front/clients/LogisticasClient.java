@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.ChoferDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import org.slf4j.Logger;
@@ -86,6 +87,66 @@ public class LogisticasClient {
         }
     }
 
+    public void crearCamion(CamionDTO camion) {
+        restClient.post()
+                .uri(baseUrl + "/camiones")
+                .body(camion)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void actualizarCamion(CamionDTO camion, String patenteBuscada) {
+        restClient.put()
+                .uri(baseUrl + "/camiones/{patenteBuscada}", patenteBuscada)
+                .body(camion)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void eliminarCamion(String patenteBuscada) {
+        restClient.delete()
+                .uri(baseUrl + "/camiones/{patenteBuscada}", patenteBuscada)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Choferes de la flota. Devuelve lista vacía si el servicio no responde. */
+    public List<ChoferDTO> obtenerChoferes() {
+        try {
+            PageResponse<ChoferDTO> page = restClient.get()
+                    .uri(baseUrl + "/choferes")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<ChoferDTO>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener choferes desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
+        }
+    }
+
+    public void crearChofer(ChoferDTO chofer) {
+        restClient.post()
+                .uri(baseUrl + "/choferes")
+                .body(chofer)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void actualizarChofer(ChoferDTO chofer, UUID id) {
+        restClient.put()
+                .uri(baseUrl + "/choferes/{id}", id)
+                .body(chofer)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void eliminarChofer(UUID id) {
+        restClient.delete()
+                .uri(baseUrl + "/choferes/{id}", id)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     /** Rutas generadas. El listado es global; filtrar por paradas[].direccion.idEntidad en el front. */
     public List<LogisticaDTOs.Ruta> obtenerRutas() {
         try {
@@ -98,5 +159,12 @@ public class LogisticasClient {
             log.error("Error al obtener rutas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
         }
+    }
+
+    public void planificarRutas() {
+        restClient.post()
+                .uri(baseUrl + "/PlanificacionRutas/planificar-manual")
+                .retrieve()
+                .toBodilessEntity();
     }
 }

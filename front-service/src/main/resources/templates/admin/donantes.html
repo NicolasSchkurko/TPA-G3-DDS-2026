@@ -14,29 +14,7 @@
 
 <!-- ===== Header ya existente (mismo que /admin) ===== -->
 <header class="encabezado">
-    <div class="encabezado-contenido">
-
-        <a href="/landing" class="logo">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
-        </a>
-
-        <nav class="nav-links-admin">
-            <a href="#">Quiénes somos</a>
-            <a> - </a>
-            <a href="#">Qué hacemos</a>
-            <a> - </a>
-            <a href="#">Contactanos</a>
-        </nav>
-
-        <div class="usuario-administrador">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="foto de usuario">
-            <div class="datos-usuario">
-                <span th:text="${nombre + ' ' + apellido}">Nombre Apellido</span>
-                <span th:text="${rol}">Administrador</span>
-            </div>
-        </div>
-
-    </div>
+    <div th:replace="~{fragments/navbar :: navbar}"></div>
 </header>
 
 <!-- ===== Banner: Administrar donantes ===== -->
