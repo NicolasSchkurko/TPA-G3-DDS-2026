@@ -1,19 +1,16 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
 
 import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,9 +136,42 @@ class IncentivosClientTest {
                 .andExpect(method(HttpMethod.PUT))
                 .andExpect(header("X-Admin-Id", idAdmin.toString()))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("{\"nombreMision\":\"Misión editada\"}"))
+                .andExpect(content().json("""
+                        {"nombreMision":"Misión editada","insigniaUrlImagen":null}
+                        """))
                 .andRespond(withSuccess());
 
         client.actualizarMision(idAdmin, idMision, mision);
+    }
+
+    @Test
+    @DisplayName("crea una misión en el endpoint administrativo con el ID del administrador")
+    void creaMision() {
+        IncentivosAdminDTOs.Mision mision = new IncentivosAdminDTOs.Mision();
+        mision.setNombreMision("Misión nueva");
+
+        server.expect(requestTo(BASE_URL + "/api/misiones/admin"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Admin-Id", ADMIN_ID.toString()))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("""
+                        {"nombreMision":"Misión nueva","insigniaUrlImagen":null}
+                        """))
+                .andRespond(withSuccess());
+
+        client.crearMision(ADMIN_ID, mision);
+    }
+
+    @Test
+    @DisplayName("elimina una misión en el endpoint administrativo con el ID del administrador")
+    void eliminaMision() {
+        UUID idMision = UUID.randomUUID();
+
+        server.expect(requestTo(BASE_URL + "/api/misiones/admin/" + idMision))
+                .andExpect(method(HttpMethod.DELETE))
+                .andExpect(header("Admin-Id", ADMIN_ID.toString()))
+                .andRespond(withNoContent());
+
+        client.eliminarMision(ADMIN_ID, idMision);
     }
 }

@@ -138,13 +138,35 @@ public class IncentivosClient {
         }
     }
 
+    /** Crea una misión desde la pantalla de administración. */
+    public void crearMision(UUID idAdmin, IncentivosAdminDTOs.Mision mision) {
+        mision.setInsigniaUrlImagen(null);
+        restClient.post()
+                .uri(baseUrl + "/api/misiones/admin")
+                .header("Admin-Id", idAdmin.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mision)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     /** Actualiza una misión desde la pantalla de administración. */
     public void actualizarMision(UUID idAdmin, UUID idMision, IncentivosAdminDTOs.Mision mision) {
+        mision.setInsigniaUrlImagen(null);
         restClient.put()
                 .uri(baseUrl + "/api/misiones/admin/{id}", idMision)
                 .header("X-Admin-Id", idAdmin.toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(mision)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Da de baja una misión desde la pantalla de administración. */
+    public void eliminarMision(UUID idAdmin, UUID idMision) {
+        restClient.delete()
+                .uri(baseUrl + "/api/misiones/admin/{id}", idMision)
+                .header("Admin-Id", idAdmin.toString())
                 .retrieve()
                 .toBodilessEntity();
     }

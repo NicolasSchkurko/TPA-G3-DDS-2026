@@ -91,11 +91,11 @@ public class MisionController {
     })
     @PostMapping("/admin")
     public ResponseEntity<MisionDTO> crearMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody MisionDTO request
     ) {
-        MisionDTO nuevaMision = service.crearMision(idDe(principal), request);
+        MisionDTO nuevaMision = service.crearMision(idAdmin, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevaMision);
     }
 
@@ -131,12 +131,12 @@ public class MisionController {
     })
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<Void> eliminarMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a eliminar", required = true)
             @PathVariable UUID id
     ) {
-        service.eliminarMision(idDe(principal), id);
+        service.eliminarMision(idAdmin, id);
         return ResponseEntity.noContent().build();
     }
 
