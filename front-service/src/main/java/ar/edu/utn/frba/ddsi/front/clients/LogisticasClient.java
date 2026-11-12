@@ -1,10 +1,13 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
+import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -67,6 +70,20 @@ public class LogisticasClient {
         } catch (Exception e) {
             log.error("Error al actualizar el estado de la entrega {}: {}", idDonacion, e.getMessage());
             throw e;
+        }
+    }
+
+    /** Camiones de la flota. Devuelve lista vacía si el servicio no responde. */
+    public List<CamionDTO> obtenerCamiones() {
+        try {
+            PageResponse<CamionDTO> page = restClient.get()
+                    .uri(baseUrl + "/camiones")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<CamionDTO>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener camiones desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
         }
     }
 
