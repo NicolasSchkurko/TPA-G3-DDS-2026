@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.front.clients;
 import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +45,7 @@ public class LogisticasClient {
         }
     }
 
-    /** Bien por id de donación (el id de ítem de entrega ES el id de la donación). */
+    /** Bien por id de donación (el id de ítem de entrega ES el id de la donación). REVISAR*/
     public LogisticaDTOs.Bien obtenerBienPorDonacion(UUID idDonacion) {
         try {
             return restClient.get()
@@ -97,6 +98,19 @@ public class LogisticasClient {
         } catch (Exception e) {
             log.error("Error al obtener rutas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
+        }
+    }
+
+    /** Detalle crudo de una ruta; lo consume la vista pública de seguimiento. */
+    public JsonNode obtenerRuta(UUID idRuta) {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/rutas/{id}", idRuta)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (Exception e) {
+            log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
+            return null;
         }
     }
 }
