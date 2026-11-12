@@ -3,6 +3,10 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
+import ar.edu.utn.frba.ddsi.front.dto.DireccionBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaMapaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +19,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Controller
 public class HomeController {
@@ -184,12 +192,55 @@ public class HomeController {
                 && authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_DONANTE"))
                 && !esAdmin(authentication);
+        List<DonacionDestacadaDTO> destacadas = incentivosClient.obtenerDonacionesDestacadas();
+        List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
         model.addAttribute("esDonante", esDonante);
-        model.addAttribute("destacadas", incentivosClient.obtenerDonacionesDestacadas());
-        model.addAttribute("entidades", esDonante
-                ? donacionesClient.obtenerEntidades()
-                : Collections.emptyList());
+        model.addAttribute("destacadas", destacadas);
+        model.addAttribute("destacadasMapa", enriquecerDestacadasConUbicacion(destacadas, entidades));
+        model.addAttribute("entidades", esDonante ? entidades : Collections.emptyList());
         return "landing";
+    }
+
+    private List<DonacionDestacadaMapaDTO> enriquecerDestacadasConUbicacion(
+            List<DonacionDestacadaDTO> destacadas,
+            List<EntidadBeneficiariaDTO> entidades) {
+        Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = entidades.stream()
+                .filter(entidad -> entidad.getRazonSocial() != null)
+                .collect(Collectors.toMap(
+                        entidad -> entidad.getRazonSocial().trim().toLowerCase(Locale.ROOT),
+                        Function.identity(),
+                        (primera, ignorada) -> primera,
+                        LinkedHashMap::new));
+
+        return destacadas.stream()
+                .map(donacion -> {
+                    EntidadBeneficiariaDTO entidad = donacion.entidadBeneficiaria() == null
+                            ? null
+                            : entidadesPorNombre.get(
+                                    donacion.entidadBeneficiaria().trim().toLowerCase(Locale.ROOT));
+                    DireccionBeneficiariaDTO direccion = entidad != null ? entidad.getDireccion() : null;
+                    String ubicacion = direccion == null ? null : nombreUbicacion(direccion);
+                    return new DonacionDestacadaMapaDTO(
+                            donacion.idDonacion(),
+                            donacion.fechaEntrega(),
+                            donacion.cantidadBienes(),
+                            donacion.categoria(),
+                            donacion.subCategoria(),
+                            donacion.entidadBeneficiaria(),
+                            direccion != null ? direccion.getLatitud() : null,
+                            direccion != null ? direccion.getLongitud() : null,
+                            ubicacion);
+                })
+                .toList();
+    }
+
+    private String nombreUbicacion(DireccionBeneficiariaDTO direccion) {
+        if (direccion.getCiudad() != null && !direccion.getCiudad().isBlank()) {
+            return direccion.getCiudad();
+        }
+        return direccion.getProvincia() != null && !direccion.getProvincia().isBlank()
+                ? direccion.getProvincia()
+                : direccion.getPais();
     }
 
     @GetMapping("/panel")

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
-    <link rel="stylesheet" href="/css/landing.css" th:href="@{/css/landing.css}">
+    <link rel="stylesheet" href="/css/landing.css?v=3" th:href="@{/css/landing.css(v=3)}">
 </head>
 <body class="landing">
 
@@ -120,9 +120,12 @@
                 </div>
 
                 <div class="donation-list" id="donationList">
-                    <a class="donation-card" th:each="donacion : ${destacadas}"
+                    <a class="donation-card" th:each="donacion : ${destacadasMapa}"
                        th:href="@{/donaciones/{id}(id=${donacion.idDonacion})}"
-                       th:attr="data-id=${donacion.idDonacion}">
+                       th:attr="data-id=${donacion.idDonacion},
+                                data-latitude=${donacion.latitud},
+                                data-longitude=${donacion.longitud},
+                                data-area=${donacion.ubicacion ?: ''}">
                         <span class="card-icon" aria-hidden="true">
                             <svg class="icon"><use href="#i-gift"></use></svg>
                         </span>
@@ -140,8 +143,8 @@
                                 <span th:if="${donacion.fechaEntrega == null}">Fecha no informada</span>
                             </span>
                         </span>
-                        <span class="row-status" aria-label="Entregada y misión completada">
-                            <span class="status-dot" aria-hidden="true"></span>Destacada
+                        <span class="row-status" aria-label="Estado: entregada">
+                            <span class="status-dot" aria-hidden="true"></span><span>Entregada</span>
                         </span>
                     </a>
                     <p class="panel-empty" th:if="${#lists.isEmpty(destacadas)}">
@@ -153,7 +156,7 @@
                 </div>
             </section>
 
-            <p class="sidebar-note">Donaciones destacadas reales · Mapa con ubicaciones ilustrativas</p>
+            <p class="sidebar-note">Destacadas ubicadas en la entidad receptora · Otros puntos ilustrativos</p>
         </aside>
 
         <section class="map-pane" aria-label="Mapa de donaciones">
@@ -165,7 +168,7 @@
                 <span><i class="legend-dot urgent" aria-hidden="true"></i> Urgente</span>
             </div>
 
-            <p class="map-caption">Mapa ilustrativo · Ubicaciones de ejemplo</p>
+            <p class="map-caption">Donaciones destacadas: ubicación de la entidad receptora · Otros puntos: ejemplo</p>
         </section>
     </main>
 
@@ -222,7 +225,7 @@
     </div>
 
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
-    <script src="/js/landing.js" th:src="@{/js/landing.js}"></script>
+    <script src="/js/landing.js?v=3" th:src="@{/js/landing.js(v=3)}"></script>
     <script src="/js/nav-menu.js" th:src="@{/js/nav-menu.js}"></script>
     <script th:src="@{/js/entity-search.js}"></script>
 </body>

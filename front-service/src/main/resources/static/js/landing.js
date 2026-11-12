@@ -107,8 +107,8 @@
             eyebrow: "Legales",
             title: "Términos y condiciones",
             body: `
-                <p>Este sitio es una demostración académica del portal DDSI. Los datos de donaciones,
-                organizaciones y ubicaciones que se muestran son de ejemplo y no representan entregas reales.</p>
+                <p>Este sitio es una demostración académica del portal DDSI. Las donaciones destacadas
+                se ubican según la dirección de su entidad receptora; los demás puntos son ilustrativos.</p>
                 <p>El uso del mapa es informativo. Las ubicaciones se aproximan por barrio para proteger
                 la privacidad de las personas beneficiarias.</p>
             `
@@ -131,7 +131,37 @@
     let activeId = null;
 
     /* ----------------------------- Utilidades ----------------------------- */
-    const byId = (id) => DONATIONS.find((d) => d.id === id);
+    function featuredDonations() {
+        return Array.from(document.querySelectorAll(".donation-card")).flatMap((card) => {
+            if (!card.dataset.latitude || !card.dataset.longitude) {
+                return [];
+            }
+
+            const lat = Number(card.dataset.latitude);
+            const lng = Number(card.dataset.longitude);
+            if (!Number.isFinite(lat) || lat < -90 || lat > 90
+                || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+                return [];
+            }
+
+            return [{
+                id: card.dataset.id,
+                title: card.querySelector(".card-title")?.textContent.trim() || "Donación",
+                org: card.querySelector(".card-meta > span")?.textContent.trim() || "Entidad beneficiaria",
+                area: card.dataset.area || "",
+                status: "delivered",
+                icon: "gift",
+                coords: [lat, lng],
+                url: card.getAttribute("href")
+            }];
+        });
+    }
+
+    function mapDonations() {
+        return DONATIONS.concat(featuredDonations());
+    }
+
+    const byId = (id) => mapDonations().find((d) => d.id === id);
 
     function statusColor(status) {
         return (STATUS[status] || STATUS.delivered).color;
@@ -186,6 +216,21 @@
         markersById.forEach((marker, markerId) => {
             const el = markerElement(marker);
             if (el) el.classList.toggle("is-active", markerId === id);
+        });
+    }
+
+    function bindCardMarkerInteractions() {
+        document.querySelectorAll(".donation-card").forEach((card) => {
+            const marker = markersById.get(card.dataset.id);
+            const element = markerElement(marker);
+            if (!element) return;
+
+            card.addEventListener("mouseenter", () => element.classList.add("is-active"));
+            card.addEventListener("mouseleave", () => {
+                if (activeId !== card.dataset.id) {
+                    element.classList.remove("is-active");
+                }
+            });
         });
     }
 
@@ -291,7 +336,7 @@
 
         // Las capas propias del landing van encima del mapa base.
         // Marcadores de donaciones.
-        DONATIONS.forEach((donation, index) => {
+        mapDonations().forEach((donation) => {
             const icon = L.divIcon({
                 className: `donation-marker status-${donation.status}`,
                 html: `
@@ -329,6 +374,7 @@
 
             markersById.set(donation.id, marker);
         });
+        bindCardMarkerInteractions();
 
         // Encuadre inicial. El ResizeObserver espera a que el contenedor tenga
         // tamaño real y también reencuadra al cambiar el tamaño de la ventana.
@@ -361,7 +407,7 @@
         }
 
         const isMobile = window.matchMedia("(max-width: 860px)").matches;
-        const bounds = L.latLngBounds(DONATIONS.map((d) => d.coords));
+        const bounds = L.latLngBounds(mapDonations().map((d) => d.coords));
         const padding = isMobile ? 48 : 72;
 
         map.fitBounds(bounds, {
@@ -378,7 +424,7 @@
             </span>
             <div class="popup-title">${escapeHtml(donation.title)}</div>
             <div class="popup-meta">${escapeHtml(donation.org)} · ${escapeHtml(donation.area)}</div>
-            <a class="popup-link" href="/donaciones">Ver donación ${iconSvg("arrow-right")}</a>
+            <a class="popup-link" href="${escapeHtml(donation.url || "/donaciones")}">Ver donación ${iconSvg("arrow-right")}</a>
         `;
     }
 
@@ -412,8 +458,9 @@
         container.appendChild(svg);
 
         // Donaciones ubicadas de forma proporcional al área metropolitana.
-        const lats = DONATIONS.map((d) => d.coords[0]);
-        const lngs = DONATIONS.map((d) => d.coords[1]);
+        const donations = mapDonations();
+        const lats = donations.map((d) => d.coords[0]);
+        const lngs = donations.map((d) => d.coords[1]);
         const minLat = Math.min(...lats) - 0.015;
         const maxLat = Math.max(...lats) + 0.015;
         const minLng = Math.min(...lngs) - 0.015;
@@ -425,7 +472,7 @@
             return { left, top };
         }
 
-        DONATIONS.forEach((donation, index) => {
+        donations.forEach((donation) => {
             const pos = position(donation.coords);
             const button = document.createElement("button");
             button.type = "button";
@@ -448,14 +495,7 @@
         });
 
         // En el fallback no hay zoom: al tocar una tarjeta solo se resalta el punto.
-        markersById.forEach((marker, id) => {
-            const card = document.querySelector(`.donation-card[data-id="${id}"]`);
-            if (!card) return;
-            card.addEventListener("mouseenter", () => marker.element.classList.add("is-active"));
-            card.addEventListener("mouseleave", () => {
-                if (activeId !== id) marker.element.classList.remove("is-active");
-            });
-        });
+        bindCardMarkerInteractions();
     }
 
     /* ----------------------------- Arranque ----------------------------- */

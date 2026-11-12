@@ -5,6 +5,8 @@ import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.config.ProfileRedirectHandler;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DireccionBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -135,7 +137,16 @@ class FrontApplicationTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("Donaciones destacadas")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("Comedor Los Piletones")));
+                        org.hamcrest.Matchers.containsString("Comedor Los Piletones")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("class=\"row-status\" aria-label=\"Estado: entregada\"")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(">Entregada</span>")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("data-latitude=\"-34.6538\"")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("data-longitude=\"-58.4478\"")));
+
     }
 
     @Test
@@ -183,6 +194,18 @@ class FrontApplicationTest {
                     donante.setNombre("Perfil");
                     donante.setApellido("de prueba");
                     return List.of(donante);
+                }
+
+                @Override
+                public List<EntidadBeneficiariaDTO> obtenerEntidades() {
+                    DireccionBeneficiariaDTO direccion = new DireccionBeneficiariaDTO();
+                    direccion.setLatitud(-34.6538);
+                    direccion.setLongitud(-58.4478);
+                    direccion.setCiudad("Villa Soldati");
+                    EntidadBeneficiariaDTO entidad = new EntidadBeneficiariaDTO();
+                    entidad.setRazonSocial("Comedor Los Piletones");
+                    entidad.setDireccion(direccion);
+                    return List.of(entidad);
                 }
             };
         }
