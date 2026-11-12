@@ -33,7 +33,7 @@
         return "<strong>" + escapeHtml(camion.patente) + "</strong><br>"
             + "Ruta: " + escapeHtml(camion.estadoRuta || "en curso") + "<br>"
             + (camion.destino ? "En camino a: " + escapeHtml(camion.destino) + "<br>" : "")
-            + "ETA aprox.: " + (camion.etaMinutos != null ? camion.etaMinutos + " min" : "sin datos") + "<br>"
+            + (camion.ultimaActualizacion ? "Última actualización: " + escapeHtml(camion.ultimaActualizacion) + "<br>" : "")
             + donaciones + " entrega(s)" + link;
     }
 
@@ -48,8 +48,9 @@
             return null;
         }
 
-        const entidad = data && data.entidad ? data.entidad : { lat: -34.62, lng: -58.43, razonSocial: "Mi entidad", direccion: "" };
-        const center = [Number(entidad.lat) || -34.62, Number(entidad.lng) || -58.43];
+        const entidad = data && data.entidad ? data.entidad : { lat: null, lng: null, razonSocial: "Mi entidad", direccion: "" };
+        const tieneCoords = entidad.lat != null && entidad.lng != null && Number.isFinite(Number(entidad.lat)) && Number.isFinite(Number(entidad.lng));
+        const center = tieneCoords ? [Number(entidad.lat), Number(entidad.lng)] : [-34.6037, -58.3816];
         const map = L.map(containerId, { scrollWheelZoom: false, attributionControl: true }).setView(center, 12);
 
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -57,11 +58,12 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        const homeMarker = L.marker(center, { icon: divIcon("home"), title: entidad.razonSocial || "Mi entidad" })
-            .addTo(map)
-            .bindPopup("<strong>" + escapeHtml(entidad.razonSocial || "Mi entidad") + "</strong><br>" + escapeHtml(entidad.direccion || ""));
-
-        const ctx = { map: map, homeMarker: homeMarker, markers: new Map(), lines: new Map() };
+        const ctx = { map: map, homeMarker: null, markers: new Map(), lines: new Map() };
+        if (tieneCoords) {
+            ctx.homeMarker = L.marker(center, { icon: divIcon("home"), title: entidad.razonSocial || "Mi entidad" })
+                .addTo(map)
+                .bindPopup("<strong>" + escapeHtml(entidad.razonSocial || "Mi entidad") + "</strong><br>" + escapeHtml(entidad.direccion || ""));
+        }
         const depositoLat = data && data.depositoLat != null ? Number(data.depositoLat) : NaN;
         const depositoLng = data && data.depositoLng != null ? Number(data.depositoLng) : NaN;
         if (Number.isFinite(depositoLat) && Number.isFinite(depositoLng)) {
@@ -139,6 +141,25 @@
                     ctx.lines.delete(patente);
                 }
             });
+        }
+
+        const nuevoDepLat = data && data.depositoLat != null ? Number(data.depositoLat) : NaN;
+        const nuevoDepLng = data && data.depositoLng != null ? Number(data.depositoLng) : NaN;
+        if (Number.isFinite(nuevoDepLat) && Number.isFinite(nuevoDepLng)) {
+            if (ctx.deposito) {
+                ctx.deposito.setLatLng([nuevoDepLat, nuevoDepLng]);
+            } else {
+                ctx.deposito = L.circleMarker([nuevoDepLat, nuevoDepLng], {
+                    radius: 11,
+                    color: "#0f1210",
+                    weight: 3,
+                    fillColor: "#1b7838",
+                    fillOpacity: 1
+                }).addTo(ctx.map).bindPopup("<strong>" + escapeHtml(data.depositoEtiqueta || "Depósito") + "</strong><br>Punto de partida de las rutas");
+            }
+        } else if (ctx.deposito) {
+            ctx.map.removeLayer(ctx.deposito);
+            ctx.deposito = null;
         }
     }
 

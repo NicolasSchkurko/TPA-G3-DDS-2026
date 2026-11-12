@@ -607,9 +607,9 @@ body.entity-search-open {
 }
 
 .leaflet-control-zoom a {
-    width: 30px !important;
-    height: 30px !important;
-    line-height: 30px !important;
+    width: 48px !important;
+    height: 48px !important;
+    line-height: 48px !important;
     background: var(--white) !important;
     border-color: var(--line) !important;
     color: var(--ink) !important;

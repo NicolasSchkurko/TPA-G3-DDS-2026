@@ -14,7 +14,6 @@
 
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
-<div th:replace="~{fragments/demo-banner :: demoBanner}"></div>
 
 <main class="seguimiento-layout" id="contenido" tabindex="-1">
 
@@ -61,11 +60,10 @@
             <p style="margin: 0; font-size: 12.5px; color: var(--muted);">
                 <span th:if="${camion.destino != null}">En camino a <strong th:text="${camion.destino}">destino</strong> · </span>
                 <span th:if="${camion.donaciones != null and !camion.donaciones.isEmpty()}">
-                    <span th:text="${camion.donaciones.size()}">2</span> entrega(s) ·
+                    <span th:text="${camion.donaciones.size()}">2</span> entrega(s)
                 </span>
-                ETA aprox.: <strong th:text="${camion.etaMinutos != null ? camion.etaMinutos + ' min' : 'sin datos'}">14 min</strong>
             </p>
-            <p style="margin: 0; font-size: 11.5px; color: var(--muted-2);">
+            <p th:if="${camion.ultimaActualizacion != null}" style="margin: 0; font-size: 11.5px; color: var(--muted-2);">
                 Última actualización: <time class="last-update" th:attr="datetime=${camion.ultimaActualizacion}, data-since=${camion.ultimaActualizacion}" th:text="${camion.ultimaActualizacion}">2026-06-12T10:30</time>
             </p>
             <a class="btn btn-ghost btn-sm" style="align-self: flex-start; padding: 0 var(--gap-2);" th:if="${camion.donaciones != null and !camion.donaciones.isEmpty()}"

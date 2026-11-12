@@ -17,10 +17,17 @@
 <main class="page" id="contenido" tabindex="-1">
     <div class="card vincular-card">
         <h1 style="margin-top: 0;">Vinculá tu entidad</h1>
-        <p style="color: var(--muted);">
+        <p th:if="${errorCarga != true}" style="color: var(--muted);">
             Tu cuenta todavía no está asociada a una entidad beneficiaria. Elegí qué entidad sos
             y vas a poder ver tus donaciones, registrar necesidades y seguir las entregas en el mapa.
         </p>
+        <div th:if="${errorCarga == true}" class="banner banner-warning" role="alert" style="margin-bottom: var(--gap-4);">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 1 1 14h14L8 1zm0 5v3m0 2.5v.5"/>
+            </svg>
+            <div>No pudimos cargar los datos de tu entidad. Revisá que los servicios estén disponibles e
+                <a th:href="@{/entidad}">reintentá</a>.</div>
+        </div>
 
         <div class="banner banner-info" role="note" style="margin-bottom: var(--gap-4);">
             <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">

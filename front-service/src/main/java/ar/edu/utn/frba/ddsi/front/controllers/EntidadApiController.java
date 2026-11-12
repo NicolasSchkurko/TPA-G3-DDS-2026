@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.dto.SeguimientoDTO;
-import ar.edu.utn.frba.ddsi.front.services.DemoDataService;
 import ar.edu.utn.frba.ddsi.front.services.EntidadContext;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,8 +32,10 @@ public class EntidadApiController {
     @GetMapping("/seguimiento")
     public SeguimientoDTO seguimiento(Authentication authentication, HttpServletRequest request) {
         var entidad = entidadContext.entidad(request, authentication);
-        if (entidad == null || DemoDataService.ID_DEMO.equals(entidad.getId())) {
-            return DemoDataService.seguimientoDemo();
+        if (entidad == null) {
+            SeguimientoDTO vacio = new SeguimientoDTO();
+            vacio.setGeneradoEn(OffsetDateTime.now().toString());
+            return vacio;
         }
         return entidadContext.seguimiento(request, authentication);
     }
