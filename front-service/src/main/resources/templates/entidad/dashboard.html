@@ -4,11 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad — DDSI' : 'Mi entidad — DDSI'}">Mi entidad — DDSI</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad — DonaTrack' : 'Mi entidad — DonaTrack'}">Mi entidad — DonaTrack</title>
     <meta name="description" content="Seguimiento en vivo de las donaciones asignadas a tu entidad: necesidades, entregas activas y confirmación de recepción.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
     <link rel="stylesheet" th:href="@{/css/entidad.css}">
 </head>
@@ -17,7 +15,7 @@
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 
-<main class="entidad-main" id="entidadMain">
+<main class="entidad-main" id="contenido" tabindex="-1">
 
     <!-- ============ Panel desplegable (izquierda) ============ -->
     <aside class="panel-entidad is-open" id="panelEntidad" aria-label="Vistazo rápido de mi entidad">

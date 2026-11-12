@@ -13,7 +13,6 @@ import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.security.core.Authentication;
@@ -49,18 +48,6 @@ public class HomeController {
     private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
     private final PoliticaDeReclamo politicaDeReclamo;
-
-    @Value("${servicio.donaciones.url}")
-    private String donacionesUrl;
-
-    @Value("${servicio.incentivos.url}")
-    private String incentivosUrl;
-
-    @Value("${servicio.notificaciones.url}")
-    private String notificacionesUrl;
-
-    @Value("${servicio.logisticas.url}")
-    private String logisticasUrl;
 
     @Autowired
     public HomeController(DonacionesClient donacionesClient,
@@ -476,17 +463,7 @@ public class HomeController {
     }
 
     @GetMapping("/panel")
-    public String panel(Model model) {
-        var donaciones = donacionesClient.obtenerTodasLasDonaciones();
-        var donantes = donacionesClient.obtenerDonantes();
-
-        model.addAttribute("totalDonaciones", donaciones.size());
-        model.addAttribute("totalDonantes", donantes.size());
-        model.addAttribute("donacionesUrl", donacionesUrl);
-        model.addAttribute("incentivosUrl", incentivosUrl);
-        model.addAttribute("notificacionesUrl", notificacionesUrl);
-        model.addAttribute("logisticasUrl", logisticasUrl);
-
-        return "panel";
+    public String panel() {
+        return "redirect:/admin";
     }
 }

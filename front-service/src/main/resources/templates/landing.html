@@ -4,13 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>DonaTrack · Donaciones en el mapa</title>
     <meta name="description"
           content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y urgentes en la Ciudad de Buenos Aires.">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
     <link rel="stylesheet" href="/css/landing.css?v=4" th:href="@{/css/landing.css(v=4)}">
 </head>
@@ -49,55 +47,9 @@
         </symbol>
     </svg>
 
-    <header class="site-nav">
-        <a class="brand" href="/" th:href="@{/}" aria-label="DonaTrack, inicio">
-            <span class="brand-mark">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/>
-                </svg>
-            </span>
-            <span class="brand-name">DonaTrack</span>
-            <span class="brand-sub">Donaciones</span>
-        </a>
+    <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-        <button class="nav-menu-toggle" id="navMenuToggle" type="button"
-                aria-controls="navMenu" aria-expanded="false" aria-label="Abrir menú">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" aria-hidden="true">
-                <path d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-        </button>
-
-        <div class="nav-menu" id="navMenu">
-        <nav class="nav-links" aria-label="Principal">
-            <a href="#" data-info="quienes">Quiénes somos</a>
-            <a href="#" data-info="hacemos">Qué hacemos</a>
-            <a href="#" data-info="contacto">Contactanos</a>
-        </nav>
-
-        <div class="nav-actions">
-            <a sec:authorize="!isAuthenticated()" class="nav-register" href="/register" th:href="@{/register}">Registrarse</a>
-            <a sec:authorize="!isAuthenticated()" class="nav-login" href="/login" th:href="@{/login}">
-                Ingresar <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-            </a>
-            <a sec:authorize="hasRole('ADMIN')" class="nav-profile" th:href="@{/panel}">
-                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Administrador
-            </a>
-            <a sec:authorize="hasRole('DONANTE')" class="nav-profile" th:href="@{/donante/mapa}">
-                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Donante
-            </a>
-            <a sec:authorize="hasRole('CHOFER')" class="nav-profile" th:href="@{/chofer}">
-                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Chofer
-            </a>
-            <a sec:authorize="hasRole('ENTIDAD')" class="nav-profile" th:href="@{/entidad}">
-                <svg class="icon" aria-hidden="true"><use href="#i-person"></use></svg> Entidad
-            </a>
-        </div>
-        </div>
-    </header>
-
-    <main class="landing-shell">
+    <main class="landing-shell" id="contenido" tabindex="-1">
         <aside class="sidebar" aria-label="Donaciones destacadas">
             <div class="sidebar-intro">
                 <h1>Seguí las donaciones en el mapa.</h1>
@@ -107,9 +59,9 @@
                        sec:authorize="hasRole('DONANTE')"
                        th:href="@{/realizar-donacion}">Donar</a>
                     <a class="btn btn-primary"
-                       sec:authorize="isAuthenticated() and !hasRole('DONANTE')"
+                       sec:authorize="isFullyAuthenticated() and !hasRole('DONANTE')"
                        th:href="@{/cuenta/roles}">Quiero donar</a>
-                    <a class="btn btn-primary" sec:authorize="!isAuthenticated()"
+                    <a class="btn btn-primary" sec:authorize="isAnonymous()"
                        th:href="@{/register(tipoRegistro='DONANTE')}">Quiero donar</a>
                     <a class="btn btn-secondary" href="/donaciones" th:href="@{/donaciones}">Ver donaciones</a>
                 </div>
@@ -195,23 +147,7 @@
         </section>
     </main>
 
-    <footer class="site-footer">
-        <span>© 2026 DonaTrack</span>
-        <nav aria-label="Legales">
-            <a th:href="@{/terminos}">Términos y condiciones</a>
-            <a th:href="@{/terminos}">Política de privacidad</a>
-            <a href="#" data-info="terminos">Resumen legal</a>
-        </nav>
-    </footer>
-
-    <div class="info-modal" id="infoModal" aria-hidden="true">
-        <div class="info-backdrop" data-close></div>
-        <div class="info-card" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
-            <button class="info-close" type="button" data-close aria-label="Cerrar">&times;</button>
-            <h2 id="infoTitle">Título</h2>
-            <div class="info-body" id="infoBody"></div>
-        </div>
-    </div>
+    <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 
     <div class="entity-search-modal" id="entitySearchModal" aria-hidden="true" th:if="${esDonante}">
         <button class="entity-search-backdrop" type="button" data-close-entity-search
@@ -250,7 +186,6 @@
 
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
     <script src="/js/landing.js?v=5" th:src="@{/js/landing.js(v=5)}"></script>
-    <script src="/js/nav-menu.js" th:src="@{/js/nav-menu.js}"></script>
     <script th:src="@{/js/entity-search.js}"></script>
 </body>
 </html>

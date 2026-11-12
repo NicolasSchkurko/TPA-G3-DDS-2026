@@ -13,7 +13,7 @@
 
 <section th:fragment="donante(oculto)" class="registration-fields" data-registration="DONANTE"
          th:classappend="${oculto} ? ' d-none' : ''">
-    <h5 class="fw-semibold mb-3">Datos del donante</h5>
+    <h2 class="h5 fw-semibold mb-3">Datos del donante</h2>
     <div class="mb-3">
         <label for="tipoPersona" class="form-label">Tipo de persona</label>
         <select class="form-select" id="tipoPersona" name="tipoPersona">
@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <h6 class="fw-semibold mt-2">Medio de contacto (opcional)</h6>
+    <h3 class="h6 fw-semibold mt-2">Medio de contacto (opcional)</h3>
     <p class="form-text mb-1">Este medio es opcional y <strong>no</strong> reemplaza el correo de la cuenta: usamos el correo que ingresaste arriba para tu perfil de donante.</p>
     <div class="row">
         <div class="col-md-4 mb-3">
@@ -97,7 +97,7 @@
                    placeholder="Opcional: si no cargás nada, usamos el correo de tu cuenta" th:value="${formularioRegistro != null ? formularioRegistro['valorContacto'] : ''}">
         </div>
     </div>
-    <h6 class="fw-semibold mt-2">Dirección (opcional)</h6>
+    <h3 class="h6 fw-semibold mt-2">Dirección (opcional)</h3>
     <p class="form-text mb-1">La dirección es opcional para donantes: las entidades beneficiarias sí la requieren, porque allí se entregan las donaciones.</p>
     <div class="row">
         <div class="col-md-8 mb-3">
@@ -133,7 +133,7 @@
 
 <section th:fragment="entidad(oculto)" class="registration-fields" data-registration="ENTIDAD"
          th:classappend="${oculto} ? ' d-none' : ''">
-    <h5 class="fw-semibold mb-3">Datos de la entidad beneficiaria</h5>
+    <h2 class="h5 fw-semibold mb-3">Datos de la entidad beneficiaria</h2>
     <div class="mb-3">
         <label for="entidadRazonSocial" class="form-label">Razón social</label>
         <input type="text" class="form-control" id="entidadRazonSocial" name="razonSocial" th:value="${formularioRegistro != null ? formularioRegistro['razonSocial'] : ''}">
@@ -161,7 +161,7 @@
         <label for="entidadTelefono" class="form-label">Teléfono</label>
         <input type="tel" class="form-control" id="entidadTelefono" name="telefono" autocomplete="tel" th:value="${formularioRegistro != null ? formularioRegistro['telefono'] : ''}">
     </div>
-    <h6 class="fw-semibold mt-2">Dirección</h6>
+    <h3 class="h6 fw-semibold mt-2">Dirección</h3>
     <div class="row">
         <div class="col-md-8 mb-3">
             <label for="entidadCalle" class="form-label">Calle</label>
@@ -196,7 +196,7 @@
 
 <section th:fragment="admin(oculto)" class="registration-fields" data-registration="ADMIN"
          th:classappend="${oculto} ? ' d-none' : ''">
-    <h5 class="fw-semibold mb-3">Datos del administrador</h5>
+    <h2 class="h5 fw-semibold mb-3">Datos del administrador</h2>
     <div class="mb-3">
         <label for="nombreAMostrar" class="form-label">Nombre a mostrar</label>
         <input type="text" class="form-control" id="nombreAMostrar" name="nombreAMostrar" th:value="${formularioRegistro != null ? formularioRegistro['nombreAMostrar'] : ''}">
@@ -229,7 +229,7 @@
             </select>
         </div>
     </div>
-    <h6 class="fw-semibold mt-2">Medio de contacto</h6>
+    <h3 class="h6 fw-semibold mt-2">Medio de contacto</h3>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label for="adminTipoContacto" class="form-label">Tipo</label>

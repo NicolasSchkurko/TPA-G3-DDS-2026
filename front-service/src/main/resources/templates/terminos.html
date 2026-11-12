@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Términos y condiciones — DonaTrack</title>
     <meta name="description" content="Términos y condiciones de uso y política de privacidad del portal DonaTrack de donaciones.">
     <link rel="stylesheet" th:href="@{/css/tokens.css}">
     <link rel="stylesheet" th:href="@{/css/terminos.css}">
 </head>
 <body class="legal-body">
-<main class="legal">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<main class="legal" id="contenido" tabindex="-1">
 
     <header class="legal-header">
         <span class="legal-eyebrow">Legales</span>
@@ -109,5 +111,6 @@
     </div>
 
 </main>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

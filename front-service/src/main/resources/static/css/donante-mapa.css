@@ -23,13 +23,6 @@ body {
     overflow: hidden;
 }
 
-.beneficiary-map-page > .app-navbar {
-    position: relative;
-    z-index: 1200;
-    flex: 0 0 auto;
-    margin-bottom: 0 !important;
-}
-
 .map-header {
     z-index: 500;
     display: flex;
@@ -131,7 +124,8 @@ body {
     text-transform: uppercase;
 }
 
-.sidebar-heading h1 {
+.sidebar-heading h1,
+.sidebar-heading h2 {
     margin: 0;
     font-size: 21px;
     line-height: 1.25;

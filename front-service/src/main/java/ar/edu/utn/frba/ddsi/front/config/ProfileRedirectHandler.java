@@ -51,7 +51,7 @@ public class ProfileRedirectHandler implements AuthenticationSuccessHandler {
 
     private static String destino(String rol) {
         return switch (rol) {
-            case "ADMIN" -> "/panel";
+            case "ADMIN" -> "/admin";
             case "DONANTE" -> "/donante/mapa";
             case "CHOFER" -> "/chofer";
             default -> "/entidad";

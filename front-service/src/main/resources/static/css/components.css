@@ -207,7 +207,8 @@
 .toast-close:hover { opacity: 1; }
 
 /* ---------- Modal ---------- */
-.modal {
+/* Se excluye .fade para no pisar el modal de Bootstrap en las páginas que lo usan. */
+.modal:not(.fade) {
     position: fixed;
     inset: 0;
     z-index: 800;
@@ -220,14 +221,14 @@
     transition: opacity .18s ease;
 }
 
-.modal.is-open {
+.modal:not(.fade).is-open {
     opacity: 1;
     pointer-events: auto;
 }
 
-.modal[hidden] { display: none; }
+.modal:not(.fade)[hidden] { display: none; }
 
-.modal-dialog {
+.modal:not(.fade) .modal-dialog {
     width: min(560px, 100%);
     max-height: 90vh;
     overflow-y: auto;
@@ -238,9 +239,9 @@
     transition: transform .18s ease;
 }
 
-.modal.is-open .modal-dialog { transform: none; }
+.modal:not(.fade).is-open .modal-dialog { transform: none; }
 
-.modal-head {
+.modal:not(.fade) .modal-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -248,13 +249,13 @@
     padding: var(--gap-4) var(--gap-5) 0;
 }
 
-.modal-head h2 {
+.modal:not(.fade) .modal-head h2 {
     margin: 0;
     font-size: 18px;
 }
 
-.modal-body { padding: var(--gap-4) var(--gap-5); }
-.modal-foot {
+.modal:not(.fade) .modal-body { padding: var(--gap-4) var(--gap-5); }
+.modal:not(.fade) .modal-foot {
     display: flex;
     justify-content: flex-end;
     gap: var(--gap-3);
@@ -262,7 +263,7 @@
     flex-wrap: wrap;
 }
 
-.modal-close {
+.modal:not(.fade) .modal-close {
     width: var(--hit);
     height: var(--hit);
     display: grid;
@@ -275,7 +276,7 @@
     color: var(--muted);
 }
 
-.modal-close:hover { background: var(--map-bg); color: var(--ink); }
+.modal:not(.fade) .modal-close:hover { background: var(--map-bg); color: var(--ink); }
 
 /* ---------- Skeletons ---------- */
 .skeleton {

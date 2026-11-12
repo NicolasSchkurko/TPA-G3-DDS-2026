@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Entidades beneficiarias · DonaTrack</title>
     <meta name="_csrf" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:content="${_csrf.headerName}">
@@ -13,14 +14,14 @@
     <link rel="stylesheet" th:href="@{/css/donante-mapa.css}">
 </head>
 <body class="beneficiary-map-page">
-    <div th:replace="~{fragments/navbar :: navbar}"></div>
+    <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-    <main class="map-main sidebar-collapsed">
+    <main class="map-main sidebar-collapsed" id="contenido" tabindex="-1">
         <aside class="donor-sidebar" id="donorInfoPanel" aria-label="Historial de donaciones">
             <header class="sidebar-heading">
                 <div>
                     <p class="sidebar-eyebrow">Mi actividad</p>
-                    <h1>Historial Donaciones</h1>
+                    <h2>Historial de donaciones</h2>
                     <p class="text-muted small mb-0">Tu misión progresa cuando la donación figura como Entregada.</p>
                 </div>
                 <span class="history-count" id="historyCount"
@@ -246,5 +247,6 @@
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script th:src="@{/js/donante-mapa.js}"></script>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

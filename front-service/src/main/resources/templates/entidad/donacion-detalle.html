@@ -4,10 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${donacion.descripcion} + ' — Donación — DDSI'">Donación — DDSI</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title th:text="${donacion.descripcion} + ' — Donación — DonaTrack'">Donación — DonaTrack</title>
     <link rel="stylesheet" th:href="@{/css/entidad.css}">
 </head>
 <body class="app">
@@ -15,7 +13,7 @@
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 
-<main class="page" id="contenido">
+<main class="page" id="contenido" tabindex="-1">
 
     <nav class="crumbs" aria-label="Migas de pan">
         <a th:href="@{/entidad}">Mi entidad</a>

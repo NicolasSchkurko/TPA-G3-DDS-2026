@@ -4,11 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis donaciones — DDSI</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Mis donaciones — DonaTrack</title>
     <meta name="description" content="Estado de las donaciones asignadas a tu entidad beneficiaria.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/entidad.css}">
 </head>
 <body class="app">
@@ -17,7 +15,7 @@
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 <div th:replace="~{fragments/demo-banner :: demoBanner}"></div>
 
-<main class="page" id="contenido">
+<main class="page" id="contenido" tabindex="-1">
 
     <nav class="crumbs" aria-label="Migas de pan">
         <a th:href="@{/entidad}">Mi entidad</a>

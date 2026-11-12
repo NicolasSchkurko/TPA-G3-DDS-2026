@@ -1,7 +1,7 @@
 /* ==========================================================
    incentivos-admin.css
    Pantallas de admin: misiones, categorías y rankings.
-   El encabezado (.encabezado) lo aporta admin.css.
+   La cabecera la aporta fragments/app-shell.
    ========================================================== */
 
 :root {
@@ -29,7 +29,7 @@
 * { box-sizing: border-box; }
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font, 'Public Sans', system-ui, -apple-system, sans-serif);
     background-color: var(--bg-main);
     color: var(--text-dark);
     font-size: .95rem;

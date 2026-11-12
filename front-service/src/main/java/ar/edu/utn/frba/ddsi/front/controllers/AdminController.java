@@ -46,17 +46,12 @@ public class AdminController {
 
     @GetMapping("/admin/donaciones")
     public String mostrarDonaciones() {
-        return "admin/donaciones";
+        return "redirect:/donaciones";
     }
 
     @GetMapping("/admin/entidades")
     public String mostrarEntidades() {
-        return "admin/entidades";
-    }
-
-    @GetMapping("/landing")
-    public String mostrarlanding() {
-        return "/landing";
+        return "redirect:/admin";
     }
 
     @GetMapping("/camiones")

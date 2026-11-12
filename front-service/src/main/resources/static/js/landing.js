@@ -63,68 +63,6 @@
         urgent: { label: "Urgente", color: "#b45309" }
     };
 
-    const INFO = {
-        quienes: {
-            eyebrow: "Quiénes somos",
-            title: "Una red que conecta voluntades.",
-            body: `
-                <p>Somos un equipo de estudiantes de Ingeniería en Sistemas de Información de la UTN FRBA.
-                Este portal nació como Trabajo Práctico de Diseño de Sistemas y hoy funciona como una
-                demostración de cómo la tecnología puede ordenar la ayuda solidaria.</p>
-                <p>La plataforma reúne a donantes, organizaciones sociales y equipos de logística en un
-                mismo circuito: cada donación tiene un origen, un responsable y un destino visible.</p>
-            `
-        },
-        hacemos: {
-            eyebrow: "Qué hacemos",
-            title: "De la donación a la entrega, sin perder el rastro.",
-            body: `
-                <ul>
-                    <li><strong>Registramos</strong> donaciones de alimentos, ropa, útiles y medicamentos.</li>
-                    <li><strong>Vinculamos</strong> cada donación con la entidad que la recibe.</li>
-                    <li><strong>Coordinamos</strong> el retiro y la entrega junto al servicio logístico.</li>
-                    <li><strong>Notificamos</strong> cada cambio de estado a donantes y organizaciones.</li>
-                    <li><strong>Incentivamos</strong> la participación con misiones, puntos e insignias.</li>
-                </ul>
-                <p>El mapa muestra el estado de la red en tiempo real: puntos verdes son entregas
-                concretadas, grises son donaciones en camino y naranjas son necesidades urgentes.</p>
-            `
-        },
-        contacto: {
-            eyebrow: "Contactanos",
-            title: "Hablemos de cómo sumar.",
-            body: `
-                <p>¿Tenés una organización, un comercio o una idea para colaborar?</p>
-                <ul>
-                    <li>Correo: <a href="mailto:donaciones@ddsi.edu.ar">donaciones@ddsi.edu.ar</a></li>
-                    <li>Teléfono: <a href="tel:+541100000000">+54 11 0000-0000</a></li>
-                    <li>Dirección: Campus UTN FRBA, Buenos Aires</li>
-                </ul>
-                <p>También podés escribirnos para coordinar una entrega o sumarte como voluntario.</p>
-            `
-        },
-        terminos: {
-            eyebrow: "Legales",
-            title: "Términos y condiciones",
-            body: `
-                <p>Este sitio es una demostración académica del portal DDSI. Las donaciones destacadas
-                se ubican según la dirección de su entidad receptora; los demás puntos son ilustrativos.</p>
-                <p>El uso del mapa es informativo. Las ubicaciones se aproximan por barrio para proteger
-                la privacidad de las personas beneficiarias.</p>
-            `
-        },
-        privacidad: {
-            eyebrow: "Legales",
-            title: "Política de privacidad",
-            body: `
-                <p>La demo no recopila datos personales ni utiliza cookies de seguimiento. Las consultas
-                al mapa se resuelven en el navegador con datos estáticos de ejemplo.</p>
-                <p>En una versión productiva, los datos de donantes y beneficiarios se tratarían de forma
-                anonimizada y con acceso restringido según el rol.</p>
-            `
-        }
-    };
-
     /* ----------------------------- Estado ----------------------------- */
     let map = null;
     let markersById = new Map();
@@ -265,55 +203,6 @@
         if (marker) {
             window.setTimeout(() => marker.openPopup(), prefersReducedMotion() ? 0 : 600);
         }
-    }
-
-    /* ----------------------------- Modal ----------------------------- */
-    function initModal() {
-        const modal = document.getElementById("infoModal");
-        if (!modal) return;
-
-        const title = document.getElementById("infoTitle");
-        const body = document.getElementById("infoBody");
-        let lastFocused = null;
-
-        function open(key) {
-            const info = INFO[key];
-            if (!info) return;
-
-            lastFocused = document.activeElement;
-            title.textContent = info.title;
-            body.innerHTML = info.body;
-            modal.classList.add("is-open");
-            modal.setAttribute("aria-hidden", "false");
-            document.body.classList.add("modal-open");
-
-            const closeButton = modal.querySelector(".info-close");
-            if (closeButton) closeButton.focus();
-        }
-
-        function close() {
-            modal.classList.remove("is-open");
-            modal.setAttribute("aria-hidden", "true");
-            document.body.classList.remove("modal-open");
-            if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
-        }
-
-        document.querySelectorAll("[data-info]").forEach((trigger) => {
-            trigger.addEventListener("click", (event) => {
-                event.preventDefault();
-                open(trigger.dataset.info);
-            });
-        });
-
-        modal.querySelectorAll("[data-close]").forEach((trigger) => {
-            trigger.addEventListener("click", close);
-        });
-
-        document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape" && modal.classList.contains("is-open")) {
-                close();
-            }
-        });
     }
 
     /* ----------------------------- Mapa con Leaflet ----------------------------- */
@@ -503,7 +392,6 @@
     /* ----------------------------- Arranque ----------------------------- */
     function init() {
         renderList();
-        initModal();
 
         if (window.DDSIMap && window.DDSIMap.isAvailable()) {
             initMap();

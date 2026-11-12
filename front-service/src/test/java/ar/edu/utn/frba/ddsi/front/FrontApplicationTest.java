@@ -166,7 +166,7 @@ class FrontApplicationTest {
     void donationListIsPublic() throws Exception {
         mockMvc.perform(get("/donaciones"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Listado de Donaciones")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Listado de donaciones")));
     }
 
     @TestConfiguration

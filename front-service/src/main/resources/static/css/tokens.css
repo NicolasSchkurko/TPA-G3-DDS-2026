@@ -48,7 +48,7 @@
     /* Interacción */
     --hit: 48px;           /* área táctil mínima WCAG 2.5.5 / AAA táctil */
     --header-h: 64px;
-    --footer-h: 48px;
+    --footer-h: 64px;
     --panel-w: 400px;
     --panel-collapsed-w: 300px;
 

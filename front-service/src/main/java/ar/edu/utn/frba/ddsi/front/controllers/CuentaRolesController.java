@@ -256,7 +256,7 @@ public class CuentaRolesController {
 
     private static String destinoDe(String rol) {
         return switch (rol) {
-            case "ADMIN" -> "/panel";
+            case "ADMIN" -> "/admin";
             case "DONANTE" -> "/donante";
             case "CHOFER" -> "/chofer";
             default -> "/entidad";

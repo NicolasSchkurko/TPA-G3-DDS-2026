@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incentivos · Rankings — DDSI</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Incentivos · Rankings — DonaTrack</title>
     <meta name="description" content="Administración de rankings mensuales de incentivos">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" th:href="@{/css/tokens.css}">
     <link rel="stylesheet" th:href="@{/css/components.css}">
@@ -16,38 +13,12 @@
     <link rel="stylesheet" href="../../static/css/incentivos-admin.css" th:href="@{/css/incentivos-admin.css}">
 </head>
 
-<body>
-
-<header class="encabezado">
-    <div class="encabezado-contenido">
-
-        <a href="/landing" th:href="@{/}" class="logo">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
-        </a>
-
-        <nav class="nav-links-admin">
-            <a href="#">Quiénes somos</a>
-            <a> - </a>
-            <a href="#">Qué hacemos</a>
-            <a> - </a>
-            <a href="#">Contactanos</a>
-        </nav>
-
-        <div class="usuario-administrador">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="foto de usuario">
-
-            <div class="datos-usuario">
-                <span th:text="${(nombre ?: '') + ' ' + (apellido ?: '')}">Nombre Apellido</span>
-                <span th:text="${rol}">Administrador</span>
-            </div>
-        </div>
-
-    </div>
-</header>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 
-<main class="main-content">
+<main class="main-content" id="contenido" tabindex="-1">
 
     <div class="page-header">
         <div>
@@ -299,5 +270,6 @@
         document.getElementById('rankDeleteModal').hidden = false;
     }
 </script>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

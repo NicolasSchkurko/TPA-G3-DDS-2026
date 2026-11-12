@@ -5,81 +5,9 @@
 }
 
 body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: var(--font, system-ui, -apple-system, "Segoe UI", sans-serif);
     background-color: #f6f7f8;
     color: #292d32;
-}
-
-/* ENCABEZADO */
-.encabezado {
-    width: 100%;
-    background-color: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.encabezado-contenido {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 40px;
-    max-width: 1600px;
-    margin: auto;
-}
-
-.logo img {
-    display: block;
-    width: 100px;
-    height: 80px;
-    object-fit: contain;
-}
-
-/* NAVEGACIÓN */
-.nav-links-admin {
-    display: flex;
-    align-items: center;
-    gap: 25px;
-}
-
-.nav-links-admin a {
-    text-decoration: none;
-    color: #495057;
-    font-size: 15px;
-    transition: color 0.2s;
-}
-
-.nav-links-admin a:hover {
-    color: #0d6efd;
-}
-
-/* USUARIO */
-.usuario-administrador {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.usuario-administrador img {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.datos-usuario {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.datos-usuario a:first-child {
-    font-weight: 600;
-    font-size: 14px;
-    color: #292d32;
-}
-
-.datos-usuario a:last-child {
-    font-size: 13px;
-    color: #6c757d;
 }
 
 /* CONTENIDO PRINCIPAL */
@@ -100,7 +28,7 @@ body {
 /* CUADRÍCULA */
 .cuadricula {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 25px;
 }
 
@@ -645,16 +573,6 @@ body {
 /* RESPONSIVE */
 @media (max-width: 800px) {
 
-    .encabezado-contenido {
-        flex-wrap: wrap;
-        gap: 15px;
-        padding: 15px 20px;
-    }
-
-    .nav-links-admin {
-        gap: 12px;
-    }
-
     .main-admin {
         margin: 25px auto;
     }
@@ -702,20 +620,6 @@ body {
 }
 
 @media (max-width: 500px) {
-
-    .encabezado-contenido {
-        justify-content: center;
-    }
-
-    .nav-links-admin {
-        order: 3;
-        width: 100%;
-        justify-content: center;
-    }
-
-    .usuario-administrador {
-        margin-left: auto;
-    }
 
     .item img {
         width: 30%;

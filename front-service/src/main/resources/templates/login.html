@@ -3,32 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión — DonaTrack</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Iniciar sesión · DonaTrack</title>
+    <meta name="description" content="Ingresá a DonaTrack para seguir tus donaciones, misiones e insignias.">
+    <link rel="stylesheet" th:href="@{/css/login.css}">
 </head>
-<body class="bg-light d-flex align-items-center min-vh-100 py-5">
-<main class="container">
-    <div class="static-card border-0 mx-auto" style="max-width: 420px">
-        <div class="card-body p-4 p-md-5 text-center">
-            <div class="d-flex justify-content-start mb-3">
-                <a class="btn btn-outline-secondary btn-sm" th:href="@{/}">
-                    <i class="bi bi-house me-1" aria-hidden="true"></i> Volver
-                </a>
+<body class="login-page">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+<main class="login-main" id="contenido" tabindex="-1">
+    <section class="login-shell" aria-labelledby="loginTitle">
+        <aside class="login-visual">
+            <div class="login-visual-content">
+                <p class="login-eyebrow">Bienvenido a DonaTrack</p>
+                <h1>Tu ayuda también se puede seguir.</h1>
+                <p>Gestioná donaciones, seguí cada entrega y sumá insignias mientras colaborás
+                   con entidades de tu comunidad.</p>
             </div>
-            <div class="bg-primary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 54px; height: 54px">
-                <i class="bi bi-box-seam fs-3"></i>
+
+            <ul class="login-benefits">
+                <li>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 8.5 6 12l8-8"/>
+                    </svg>
+                    Seguimiento del estado de cada donación.
+                </li>
+                <li>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 8.5 6 12l8-8"/>
+                    </svg>
+                    Misiones, puntos e insignias por participar.
+                </li>
+                <li>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 8.5 6 12l8-8"/>
+                    </svg>
+                    Un mismo acceso para donante, entidad y administración.
+                </li>
+            </ul>
+        </aside>
+
+        <div class="login-form-panel">
+            <h2 id="loginTitle">Iniciar sesión</h2>
+            <p class="login-subtitle">Ingresá con tu cuenta de DonaTrack para continuar.</p>
+
+            <div th:if="${error != null}" class="login-error" role="alert">
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4.5zm0 6.25a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8z"/>
+                </svg>
+                <span th:text="${error}">No se pudo completar el inicio de sesión.</span>
             </div>
-            <h1 class="h4 fw-bold">DonaTrack — Iniciar sesión</h1>
-            <p class="text-muted small mb-4">Portal de Donaciones e Incentivos</p>
-            <div th:if="${param.error}" class="alert alert-danger" role="alert">No se pudo completar el inicio de sesión.</div>
-            <a class="btn btn-primary w-100 py-2 fw-semibold" th:href="@{/oauth2/authorization/keycloak}">
-                <i class="bi bi-box-arrow-in-right me-1"></i> Ingresar a DonaTrack
+
+            <div th:if="${msg != null}" class="login-info" role="status">
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 10.5h-1.5v-4h1.5v4zM8 5.9a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z"/>
+                </svg>
+                <span th:text="${msg}">Sesión cerrada correctamente.</span>
+            </div>
+
+            <a class="btn btn-primary login-submit"
+               th:href="@{/oauth2/authorization/keycloak}">
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M6 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2h-1.5v2a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v2H12V4a2 2 0 0 0-2-2H6z"/>
+                    <path d="M8 5.5a.75.75 0 0 1 .75.75v3.19l1.22-1.22a.75.75 0 1 1 1.06 1.06l-2.5 2.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.22 1.22V6.25A.75.75 0 0 1 8 5.5z"/>
+                </svg>
+                Ingresar con Keycloak
             </a>
-            <p class="text-muted small mt-4 mb-0">La autenticación y los permisos son administrados por Keycloak.</p>
+
+            <p class="login-alt">
+                ¿No tenés cuenta?
+                <a th:href="@{/register}">Registrate</a>
+            </p>
+
+            <a class="login-back" th:href="@{/}">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M7.354 3.354a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L4.207 7.5H13a.5.5 0 0 0 0-1H4.207l3.147-3.146z"/>
+                </svg>
+                Volver al inicio
+            </a>
+
+            <p class="login-secure">
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 1a3.5 3.5 0 0 0-3.5 3.5V6H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-.5V4.5A3.5 3.5 0 0 0 8 1zm2 5H6V4.5a2 2 0 1 1 4 0V6z"/>
+                </svg>
+                La autenticación y los permisos son administrados por Keycloak.
+            </p>
         </div>
-    </div>
+    </section>
 </main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
 </body>
 </html>

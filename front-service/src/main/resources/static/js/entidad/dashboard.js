@@ -5,7 +5,7 @@
 (function () {
     "use strict";
 
-    const main = document.getElementById("entidadMain");
+    const main = document.getElementById("contenido");
     const panel = document.getElementById("panelEntidad");
     const collapseBtn = document.getElementById("panelCollapse");
     const expandBtn = document.getElementById("panelExpand");

@@ -3,101 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administradores — DDSI</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Administración — DonaTrack</title>
     <meta name="description" content="Zona de administradores">
     <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
 </head>
 
-<body>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
-<header class="encabezado">
-    <div class="encabezado-contenido">
+<main class="main-admin" id="contenido" tabindex="-1">
 
-        <a href="/landing" class="logo">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
-        </a>
-
-        <nav class="nav-links-admin">
-            <a href="#">Quiénes somos</a>
-            <a> - </a>
-            <a href="#">Qué hacemos</a>
-            <a> - </a>
-            <a href="#">Contactanos</a>
-        </nav>
-
-        <div class="usuario-administrador">
-            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png"
-                 alt="foto de usuario">
-
-            <div class="datos-usuario">
-        <span th:text="${nombre + ' ' + apellido}">
-            Nombre Apellido
-        </span>
-
-                <span th:text="${rol}">
-            Administrador
-        </span>
-            </div>
-        </div>
-
-    </div>
-</header>
-
-<main class="main-admin">
-
-    <div class="mensaje-administrador">
-        <a>Elija qué gestionar</a>
-    </div>
+    <h1 class="mensaje-administrador">Qué querés gestionar</h1>
 
     <div class="cuadricula">
 
-        <a href="#" class="item">
+        <a th:href="@{/donaciones}" class="item">
             <img src="../../static/images/donaciones.jpg"
                  th:src="@{/images/donaciones.jpg}"
-                 alt="Donaciones">
+                 alt="">
             <div>
                 <h2>Donaciones</h2>
-                <p>Gestione las donaciones registradas en el sistema</p>
+                <p>Revisá las donaciones registradas en el sistema</p>
             </div>
         </a>
 
-        <a href="#" class="item">
-            <img src="../../static/images/entidades.jpg"
-                 th:src="@{/images/entidades.jpg}"
-                 alt="Entidades">
-            <div>
-                <h2>Entidades</h2>
-                <p>Gestione las entidades registradas en el sistema</p>
-            </div>
-        </a>
-
-        <a href="/admin/donantes" th:href="@{/admin/donantes}" class="item">
+        <a th:href="@{/admin/donantes}" class="item">
             <img src="../../static/images/donante.jpg"
                  th:src="@{/images/donante.jpg}"
-                 alt="Donantes">
+                 alt="">
             <div>
                 <h2>Donantes</h2>
-                <p>Gestione los donantes registrados en el sistema</p>
+                <p>Buscá, actualizá o importá los donantes registrados</p>
             </div>
         </a>
 
-        <a href="#" class="item">
-            <img src="../../static/images/incentivos.jpg"
-                 th:src="@{/images/incentivos.jpg}"
-                 alt="Incentivos">
-            <div>
-                <h2>Incentivos a donantes</h2>
-                <p>Gestione los incentivos que reciben los donantes en el sistema</p>
-            </div>
-        </a>
-
-        <a href="#" class="item">
+        <a th:href="@{/camiones}" class="item">
             <img src="../../static/images/camiones.jpg"
                  th:src="@{/images/camiones.jpg}"
-                 alt="Camiones repartidores">
+                 alt="">
             <div>
                 <h2>Camiones repartidores</h2>
-                <p>Gestione los camiones y choferes registrados en el sistema</p>
+                <p>Consultá la flota y su estado de disponibilidad</p>
             </div>
         </a>
 
@@ -105,5 +52,6 @@
 
 </main>
 
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

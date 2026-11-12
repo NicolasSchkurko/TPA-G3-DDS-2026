@@ -4,11 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguimiento en vivo — DDSI</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Seguimiento en vivo — DonaTrack</title>
     <meta name="description" content="Mapa en tiempo real de las entregas activas asignadas a tu entidad beneficiaria.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
     <link rel="stylesheet" th:href="@{/css/entidad.css}">
 </head>
@@ -18,7 +16,7 @@
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 <div th:replace="~{fragments/demo-banner :: demoBanner}"></div>
 
-<main class="seguimiento-layout" id="contenido">
+<main class="seguimiento-layout" id="contenido" tabindex="-1">
 
     <section class="map-wrap" aria-label="Mapa de entregas activas">
         <div id="map" role="application" aria-label="Mapa interactivo con los camiones asignados a tu entidad"></div>
