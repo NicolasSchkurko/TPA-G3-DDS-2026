@@ -166,7 +166,7 @@
                     </span>
                     DonaTrack
                 </a>
-                <span>Donaciones que se pueden seguir.</span>
+                <span class="app-footer-tagline">Donaciones que se pueden seguir.</span>
             </div>
 
             <nav class="app-footer-nav" aria-label="Sobre DonaTrack">
@@ -175,12 +175,13 @@
                 <button type="button" data-site-info="contacto">Contactanos</button>
             </nav>
 
-            <nav class="app-footer-legal" aria-label="Legales">
-                <a th:href="@{/terminos}">Términos y condiciones</a>
-                <a th:href="@{/terminos} + '#privacidad-h'">Política de privacidad</a>
-            </nav>
-
-            <span class="app-footer-copy">© 2026 DonaTrack</span>
+            <div class="app-footer-end">
+                <nav class="app-footer-legal" aria-label="Legales">
+                    <a th:href="@{/terminos}">Términos y condiciones</a>
+                    <a th:href="@{/terminos} + '#privacidad-h'">Política de privacidad</a>
+                </nav>
+                <span class="app-footer-copy">© 2026 DonaTrack</span>
+            </div>
         </div>
     </footer>
 

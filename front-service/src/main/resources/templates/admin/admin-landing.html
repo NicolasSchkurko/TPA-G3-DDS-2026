@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Administración — DonaTrack</title>
-    <meta name="description" content="Zona de administradores">
+    <meta name="description" content="Panel de administración de DonaTrack">
     <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
 </head>
 
@@ -18,13 +18,23 @@
 
     <div class="cuadricula">
 
-        <a th:href="@{/donaciones}" class="item">
+        <a th:href="@{/admin/donaciones}" class="item">
             <img src="../../static/images/donaciones.jpg"
                  th:src="@{/images/donaciones.jpg}"
                  alt="">
             <div>
                 <h2>Donaciones</h2>
-                <p>Revisá las donaciones registradas en el sistema</p>
+                <p>Revisá, editá y asigná las donaciones registradas</p>
+            </div>
+        </a>
+
+        <a th:href="@{/admin/entidades}" class="item">
+            <img src="../../static/images/entidades.jpg"
+                 th:src="@{/images/entidades.jpg}"
+                 alt="">
+            <div>
+                <h2>Entidades</h2>
+                <p>Gestioná las entidades beneficiarias y sus necesidades</p>
             </div>
         </a>
 

@@ -45,7 +45,7 @@ public class LogisticasClient {
         }
     }
 
-    /** Bien por id de donación (el id de ítem de entrega ES el id de la donación). */
+    /** Bien por id de donación (el id de ítem de entrega ES el id de la donación). REVISAR*/
     public LogisticaDTOs.Bien obtenerBienPorDonacion(UUID idDonacion) {
         try {
             return restClient.get()
@@ -101,7 +101,7 @@ public class LogisticasClient {
         }
     }
 
-    /** Detalle de una ruta (para el mapa público de seguimiento por token/id). */
+    /** Detalle crudo de una ruta; lo consume la vista pública de seguimiento. */
     public JsonNode obtenerRuta(UUID idRuta) {
         try {
             return restClient.get()

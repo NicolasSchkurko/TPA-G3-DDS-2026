@@ -33,4 +33,15 @@ public class EntidadBeneficiariaDTO {
         if (necesidades == null) return List.of();
         return necesidades.stream().filter(n -> n.getActiva() == null || n.getActiva()).toList();
     }
+
+    /** Nombre a mostrar en los listados. Una entidad sin razón social es un dato inconsistente. */
+    public String etiqueta() {
+        return razonSocial == null || razonSocial.isBlank() ? "Entidad sin razón social" : razonSocial;
+    }
+
+    /** Email canónico, cayendo al alias por si la entidad viene de un alta vieja. */
+    public String correo() {
+        if (email != null && !email.isBlank()) return email;
+        return correoElectronico != null && !correoElectronico.isBlank() ? correoElectronico : null;
+    }
 }

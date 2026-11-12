@@ -9,12 +9,14 @@ import ar.edu.utn.frba.ddsi.front.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.front.dto.ResultadoMatchmakingDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -38,11 +40,23 @@ public class DonacionesClient {
     private String internalToken;
 
     private final RestClient restClient;
+
+    /**
+     * Cliente aparte sólo para los PATCH. El RestClient de la aplicación usa
+     * SimpleClientHttpRequestFactory (HttpURLConnection), que no soporta PATCH: el java.net.http
+     * HttpClient sí. Se arma acá y no como bean para no dejar dos RestClient compitiendo por la
+     * inyección por tipo en el resto de los clientes.
+     */
+    private final RestClient clientePatch;
+
     private final String baseUrl;
 
     public DonacionesClient(RestClient restClient,
                             @Value("${servicio.donaciones.url}") String baseUrl) {
         this.restClient = restClient;
+        this.clientePatch = RestClient.builder()
+                .requestFactory(new JdkClientHttpRequestFactory())
+                .build();
         this.baseUrl = baseUrl;
     }
 
@@ -176,14 +190,33 @@ public class DonacionesClient {
             ]
             """;
 
+    /** Crea un donante nuevo (POST /api/personas) y devuelve el id asignado, o null si no vino. */
+    public UUID crearDonante(Map<String, Object> payload) {
+        try {
+            String body = restClient.post()
+                    .uri(baseUrl + "/api/personas")
+                    .body(payload)
+                    .retrieve()
+                    .body(String.class);
+            return extraerUuid(body);
+        } catch (Exception e) {
+            log.error("Error al crear el donante en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
     /**
-     * Actualiza sólo los campos editados, preservando el resto.
+     * Actualiza los campos indicados preservando los que no se mandan.
      *
      * <p>El PUT de donaciones-service hace {@code dto.toDomain(...)} y pisa la persona entera con lo
-     * que venga en el body, así que mandar un DTO armado desde el formulario borraría todo lo que el
-     * front no modela (edad, numeroDeDocumento, genero, cuit, direccion, representantes...). Por eso
-     * se lee el JSON crudo como Map, se superponen los cambios y se devuelve completo: así los campos
-     * que el front desconoce viajan de ida y vuelta intactos.
+     * que venga en el body, así que mandar sólo el formulario borraría todo lo que no viaje (edad,
+     * numeroDeDocumento, genero, cuit, direccion, representantes, activo...). Por eso se lee el JSON
+     * crudo como Map, se superponen los cambios y se devuelve completo: los campos que el formulario
+     * no toca viajan de ida y vuelta intactos.
+     *
+     * <p>Toda clave presente en {@code cambios} se escribe, incluso con valor null o lista vacía: así
+     * el admin puede efectivamente borrar un domicilio o dejar al donante sin medios de contacto.
+     * Para no modificar un campo, no incluir la clave.
      */
     public void actualizarDonanteCampos(UUID id, Map<String, Object> cambios) {
         try {
@@ -196,11 +229,7 @@ public class DonacionesClient {
             }
 
             Map<String, Object> payload = new LinkedHashMap<>(actual);
-            cambios.forEach((clave, valor) -> {
-                if (valor != null) {
-                    payload.put(clave, valor);
-                }
-            });
+            payload.putAll(cambios);
 
             restClient.put()
                     .uri(baseUrl + "/api/personas/{id}", id)
@@ -308,6 +337,154 @@ public class DonacionesClient {
                 .body(formulario)
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    // ------------------------------------------------------------------
+    // Administración de donaciones
+    // ------------------------------------------------------------------
+
+    /**
+     * Carga el formulario y devuelve las donaciones que generó.
+     *
+     * <p>Son varias y no una: el segmentador parte el formulario en una donación por
+     * subcategoría + unidad (+ vencimiento o estado de uso), porque cada segmento se asigna y se
+     * entrega por separado. El panel lo informa para que el admin no se sorprenda de ver tres
+     * filas nuevas después de cargar un formulario con tres tipos de bien.
+     */
+    public List<DonacionDTO> registrarDonacion(FormularioDonacionDTO formulario) {
+        try {
+            DonacionDTO[] creadas = restClient.post()
+                    .uri(baseUrl + "/api/donaciones/formulario")
+                    .body(formulario)
+                    .retrieve()
+                    .body(DonacionDTO[].class);
+            return creadas == null ? Collections.emptyList() : List.of(creadas);
+        } catch (Exception e) {
+            log.error("Error al registrar la donación en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Actualiza descripción y (si vienen) los bienes. Ver EdicionDonacionDTO.aPayload. */
+    public void actualizarDonacion(UUID id, Map<String, Object> payload) {
+        try {
+            restClient.put()
+                    .uri(baseUrl + "/api/donaciones/{id}", id)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al actualizar la donación {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    public void eliminarDonacion(UUID id) {
+        try {
+            restClient.delete()
+                    .uri(baseUrl + "/api/donaciones/{id}", id)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al eliminar la donación {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Cambia el estado dejando asentado el motivo (queda en Donacion.historialEstados).
+     *
+     * <p>Usa {@link #clientePatch} y no el RestClient compartido: ese está configurado con
+     * SimpleClientHttpRequestFactory, que por debajo es HttpURLConnection y rechaza el método
+     * PATCH con "Invalid HTTP method".
+     */
+    public void cambiarEstadoDonacion(UUID id, String nuevoEstado, String justificacion) {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("nuevoEstado", nuevoEstado);
+        cuerpo.put("justificacion", justificacion);
+        try {
+            clientePatch.patch()
+                    .uri(baseUrl + "/api/donaciones/{id}/estado", id)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(cuerpo)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al cambiar el estado de la donación {} a {} en {}: {}",
+                    id, nuevoEstado, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Donaciones pendientes de asignación, cada una con su ranking de entidades candidatas.
+     * Devuelve lista vacía si donaciones no responde: es una pantalla de sólo lectura.
+     */
+    public List<ResultadoMatchmakingDTO> obtenerResultadosMatchmaking() {
+        try {
+            int pageSize = 100;
+            PageResponse<ResultadoMatchmakingDTO> page = restClient.get()
+                    .uri(baseUrl + "/api/donaciones/pendientes?page=0&size={size}", pageSize)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<ResultadoMatchmakingDTO>>() {});
+            if (page == null) {
+                return Collections.emptyList();
+            }
+
+            List<ResultadoMatchmakingDTO> resultados = new ArrayList<>(page.getContent());
+            for (int pageNumber = 1; pageNumber < page.getTotalPages(); pageNumber++) {
+                PageResponse<ResultadoMatchmakingDTO> nextPage = restClient.get()
+                        .uri(baseUrl + "/api/donaciones/pendientes?page={page}&size={size}", pageNumber, pageSize)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<PageResponse<ResultadoMatchmakingDTO>>() {});
+                if (nextPage != null) {
+                    resultados.addAll(nextPage.getContent());
+                }
+            }
+            return resultados;
+        } catch (Exception e) {
+            log.error("Error al obtener los resultados de matchmaking desde {}: {}", baseUrl, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Dispara el asignador a demanda sobre todas las donaciones en depósito. Es sincrónico, pero
+     * no devuelve nada: para saber qué propuso hay que volver a leer los pendientes.
+     */
+    public void ejecutarMatchmaking() {
+        try {
+            restClient.post()
+                    .uri(baseUrl + "/api/donaciones/matchmaking/ejecutar")
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al ejecutar el asignador en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Aprueba una de las propuestas del ranking: asigna la entidad, la suma a la necesidad, pasa
+     * la donación por ASIGNADO y LISTA_PARA_ENTREGAR y publica la entrega a logística.
+     *
+     * @param posicion posición 1-based dentro de propuestasOrdenadas.
+     */
+    public void asignarPropuesta(UUID donacionId, int posicion) {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("donacionId", donacionId);
+        cuerpo.put("posicionPropuesta", posicion);
+        try {
+            restClient.post()
+                    .uri(baseUrl + "/api/donaciones/asignar")
+                    .body(cuerpo)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al asignar la propuesta {} de la donación {} en {}: {}",
+                    posicion, donacionId, baseUrl, e.getMessage());
+            throw e;
+        }
     }
 
     /** Devuelve el UUID del perfil creado (donante/entidad) o null si no se pudo determinar. */
@@ -521,6 +698,62 @@ public class DonacionesClient {
         } catch (Exception e) {
             log.error("Error al obtener entidad con id {} desde {}: {}", id, baseUrl, e.getMessage());
             return null;
+        }
+    }
+
+    /** Crea una entidad beneficiaria (POST /api/entidades) y devuelve el id asignado. */
+    public UUID crearEntidad(Map<String, Object> payload) {
+        try {
+            String body = restClient.post()
+                    .uri(baseUrl + "/api/entidades")
+                    .body(payload)
+                    .retrieve()
+                    .body(String.class);
+            return extraerUuid(body);
+        } catch (Exception e) {
+            log.error("Error al crear la entidad en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Actualiza la entidad con el payload completo del formulario.
+     *
+     * <p>Acá <em>no</em> hace falta el leer-modificar-escribir que sí necesita
+     * {@link #actualizarDonanteCampos(UUID, Map)}: el PUT de donaciones-service no reemplaza la
+     * entidad entera. Su {@code EntidadBeneficiariaService.actualizarEntidad} pisa sólo los datos
+     * de la persona jurídica (razón social, rubro, CUIT, tipo jurídico y medios de contacto) y
+     * después llama a {@code RepositorioEntidadesBeneficiarias.modificarEntidad}, que únicamente
+     * hace {@code setDireccion(...)}. Las necesidades y las donaciones de la entidad sobreviven.
+     *
+     * <p>Ojo con un efecto colateral del backend: {@code modificarPersona} reemplaza la lista de
+     * representantes por la que venga en el body, y el DTO de entidades siempre construye la
+     * jurídica con la lista vacía. Como el panel de entidades no edita representantes, en la
+     * práctica no hay nada que perder, pero si alguna vez se cargan habría que mandarlos acá.
+     */
+    public void actualizarEntidad(UUID id, Map<String, Object> payload) {
+        try {
+            restClient.put()
+                    .uri(baseUrl + "/api/entidades/{id}", id)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al actualizar la entidad {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Baja lógica de la entidad: el backend la marca inactiva y deja de listarla. */
+    public void eliminarEntidad(UUID id) {
+        try {
+            restClient.delete()
+                    .uri(baseUrl + "/api/entidades/{id}", id)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al eliminar la entidad {} en {}: {}", id, baseUrl, e.getMessage());
+            throw e;
         }
     }
 

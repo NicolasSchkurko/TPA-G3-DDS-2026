@@ -201,6 +201,8 @@
 .login-form-panel .login-submit {
     width: 100%;
     min-height: 52px;
+    justify-content: center;
+    text-align: center;
     font-size: 15px;
 }
 
