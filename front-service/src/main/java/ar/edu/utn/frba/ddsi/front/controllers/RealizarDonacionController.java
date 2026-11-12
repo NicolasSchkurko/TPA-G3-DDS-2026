@@ -48,6 +48,8 @@ public class RealizarDonacionController {
             model.addAttribute("donante", donante.get());
             FormularioDonacionDTO formulario = new FormularioDonacionDTO();
             formulario.setIdDonante(donante.get().getId());
+            // La fecha de realización no es editable: se fija al día de hoy.
+            formulario.setFechaRealizacion(java.time.LocalDate.now());
             model.addAttribute("formulario", formulario);
             return "realizar-donacion";
         } catch (RestClientResponseException | ResourceAccessException e) {
@@ -83,6 +85,8 @@ public class RealizarDonacionController {
         }
 
         formulario.setIdDonante(donante.get().getId());
+        // La fecha de realización no es editable: se fuerza al día de hoy.
+        formulario.setFechaRealizacion(java.time.LocalDate.now());
         model.addAttribute("donante", donante.get());
         if (bindingResult.hasErrors()) {
             model.addAttribute("error", bindingResult.getAllErrors().get(0).getDefaultMessage());

@@ -41,8 +41,9 @@
 
                 <div class="mb-4">
                     <label for="fechaRealizacion" class="form-label fw-semibold">Fecha de realización</label>
-                    <input class="form-control" type="date" id="fechaRealizacion"
-                           th:field="*{fechaRealizacion}" required>
+                    <input class="form-control bg-light" type="date" id="fechaRealizacion"
+                           th:field="*{fechaRealizacion}" readonly>
+                    <div class="form-text">Se registra automáticamente con la fecha de hoy.</div>
                 </div>
 
                 <section aria-labelledby="bienesTitulo" class="mb-4">
@@ -63,6 +64,18 @@
                                     <label class="form-label" th:for="'bienDescripcion' + ${stat.index}">Descripción</label>
                                     <input class="form-control" th:id="'bienDescripcion' + ${stat.index}"
                                            th:field="*{bienes[__${stat.index}__].descripcion}" type="text" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienCategoria' + ${stat.index}">Categoría</label>
+                                    <input class="form-control" th:id="'bienCategoria' + ${stat.index}"
+                                           th:field="*{bienes[__${stat.index}__].categoria}" type="text"
+                                           placeholder="Alimentos">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienSubcategoria' + ${stat.index}">Subcategoría</label>
+                                    <input class="form-control" th:id="'bienSubcategoria' + ${stat.index}"
+                                           th:field="*{bienes[__${stat.index}__].subcategoria}" type="text"
+                                           placeholder="Arroz">
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCantidad' + ${stat.index}">Cantidad</label>
