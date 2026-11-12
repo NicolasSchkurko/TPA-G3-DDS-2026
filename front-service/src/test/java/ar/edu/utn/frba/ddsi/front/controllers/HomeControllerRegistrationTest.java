@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class HomeControllerRegistrationTest {
 
@@ -36,6 +38,8 @@ class HomeControllerRegistrationTest {
     void preservesDonorFormValuesWhenEmailValidationFailsWithoutKeepingPassword() {
         HomeController controller = new HomeController(new DonacionesClientStub(),
                 new KeycloakRegistrationClientStub(), mappingStoreDePrueba());
+        HomeController controller = new HomeController(new DonacionesClientStub(), mock(IncentivosClient.class),
+                new KeycloakRegistrationClientStub());
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nuevo-donante",
@@ -47,7 +51,7 @@ class HomeControllerRegistrationTest {
                 "valorContacto", ""
         );
 
-        assertEquals("register", controller.register(form, model));
+        assertEquals("register", controller.register(form, model, null));
 
         @SuppressWarnings("unchecked")
         Map<String, String> valoresPreservados =
@@ -64,6 +68,7 @@ class HomeControllerRegistrationTest {
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
         HomeController controller = new HomeController(new DonacionesClientStub(), keycloakClient,
                 mappingStoreDePrueba());
+        HomeController controller = new HomeController(new DonacionesClientStub(), mock(IncentivosClient.class), keycloakClient);
         ExtendedModelMap model = new ExtendedModelMap();
         Map<String, String> form = Map.of(
                 "username", "nueva-entidad",
@@ -72,7 +77,7 @@ class HomeControllerRegistrationTest {
                 "razonSocial", "Entidad Ejemplo"
         );
 
-        assertEquals("register", controller.register(form, model));
+        assertEquals("register", controller.register(form, model, null));
 
         assertEquals("Ingresá un correo electrónico válido (por ejemplo, nombre@dominio.com).",
                 model.getAttribute("error"));
@@ -83,6 +88,7 @@ class HomeControllerRegistrationTest {
     void usesAccountEmailForKeycloakAndProfileRegistration() {
         DonacionesClientStub donacionesClient = new DonacionesClientStub();
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, mock(IncentivosClient.class), keycloakClient);
         HomeController controller = new HomeController(donacionesClient, keycloakClient,
                 mappingStoreDePrueba());
         ExtendedModelMap model = new ExtendedModelMap();
@@ -94,7 +100,7 @@ class HomeControllerRegistrationTest {
                 "razonSocial", "Entidad Ejemplo"
         );
 
-        assertEquals("register", controller.register(form, model));
+        assertEquals("register", controller.register(form, model, null));
 
         assertEquals("entidad@example.com", keycloakClient.email);
         assertEquals("ENTIDAD", donacionesClient.tipoRegistro);
@@ -110,6 +116,7 @@ class HomeControllerRegistrationTest {
                 HttpHeaders.EMPTY, "La dirección no tiene una ciudad válida".getBytes(StandardCharsets.UTF_8),
                 StandardCharsets.UTF_8);
         KeycloakRegistrationClientStub keycloakClient = new KeycloakRegistrationClientStub();
+        HomeController controller = new HomeController(donacionesClient, mock(IncentivosClient.class), keycloakClient);
         HomeController controller = new HomeController(donacionesClient, keycloakClient,
                 mappingStoreDePrueba());
         ExtendedModelMap model = new ExtendedModelMap();
@@ -125,7 +132,7 @@ class HomeControllerRegistrationTest {
                 "apellido", "Ejemplo"
         );
 
-        assertEquals("register", controller.register(form, model));
+        assertEquals("register", controller.register(form, model, null));
 
         assertEquals("La dirección no tiene una ciudad válida", model.getAttribute("error"));
         assertTrue(keycloakClient.deleted);
@@ -141,6 +148,8 @@ class HomeControllerRegistrationTest {
         }
 
         @Override
+        public void registrarUsuario(String tipoRegistro, Map<String, String> datos,
+                                     String idKeycloak) {
         public ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO buscarIdentidadPorEmail(String email) {
             return null;
         }

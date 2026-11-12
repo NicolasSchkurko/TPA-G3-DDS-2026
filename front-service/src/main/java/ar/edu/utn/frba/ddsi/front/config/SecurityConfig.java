@@ -36,13 +36,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso",
-                        "/oauth2/**", "/login/oauth2/**").permitAll()
+                        "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
                 .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/donaciones").permitAll()
                 .requestMatchers(HttpMethod.GET, "/donaciones/{id}").permitAll()
                 .requestMatchers("/panel", "/donaciones/**", "/donantes/**", "/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/reconciliacion/**").hasRole("ADMIN")
                 .requestMatchers("/donante", "/donante/**").hasRole("DONANTE")
                 .requestMatchers("/chofer/**").hasRole("CHOFER")
                 .requestMatchers("/entidad/**", "/api/entidad/**").hasRole("ENTIDAD")

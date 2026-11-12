@@ -1,7 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.admin;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
-import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
@@ -32,6 +31,11 @@ public class AdminDTO {
             throw new IllegalArgumentException("Ingresá un correo electrónico válido");
         }
         Humana humano = new Humana(this.nombre, this.apellido, this.edad, this.numeroDeDocumento, gen);
+        Administrador admin = new Administrador(humano, contacto, this.nombreAMostrar);
+        if (this.id != null && !this.id.isBlank()) {
+            admin.setId(UUID.fromString(this.id.trim()));
+        }
+        return admin;
         if (this.email != null && !this.email.isBlank()) {
             Mail mail = new Mail(this.email);
             humano.agregarMedioDeContacto(mail);

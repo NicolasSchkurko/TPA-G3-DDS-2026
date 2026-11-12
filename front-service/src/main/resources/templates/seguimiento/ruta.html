@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Seguimiento de ruta</title>
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            color: #1f2937;
+            background: #f8fafc;
+        }
+        header {
+            padding: 16px 20px;
+            background: #fff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        h1 {
+            margin: 0 0 4px;
+            font-size: 20px;
+        }
+        p {
+            margin: 0;
+        }
+        main {
+            padding: 16px;
+        }
+        #map {
+            height: 70vh;
+            min-height: 360px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        .aviso {
+            margin-bottom: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Seguimiento de ruta</h1>
+    <p>Ruta <span th:text="${idRuta}"></span></p>
+</header>
+<main>
+    <div class="aviso" th:if="${ruta == null}">
+        No se pudo cargar la ruta en este momento. Intentá nuevamente más tarde.
+    </div>
+    <div class="aviso" th:if="${ruta != null and !hayTrazado}">
+        La ruta todavía no tiene coordenadas suficientes para dibujar el recorrido.
+    </div>
+    <div id="map"></div>
+</main>
+
+<th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+<script th:inline="javascript">
+    const geojson = JSON.parse(/*[[${geojson}]]*/ '{"type":"FeatureCollection","features":[]}');
+    const map = window.DDSIMap.create({
+        container: "map",
+        center: [-34.6037, -58.3816],
+        zoom: 12,
+        scrollWheelZoom: false
+    });
+
+    if (map && geojson.features.length > 0) {
+        const layer = window.DDSIMap.addGeoJson(map, geojson, {
+            onEachFeature: function (feature, capa) {
+                if (feature.properties && feature.properties.parada) {
+                    capa.bindPopup("Parada " + feature.properties.parada);
+                }
+            }
+        });
+        window.DDSIMap.fit(map, layer);
+    }
+</script>
+</body>
+</html>

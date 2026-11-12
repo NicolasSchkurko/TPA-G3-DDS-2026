@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +39,27 @@ public class Insignia {
         this.nombre = nombreInsignia;
         this.descripcion = descripcion;
         this.urlImagen = urlImagen;
+    }
+
+    /**
+     * Dos insignias son la misma si tienen el mismo id. Comparar por id tolera los proxies
+     * de Hibernate: la fila puede venir como proxy en una colección y como entidad cargada
+     * en el argumento. Sin id (insignia nueva) solo vale la identidad de referencia.
+     */
+    @Override
+    public boolean equals(Object otro) {
+        if (this == otro) {
+            return true;
+        }
+        if (!(otro instanceof Insignia otra)) {
+            return false;
+        }
+        return idInsignia != null && idInsignia.equals(otra.getIdInsignia());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(idInsignia);
     }
 
     /**

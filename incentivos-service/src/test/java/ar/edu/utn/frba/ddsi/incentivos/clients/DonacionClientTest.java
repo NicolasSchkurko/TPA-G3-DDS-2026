@@ -101,42 +101,4 @@ class DonacionClientTest {
         server.verify();
     }
 
-    @Test
-    @DisplayName("verificarAdmin da true solo si el admin existe")
-    void verificaAdminExistente() throws Exception {
-        givenBaseUrl(BASE_URL);
-        UUID idAdmin = UUID.randomUUID();
-
-        server.expect(requestTo(BASE_URL + "/api/admins/" + idAdmin))
-              .andRespond(withStatus(HttpStatus.OK));
-
-        assertThat(client.verificarAdmin(idAdmin)).isTrue();
-        server.verify();
-    }
-
-    @Test
-    @DisplayName("verificarAdmin da false con 404")
-    void verificaAdminInexistente() throws Exception {
-        givenBaseUrl(BASE_URL);
-        UUID idAdmin = UUID.randomUUID();
-
-        server.expect(requestTo(BASE_URL + "/api/admins/" + idAdmin))
-              .andRespond(withStatus(HttpStatus.NOT_FOUND));
-
-        assertThat(client.verificarAdmin(idAdmin)).isFalse();
-        server.verify();
-    }
-
-    @Test
-    @DisplayName("verificarAdmin da false con error de servidor")
-    void verificaAdminConErrorDeServidor() throws Exception {
-        givenBaseUrl(BASE_URL);
-        UUID idAdmin = UUID.randomUUID();
-
-        server.expect(requestTo(BASE_URL + "/api/admins/" + idAdmin))
-              .andRespond(withServerError());
-
-        assertThat(client.verificarAdmin(idAdmin)).isFalse();
-        server.verify();
-    }
 }

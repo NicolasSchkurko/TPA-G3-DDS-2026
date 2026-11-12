@@ -11,8 +11,10 @@ import java.util.Optional;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -29,9 +31,12 @@ public class N8nClient {
     private final PublicacionesN8nService publicaciones;
     private final RestTemplate restTemplate;
     private final RepositorioInsignias insignias;
+    private final TaskExecutor n8nExecutor;
 
     @Autowired
     public N8nClient(RestTemplate restTemplate,
+                     PublicacionesN8nService publicaciones,
+                     @Qualifier("n8nExecutor") TaskExecutor n8nExecutor) {
                      PublicacionesN8nService publicaciones,
                      RepositorioInsignias insignias) {
         this.restTemplate = restTemplate;
@@ -41,6 +46,7 @@ public class N8nClient {
 
     public N8nClient(RestTemplate restTemplate, PublicacionesN8nService publicaciones) {
         this(restTemplate, publicaciones, null);
+        this.n8nExecutor = n8nExecutor;
     }
 
     /**
@@ -60,6 +66,10 @@ public class N8nClient {
                 event.nombreUsuario(),
                 event.idUsuario(),
                 event.idInsignia()
+            event.nombreUsuario() + " ganó la insignia " + event.insigniaObtenida()
+                + " tras haber completado la misión " + event.misionAnterior(),
+            event.nombreUsuario(),
+            event.idUsuario()
         );
         publicaciones.encolar(publicar);
     }
@@ -109,6 +119,21 @@ public class N8nClient {
                 log.warn("No se pudo enviar la publicacion {} en el intento {}; se reintentara",
                         reclamada.id(), reclamada.intentos(), exception);
             }
+            n8nExecutor.execute(() -> enviar(reclamada));
+        }
+    }
+
+    private void enviar(PublicacionReclamada reclamada) {
+        try {
+            restTemplate.postForEntity(n8nUrl, reclamada.contenido(), void.class);
+            publicaciones.confirmar(reclamada.id());
+            log.info("Publicacion {} enviada a n8n en el intento {}",
+                    reclamada.id(), reclamada.intentos());
+        } catch (RestClientException exception) {
+            publicaciones.reintentar(reclamada.id(), LocalDateTime.now(),
+                    exception.getMessage());
+            log.warn("No se pudo enviar la publicacion {} en el intento {}; se reintentara",
+                    reclamada.id(), reclamada.intentos(), exception);
         }
     }
 }

@@ -130,4 +130,24 @@ public class PersonaDonanteFilaConverterTest {
         assertEquals(0, ((Humana) donante.getPersona()).getNumeroDeDocumento(),
                 "Al fallar el parseo debe quedar en 0");
     }
+  @Test
+  @DisplayName("Aislado del LectorCSV: el converter resuelve solo, con claves canónicas")
+  void converterSolo_resuelveColumnas() {
+    PersonaDonanteFilaConverter conv = new PersonaDonanteFilaConverter(mapeosDelFront());
+    Donante donante = conv.convertir(java.util.Map.of(
+            "tipopersona", "HUMANA",
+            "nombre completo", "Sofia Garcia",
+            "dni", "30456789"));
+
+    assertEquals("Sofia Garcia", donante.getPersona().getNombreDeUsuario());
+  }
+
+
+    private static List<MapeoCSV> mapeosDelFront() {
+        return List.of(
+                new MapeoCSV("TIPO_PERSONA", List.of("tipopersona")),
+                new MapeoCSV("NOMBRE_RAZON_SOCIAL", List.of("nombre completo")),
+                new MapeoCSV("DOCUMENTO", List.of("dni")));
+    }
+
 }

@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /** El header {@code Admin-Id} no corresponde a un administrador: 403. */
+    /** El usuario autenticado no tiene permisos de administrador: 403. */
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<Map<String, String>> manejarAccesoDenegado(
             SecurityException exception) {
@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
         return respuesta(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
-    /** Falta un header obligatorio, típicamente el {@code Admin-Id}: 400, diciendo cuál. */
+    /** Falta un header obligatorio: 400, diciendo cuál. */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<Map<String, String>> manejarHeaderFaltante(
             MissingRequestHeaderException exception) {

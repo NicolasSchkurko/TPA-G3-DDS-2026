@@ -1,13 +1,19 @@
 package ar.edu.utn.frba.ddsi.notificaciones.config.rabbit;
 
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.amqp.RabbitRetryTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+
+import java.util.Map;
 
 /**
  * Topología del broker: el exchange, la cola y su dead letter. Si la cola ya existía sin los
@@ -20,7 +26,6 @@ public class RabbitConfig {
     public static final String EXCHANGE_NOTIFICACIONES = "notificaciones.exchange";
     public static final String RK_AVISO = "notificaciones.aviso";
     public static final String RK_INCENTIVO = "notificaciones.incentivo";
-    public static final String RK_EVENTO_LOGISTICA = "notificaciones.evento.logistica";
     public static final String RK_DONACION = "notificaciones.donacion";
     public static final String COLA_NOTIFICACIONES = "notificaciones";
 
@@ -73,18 +78,30 @@ public class RabbitConfig {
     }
 
     @Bean
-    public Binding bindingNotificacionesEventosLogistica(
-            Queue colaNotificaciones, TopicExchange exchangeNotificaciones) {
-        return BindingBuilder.bind(colaNotificaciones)
-                .to(exchangeNotificaciones)
-                .with(RK_EVENTO_LOGISTICA);
-    }
-
-    @Bean
     public Binding bindingNotificacionesDonacion(
             Queue colaNotificaciones, TopicExchange exchangeNotificaciones) {
         return BindingBuilder.bind(colaNotificaciones)
                 .to(exchangeNotificaciones)
                 .with(RK_DONACION);
+    }
+
+    /**
+     * Con el retry por defecto, {@link AmqpRejectAndDontRequeueException} se reintenta 3 veces
+     * (gastando llamadas a n8n) recién después de agotar los intentos va a la DLQ. Marcarlo como
+     * no reintentable hace que los errores permanentes (4xx, datos inválidos) vayan directo a la
+     * DLQ, y los transitorios (red/timeout/5xx) sigan reintentándose.
+     */
+    @Bean
+    public RabbitRetryTemplateCustomizer retryNoReintentaErroresPermanentes(
+            @Value("${spring.rabbitmq.listener.simple.retry.max-attempts:3}") int maxIntentos) {
+        return (target, retryTemplate) -> {
+            if (target == RabbitRetryTemplateCustomizer.Target.LISTENER) {
+                retryTemplate.setRetryPolicy(new SimpleRetryPolicy(
+                        maxIntentos,
+                        Map.of(AmqpRejectAndDontRequeueException.class, false),
+                        true,
+                        true));
+            }
+        };
     }
 }

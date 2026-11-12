@@ -3,8 +3,10 @@ package ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operaciones.ValoresDistintos;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.ProgresoDelDonante;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.ReglaConstancia;
+import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.UnidadTiempo;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -63,10 +65,27 @@ public class ProgresoMision implements ProgresoDelDonante {
         this.progreso = 0;
     }
 
-    /** {@code Set.add} devuelve {@code true} solo si el valor era nuevo. */
+    /**
+     * Guarda el valor si es nuevo y todavía no se alcanzó la cantidad que pide la regla.
+     * Acotarlo evita que el set crezca indefinidamente en misiones de larga duración.
+     */
     @Override
     public boolean registrarValorObservado(String valor) {
+        int maximo = maxValoresObservados();
+        if (valoresObservados.size() >= maximo && !valoresObservados.contains(valor)) {
+            return false;
+        }
         return valoresObservados.add(valor);
+    }
+
+    /** Cuántos valores distintos necesita la operación; para otras reglas no hay tope. */
+    private int maxValoresObservados() {
+        if (mision.getReglaDeProgreso().getOperacion() instanceof ValoresDistintos valores) {
+            return valores.getCantValoresDistintos() == null
+                    ? 0
+                    : valores.getCantValoresDistintos();
+        }
+        return Integer.MAX_VALUE;
     }
 
     @Override
@@ -81,8 +100,7 @@ public class ProgresoMision implements ProgresoDelDonante {
 
     /**
      * Calcula la racha de una misión con constancia contando meses calendario consecutivos
-     * hacia atrás desde la última donación. {@code cantidad} y {@code unidadTiempo} definen
-     * cuánto puede pasar antes de que la racha caduque.
+     * hacia atrás desde la última donación. Ordena y filtra el historial completo.
      */
     public void evaluarConstancia(List<ImpactoDonacion> donaciones,
                                    LocalDateTime fechaEvaluacion) {
@@ -95,22 +113,52 @@ public class ProgresoMision implements ProgresoDelDonante {
             return;
         }
 
-        // Solo cuentan las donaciones que hicieron progresar la misión, en orden de fecha.
         List<ImpactoDonacion> donacionesQueProgresaron = donaciones.stream()
                 .filter(d -> Boolean.TRUE.equals(d.getHizoProgresarMision()))
                 .sorted(Comparator.comparing(ImpactoDonacion::getFechaEntrega))
                 .toList();
 
+        evaluarConstanciaOrdenada(donacionesQueProgresaron, fechaEvaluacion);
+    }
+
+    /**
+     * Igual que {@link #evaluarConstancia}, pero recibe solo las donaciones que progresaron,
+     * ordenadas por fecha ascendente. Es el camino del scheduler, que ya las trae así de la
+     * consulta y evita filtrar y ordenar 500 historiales por pasada.
+     */
+    public void evaluarConstanciaOrdenada(
+            List<ImpactoDonacion> donacionesQueProgresaron,
+            LocalDateTime fechaEvaluacion) {
+        ReglaConstancia constancia = mision.getReglaDeProgreso().getConstancia();
+        if (constancia == null) {
+            return;
+        }
         if (donacionesQueProgresaron.isEmpty()) {
             reiniciarProgreso();
             return;
         }
 
-        ImpactoDonacion ultima = donacionesQueProgresaron.get(donacionesQueProgresaron.size() - 1);
-        LocalDateTime limite = ultima.getFechaEntrega()
-                .plus(constancia.getCantidad(), constancia.getUnidadTiempo().comoChronoUnit());
+        // Defensa por si el llamador no las trae ordenadas: el camino normal ya lo hace.
+        List<ImpactoDonacion> ordenadas = donacionesQueProgresaron;
+        if (!estaOrdenadaPorFecha(ordenadas)) {
+            ordenadas = ordenadas.stream()
+                    .sorted(Comparator.comparing(ImpactoDonacion::getFechaEntrega))
+                    .toList();
+        }
 
-        if (fechaEvaluacion.isAfter(limite)) {
+        ImpactoDonacion ultima = ordenadas.get(ordenadas.size() - 1);
+
+        // En meses se compara por mes calendario, no por instante: si donó el 1 de octubre
+        // con cadencia mensual, todavía tiene todo noviembre para mantener la racha.
+        boolean caduco = constancia.getUnidadTiempo() == UnidadTiempo.MONTHS
+                ? YearMonth.from(fechaEvaluacion).isAfter(
+                        YearMonth.from(ultima.getFechaEntrega())
+                                .plusMonths(constancia.getCantidad()))
+                : fechaEvaluacion.isAfter(ultima.getFechaEntrega()
+                        .plus(constancia.getCantidad(),
+                                constancia.getUnidadTiempo().comoChronoUnit()));
+
+        if (caduco) {
             // La racha caduco: el donante arranca de cero.
             reiniciarProgreso();
             return;
@@ -120,8 +168,8 @@ public class ProgresoMision implements ProgresoDelDonante {
         YearMonth mesPrevio = null;
         int mesesConsecutivos = 0;
 
-        for (int i = donacionesQueProgresaron.size() - 1; i >= 0; i--) {
-            YearMonth mes = YearMonth.from(donacionesQueProgresaron.get(i).getFechaEntrega());
+        for (int i = ordenadas.size() - 1; i >= 0; i--) {
+            YearMonth mes = YearMonth.from(ordenadas.get(i).getFechaEntrega());
 
             if (mesPrevio != null) {
                 if (mes.equals(mesPrevio)) {
@@ -139,6 +187,16 @@ public class ProgresoMision implements ProgresoDelDonante {
         }
 
         progreso = mesesConsecutivos;
+    }
+
+    private static boolean estaOrdenadaPorFecha(List<ImpactoDonacion> donaciones) {
+        for (int i = 1; i < donaciones.size(); i++) {
+            if (donaciones.get(i - 1).getFechaEntrega()
+                    .isAfter(donaciones.get(i).getFechaEntrega())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Si el avance acumulado cumple el objetivo de la misión. */
@@ -175,7 +233,6 @@ public class ProgresoMision implements ProgresoDelDonante {
         if (mision.getReglaDeProgreso().getConstancia() != null) {
             List<ImpactoDonacion> donacionesEvaluar = new ArrayList<>(donaciones);
             donacionesEvaluar.add(donacion);
-            donacionesEvaluar.sort(Comparator.comparing(ImpactoDonacion::getFechaEntrega));
             evaluarConstancia(donacionesEvaluar, donacion.getFechaEntrega());
         } else if (hizoProgresar) {
             progreso++;

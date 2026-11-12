@@ -39,6 +39,41 @@
       "value": "1",
       "description": "Default 1; el paso 'Ver resultados de matchmaking pendientes' lo recalcula buscando la propuesta real de la entidad del flujo."
     }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "description": "Puerto real de donaciones-service"
+    },
+    {
+      "key": "adminId",
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "description": "UUID de Keycloak del admin (o uno de prueba); ya no se usa como credencial."
+    },
+    {
+      "key": "donanteId",
+      "value": ""
+    },
+    {
+      "key": "donanteNombre",
+      "value": ""
+    },
+    {
+      "key": "entidadId",
+      "value": ""
+    },
+    {
+      "key": "necesidadId",
+      "value": ""
+    },
+    {
+      "key": "donacionId",
+      "value": ""
+    },
+    {
+      "key": "posicionPropuesta",
+      "value": "1",
+      "description": "Default 1; el paso 'Ver resultados de matchmaking pendientes' lo recalcula buscando la propuesta real de la entidad del flujo."
+    }
   ],
   "item": [
     {
@@ -57,7 +92,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombreAMostrar\": \"Admin Postman\",\n  \"nombre\": \"{{$randomFirstName}}\",\n  \"apellido\": \"{{$randomLastName}}\",\n  \"edad\": 35,\n  \"numeroDeDocumento\": {{$randomInt}},\n  \"genero\": \"OTRO\",\n  \"medioDeContacto\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"{{$randomEmail}}\"\n  }\n}"
+              "raw": "{\n  \"id\": \"{{adminId}}\",\n  \"nombreAMostrar\": \"Admin Postman\",\n  \"nombre\": \"{{$randomFirstName}}\",\n  \"apellido\": \"{{$randomLastName}}\",\n  \"edad\": 35,\n  \"numeroDeDocumento\": {{$randomInt}},\n  \"genero\": \"OTRO\",\n  \"medioDeContacto\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"{{$randomEmail}}\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/admins",

@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking;
 
-import ar.edu.utn.frba.ddsi.incentivos.models.entities.Perfil.Perfil;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,37 +43,5 @@ public class RankingMensual {
     /** Agrega una fila al podio y la enlaza con este ranking. */
     public void agregarPosicion(Ranking ranking) {
         this.posiciones.add(ranking);
-    }
-
-    /**
-     * Traduce el resultado de la consulta en posiciones. Los empates comparten puesto.
-     *
-     * @param topPerfiles filas de {@code [Perfil, total]}, ya ordenadas por total
-     *                    descendente.
-     */
-    public void calcularYAgregarPosiciones(List<Object[]> topPerfiles) {
-        int puestoActual = 1;
-        int indiceGeneral = 1;
-        Long misionesPrevias = -1L;
-
-        for (Object[] fila : topPerfiles) {
-            Perfil perfil = (Perfil) fila[0];
-            Long totalMisiones = ((Number) fila[1]).longValue();
-
-            if (!totalMisiones.equals(misionesPrevias)) {
-                puestoActual = indiceGeneral;
-            }
-
-            agregarPosicion(new Ranking(
-                    this,
-                    perfil.getIdUsuario(),
-                    perfil.getNombreUsuario(),
-                    puestoActual,
-                    totalMisiones
-            ));
-
-            misionesPrevias = totalMisiones;
-            indiceGeneral++;
-        }
     }
 }

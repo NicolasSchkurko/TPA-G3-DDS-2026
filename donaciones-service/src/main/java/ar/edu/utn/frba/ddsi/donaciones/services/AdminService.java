@@ -3,8 +3,8 @@ package ar.edu.utn.frba.ddsi.donaciones.services;
 import jakarta.persistence.EntityNotFoundException;
 import ar.edu.utn.frba.ddsi.donaciones.dto.admin.AdminDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioAdministradores;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeAdministradores;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDePersonas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,21 +15,23 @@ import java.util.stream.Collectors;
 @Service
 public class AdminService {
 
-    private final RepositorioAdministradores repositorioAdministradores;
-    private final RepositorioPersonas repositorioPersonas;
+    private final RepositorioDeAdministradores repositorioAdministradores;
+    private final RepositorioDePersonas repositorioPersonas;
 
-    public AdminService(RepositorioAdministradores repositorioAdministradores,
-                        RepositorioPersonas repositorioPersonas) {
+    public AdminService(RepositorioDeAdministradores repositorioAdministradores,
+                        RepositorioDePersonas repositorioPersonas) {
         this.repositorioAdministradores = repositorioAdministradores;
         this.repositorioPersonas = repositorioPersonas;
     }
 
+    @Transactional(readOnly = true)
     public List<AdminDTO> getAdmins() {
         return repositorioAdministradores.obtenerTodos().stream()
                 .map(AdminDTO::from)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public AdminDTO getAdminPorId(UUID id) {
         Administrador admin = repositorioAdministradores.buscarPorId(id)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -38,8 +40,12 @@ public class AdminService {
     }
 
     public AdminDTO crearAdministrador(AdminDTO dto) {
+        if (dto.getId() == null || dto.getId().isBlank()) {
+            throw new IllegalArgumentException(
+                    "El administrador necesita el id de su cuenta de Keycloak.");
+        }
         Administrador nuevoAdmin = dto.toDomain();
-        // La Humana vive en su propio repositorio (RepositorioPersonas), igual que Juridica
+        // La Humana vive en su propio repositorio (RepositorioDePersonas), igual que Juridica
         // para EntidadBeneficiaria: se registra explícitamente antes de guardar el Administrador.
         if (nuevoAdmin.getHumano() != null) repositorioPersonas.registrarPersona(nuevoAdmin.getHumano());
         try {
@@ -64,7 +70,6 @@ public class AdminService {
             repositorioPersonas.registrarPersona(datosNuevos.getHumano());
             existente.setHumano(datosNuevos.getHumano());
         }
-        existente.setHumano(datosNuevos.getHumano());
         existente.setMedioDeContacto(datosNuevos.getContacto());
         existente.setNombreAMostrar(datosNuevos.getNombreAMostrar());
 

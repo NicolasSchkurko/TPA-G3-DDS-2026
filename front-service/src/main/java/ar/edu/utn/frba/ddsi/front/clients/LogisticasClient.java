@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class LogisticasClient {
         this.baseUrl = baseUrl;
     }
 
+    public JsonNode obtenerRuta(UUID idRuta) {
     /** Ítems de entrega del depósito. Ojo: es un listado global; filtrar por entidadDestino en el front. */
     public LogisticaDTOs.Bienes obtenerBienes() {
         try {
@@ -46,10 +48,13 @@ public class LogisticasClient {
     public LogisticaDTOs.Bien obtenerBienPorDonacion(UUID idDonacion) {
         try {
             return restClient.get()
+                    .uri(baseUrl + "/rutas/{id}", idRuta)
                     .uri(baseUrl + "/entregas/{id}", idDonacion)
                     .retrieve()
+                    .body(JsonNode.class);
                     .body(LogisticaDTOs.Bien.class);
         } catch (Exception e) {
+            log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
             log.warn("No se encontró entrega para la donación {} o el servicio no respondió: {}", idDonacion, e.getMessage());
             return null;
         }

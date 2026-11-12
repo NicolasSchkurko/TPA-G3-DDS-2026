@@ -19,7 +19,6 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Operacion.Operacio
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.AtributoImpacto;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Reglas.Regla;
 import ar.edu.utn.frba.ddsi.incentivos.models.gestores.SincronizacionPerfiles;
-import ar.edu.utn.frba.ddsi.incentivos.models.gestores.ValidadorAdmin;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioCategorias;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioMisiones;
 import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.RepositorioPerfiles;
@@ -51,8 +50,7 @@ class MisionServiceTest {
                 repoPerfiles,
                 mock(RepositorioCategorias.class),
                 new MisionFactory(new OperacionFactory()),
-                gestorSincronizacion,
-                mock(ValidadorAdmin.class)
+                gestorSincronizacion
         );
     }
 

@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
@@ -29,6 +30,7 @@ public class HomeController {
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
     private final DonacionesClient donacionesClient;
+    private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
     private final IdentidadMappingStore identidadMappingStore;
 
@@ -44,9 +46,13 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
+    public HomeController(DonacionesClient donacionesClient,
+                          IncentivosClient incentivosClient,
+                          KeycloakRegistrationClient keycloakRegistrationClient) {
     public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient,
                           IdentidadMappingStore identidadMappingStore) {
         this.donacionesClient = donacionesClient;
+        this.incentivosClient = incentivosClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
         this.identidadMappingStore = identidadMappingStore;
     }
@@ -70,13 +76,14 @@ public class HomeController {
     }
 
     @PostMapping("/register")
-    public String register(@RequestParam Map<String, String> form, Model model) {
+    public String register(@RequestParam Map<String, String> form, Model model,
+                           Authentication authentication) {
         String userId = null;
         Map<String, String> datosFormulario = new LinkedHashMap<>(form);
         datosFormulario.remove("password");
         model.addAttribute("formularioRegistro", datosFormulario);
         try {
-            String role = rolParaTipoRegistro(form.get("tipoRegistro"));
+            String role = rolParaTipoRegistro(form.get("tipoRegistro"), authentication);
             String username = form.get("username");
             String password = form.get("password");
             String email = normalizarEmail(form.get("email"));
@@ -136,6 +143,7 @@ public class HomeController {
                 eliminarCuentaSiCorresponde(userId);
                 model.addAttribute("error", e.getMessage());
                 return "register";
+                donacionesClient.registrarUsuario(form.get("tipoRegistro"), form, userId);
             } catch (RestClientResponseException e) {
                 eliminarCuentaSiCorresponde(userId);
                 log.warn("Donaciones rechazó el alta con estado {}", e.getStatusCode());
@@ -211,11 +219,18 @@ public class HomeController {
         return "No se pudo guardar el perfil de donante. Intentá nuevamente más tarde.";
     }
 
-    private static String rolParaTipoRegistro(String tipoRegistro) {
+    private static String rolParaTipoRegistro(String tipoRegistro, Authentication authentication) {
         if (tipoRegistro == null) throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         return switch (tipoRegistro) {
             case "DONANTE" -> "DONANTE";
             case "ENTIDAD" -> "ENTIDAD";
+            case "ADMIN" -> {
+                if (!esAdmin(authentication)) {
+                    throw new IllegalArgumentException(
+                            "Solo un administrador puede crear otro administrador.");
+                }
+                yield "ADMIN";
+            }
             default -> throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         };
     }
@@ -264,6 +279,13 @@ public class HomeController {
         };
     }
 
+    private static boolean esAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+    }
+
     private void eliminarCuentaSiCorresponde(String userId) {
         if (userId == null) return;
         try {
@@ -274,8 +296,8 @@ public class HomeController {
     }
 
     /**
-     * Landing pública: no depende de los microservicios, así que puede mostrarse
-     * aunque el backend no esté levantado.
+     * Landing pública: si incentivos no responde, la lista de destacadas queda vacía y el
+     * landing se sigue mostrando.
      */
     @GetMapping({"/", "/landing"})
     public String landing(Authentication authentication, Model model) {
@@ -283,9 +305,9 @@ public class HomeController {
                 && authentication.isAuthenticated()
                 && authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_DONANTE"))
-                && authentication.getAuthorities().stream()
-                .noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+                && !esAdmin(authentication);
         model.addAttribute("esDonante", esDonante);
+        model.addAttribute("destacadas", incentivosClient.obtenerDonacionesDestacadas());
         model.addAttribute("entidades", esDonante
                 ? donacionesClient.obtenerEntidades()
                 : Collections.emptyList());

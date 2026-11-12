@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,10 +28,11 @@ public class EntregaController {
 
     // --- CRUD ---
 
-    @Operation(summary = "Listar todos los ítems de entrega del depósito")
+    @Operation(summary = "Listar de forma paginada los ítems de entrega del depósito")
     @GetMapping
-    public ResponseEntity<BienesDTO> obtenerTodas() {
-        return ResponseEntity.ok(entregaService.findAll());
+    public ResponseEntity<Page<BienDTO>> obtenerTodas(
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(entregaService.findAll(pageable));
     }
 
     @Operation(summary = "Listar ítems de entrega NO_RECIBIDA pendientes de revisión")
@@ -43,12 +48,7 @@ public class EntregaController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
-        try {
-            BienDTO dto = entregaService.findById(id);
-            return ResponseEntity.ok(dto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        return ResponseEntity.ok(entregaService.findById(id));
     }
 
     // --- OPERACIONES DE NEGOCIO ---
@@ -62,12 +62,8 @@ public class EntregaController {
     public ResponseEntity<String> crearItems(
             @RequestBody EntregaDTO request,
             @RequestHeader(value = "X-Proveedor-Logistica", required = false, defaultValue = "PROPIO") String proveedor) {
-        try {
-            entregaService.procesarPeticion(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Petición procesada exitosamente mediante el proveedor: " + proveedor);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al procesar la petición: " + e.getMessage());
-        }
+        entregaService.procesarPeticion(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Petición procesada exitosamente mediante el proveedor: " + proveedor);
     }
 
     @Operation(summary = "Trazabilidad: Actualizar estado de una entrega (Recepción, Rechazo, Reingreso)",
@@ -75,20 +71,16 @@ public class EntregaController {
                     "o reingresar a depósito una entrega NO_RECIBIDA tras revisión (estado PENDIENTE).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Estado modificado exitosamente."),
-            @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria.")
+            @ApiResponse(responseCode = "400", description = "Payload inválido o falta de foto/justificación obligatoria."),
+            @ApiResponse(responseCode = "404", description = "La donación no existe."),
+            @ApiResponse(responseCode = "409", description = "Transición de estado no permitida.")
     })
     @PatchMapping("/{id}/estado")
     public ResponseEntity<String> actualizarEstadoEntrega(
             @PathVariable UUID id,
             @RequestBody ActualizacionEntregaDTO request) {
-        try {
-            entregaService.actualizarEstado(id, request);
-            return ResponseEntity.ok("Estado de la entrega actualizado correctamente a: " + request.getEstado());
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno: " + e.getMessage());
-        }
+        entregaService.actualizarEstado(id, request);
+        return ResponseEntity.ok("Estado de la entrega actualizado correctamente a: " + request.getEstado());
     }
 
     @Operation(summary = "Eliminar un ítem de entrega del sistema logístico")
@@ -98,11 +90,7 @@ public class EntregaController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarEntrega(@PathVariable UUID id) {
-        try {
-            entregaService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        entregaService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

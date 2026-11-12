@@ -72,6 +72,7 @@
                                     th:selected="${(formularioRegistro != null and formularioRegistro['tipoRegistro'] == 'DONANTE') or (formularioRegistro == null and param.tipoRegistro != null and param.tipoRegistro[0] == 'DONANTE')}">Donante</option>
                             <option value="ENTIDAD"
                                     th:selected="${formularioRegistro != null and formularioRegistro['tipoRegistro'] == 'ENTIDAD'}">Entidad beneficiaria</option>
+                            <option sec:authorize="hasRole('ADMIN')" value="ADMIN">Administrador</option>
                         </select>
                     </div>
 

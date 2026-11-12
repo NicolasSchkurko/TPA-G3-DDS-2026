@@ -40,10 +40,10 @@ public class IncentivosClient {
 
     /**
      * Sufijo del borrado en cascada por baja de donante, con el id del usuario como path
-     * variable. Es la variante sin {@code Admin-Id} de {@code DELETE /api/perfiles/{idUsuario}}:
+     * variable. Es la variante interna de {@code DELETE /api/perfiles/sincronizacion/{idUsuario}}:
      * la baja ya la autorizó donaciones-service antes de llegar acá.
      */
-    private static final String RUTA_PERFIL_INTERNO = "/api/perfiles/interno";
+    private static final String RUTA_PERFIL = "/api/perfiles/sincronizacion";
 
     private final RestTemplate restTemplate;
 
@@ -104,12 +104,12 @@ public class IncentivosClient {
 
     /**
      * Borra en incentivos el perfil del donante (y su historial de impacto de donaciones):
-     * {@code DELETE /api/perfiles/interno/{idUsuario}}. Lo llama {@code DonanteService} al dar
+     * {@code DELETE /api/perfiles/sincronizacion/{idUsuario}}. Lo llama {@code DonanteService} al dar
      * de baja a un donante, para que no quede un perfil húerfano del otro lado. Idempotente del
      * lado de incentivos, así que no hay que distinguir "no tenía perfil" de "se borró bien".
      */
     public void eliminarPerfil(UUID idUsuario) {
-        String url = url(RUTA_PERFIL_INTERNO + "/" + idUsuario);
+        String url = url(RUTA_PERFIL + "/" + idUsuario);
 
         try {
             restTemplate.delete(url);
@@ -122,16 +122,17 @@ public class IncentivosClient {
 
     /**
      * Propaga la actualización del donante (nombreUsuario/role) a incentivos:
-     * {@code PUT /api/perfiles/interno/{idUsuario}}.
+     * {@code PUT /api/perfiles/sincronizacion/{idUsuario}}.
      */
     public void actualizarPerfil(UUID idUsuario, IDDTO dto) {
-        String url = url(RUTA_PERFIL_INTERNO + "/" + idUsuario);
+        String url = url(RUTA_PERFIL + "/" + idUsuario);
 
         try {
             restTemplate.put(url, dto);
             log.debug("Perfil actualizado en incentivos para {}", idUsuario);
         } catch (Exception e) {
-            log.warn("No se pudo actualizar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
+            log.error("No se pudo actualizar el perfil {} en {}: {}", idUsuario, url, e.getMessage());
+            throw e;
         }
     }
 

@@ -7,10 +7,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Entid
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.UUID;
 
 public interface AlgoritmoAsignacion {
-    List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades);
+    default List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+        return rankear(donacion, entidades, null);
+    }
+
+    List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades,
+                                      Map<UUID, Integer> cantidadesVigentesPorNecesidad);
     // Métod0 para agregar directamente cuando hay espacio
     default void agregarPropuesta(
         PriorityQueue<PropuestaAsignacion> top10,

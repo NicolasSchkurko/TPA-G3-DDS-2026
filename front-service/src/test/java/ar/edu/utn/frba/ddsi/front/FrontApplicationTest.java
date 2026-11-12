@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.front;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.config.ProfileRedirectHandler;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +17,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
@@ -27,11 +30,13 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.client.RestClient;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,6 +50,9 @@ class FrontApplicationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private IncentivosClient incentivosClient;
 
     @Test
     void contextLoads() {
@@ -106,15 +114,6 @@ class FrontApplicationTest {
     }
 
     @Test
-    void termsPageIsPublicAndRendersLegalSections() throws Exception {
-        mockMvc.perform(get("/terminos"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Términos y condiciones")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Política de privacidad")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/terminos.css")));
-    }
-
-    @Test
     void donationDetailIsPublicAndShowsUnassignedEntity() throws Exception {
         mockMvc.perform(get("/donaciones/{id}", DONATION_ID))
                 .andExpect(status().isOk())
@@ -122,6 +121,21 @@ class FrontApplicationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Camisas")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ROPA")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/detalle-donacion.css")));
+    }
+
+    @Test
+    void landingRendersFeaturedDonations() throws Exception {
+        when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
+                new DonacionDestacadaDTO(
+                        UUID.randomUUID(), LocalDateTime.of(2026, 5, 1, 10, 0),
+                        12, "ALIMENTOS", "MERCEARIA", "Comedor Los Piletones")));
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("Donaciones destacadas")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("Comedor Los Piletones")));
     }
 
     @Test

@@ -127,6 +127,11 @@ services:
       RABBITMQ_USERNAME: tpa
       RABBITMQ_PASSWORD: tpa-local
       N8N_URL: http://n8n:5678/webhook/notificaciones
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      SERVICIOS_INTERNOS: incentivos-service,front-service,donaciones-service
+      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
+    # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
@@ -142,8 +147,10 @@ services:
     env_file:
       - ./incentivos-service/.env
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     environment:
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      SERVICIOS_INTERNOS: donaciones-service,front-service
       SERVER_PORT: 8082
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
@@ -154,6 +161,7 @@ services:
       RABBITMQ_USERNAME: tpa
       RABBITMQ_PASSWORD: tpa-local
       N8N_URL: http://n8n:5678/webhook/incentivos
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
@@ -175,6 +183,8 @@ services:
     ports:
       - "8084:8084"
     environment:
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      SERVICIOS_INTERNOS: incentivos-service,front-service
       SERVER_PORT: 8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       INCENTIVOS_URL: http://incentivos-service:8082
@@ -229,6 +239,8 @@ services:
     ports:
       - "8086:8086"
     environment:
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      SERVICIOS_INTERNOS: front-service
       SERVER_PORT: 8086
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -236,6 +248,8 @@ services:
       RABBITMQ_PASSWORD: tpa-local
       MONGODB_URI: mongodb://mongodb:27017/logistica?replicaSet=rs0
       MONGODB_DB_NAME: logistica
+      LOGISTICA_SEGUIMIENTO_URL: http://localhost:8080/seguimiento/
+    mem_limit: 512m
     depends_on:
       rabbitmq:
         condition: service_healthy

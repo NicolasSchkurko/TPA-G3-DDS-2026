@@ -8,6 +8,7 @@ body:
   type: text
   content: |-
     {
+      "id": "{{adminId}}",
       "nombreAMostrar": "Admin Postman",
       "nombre": "{{$randomFirstName}}",
       "apellido": "{{$randomLastName}}",

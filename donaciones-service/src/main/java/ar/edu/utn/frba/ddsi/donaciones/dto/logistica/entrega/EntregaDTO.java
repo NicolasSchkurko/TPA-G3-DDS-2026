@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.dto.logistica.entrega;
 
-import ar.edu.utn.frba.ddsi.donaciones.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
 import lombok.Getter;
 import lombok.Setter;
 

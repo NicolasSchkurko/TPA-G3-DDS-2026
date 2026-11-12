@@ -1,5 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Direccion.Direccion;
+import ar.edu.utn.frba.ddsi.logisticas.models.entities.Entidad.Entidad;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -57,5 +59,33 @@ public class DireccionDTO {
         this.pais = pais;
         this.latitud = latitud;
         this.longitud = longitud;
+    }
+
+    public DireccionDTO aplicar(Entidad entidad) {
+        if (entidad == null || entidad.getDireccionDestino() == null) return null;
+
+        this.idEntidad = entidad.getIdEntidadBeneficiaria();
+        Direccion direccion = entidad.getDireccionDestino();
+
+        this.calleUno = direccion.getCalle1();
+        this.calleDos = direccion.getCalle2();
+        this.altura = direccion.getAltura();
+        this.piso = direccion.getPiso();
+        this.departamento = direccion.getDepartamento();
+
+        if (direccion.getCiudad() != null) {
+            this.ciudad = direccion.getCiudad().getNombre();
+            if (direccion.getCiudad().getProvincia() != null) {
+                this.provincia = direccion.getCiudad().getProvincia().getNombre();
+                if (direccion.getCiudad().getProvincia().getPais() != null) {
+                    this.pais = direccion.getCiudad().getProvincia().getPais().getNombre();
+                }
+            }
+        }
+
+        this.latitud = direccion.getLatitud();
+        this.longitud = direccion.getLongitud();
+
+        return this;
     }
 }

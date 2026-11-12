@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.personas;
 
 import ar.edu.utn.frba.ddsi.donaciones.clients.IncentivosClient;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MediosDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
@@ -12,7 +12,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.*;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.*;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,11 +20,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import java.lang.reflect.Field;
 import java.util.Map;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.ReporteImportacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.ReporteImportacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.client.RestClientException;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,28 +34,46 @@ import java.util.concurrent.ExecutorService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.lector.csv.MapeoCSV;
+import java.time.Duration;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Nested;
+import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockMultipartFile;
+import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Method;
+import org.springframework.transaction.annotation.Transactional;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorCatalogo;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorIncentivos;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
 
 public class DonanteServiceTest {
 
-  private RepositorioPersonas repositorioPersonas;
-  private RepositorioCiudades repositorioCiudades;
+  private RepositorioDePersonas repositorioPersonas;
+  private GestorCatalogo repositorioCiudades;
   private FabricaEstrategiasNotificacion fabricaEstrategias;
   private IncentivosClient incentivosClient;
-  private RepositorioDonantes repositorioDonantes;
-  private RepositorioDonaciones repositorioDonaciones;
-  private RepositorioFormularios repositorioFormularios;
+  private RepositorioDeDonantes repositorioDonantes;
+  private RepositorioDeDonaciones repositorioDonaciones;
+  private RepositorioDeFormularios repositorioFormularios;
   private ExecutorService executorImportacion;
   private DonanteService donanteService;
 
   @BeforeEach
   void setUp() {
-    repositorioPersonas = mock(RepositorioPersonas.class);
-    repositorioCiudades = mock(RepositorioCiudades.class);
+    repositorioPersonas = mock(RepositorioDePersonas.class);
+    repositorioCiudades = mock(GestorCatalogo.class);
     fabricaEstrategias = mock(FabricaEstrategiasNotificacion.class);
     incentivosClient = mock(IncentivosClient.class);
-    repositorioDonantes = mock(RepositorioDonantes.class);
-    repositorioDonaciones = mock(RepositorioDonaciones.class);
-    repositorioFormularios = mock(RepositorioFormularios.class);
+    repositorioDonantes = mock(RepositorioDeDonantes.class);
+    repositorioDonaciones = mock(RepositorioDeDonaciones.class);
+    repositorioFormularios = mock(RepositorioDeFormularios.class);
     executorImportacion = mock(ExecutorService.class);
 
     donanteService = new DonanteService(
@@ -88,6 +108,36 @@ public class DonanteServiceTest {
     verify(repositorioDonaciones, never()).desvincularDonante(any());
     verify(repositorioFormularios, never()).desvincularDonante(any());
     verify(repositorioDonantes, never()).eliminarPorId(any());
+  }
+
+  @Test
+  @DisplayName("La baja se encola en la outbox y se intenta después del commit")
+  void eliminarPersona_encolaLaBajaEnLaOutbox() {
+    GestorIncentivos gestorIncentivos = mock(GestorIncentivos.class);
+    UUID donanteId = UUID.randomUUID();
+    UUID outboxId = UUID.randomUUID();
+    Donante donanteMock = mock(Donante.class);
+    when(repositorioDonantes.buscarPorId(donanteId)).thenReturn(Optional.of(donanteMock));
+    when(gestorIncentivos.encolarEliminacionPerfil(donanteId)).thenReturn(outboxId);
+
+    DonanteService service = new DonanteService(
+        repositorioPersonas,
+        repositorioCiudades,
+        fabricaEstrategias,
+        incentivosClient,
+        repositorioDonantes,
+        repositorioDonaciones,
+        repositorioFormularios,
+        new GestorGeoref(null, false),
+        executorImportacion,
+        gestorIncentivos);
+
+    service.eliminarPersona(donanteId);
+
+    verify(donanteMock).darDeBaja();
+    verify(gestorIncentivos).encolarEliminacionPerfil(donanteId);
+    verify(gestorIncentivos).intentarAhora(outboxId);
+    verify(incentivosClient, never()).eliminarPerfil(any());
   }
 
   @Test
@@ -271,4 +321,216 @@ public class DonanteServiceTest {
     assertEquals(100, map.size());
     assertNull(map.get(primerId));
   }
+
+  @Test
+  @DisplayName("Punto 80: revisarActividades no hace findAll de donantes")
+  void revisarActividades_noCargaTodosLosDonantes() {
+    Donante donante = new Donante();
+    donante.setId(UUID.randomUUID());
+    when(repositorioDonantes.obtenerTodos()).thenReturn(List.of(donante));
+
+    donanteService.revisarActividades();
+
+    verify(repositorioDonantes, never()).obtenerTodos();
+  }
+
+  @Test
+  @DisplayName("Punto 67/80: notifica solo a los inactivos y marca la fecha para no repetir")
+  void revisarActividades_notificaYMarcaUltimaNotificacion() {
+    Donante donante = new Donante();
+    donante.setId(UUID.randomUUID());
+    when(repositorioDonantes.buscarInactivosParaNotificar(
+        any(LocalDate.class), any(Pageable.class))).thenReturn(List.of(donante));
+
+    donanteService.revisarActividades();
+
+    verify(fabricaEstrategias).ejecutar(
+        TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, donante);
+    assertEquals(LocalDate.now(), donante.getUltimaNotificacionInactividad());
+    verify(repositorioDonantes, never()).obtenerTodos();
+  }
+
+  @Test
+  @DisplayName("Una falla al notificar un donante no marca ni corta el resto del lote")
+  void revisarActividades_aislaLaFallaPorDonante() {
+    Donante primero = new Donante();
+    primero.setId(UUID.randomUUID());
+    Donante segundo = new Donante();
+    segundo.setId(UUID.randomUUID());
+    when(repositorioDonantes.buscarInactivosParaNotificar(
+        any(LocalDate.class), any(Pageable.class))).thenReturn(List.of(primero, segundo));
+    doThrow(new RuntimeException("sin medio"))
+        .when(fabricaEstrategias).ejecutar(
+            TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, primero);
+
+    donanteService.revisarActividades();
+
+    assertNull(primero.getUltimaNotificacionInactividad());
+    assertEquals(LocalDate.now(), segundo.getUltimaNotificacionInactividad());
+    verify(fabricaEstrategias).ejecutar(
+        TipoEventoNotificacion.INACTIVIDAD_PERSONA_DONANTE, segundo);
+  }
+
+  @Nested
+  @DisplayName("Importación en segundo plano")
+  class ImportacionSegundoPlano {
+
+    private static final byte[] CSV_MINIMO =
+        "TipoPersona,Nombre,Documento\nHUMANA,Ana Navarro,1\n".getBytes(StandardCharsets.UTF_8);
+
+    private RepositorioDePersonas repoPersonasImport;
+    private IncentivosClient incentivosImport;
+
+    private List<MapeoCSV> mapeos() {
+      return List.of(
+          new MapeoCSV("TIPO_PERSONA", List.of("TipoPersona")),
+          new MapeoCSV("NOMBRE_RAZON_SOCIAL", List.of("Nombre")),
+          new MapeoCSV("DOCUMENTO", List.of("Documento")));
+    }
+
+    private DonanteService servicioCon(ExecutorService executor) {
+      repoPersonasImport = mock(RepositorioDePersonas.class);
+      incentivosImport = mock(IncentivosClient.class);
+      return new DonanteService(
+          repoPersonasImport,
+          mock(GestorCatalogo.class),
+          mock(FabricaEstrategiasNotificacion.class),
+          incentivosImport,
+          mock(RepositorioDeDonantes.class),
+          executor);
+    }
+
+    private MockMultipartFile archivo() {
+      return new MockMultipartFile("file", "donantes.csv", "text/csv", CSV_MINIMO);
+    }
+
+    private static ExecutorService poolDeUnHilo() {
+      return Executors.newSingleThreadExecutor(tarea -> {
+        Thread hilo = new Thread(tarea, "test-importacion");
+        hilo.setDaemon(true);
+        return hilo;
+      });
+    }
+
+    @Test
+    @DisplayName("Con el pool y la cola llenos, la importación se rechaza en vez de encolarse")
+    void colaLLena_rechazaLaImportacion() throws Exception {
+      ExecutorService saturado = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+          new ArrayBlockingQueue<>(1),
+          tarea -> {
+            Thread hilo = new Thread(tarea);
+            hilo.setDaemon(true);
+            return hilo;
+          });
+      CountDownLatch liberar = new CountDownLatch(1);
+      saturado.execute(() -> esperar(liberar));
+      saturado.execute(() -> esperar(liberar)); // ya llena la cola de 1
+
+      try {
+        DonanteService servicio = servicioCon(saturado);
+        assertThrows(RejectedExecutionException.class,
+            () -> servicio.importarDonantes(archivo(), mapeos()),
+            "con worker y cola ocupados la importación no puede quedar encolada en silencio");
+      } finally {
+        liberar.countDown();
+        saturado.shutdownNow();
+      }
+    }
+
+    @Test
+    @DisplayName("Un Error en el worker igual deja el reporte COMPLETADO, nunca EN_PROGRESO eterno")
+    void unErrorCierraElReporteIgual() throws Exception {
+      ExecutorService unHilo = poolDeUnHilo();
+
+      try {
+        DonanteService servicio = servicioCon(unHilo);
+        doThrow(new StackOverflowError("falla simulada del worker"))
+            .when(repoPersonasImport).registrarPersona(any());
+
+        UUID importId = servicio.importarDonantes(archivo(), mapeos());
+
+        ReporteImportacionDTO reporte = esperarCompletado(servicio, importId, Duration.ofSeconds(10));
+        assertEquals("COMPLETADO", reporte.getEstado(),
+            "el reporte no puede quedar EN_PROGRESO para siempre si el worker muere con un Error");
+      } finally {
+        unHilo.shutdownNow();
+      }
+    }
+
+    @Test
+    @DisplayName("Punto 78: la importación no llama a MultipartFile.getBytes()")
+    void noUsaGetBytes() throws Exception {
+      ExecutorService unHilo = poolDeUnHilo();
+
+      try {
+        DonanteService servicio = servicioCon(unHilo);
+        MockMultipartFile archivo = spy(archivo());
+        doThrow(new UnsupportedOperationException("getBytes no debe usarse"))
+            .when(archivo).getBytes();
+
+        UUID importId = servicio.importarDonantes(archivo, mapeos());
+        esperarCompletado(servicio, importId, Duration.ofSeconds(10));
+
+        verify(archivo, never()).getBytes();
+      } finally {
+        unHilo.shutdownNow();
+      }
+    }
+
+    @Test
+    @DisplayName("Los perfiles van a incentivos en un solo lote, no uno por fila")
+    void losPerfilesVanEnLote() throws Exception {
+      ExecutorService unHilo = poolDeUnHilo();
+
+      try {
+        DonanteService servicio = servicioCon(unHilo);
+        UUID importId = servicio.importarDonantes(archivo(), mapeos());
+        esperarCompletado(servicio, importId, Duration.ofSeconds(10));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<IDDTO>> captor = ArgumentCaptor.forClass(List.class);
+        verify(incentivosImport).peticionCrearPerfilesEnLote(captor.capture());
+
+        List<IDDTO> lote = captor.getValue();
+        assertEquals(1, lote.size(), "una fila, un perfil en el lote");
+        assertEquals("Ana Navarro", lote.get(0).getNombreUsuario());
+        assertEquals("DONANTE", lote.get(0).getRole());
+      } finally {
+        unHilo.shutdownNow();
+      }
+    }
+
+    private ReporteImportacionDTO esperarCompletado(DonanteService servicio, UUID importId,
+                                                    Duration timeout) throws InterruptedException {
+      long limite = System.nanoTime() + timeout.toNanos();
+      ReporteImportacionDTO ultimo = null;
+      while (System.nanoTime() < limite) {
+        ultimo = servicio.obtenerReporteImportacion(importId);
+        if ("COMPLETADO".equals(ultimo.getEstado())) {
+          return ultimo;
+        }
+        Thread.sleep(20);
+      }
+      return fail("El reporte quedó en " + (ultimo == null ? "?" : ultimo.getEstado()));
+    }
+
+    private static void esperar(CountDownLatch latch) {
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+
+  }
+
+
+  @Test
+  @DisplayName("revisarActividades debe ser @Transactional")
+  void revisarActividadesEsTransactional() throws NoSuchMethodException {
+    Method method = DonanteService.class.getMethod("revisarActividades");
+    assertTrue(method.isAnnotationPresent(Transactional.class),
+        "revisarActividades necesita transacción para los cambios de ultimaNotificacionInactividad");
+  }
+
 }

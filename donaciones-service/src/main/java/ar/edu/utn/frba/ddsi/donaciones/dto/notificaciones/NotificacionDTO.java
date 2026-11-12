@@ -13,6 +13,7 @@ public class NotificacionDTO {
   private String direccionDeContacto;
   private String cuerpoMensaje;
   private String asuntoMensaje;
+  private String urlMapa;
 
   public NotificacionDTO(
       String medioDeContacto,

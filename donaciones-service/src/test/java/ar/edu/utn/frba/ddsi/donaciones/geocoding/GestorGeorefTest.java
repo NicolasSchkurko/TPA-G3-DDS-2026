@@ -8,7 +8,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Pais;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Provincia;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorGeoref;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.DireccionJpaRepository;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDirecciones;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -236,7 +236,7 @@ class GestorGeorefTest {
     @Test
     @DisplayName("Un fallo de Georef no consume intentos: el cron lo reintenta al día siguiente")
     void falloDeGeorefNoConsumeIntentos() {
-        DireccionJpaRepository repositorio = mock(DireccionJpaRepository.class);
+        RepositorioDeDirecciones repositorio = mock(RepositorioDeDirecciones.class);
         GestorGeoref conRepositorio = gestorConRepositorio(repositorio, true);
 
         Direccion actual = direccionPersistida();
@@ -253,7 +253,7 @@ class GestorGeorefTest {
     @Test
     @DisplayName("Una dirección sin resultado consume un intento y respeta el backoff")
     void sinResultadoConsumeIntento() {
-        DireccionJpaRepository repositorio = mock(DireccionJpaRepository.class);
+        RepositorioDeDirecciones repositorio = mock(RepositorioDeDirecciones.class);
         GestorGeoref conRepositorio = gestorConRepositorio(repositorio, true);
 
         Direccion actual = direccionPersistida();
@@ -270,7 +270,7 @@ class GestorGeorefTest {
     @Test
     @DisplayName("Guarda las coordenadas resueltas y resetea los intentos")
     void guardaCoordenadasResueltas() {
-        DireccionJpaRepository repositorio = mock(DireccionJpaRepository.class);
+        RepositorioDeDirecciones repositorio = mock(RepositorioDeDirecciones.class);
         GestorGeoref conRepositorio = gestorConRepositorio(repositorio, true);
 
         Direccion actual = direccionPersistida();
@@ -291,7 +291,7 @@ class GestorGeorefTest {
     @Test
     @DisplayName("No pisa coordenadas que otra instancia ya había guardado")
     void noPisaCoordenadasDeOtraInstancia() {
-        DireccionJpaRepository repositorio = mock(DireccionJpaRepository.class);
+        RepositorioDeDirecciones repositorio = mock(RepositorioDeDirecciones.class);
         GestorGeoref conRepositorio = gestorConRepositorio(repositorio, true);
 
         Direccion actual = direccionPersistida();
@@ -312,7 +312,7 @@ class GestorGeorefTest {
     @Test
     @DisplayName("Con la integración apagada no escribe intentos")
     void apagadoNoGuardaIntentos() {
-        DireccionJpaRepository repositorio = mock(DireccionJpaRepository.class);
+        RepositorioDeDirecciones repositorio = mock(RepositorioDeDirecciones.class);
         GestorGeoref apagado = gestorConRepositorio(repositorio, false);
 
         apagado.guardarResultados(List.of(direccionPersistida()), true);
@@ -320,7 +320,7 @@ class GestorGeorefTest {
         verifyNoInteractions(repositorio);
     }
 
-    private GestorGeoref gestorConRepositorio(DireccionJpaRepository repositorio, boolean habilitado) {
+    private GestorGeoref gestorConRepositorio(RepositorioDeDirecciones repositorio, boolean habilitado) {
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         return new GestorGeoref(georef, repositorio, transactionManager, habilitado);

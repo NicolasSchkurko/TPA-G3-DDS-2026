@@ -23,7 +23,7 @@ public class ResultadoMatchmaking {
   @Id
   private UUID id = UUID.randomUUID();
 
-  // ManyToOne (no OneToOne): la Donacion vive en su propio repositorio (RepositorioDonaciones).
+  // ManyToOne (no OneToOne): la Donacion vive en su propio repositorio (RepositorioDeDonaciones).
   // Sin cascade REMOVE: eliminar el resultado de matchmaking no debe borrar la Donacion asociada.
   @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @JoinColumn(name = "donacion_id")

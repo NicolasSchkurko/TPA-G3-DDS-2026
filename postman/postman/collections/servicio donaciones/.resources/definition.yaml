@@ -11,7 +11,7 @@ description: |-
   Ojo con 'Cambiar estado de donacion' (si se usa suelta, fuera del flujo): GestorAsignaciones.parseEstado() solo acepta EN_DEPOSITO, PENDIENTE_ASIGNACION, ASIGNADO, ENTREGADO y VENCIDO como string valido, aunque el enum Estado tambien tiene EN_TRASLADO -- mandar ese valor tira 400.
 variables:
   baseUrl: http://localhost:8084
-  adminId: ""
+  adminId: "123e4567-e89b-12d3-a456-426614174000"
   donanteId: ""
   donanteNombre: ""
   entidadId: ""

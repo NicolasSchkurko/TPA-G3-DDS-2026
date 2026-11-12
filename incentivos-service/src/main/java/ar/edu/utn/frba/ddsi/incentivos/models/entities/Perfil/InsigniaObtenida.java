@@ -4,12 +4,13 @@ import ar.edu.utn.frba.ddsi.incentivos.models.entities.Insignia.Insignia;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Index;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Table;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -23,12 +24,16 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_insignia_obtenida_insignia", columnList = "insignia_id"),
-        @Index(name = "idx_insignia_obtenida_perfil_fecha",
-                columnList = "perfil_id, fecha_obtencion"),
-        @Index(name = "idx_insignia_obtenida_fecha", columnList = "fecha_obtencion")
-})
+@Table(
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_insignia_obtenida_perfil_insignia",
+                columnNames = {"perfil_id", "insignia_id"}),
+        indexes = {
+                @Index(name = "idx_insignia_obtenida_insignia", columnList = "insignia_id"),
+                @Index(name = "idx_insignia_obtenida_perfil_fecha",
+                        columnList = "perfil_id, fecha_obtencion"),
+                @Index(name = "idx_insignia_obtenida_fecha", columnList = "fecha_obtencion")
+        })
 @NoArgsConstructor
 public class InsigniaObtenida {
 
@@ -68,12 +73,23 @@ public class InsigniaObtenida {
         if (!(otro instanceof InsigniaObtenida otra)) {
             return false;
         }
-        return Objects.equals(perfil, otra.perfil)
+        return esMismoPerfil(perfil, otra.perfil)
                 && Objects.equals(insignia, otra.insignia);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(perfil, insignia);
+        return Objects.hash(perfil == null ? null : perfil.getIdUsuario(), insignia);
+    }
+
+    /** Compara por id para tolerar que Hibernate entregue el back-reference como proxy. */
+    private static boolean esMismoPerfil(Perfil una, Perfil otra) {
+        if (una == null || otra == null) {
+            return false;
+        }
+        if (una.getIdUsuario() == null || otra.getIdUsuario() == null) {
+            return una == otra;
+        }
+        return una.getIdUsuario().equals(otra.getIdUsuario());
     }
 }

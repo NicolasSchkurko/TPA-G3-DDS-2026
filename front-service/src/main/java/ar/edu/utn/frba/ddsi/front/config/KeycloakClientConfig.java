@@ -42,4 +42,5 @@ public class KeycloakClientConfig {
                 .build();
         return new InMemoryClientRegistrationRepository(registration);
     }
+
 }

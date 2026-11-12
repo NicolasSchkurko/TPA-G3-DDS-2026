@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.notificaciones.gateways;
 
-import ar.edu.utn.frba.ddsi.notificaciones.clientes.N8nClient;
-import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.clients.N8nClient;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.n8n.NotificacionPayload;
 import org.springframework.stereotype.Service;
 
 @Service

@@ -34,6 +34,11 @@ public class RealizarDonacionController {
     @GetMapping("/realizar-donacion")
     public String mostrarFormulario(Authentication authentication,
                                     Model model) {
+        if (!tieneRolDonante(authentication)) {
+            model.addAttribute("error", "Tu cuenta no tiene el rol de donante.");
+            model.addAttribute("mostrarRegistro", true);
+            return "donacion-perfil-error";
+        }
         try {
             Optional<PersonaDonanteDTO> donante = obtenerPerfilDonante(authentication, model);
             if (donante.isEmpty()) {
@@ -137,6 +142,11 @@ public class RealizarDonacionController {
             return Optional.empty();
         }
         return Optional.of(donantes.get(0));
+    }
+
+    private static boolean tieneRolDonante(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(autoridad -> "ROLE_DONANTE".equals(autoridad.getAuthority()));
     }
 
     private static String obtenerCorreo(Authentication authentication) {

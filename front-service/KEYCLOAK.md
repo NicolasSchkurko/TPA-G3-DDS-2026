@@ -28,7 +28,7 @@ La cuenta de consola inicial es `admin` / `admin-local-only`. Son credenciales l
 - El front inicia y cierra sesión con OpenID Connect usando Keycloak.
 - Spring Security convierte roles del realm en `ROLE_ADMIN`, `ROLE_DONANTE`, `ROLE_CHOFER` y `ROLE_ENTIDAD`, redirige al inicio del perfil y protege las rutas del front.
 - Las pantallas de donante, chofer y entidad son el punto de entrada visual. Las cuentas de demostración todavía no están asociadas a registros concretos de las bases de Donaciones o Logística.
-- Las APIs de los microservicios aún no validan estos tokens. Antes de exponerlas fuera de la red local hay que habilitar Resource Server y definir la autorización y propagación de identidad para cada API, manteniendo credenciales de servicio para las integraciones internas.
+- El front es el único que valida roles con Keycloak. Incentivos, Donaciones, Logística y Notificaciones no dependen de Keycloak: reciben llamadas del front o de otros servicios y las limitan con ACL de red (`IPS_INTERNAS` + `SERVICIOS_INTERNOS`).
 
 ## Registro web
 
@@ -36,6 +36,6 @@ El formulario crea la cuenta y asigna el rol en Keycloak, y luego crea el perfil
 
 Keycloak 26.8 requiere además incluir la audiencia del Admin API en el token. Por eso `front-registration` tiene el client scope `kc-admin-api` como scope predeterminado. La configuración inicial está en `docker/keycloak/realm-ddsi.json`.
 
-> Keycloak importa el archivo solo cuando todavía no existe el realm `ddsi`. En un volumen existente, los cambios del JSON no se aplican al reiniciar. En ese caso, configurar `front-registration` en la consola del realm: habilitar autenticación de cliente y Service Accounts, asignar `manage-users` y `view-realm` desde Service account roles → `realm-management`, y agregar `kc-admin-api` como client scope predeterminado.
+> Keycloak importa el archivo solo cuando todavía no existe el realm `ddsi`. En un volumen existente, los cambios del JSON no se aplican al reiniciar. En ese caso, configurar `front-registration` en la consola del realm: habilitar autenticación de cliente y Service Accounts, asignar `manage-users` y `view-realm` desde Service account roles → `realm-management`, y agregar `kc-admin-api` como client scope predeterminado. `front-service` necesita `roles` entre sus client scopes predeterminados para que el ID token traiga los roles que usa el propio front.
 
-El formulario público permite registrarse como donante o entidad beneficiaria. Las cuentas de administrador y chofer deben ser creadas por una persona administradora.
+El formulario público permite registrarse como donante o entidad beneficiaria. La opción de administrador solo aparece para una sesión con `ROLE_ADMIN`; el front es quien exige ese rol y usa el `sub` de Keycloak como `id` del `Administrador`. El primer administrador es la cuenta `admin` del realm; a partir de ahí, un administrador autenticado puede crear otros desde el formulario o desde `POST /api/admins` enviando el `sub` de Keycloak en `id`. Las cuentas de chofer deben ser creadas por una persona administradora.

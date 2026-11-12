@@ -15,12 +15,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -83,6 +85,32 @@ public class DonacionesClient {
         } catch (Exception e) {
             log.error("Error al obtener donantes desde {}: {}", baseUrl, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Estado del donante en donaciones. Un 404 se traduce a {@code false}; una falla de
+     * infraestructura a {@link Optional#empty()} para no reconciliar durante una caída.
+     */
+    public Optional<Boolean> donanteSigueActivo(UUID id) {
+        try {
+            PersonaDonanteDTO donante = restClient.get()
+                    .uri(baseUrl + "/api/personas/{id}", id)
+                    .retrieve()
+                    .body(PersonaDonanteDTO.class);
+            if (donante == null || donante.getActivo() == null) {
+                return Optional.empty();
+            }
+            return Optional.of(donante.getActivo());
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return Optional.of(false);
+            }
+            log.error("No se pudo consultar el donante {} en {}: {}", id, baseUrl, e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("No se pudo consultar el donante {} en {}: {}", id, baseUrl, e.getMessage());
+            return Optional.empty();
         }
     }
 
@@ -152,6 +180,12 @@ public class DonacionesClient {
 
     /** Devuelve el UUID del perfil creado (donante/entidad) o null si no se pudo determinar. */
     public UUID registrarUsuario(String tipoRegistro, Map<String, String> datos) {
+    public void registrarUsuario(String tipoRegistro, Map<String, String> datos) {
+        registrarUsuario(tipoRegistro, datos, null);
+    }
+
+    public void registrarUsuario(String tipoRegistro, Map<String, String> datos,
+                                 String idKeycloak) {
         if (tipoRegistro == null || tipoRegistro.isBlank()) {
             throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         }
@@ -165,6 +199,12 @@ public class DonacionesClient {
                         "genero", "tipoContacto", "valorContacto", "email");
                 payload = new LinkedHashMap<>();
                 copiarCamposAObjeto(datos, payload, "nombreAMostrar", "nombre", "apellido", "edad",
+                        "numeroDeDocumento", "genero");
+                if (idKeycloak == null || idKeycloak.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "No se pudo vincular el administrador con su cuenta de Keycloak.");
+                }
+                payload.put("id", idKeycloak);
                         "numeroDeDocumento", "genero", "email");
                 payload.put("medioDeContacto", contacto(datos));
                 endpoint = "/api/admins";

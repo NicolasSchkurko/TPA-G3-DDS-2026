@@ -115,10 +115,13 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         }
     }
 
-    /** Recalcula la racha de la misión vigente a partir del historial. No hace nada sin misión. */
+    /**
+     * Recalcula la racha de la misión vigente. Recibe solo las donaciones que progresaron y
+     * en orden ascendente; el scheduler las trae así de una sola consulta por bloque.
+     */
     public void verificarProgresoMision(List<ImpactoDonacion> donaciones) {
         if (progresoMisionActual != null) {
-            progresoMisionActual.evaluarConstancia(donaciones, LocalDateTime.now());
+            progresoMisionActual.evaluarConstanciaOrdenada(donaciones, LocalDateTime.now());
         }
     }
 
