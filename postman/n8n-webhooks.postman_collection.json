@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "n8nUrl",
-      "value": "https://n8n-production-8208.up.railway.app"
+      "value": "http://localhost:5678"
     }
   ],
   "item": [

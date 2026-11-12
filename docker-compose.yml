@@ -82,6 +82,27 @@ services:
       timeout: 5s
       retries: 12
 
+  # n8n local para los webhooks de incentivos y notificaciones. Arranca sin workflows:
+  # hay que crear y activar los webhooks `incentivos` y `notificaciones` en el editor
+  # (http://localhost:5678). Los workflows y credenciales quedan en el volumen n8n-data.
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tpa-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5678/
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
   # --- Servicios de dominio ---
   #
   # Ninguno declara `container_name` a proposito: un nombre fijo impide correr `--scale`, porque
@@ -104,9 +125,19 @@ services:
       SERVER_PORT: 8083
       # Con context-path /api, la ruta real del controller es /api/notificaciones.
       DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      # El MySQL de Compose solo crea root; el .env guarda los usuarios de una MySQL local.
+      DB_USERNAME: root
+      DB_PASSWORD: root
       IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: incentivos-service,front-service,donaciones-service
-      # Rabbit: lo define notificaciones-service/.env (Railway). El compose no lo pisa.
+      # Dentro de la red de Docker n8n se llama por su nombre de servicio; el .env apunta
+      # a localhost porque tambien sirve para correr el servicio fuera de Compose.
+      N8N_URL: http://n8n:5678/webhook/notificaciones
+      # Rabbit: el .env apunta a localhost para correr fuera; dentro de Compose es rabbitmq.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: tpa
+      RABBITMQ_PASSWORD: tpa-local
     # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
     mem_limit: 512m
     depends_on:
@@ -130,7 +161,10 @@ services:
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
+      N8N_URL: http://n8n:5678/webhook/incentivos
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: root
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -162,6 +196,8 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
       DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: root
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -265,3 +301,4 @@ volumes:
   mysql-data:
   rabbit-data:
   mongodb-data:
+  n8n-data:

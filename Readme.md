@@ -87,7 +87,7 @@ Los tests no necesitan infraestructura: los de persistencia de `incentivos-servi
 
 ## Docker Compose
 
-Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5679` y conserva su configuración en un volumen:
+Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5678` y conserva su configuración en un volumen:
 
 ```bash
 docker compose up --build
@@ -110,7 +110,7 @@ Puertos disponibles desde la máquina local:
 | Logísticas | 8086 |
 | RabbitMQ AMQP | 5672 |
 | Panel de RabbitMQ | 15672 |
-| n8n | 5679 |
+| n8n | 5678 |
 | MySQL Incentivos | 3309 |
 | MySQL Notificaciones | 3310 |
 | MySQL Donaciones | 3311 |
