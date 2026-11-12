@@ -123,6 +123,7 @@ services:
     restart: unless-stopped
 
   # --- Servicios de dominio ---
+  # Postman Desktop entra por el gateway de la red bridge; si cambia, definir POSTMAN_HOST_IP.
   #
   # Ninguno declara `container_name` a proposito: un nombre fijo impide correr `--scale`, porque
   # no se pueden crear N contenedores con el mismo nombre. Es la razon por la que el
@@ -172,7 +173,7 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
       SERVICIOS_INTERNOS: donaciones-service,front-service
       SERVER_PORT: 8082
       #no lleva context-path: las rutas ya empiezan con /api.
@@ -182,6 +183,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-ddsi_app}
       DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
+      CLIENTES_HTTP_READ_TIMEOUT_MS: ${CLIENTES_HTTP_READ_TIMEOUT_MS:-180000}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -208,7 +210,7 @@ services:
     ports:
       - "8084:8084"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
       SERVICIOS_INTERNOS: incentivos-service,front-service
       SERVER_PORT: 8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
@@ -268,7 +270,7 @@ services:
     ports:
       - "8086:8086"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
       SERVICIOS_INTERNOS: front-service
       SERVER_PORT: 8086
       RABBITMQ_HOST: rabbitmq

@@ -328,6 +328,12 @@
                                                                                      "name":  "idUsuario",
                                                                                      "value":  "={{ $json.body.idUsuario }}",
                                                                                      "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "2d64fa64-5332-4c7b-8ddb-9a9a64813aa6",
+                                                                                     "name":  "idInsignia",
+                                                                                     "value":  "={{ $json.body.idInsignia || '' }}",
+                                                                                     "type":  "string"
                                                                                  }
                                                                              ]
                                                          },
@@ -426,6 +432,12 @@
                                                                                  {
                                                                                      "id":  "46b0b1c8-a448-436b-bdee-5cfbfb92fd98",
                                                                                      "name":  "urlImagen",
+                                                                                     "value":  "={{ 'https://diumxcvdulkgbkwvlnlx.supabase.co/storage/v1/object/public/saporapo/insignias/' + ($('Edit Fields').item.json.idInsignia || $('Edit Fields').item.json.idUsuario) + '.webp' }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "e73a2fd5-b6d1-46c8-a9fc-9351c30fa21d",
+                                                                                     "name":  "urlImagenTemporal",
                                                                                      "value":  "={{ $json.generations[0].img }}",
                                                                                      "type":  "string"
                                                                                  },
@@ -467,6 +479,48 @@
                                    ],
                       "id":  "c3c17904-4b80-4fea-889f-97d71a95ade3",
                       "name":  "Edit Fields5"
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $('Edit Fields5').item.json.urlImagenTemporal }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "file",
+                                                                                           "outputPropertyName":  "data"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
+                      "position":  [
+                                       448,
+                                       -32
+                                   ],
+                      "id":  "fe57c595-bc48-4093-8c53-bc928080f176",
+                      "name":  "Descargar imagen"
+                  },
+                  {
+                      "parameters":  {
+                                         "resource":  "file",
+                                         "operation":  "upload",
+                                         "bucketName":  "saporapo",
+                                         "fileName":  "={{ 'insignias/' + ($('Edit Fields').item.json.idInsignia || $('Edit Fields').item.json.idUsuario) + '.webp' }}",
+                                         "binaryData":  true,
+                                         "binaryPropertyName":  "data",
+                                         "additionalFields":  {
+
+                                                              }
+                                     },
+                      "type":  "n8n-nodes-base.s3",
+                      "typeVersion":  1,
+                      "position":  [
+                                       704,
+                                       -32
+                                   ],
+                      "id":  "590f09f9-98e7-437b-aadd-335123a10dd5",
+                      "name":  "Subir imagen a Supabase"
                   },
                   {
                       "parameters":  {
@@ -566,7 +620,7 @@
                   {
                       "parameters":  {
                                          "respondWith":  "json",
-                                         "responseBody":  "={{ { \"urlImagen\": $json.urlImagen } }}",
+                                         "responseBody":  "={{ { \"urlImagen\": $('Edit Fields5').item.json.urlImagen } }}",
                                          "options":  {
                                                          "responseCode":  200
                                                      }
@@ -705,13 +759,35 @@
                                              "main":  [
                                                           [
                                                               {
-                                                                  "node":  "Devolver URL de imagen",
+                                                                  "node":  "Descargar imagen",
                                                                   "type":  "main",
                                                                   "index":  0
                                                               }
                                                           ]
                                                       ]
                                          },
+                        "Descargar imagen":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Subir imagen a Supabase",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                            },
+                        "Subir imagen a Supabase":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Devolver URL de imagen",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
                         "Switch2":  {
                                         "main":  [
                                                      [
