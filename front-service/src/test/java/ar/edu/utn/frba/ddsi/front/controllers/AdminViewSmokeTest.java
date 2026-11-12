@@ -99,6 +99,7 @@ class AdminViewSmokeTest {
         assertThat(incentivesPage).containsPattern(
                 "(?s)<form method=\"post\" id=\"deleteForm\" action=\"#\">\\s*"
                         + "<input type=\"hidden\" name=\"_csrf\" value=\"[^\"]+\"");
+        assertThat(incentivesPage).contains("src=\"/js/core/toast.js\"");
     }
 
     private static MockHttpSession sessionAdmin() {
