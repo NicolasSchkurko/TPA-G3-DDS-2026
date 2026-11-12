@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Genero;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.humana.Humana;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.administrador.Administrador;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,6 +24,10 @@ public class AdminDTO {
     private String genero;
     private MediosContactoDTO medioDeContacto;
     private String email;
+
+    /** Identificador inmutable de la cuenta de Keycloak. Solo se acepta al crear, nunca se expone. */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String keycloakSub;
 
     public Administrador toDomain() {
         Genero gen = (this.genero != null) ? Genero.valueOf(this.genero.toUpperCase()) : Genero.OTRO;

@@ -74,6 +74,13 @@ public class EntidadBeneficiariaService {
     public EntidadBeneficiariaDTO registrarEntidad(EntidadBeneficiariaDTO dto) {
         Ciudad ciudad = resolverCiudad(dto.getDireccion());
         EntidadBeneficiaria entidad = dto.toDomain(ciudad);
+        if (dto.getKeycloakSub() != null && !dto.getKeycloakSub().isBlank()) {
+            String sub = dto.getKeycloakSub().trim();
+            repositorioEntidadesBeneficiarias.buscarPorKeycloakSub(sub)
+                    .ifPresent(e -> { throw new IllegalArgumentException(
+                        "Esa cuenta ya está vinculada a una entidad beneficiaria. Iniciá sesión y agregá el rol desde tu cuenta."); });
+            entidad.setKeycloakSub(sub);
+        }
         gestorGeoref.geocodificarAlta(entidad.getDireccion());
         if (entidad.getPersonaJuridica() != null) repositorioPersonas.registrarPersona(entidad.getPersonaJuridica());
         registrarEntidad(entidad);

@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 public interface RepositorioDeDonaciones extends JpaRepository<Donacion, UUID> {
     List<Donacion> findByEstado(Estado estado);
 
+    List<Donacion> findByDonante_Id(UUID donanteId);
+
     @Query("SELECT d.id FROM Donacion d WHERE d.estado = :estado")
     List<UUID> findIdsByEstado(@Param("estado") Estado estado);
 
@@ -114,6 +116,14 @@ public interface RepositorioDeDonaciones extends JpaRepository<Donacion, UUID> {
     default void guardarDonaciones(List<Donacion> donaciones) { saveAll(donaciones); }
 
     default void guardar(Donacion donacion) { save(donacion); }
+
+    /** Donaciones del donante indicado (para su historial). */
+    default List<Donacion> buscarPorDonante(UUID donanteId) {
+        if (donanteId == null) {
+            return List.of();
+        }
+        return findByDonante_Id(donanteId);
+    }
 
     default Optional<Donacion> actualizar(UUID idOriginal, Donacion donacionActualizada) {
         if (existsById(idOriginal)) {

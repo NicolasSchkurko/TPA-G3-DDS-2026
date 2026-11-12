@@ -3,19 +3,20 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
+import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
 import ar.edu.utn.frba.ddsi.front.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaMapaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
-import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,12 +40,15 @@ import java.util.stream.Collectors;
 public class HomeController {
 
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    private static final String CONFLICTO_DE_PERFIL =
+            "Ese perfil ya está vinculado a otra cuenta. Iniciá sesión con la cuenta original "
+                    + "o contactá a un administrador.";
 
     private final DonacionesClient donacionesClient;
     private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
-    private final IdentidadMappingStore identidadMappingStore;
+    private final PoliticaDeReclamo politicaDeReclamo;
 
     @Value("${servicio.donaciones.url}")
     private String donacionesUrl;
@@ -58,14 +62,27 @@ public class HomeController {
     @Value("${servicio.logisticas.url}")
     private String logisticasUrl;
 
+    @Autowired
     public HomeController(DonacionesClient donacionesClient,
                           IncentivosClient incentivosClient,
                           KeycloakRegistrationClient keycloakRegistrationClient,
-                          IdentidadMappingStore identidadMappingStore) {
+                          PoliticaDeReclamo politicaDeReclamo) {
         this.donacionesClient = donacionesClient;
         this.incentivosClient = incentivosClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
-        this.identidadMappingStore = identidadMappingStore;
+        this.politicaDeReclamo = politicaDeReclamo;
+    }
+
+    /** Compatibilidad con los stubs de tests (sin landing de destacadas). */
+    public HomeController(DonacionesClient donacionesClient,
+                          KeycloakRegistrationClient keycloakRegistrationClient,
+                          PoliticaDeReclamo politicaDeReclamo) {
+        this(donacionesClient, null, keycloakRegistrationClient, politicaDeReclamo);
+    }
+
+    /** Compatibilidad con los stubs de tests (verificación de email desactivada). */
+    public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
+        this(donacionesClient, null, keycloakRegistrationClient, new PoliticaDeReclamo(false));
     }
 
     @GetMapping("/login")
@@ -84,6 +101,11 @@ public class HomeController {
     @GetMapping("/register")
     public String register() {
         return "register";
+    }
+
+    /** Compatibilidad con tests y llamadas internas sin autenticación. */
+    public String register(Map<String, String> form, Model model) {
+        return register(form, model, null);
     }
 
     @PostMapping("/register")
@@ -135,19 +157,29 @@ public class HomeController {
             //    lugar de duplicarlo; si no, se crea uno nuevo.
             try {
                 IdentidadDTO identidadPrevia = donacionesClient.buscarIdentidadPorEmail(email);
-                UUID perfilId = perfilPorRol(identidadPrevia, role);
+                java.util.UUID perfilId = perfilPorRol(identidadPrevia, role);
                 if (perfilId == null) {
                     Map<String, String> datos = new LinkedHashMap<>(form);
                     datos.put("email", email);
                     datos.put("username", username);
+                    if (userId != null) {
+                        datos.put("keycloakSub", userId);
+                    }
                     perfilId = donacionesClient.registrarUsuario(form.get("tipoRegistro"), datos, userId);
-                }
-                if (perfilId != null) {
+                } else if (!politicaDeReclamo.puedeReclamar(identidadPrevia.isVinculada(), false)) {
+                    // El perfil ya está reclamado por otra cuenta: no se puede apropiar.
+                    eliminarCuentaSiCorresponde(userId);
+                    model.addAttribute("error", CONFLICTO_DE_PERFIL);
+                    return "register";
+                } else if (userId != null) {
+                    // Perfil huérfano: lo vinculamos con esta cuenta de Keycloak.
                     try {
-                        identidadMappingStore.guardar(username, role, perfilId);
+                        donacionesClient.vincularIdentidad(userId, role, perfilId);
                     } catch (Exception mappingError) {
-                        // El alta ya quedó persistida; el vínculo se puede rehacer desde "Vincular mi perfil".
-                        log.warn("No se pudo guardar el vínculo de identidad para {} ({}): {}", username, role, mappingError.getMessage());
+                        eliminarCuentaSiCorresponde(userId);
+                        log.warn("No se pudo vincular el perfil existente de {} ({}): {}", username, role, mappingError.getMessage());
+                        model.addAttribute("error", CONFLICTO_DE_PERFIL);
+                        return "register";
                     }
                 }
             } catch (IllegalArgumentException e) {
@@ -170,19 +202,30 @@ public class HomeController {
             try {
                 Set<String> roles = new LinkedHashSet<>();
                 roles.add(role);
-                IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+                ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO identidad = userId != null
+                        ? donacionesClient.buscarIdentidadPorSub(userId) : null;
+                if (identidad == null) {
+                    // El fallback por email solo puede traer un perfil huérfano:
+                    // nunca se heredan roles de un perfil ya reclamado por otra cuenta.
+                    IdentidadDTO porEmail = donacionesClient.buscarIdentidadPorEmail(email);
+                    if (porEmail != null && politicaDeReclamo.puedeReclamar(porEmail.isVinculada(), false)) {
+                        identidad = porEmail;
+                    }
+                }
                 if (identidad != null) {
                     if (identidad.getRoles() != null) {
                         roles.addAll(identidad.getRoles());
                     }
-                    if (identidad.getEntidadId() != null) {
-                        identidadMappingStore.guardar(username, "ENTIDAD", identidad.getEntidadId());
-                    }
-                    if (identidad.getDonanteId() != null) {
-                        identidadMappingStore.guardar(username, "DONANTE", identidad.getDonanteId());
-                    }
-                    if (identidad.getAdminId() != null) {
-                        identidadMappingStore.guardar(username, "ADMIN", identidad.getAdminId());
+                    if (userId != null) {
+                        if (identidad.getEntidadId() != null) {
+                            vincularSilencioso(userId, "ENTIDAD", identidad.getEntidadId(), username);
+                        }
+                        if (identidad.getDonanteId() != null) {
+                            vincularSilencioso(userId, "DONANTE", identidad.getDonanteId(), username);
+                        }
+                        if (identidad.getAdminId() != null) {
+                            vincularSilencioso(userId, "ADMIN", identidad.getAdminId(), username);
+                        }
                     }
                 }
                 roles.addAll(keycloakRegistrationClient.rolesDeUsuariosConEmail(email));
@@ -206,6 +249,8 @@ public class HomeController {
         }
         return "register";
     }
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private static String normalizarEmail(String email) {
         if (email == null) return null;
@@ -275,7 +320,7 @@ public class HomeController {
     }
 
     /** Perfil de dominio ya vinculado al email para el rol indicado, o null si no existe. */
-    private static UUID perfilPorRol(IdentidadDTO identidad, String rol) {
+    private static java.util.UUID perfilPorRol(IdentidadDTO identidad, String rol) {
         if (identidad == null || rol == null) return null;
         return switch (rol) {
             case "DONANTE" -> identidad.getDonanteId();
@@ -294,6 +339,15 @@ public class HomeController {
         };
     }
 
+    /** Vincula el perfil con la cuenta de Keycloak sin romper el alta si falla. */
+    private void vincularSilencioso(String userId, String rol, java.util.UUID perfilId, String username) {
+        try {
+            donacionesClient.vincularIdentidad(userId, rol, perfilId);
+        } catch (Exception e) {
+            log.warn("No se pudo vincular el perfil de {} ({}): {}", username, rol, e.getMessage());
+        }
+    }
+
     private void eliminarCuentaSiCorresponde(String userId) {
         if (userId == null) return;
         try {
@@ -301,6 +355,12 @@ public class HomeController {
         } catch (Exception e) {
             log.error("No se pudo revertir el alta de la cuenta de Keycloak {}", userId, e);
         }
+    }
+
+    /** Términos y condiciones y política de privacidad. Página pública. */
+    @GetMapping("/terminos")
+    public String terminos() {
+        return "terminos";
     }
 
     /**
@@ -314,7 +374,9 @@ public class HomeController {
                 && authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_DONANTE"))
                 && !esAdmin(authentication);
-        List<DonacionDestacadaDTO> destacadas = incentivosClient.obtenerDonacionesDestacadas();
+        List<DonacionDestacadaDTO> destacadas = incentivosClient != null
+                ? incentivosClient.obtenerDonacionesDestacadas()
+                : Collections.emptyList();
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
         List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
         model.addAttribute("esDonante", esDonante);

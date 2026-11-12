@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import java.util.Optional;
 
 /**
@@ -29,6 +30,11 @@ public interface RepositorioDeDonantes extends JpaRepository<Donante, UUID> {
       + ")")
   List<Donante> buscarPorNombreActivo(@Param("nombre") String nombre);
 
+  Page<Donante> findByActivoTrue(Pageable pageable);
+
+  /** Donante activo vinculado a la cuenta de Keycloak indicada. */
+  Optional<Donante> findByKeycloakSubAndActivoTrue(String keycloakSub);
+
   @Query("""
       SELECT DISTINCT d FROM Donante d
       JOIN d.persona p
@@ -38,9 +44,8 @@ public interface RepositorioDeDonantes extends JpaRepository<Donante, UUID> {
         AND LOWER(TREAT(m AS Mail).direccionMail) = LOWER(:email)
         AND d.activo = true
       """)
-  List<Donante> buscarPorEmailContacto(@Param("email") String email);
+  List<Donante> buscarPorEmailContactoList(@Param("email") String email);
 
-  Page<Donante> findByActivoTrue(Pageable pageable);
 
   /**
    * Donantes activos cuya última donación es anterior a {@code limite} y que no recibieron
@@ -71,6 +76,23 @@ public interface RepositorioDeDonantes extends JpaRepository<Donante, UUID> {
     default Page<Donante> obtenerTodosActivos(Pageable pageable) { return findByActivoTrue(pageable); }
 
     default Optional<Donante> buscarPorId(UUID id) { return findById(id); }
+
+    /** Donante activo vinculado a la cuenta de Keycloak indicada. */
+    default Optional<Donante> buscarPorKeycloakSub(String keycloakSub) {
+        if (keycloakSub == null || keycloakSub.isBlank()) {
+            return Optional.empty();
+        }
+        return findByKeycloakSubAndActivoTrue(keycloakSub.trim());
+    }
+
+    /** Donante activo cuyo persona tiene ese mail como medio de contacto (el primero si hay duplicados). */
+    default Optional<Donante> buscarPorEmailContacto(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        List<Donante> resultados = buscarPorEmailContactoList(email.trim().toLowerCase());
+        return resultados.isEmpty() ? Optional.empty() : Optional.of(resultados.get(0));
+    }
 
     default Optional<Donante> buscarPorNombre(String nombre) {
         if (nombre == null || nombre.isBlank()) {

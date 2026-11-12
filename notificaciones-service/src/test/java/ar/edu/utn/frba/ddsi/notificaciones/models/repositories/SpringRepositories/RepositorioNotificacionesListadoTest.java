@@ -136,4 +136,52 @@ class RepositorioNotificacionesListadoTest {
                         .noneMatch(sql -> sql.toLowerCase().contains("from mensajes")),
                 "el EntityGraph de findAll tiene que evitar el N+1: " + SqlInspector.SENTENCIAS);
     }
+
+    private Notificacion guardarPara(String destinatario, EstadoNotificacion estado, String asunto) {
+        Notificacion notificacion = new Notificacion(
+                destinatario, "email", new Mensaje(asunto, "Cuerpo"));
+        if (estado == EstadoNotificacion.ENVIADA) {
+            notificacion.marcarEnviada();
+        }
+        return repositorio.saveAndFlush(notificacion);
+    }
+
+    @Test
+    void listaPorDestinatarioFiltraPorContactoYDescartaALosDemas() {
+        guardarPara("ana@test.com", EstadoNotificacion.PENDIENTE, "A");
+        guardarPara("ANA@test.com", EstadoNotificacion.PENDIENTE, "B");
+        guardarPara("otra@test.com", EstadoNotificacion.PENDIENTE, "C");
+
+        Page<Notificacion> resultado = repositorio.findByDireccionDeContactoIgnoreCase(
+                "ana@test.com", PageRequest.of(0, 10, Sort.by("fechaCreacion")));
+
+        assertEquals(2, resultado.getTotalElements());
+    }
+
+    @Test
+    void listaPorDestinatarioConEstadoFiltraAdemasPorEstado() {
+        guardarPara("ana@test.com", EstadoNotificacion.ENVIADA, "Enviada");
+        guardarPara("ana@test.com", EstadoNotificacion.PENDIENTE, "Pendiente");
+
+        Page<Notificacion> resultado = repositorio.findByDireccionDeContactoIgnoreCaseAndEstado(
+                "ana@test.com", EstadoNotificacion.ENVIADA,
+                PageRequest.of(0, 10, Sort.by("fechaCreacion")));
+
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals("Enviada", resultado.getContent().get(0).getMensaje().getAsunto());
+    }
+
+    @Test
+    void elListadoPorDestinatarioNoHaceSelectSeparadoDeMensajes() {
+        guardarPara("ana@test.com", EstadoNotificacion.PENDIENTE, "A");
+        entityManager.clear();
+        SqlInspector.SENTENCIAS.clear();
+
+        repositorio.findByDireccionDeContactoIgnoreCase(
+                "ana@test.com", PageRequest.of(0, 10, Sort.by("fechaCreacion")));
+
+        assertTrue(SqlInspector.SENTENCIAS.stream()
+                        .noneMatch(sql -> sql.toLowerCase().contains("from mensajes")),
+                "el EntityGraph tiene que traer el mensaje en el join: " + SqlInspector.SENTENCIAS);
+    }
 }

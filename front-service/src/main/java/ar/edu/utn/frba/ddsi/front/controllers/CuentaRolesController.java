@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
-import ar.edu.utn.frba.ddsi.front.services.IdentidadMappingStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -49,14 +48,11 @@ public class CuentaRolesController {
 
     private final DonacionesClient donacionesClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
-    private final IdentidadMappingStore identidadMappingStore;
 
     public CuentaRolesController(DonacionesClient donacionesClient,
-                                 KeycloakRegistrationClient keycloakRegistrationClient,
-                                 IdentidadMappingStore identidadMappingStore) {
+                                 KeycloakRegistrationClient keycloakRegistrationClient) {
         this.donacionesClient = donacionesClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
-        this.identidadMappingStore = identidadMappingStore;
     }
 
     @GetMapping
@@ -70,7 +66,10 @@ public class CuentaRolesController {
         model.addAttribute("rolesActuales", actuales);
         model.addAttribute("faltantes", faltantes);
 
-        IdentidadDTO identidad = email != null ? donacionesClient.buscarIdentidadPorEmail(email) : null;
+        String userId = userIdDe(authentication);
+        IdentidadDTO identidad = userId != null
+                ? donacionesClient.buscarIdentidadPorSub(userId)
+                : (email != null ? donacionesClient.buscarIdentidadPorEmail(email) : null);
         model.addAttribute("perfilDonante", identidad != null && identidad.getDonanteId() != null);
         model.addAttribute("perfilEntidad", identidad != null && identidad.getEntidadId() != null);
         return "cuenta/roles";
@@ -106,21 +105,27 @@ public class CuentaRolesController {
         String username = authentication != null ? authentication.getName() : null;
 
         try {
-            // Reutilizamos el perfil del rol si ya existe uno para este email; si no, lo creamos.
-            IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+            // Reutilizamos el perfil del rol si ya existe uno para esta cuenta de Keycloak;
+            // si no hay, probamos por email (fallback transitorio); si no está, lo creamos.
+            String userIdActual = userIdDe(authentication);
+            IdentidadDTO identidad = userIdActual != null
+                    ? donacionesClient.buscarIdentidadPorSub(userIdActual) : null;
+            if (identidad == null) {
+                identidad = donacionesClient.buscarIdentidadPorEmail(email);
+            }
             java.util.UUID perfilId = perfilPorRol(identidad, solicitado);
             if (perfilId == null) {
                 Map<String, String> datos = new java.util.LinkedHashMap<>(form);
                 datos.put("email", email);
+                if (userIdActual != null) {
+                    datos.put("keycloakSub", userIdActual);
+                }
                 perfilId = donacionesClient.registrarUsuario(solicitado, datos);
-            }
-
-            if (username != null && perfilId != null) {
+            } else if (userIdActual != null) {
                 try {
-                    identidadMappingStore.guardar(username, solicitado, perfilId);
+                    donacionesClient.vincularIdentidad(userIdActual, solicitado, perfilId);
                 } catch (Exception mappingError) {
-                    log.warn("No se pudo guardar el vínculo de identidad para {} ({}): {}",
-                            username, solicitado, mappingError.getMessage());
+                    log.warn("No se pudo vincular el perfil de {} ({}): {}", username, solicitado, mappingError.getMessage());
                 }
             }
 
@@ -172,7 +177,13 @@ public class CuentaRolesController {
         }
         authorities.add(new SimpleGrantedAuthority("ROLE_" + nuevoRol));
         try {
-            IdentidadDTO identidad = donacionesClient.buscarIdentidadPorEmail(email);
+            String userId = userIdDe(authentication);
+            IdentidadDTO identidad = userId != null
+                    ? donacionesClient.buscarIdentidadPorSub(userId)
+                    : donacionesClient.buscarIdentidadPorEmail(email);
+            if (identidad == null) {
+                identidad = donacionesClient.buscarIdentidadPorEmail(email);
+            }
             if (identidad != null && identidad.getRoles() != null) {
                 for (String role : identidad.getRoles()) {
                     if (role != null && !role.isBlank()) {

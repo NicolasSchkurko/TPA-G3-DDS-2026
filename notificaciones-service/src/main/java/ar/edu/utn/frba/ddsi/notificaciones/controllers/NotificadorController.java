@@ -100,7 +100,7 @@ public class NotificadorController {
     }
 
     @Operation(summary = "Listar notificaciones paginadas, con filtro opcional por estado")
-    @GetMapping
+    @GetMapping(params = "!destinatario")
     public ResponseEntity<Page<NotificacionDTO>> listarNotificaciones(
             @ParameterObject @ModelAttribute NotificacionFiltroRequest filtros,
             @PageableDefault(page = 0, size = 10, sort = "fechaCreacion",

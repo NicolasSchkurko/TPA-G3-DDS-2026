@@ -28,6 +28,16 @@ public interface RepositorioNotificaciones extends JpaRepository<Notificacion, U
     @EntityGraph(attributePaths = "mensaje")
     Page<Notificacion> findByEstado(EstadoNotificacion estado, Pageable pageable);
 
+    /** Notificaciones de un destinatario, más recientes primero (en bandejas de avisos). */
+    @EntityGraph(attributePaths = "mensaje")
+    Page<Notificacion> findByDireccionDeContactoIgnoreCase(String direccionDeContacto, Pageable pageable);
+
+    /** Notificaciones de un destinatario en un estado dado. */
+    @EntityGraph(attributePaths = "mensaje")
+    Page<Notificacion> findByDireccionDeContactoIgnoreCaseAndEstado(String direccionDeContacto,
+                                                                    EstadoNotificacion estado,
+                                                                    Pageable pageable);
+
     @Query(value = "select n from Notificacion n where (:estado is null or n.estado = :estado)",
             countQuery = "select count(n) from Notificacion n where (:estado is null or n.estado = :estado)")
     @EntityGraph(attributePaths = "mensaje")

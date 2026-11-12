@@ -239,6 +239,31 @@ class ConsumidorNotificacionesTest {
         @Override public void deleteAll() {}
         @Override public List<Notificacion> findAll(Sort sort) { return null; }
         @Override public Page<Notificacion> findAll(Pageable pageable) { return null; }
+        @Override
+        public Page<Notificacion> findByDireccionDeContactoIgnoreCase(String direccionDeContacto, Pageable pageable) {
+            return filtrar(direccionDeContacto, null, pageable);
+        }
+
+        @Override
+        public Page<Notificacion> findByDireccionDeContactoIgnoreCaseAndEstado(String direccionDeContacto,
+                                                                               EstadoNotificacion estado,
+                                                                               Pageable pageable) {
+            return filtrar(direccionDeContacto, estado, pageable);
+        }
+
+        private Page<Notificacion> filtrar(String direccionDeContacto, EstadoNotificacion estado, Pageable pageable) {
+            List<Notificacion> filtradas = tabla.values().stream()
+                    .filter(n -> n.getDireccionDeContacto() != null
+                            && n.getDireccionDeContacto().equalsIgnoreCase(direccionDeContacto))
+                    .filter(n -> estado == null || n.getEstado() == estado)
+                    .sorted(java.util.Comparator.comparing(Notificacion::getFechaCreacion,
+                            java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                    .toList();
+            int from = (int) Math.min(pageable.getOffset(), filtradas.size());
+            int to = Math.min(from + pageable.getPageSize(), filtradas.size());
+            return new org.springframework.data.domain.PageImpl<>(filtradas.subList(from, to), pageable, filtradas.size());
+        }
+
         @Override public Page<Notificacion> findByEstado(
                 EstadoNotificacion estado, Pageable pageable) { return Page.empty(pageable); }
         @Override public Page<Notificacion> buscar(

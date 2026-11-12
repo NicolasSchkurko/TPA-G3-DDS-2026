@@ -101,6 +101,7 @@ public class DonacionService {
             .map(DonacionDTO::from).collect(Collectors.toList());
   }
 
+  @Transactional(readOnly = true)
   public Page<DonacionDTO> obtenerTodas(Pageable pageable) {
     return repositorioDonaciones.obtenerTodos(pageable).map(DonacionDTO::from);
   }

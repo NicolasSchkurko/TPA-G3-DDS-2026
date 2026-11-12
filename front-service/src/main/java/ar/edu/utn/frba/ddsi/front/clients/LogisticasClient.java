@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,18 +27,6 @@ public class LogisticasClient {
                             @Value("${servicio.logisticas.url}") String baseUrl) {
         this.restClient = restClient;
         this.baseUrl = baseUrl;
-    }
-
-    public com.fasterxml.jackson.databind.JsonNode obtenerRuta(UUID idRuta) {
-        try {
-            return restClient.get()
-                    .uri(baseUrl + "/rutas/{id}", idRuta)
-                    .retrieve()
-                    .body(com.fasterxml.jackson.databind.JsonNode.class);
-        } catch (Exception e) {
-            log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
-            return null;
-        }
     }
 
     /** Ítems de entrega del depósito. Ojo: es un listado global; filtrar por entidadDestino en el front. */
@@ -92,6 +81,19 @@ public class LogisticasClient {
         } catch (Exception e) {
             log.error("Error al obtener rutas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
+        }
+    }
+
+    /** Detalle de una ruta (para el mapa público de seguimiento por token/id). */
+    public JsonNode obtenerRuta(UUID idRuta) {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/rutas/{id}", idRuta)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (Exception e) {
+            log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
+            return null;
         }
     }
 }

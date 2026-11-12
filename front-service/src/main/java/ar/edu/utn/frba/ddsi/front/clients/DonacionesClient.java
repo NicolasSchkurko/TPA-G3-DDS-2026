@@ -29,6 +29,10 @@ public class DonacionesClient {
 
     private static final Logger log = LoggerFactory.getLogger(DonacionesClient.class);
 
+    /** Token compartido con donaciones-service para los endpoints internos de identidad. */
+    @Value("${INTERNAL_TOKEN:}")
+    private String internalToken;
+
     private final RestClient restClient;
     private final String baseUrl;
 
@@ -266,8 +270,13 @@ public class DonacionesClient {
             default -> throw new IllegalArgumentException("Seleccioná un tipo de registro válido.");
         }
 
+        String keycloakSub = datos.get("keycloakSub");
+        if (keycloakSub != null && !keycloakSub.isBlank()) {
+            payload.put("keycloakSub", keycloakSub.trim());
+        }
+
         try {
-            String body = restClient.post()
+               String body = restClient.post()
                     .uri(baseUrl + endpoint)
                     .body(payload)
                     .retrieve()
@@ -293,14 +302,54 @@ public class DonacionesClient {
         }
     }
 
+    private RestClient.RequestHeadersSpec<?> conToken(RestClient.RequestHeadersSpec<?> spec) {
+        if (internalToken != null && !internalToken.isBlank()) {
+            spec.header("X-Internal-Token", internalToken.trim());
+        }
+        return spec;
+    }
+
+    /** Perfiles de donante/entidad/admin vinculados a una cuenta de Keycloak; null si no hay. */
+    public IdentidadDTO buscarIdentidadPorSub(String sub) {
+        if (sub == null || sub.isBlank()) {
+            return null;
+        }
+        try {
+            return (IdentidadDTO) conToken(restClient.get()
+                    .uri(baseUrl + "/api/identidades/por-sub/{sub}", sub.trim()))
+                    .retrieve()
+                    .body(IdentidadDTO.class);
+        } catch (Exception e) {
+            log.warn("No se pudo resolver la identidad por sub: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** Vincula una cuenta de Keycloak con un perfil. Lanza excepción si el vínculo falla. */
+    public void vincularIdentidad(String sub, String rol, UUID perfilId) {
+        if (sub == null || sub.isBlank() || rol == null || rol.isBlank() || perfilId == null) {
+            throw new IllegalArgumentException("sub, rol y perfilId son obligatorios.");
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sub", sub.trim());
+        body.put("rol", rol.trim().toUpperCase());
+        body.put("perfilId", perfilId);
+        conToken(restClient.post()
+                        .uri(baseUrl + "/api/identidades/vincular")
+                        .header("Content-Type", "application/json")
+                        .body(body))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     /** Perfiles de donante/entidad/admin vinculados a un email; null si Donaciones no responde. */
     public IdentidadDTO buscarIdentidadPorEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
         }
         try {
-            return restClient.get()
-                    .uri(baseUrl + "/api/identidades/por-email?email={email}", email.trim().toLowerCase())
+            return (IdentidadDTO) conToken(restClient.get()
+                    .uri(baseUrl + "/api/identidades/por-email?email={email}", email.trim().toLowerCase()))
                     .retrieve()
                     .body(IdentidadDTO.class);
         } catch (Exception e) {

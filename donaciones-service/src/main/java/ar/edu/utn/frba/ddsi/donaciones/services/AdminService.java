@@ -45,6 +45,13 @@ public class AdminService {
                     "El administrador necesita el id de su cuenta de Keycloak.");
         }
         Administrador nuevoAdmin = dto.toDomain();
+        if (dto.getKeycloakSub() != null && !dto.getKeycloakSub().isBlank()) {
+            String sub = dto.getKeycloakSub().trim();
+            repositorioAdministradores.buscarPorKeycloakSub(sub)
+                    .ifPresent(a -> { throw new IllegalArgumentException(
+                        "Esa cuenta ya está vinculada a un administrador. Iniciá sesión y agregá el rol desde tu cuenta."); });
+            nuevoAdmin.setKeycloakSub(sub);
+        }
         // La Humana vive en su propio repositorio (RepositorioDePersonas), igual que Juridica
         // para EntidadBeneficiaria: se registra explícitamente antes de guardar el Administrador.
         if (nuevoAdmin.getHumano() != null) repositorioPersonas.registrarPersona(nuevoAdmin.getHumano());
