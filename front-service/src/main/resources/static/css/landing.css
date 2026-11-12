@@ -53,6 +53,14 @@ body.landing {
     text-rendering: optimizeLegibility;
 }
 
+body.landing > .app-header {
+    flex: 0 0 var(--header-h);
+}
+
+body.landing > .app-footer {
+    flex: 0 0 auto;
+}
+
 body.landing a {
     text-decoration: none;
 }
@@ -90,6 +98,13 @@ body.landing a {
     min-height: 0;
     display: grid;
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+}
+
+body.landing .header-login,
+body.landing .header-register {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 12.5px;
 }
 
 /* ---------------- Barra lateral ---------------- */

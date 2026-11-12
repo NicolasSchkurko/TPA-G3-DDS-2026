@@ -10,7 +10,7 @@
           content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y pendientes en la Ciudad de Buenos Aires.">
 
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
-    <link rel="stylesheet" href="/css/landing.css?v=4" th:href="@{/css/landing.css(v=4)}">
+    <link rel="stylesheet" href="/css/landing.css?v=5" th:href="@{/css/landing.css(v=5)}">
 </head>
 <body class="landing">
 
@@ -152,8 +152,10 @@
                     <article class="gallery-card" th:each="entrega : ${galeriaEntregas}">
                         <th:block th:if="${entrega.fotoComprobante != null and !#strings.isEmpty(entrega.fotoComprobante)}">
                             <img class="gallery-photo"
-                                 th:src="${entrega.fotoComprobante}"
-                                 alt="Foto de entrega confirmada"
+                                 th:src="${entrega.fotoComprobante == 'https://example.com/comprobante-demo.jpg'
+                                     ? '/images/donaciones/ejemplo.png' : entrega.fotoComprobante}"
+                                 th:alt="${entrega.fotoComprobante == 'https://example.com/comprobante-demo.jpg'
+                                     ? 'Imagen de ejemplo de donación' : 'Foto de entrega confirmada'}"
                                  loading="lazy"
                                  decoding="async">
                         </th:block>
