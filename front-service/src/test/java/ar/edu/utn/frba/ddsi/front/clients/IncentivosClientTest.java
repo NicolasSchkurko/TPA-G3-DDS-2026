@@ -1,14 +1,20 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -59,5 +65,23 @@ class IncentivosClientTest {
                 .andRespond(withServerError());
 
         assertThat(client.obtenerDonacionesDestacadas()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("actualiza una misión con el ID del administrador")
+    void actualizaMision() {
+        UUID idAdmin = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+        UUID idMision = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+        var mision = new IncentivosAdminDTOs.Mision();
+        mision.setNombreMision("Misión editada");
+
+        server.expect(requestTo(BASE_URL + "/api/misiones/admin/" + idMision))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("X-Admin-Id", idAdmin.toString()))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("{\"nombreMision\":\"Misión editada\"}"))
+                .andRespond(withSuccess());
+
+        client.actualizarMision(idAdmin, idMision, mision);
     }
 }

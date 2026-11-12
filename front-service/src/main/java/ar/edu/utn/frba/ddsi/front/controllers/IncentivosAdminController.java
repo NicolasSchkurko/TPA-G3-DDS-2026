@@ -2,17 +2,26 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
+
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import java.time.YearMonth;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Pantallas de administración de incentivos.
@@ -22,6 +31,8 @@ import java.util.stream.Collectors;
  */
 @Controller
 public class IncentivosAdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(IncentivosAdminController.class);
 
     private final IncentivosClient incentivosClient;
 
@@ -35,6 +46,35 @@ public class IncentivosAdminController {
         model.addAttribute("misiones", incentivosClient.obtenerMisiones());
         model.addAttribute("categorias", incentivosClient.obtenerCategorias());
         return "admin/incentivos-misiones";
+    }
+
+    @PostMapping("/admin/incentivos/misiones/{id}")
+    public String actualizarMision(@PathVariable UUID id,
+                                   @ModelAttribute IncentivosAdminDTOs.Mision mision,
+                                   @AuthenticationPrincipal OidcUser usuario,
+                                   RedirectAttributes flash) {
+        UUID idAdmin;
+        try {
+            idAdmin = UUID.fromString(usuario.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.error("El sub de Keycloak del administrador no es un UUID válido.");
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo identificar al administrador para guardar la misión.");
+            return "redirect:/admin/incentivos";
+        }
+
+        try {
+            incentivosClient.actualizarMision(idAdmin, id, mision);
+            flash.addFlashAttribute("toastTipo", "success");
+            flash.addFlashAttribute("toastMensaje", "La misión se actualizó correctamente.");
+        } catch (RestClientException e) {
+            log.error("No se pudo actualizar la misión {} desde incentivos-service: {}", id, e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo actualizar la misión. Revisá los datos e intentá de nuevo.");
+        }
+        return "redirect:/admin/incentivos";
     }
 
     @GetMapping("/admin/incentivos/rankings")

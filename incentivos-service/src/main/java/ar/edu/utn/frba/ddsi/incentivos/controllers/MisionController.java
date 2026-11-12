@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -110,13 +111,13 @@ public class MisionController {
     })
     @PutMapping("/admin/{id}")
     public ResponseEntity<MisionDTO> actualizarMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado por el front", required = true)
+            @RequestHeader("X-Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a actualizar", required = true)
             @PathVariable UUID id,
             @Valid @RequestBody MisionDTO mision
     ) {
-        return ResponseEntity.ok(service.actualizarMision(idDe(principal), id, mision));
+        return ResponseEntity.ok(service.actualizarMision(idAdmin, id, mision));
     }
 
     @Operation(

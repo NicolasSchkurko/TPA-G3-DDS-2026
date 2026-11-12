@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -120,6 +121,17 @@ public class IncentivosClient {
             log.error("Error al obtener misiones desde {}: {}", baseUrl, e.getMessage());
             return List.of();
         }
+    }
+
+    /** Actualiza una misión desde la pantalla de administración. */
+    public void actualizarMision(UUID idAdmin, UUID idMision, IncentivosAdminDTOs.Mision mision) {
+        restClient.put()
+                .uri(baseUrl + "/api/misiones/admin/{id}", idMision)
+                .header("X-Admin-Id", idAdmin.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mision)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     /** Categorías para la pantalla de administración. */
