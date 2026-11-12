@@ -24,6 +24,7 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "toast-close";
+        btn.setAttribute("data-toast-close", "");
         btn.setAttribute("aria-label", "Descartar aviso");
         btn.innerHTML = "&times;";
         div.appendChild(body);
@@ -49,7 +50,8 @@
     }
 
     document.addEventListener("click", function (event) {
-        const btn = event.target.closest("[data-toast-close]");
+        const target = event.target instanceof Element ? event.target : null;
+        const btn = target && target.closest("[data-toast-close]");
         if (!btn) return;
         const toast = btn.closest(".toast");
         if (toast) toast.remove();

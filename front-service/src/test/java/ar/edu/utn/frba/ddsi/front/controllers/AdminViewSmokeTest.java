@@ -91,7 +91,10 @@ class AdminViewSmokeTest {
                     .andExpect(status().isOk());
         }
 
-        String incentivesPage = mockMvc.perform(get("/admin/incentivos").session(sessionAdmin()))
+        String incentivesPage = mockMvc.perform(get("/admin/incentivos")
+                        .session(sessionAdmin())
+                        .flashAttr("toastMensaje", "No se pudo eliminar la categoría")
+                        .flashAttr("toastTipo", "error"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
