@@ -34,6 +34,10 @@ public class PublicacionPendienteN8n {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String mensaje;
 
+    // Nullable: las filas creadas por la outbox anterior no tenian red social.
+    @Column(length = 100)
+    private String redSocial;
+
     @Column(nullable = false, length = 500)
     private String nombreUsuario;
 
@@ -63,6 +67,7 @@ public class PublicacionPendienteN8n {
     public PublicacionPendienteN8n(PerfilPublicacionDTO publicacion, LocalDateTime ahora) {
         this.prompt = publicacion.getPrompt();
         this.mensaje = publicacion.getMensaje();
+        this.redSocial = publicacion.getRedSocial();
         this.nombreUsuario = publicacion.getNomUsuario();
         this.idUsuario = publicacion.getIdUsuario();
         this.idInsignia = publicacion.getIdInsignia();
@@ -71,7 +76,6 @@ public class PublicacionPendienteN8n {
     }
 
     public PerfilPublicacionDTO comoDto() {
-        return new PerfilPublicacionDTO(prompt, mensaje, nombreUsuario, idUsuario);
         return new PerfilPublicacionDTO(prompt, mensaje, redSocial, nombreUsuario, idUsuario,
                 idInsignia);
     }

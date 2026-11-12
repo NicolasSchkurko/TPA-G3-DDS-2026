@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Siembra el programa base de categorÃ­as y misiones la primera vez que arranca el servicio,
- * en una base vacÃ­a. {@code @Order(1)} lo hace correr primero.
+ * Siembra el programa base de categorías y misiones la primera vez que arranca el servicio,
+ * en una base vacía. {@code @Order(1)} lo hace correr primero.
  */
 @Component
 @Order(1)
@@ -43,10 +43,10 @@ public class InicializadorCategorias implements CommandLineRunner {
         // Cada insignia lleva su propio texto e imagen; la imagen es una URL de referencia.
         Mision misionPrimera = misionFactory.crearMision(
             null,
-            "Primera donaciÃ³n",
-            "Realiza tu primera donaciÃ³n para empezar a colaborar.",
+            "Primera donación",
+            "Realiza tu primera donación para empezar a colaborar.",
             "Primer paso",
-            "Otorgada a quien completa su primera donaciÃ³n al programa.",
+            "Otorgada a quien completa su primera donación al programa.",
             null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
@@ -55,9 +55,9 @@ public class InicializadorCategorias implements CommandLineRunner {
         Mision misionRacha = misionFactory.crearMision(
             null,
             "Racha",
-            "Realiza 1 donaciÃ³n durante 3 meses consecutivos.",
+            "Realiza 1 donación durante 3 meses consecutivos.",
             "Constancia solidaria",
-            "Reconoce la continuidad: una donaciÃ³n en cada uno de tres meses seguidos.",
+            "Reconoce la continuidad: una donación en cada uno de tres meses seguidos.",
             null,
             misionFactory.crearConstancia(1, "MONTHS"),
             misionFactory.crearAtributoImpacto("ESTADO"),
@@ -66,9 +66,9 @@ public class InicializadorCategorias implements CommandLineRunner {
         Mision misionCompletitud = misionFactory.crearMision(
             null,
             "Completitud",
-            "Realiza 5 donaciones de al menos 3 categorÃ­as distintas.",
-            "Donador versÃ¡til",
-            "Se otorga al donante que reparte su ayuda entre varias categorÃ­as de bienes.",
+            "Realiza 5 donaciones de al menos 3 categorías distintas.",
+            "Donador versátil",
+            "Se otorga al donante que reparte su ayuda entre varias categorías de bienes.",
             null,
             null,
             misionFactory.crearAtributoImpacto("CATEGORIA"),
@@ -76,22 +76,22 @@ public class InicializadorCategorias implements CommandLineRunner {
         );
         Mision misionHabilDonador = misionFactory.crearMision(
             null,
-            "HÃ¡bil Donador",
-            "Realiza 1 donaciÃ³n que supere 6 bienes.",
+            "Hábil Donador",
+            "Realiza 1 donación que supere 6 bienes.",
             "Manos a la obra",
-            "Para la donaciÃ³n generosa: una sola entrega de siete bienes o mÃ¡s.",
+            "Para la donación generosa: una sola entrega de siete bienes o más.",
             null,
             null,
             misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
-            // El umbral es exclusivo: "supera 6" significa 7 o mÃ¡s.
+            // El umbral es exclusivo: "supera 6" significa 7 o más.
             misionFactory.crearOperacion("SUPERA_CANTIDAD", 1, 6, null)
         );
         Mision misionDonacionesExitosas = misionFactory.crearMision(
             null,
             "Donaciones Exitosas",
-            "Logra 1 donaciÃ³n con estado recibida por una entidad beneficiaria.",
+            "Logra 1 donación con estado recibida por una entidad beneficiaria.",
             "Ayuda recibida",
-            "Certifica que la donaciÃ³n llegÃ³ efectivamente a la entidad beneficiaria.",
+            "Certifica que la donación llegó efectivamente a la entidad beneficiaria.",
             null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
