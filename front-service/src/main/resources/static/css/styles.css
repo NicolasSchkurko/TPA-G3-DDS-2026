@@ -51,3 +51,79 @@ a.card:hover {
     color: #6c757d;
 }
 
+
+/* Fondo de mapa real, difuminado para páginas de acceso restringido */
+.sin-acceso-page {
+    position: relative;
+    isolation: isolate;
+    background: #f4f7f4;
+}
+
+.sin-acceso-page::before {
+    content: "";
+    position: fixed;
+    inset: -12%;
+    z-index: -1;
+    pointer-events: none;
+    background: #eef2ed url("/images/mapa-fondo.jpg") center center / cover no-repeat;
+    filter: blur(6px) saturate(.72) brightness(1.06);
+    opacity: .42;
+    transform: scale(1.04);
+}
+
+.sin-acceso-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(244, 247, 244, .45), rgba(244, 247, 244, .7));
+}
+
+.sin-acceso-page :focus-visible {
+    outline: 2px solid #1b7838;
+    outline-offset: 2px;
+}
+
+.map-bg-credit {
+    position: fixed;
+    right: 10px;
+    bottom: 8px;
+    z-index: 2;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .78);
+    color: #5f6b62;
+    font-size: 10px;
+    line-height: 1.25;
+}
+
+.map-bg-credit a { color: inherit; }
+
+/* Fondo de mapa difuminado para páginas de estado */
+.map-blur-page {
+    position: relative;
+    isolation: isolate;
+    background: #f4f7f4;
+}
+
+.map-blur-page::before {
+    content: "";
+    position: fixed;
+    inset: -12%;
+    z-index: -1;
+    pointer-events: none;
+    background: #eef2ed url("/images/mapa-fondo.jpg") center center / cover no-repeat;
+    filter: blur(6px) saturate(.72) brightness(1.06);
+    opacity: .42;
+    transform: scale(1.04);
+}
+
+.map-blur-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(244, 247, 244, .45), rgba(244, 247, 244, .7));
+}

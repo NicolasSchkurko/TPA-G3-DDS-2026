@@ -17,11 +17,11 @@
     <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 
     <main class="map-main sidebar-collapsed" id="contenido" tabindex="-1">
-        <aside class="donor-sidebar" id="donorInfoPanel" aria-label="Historial de donaciones">
+        <aside class="donor-sidebar" id="donorInfoPanel" aria-label="Donaciones">
             <header class="sidebar-heading">
                 <div>
                     <p class="sidebar-eyebrow">Mi actividad</p>
-                    <h2>Historial de donaciones</h2>
+                    <h2>Donaciones</h2>
                     <p class="text-muted small mb-0">Tu misión progresa cuando la donación figura como Entregada.</p>
                 </div>
                 <span class="history-count" id="historyCount"
@@ -54,11 +54,21 @@
                         <option value="ENTREGA_FALLIDA">Entrega fallida</option>
                         <option value="VENCIDO">Vencida</option>
                     </select>
-                    <label class="visually-hidden" for="historySort">Ordenar historial</label>
-                    <select id="historySort" aria-label="Ordenar historial">
+                    <label class="visually-hidden" for="historySort">Ordenar</label>
+                    <select id="historySort" aria-label="Ordenar">
                         <option value="newest">Más recientes</option>
                         <option value="oldest">Más antiguas</option>
                         <option value="name">Nombre</option>
+                    </select>
+                </div>
+                <div class="history-control-row">
+                    <label class="visually-hidden" for="historyCategory">Filtrar por categoría</label>
+                    <select id="historyCategory" aria-label="Filtrar por categoría">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                    <label class="visually-hidden" for="historySubcategory">Filtrar por subcategoría</label>
+                    <select id="historySubcategory" aria-label="Filtrar por subcategoría">
+                        <option value="">Todas las subcategorías</option>
                     </select>
                 </div>
             </div>
@@ -108,9 +118,9 @@
 
         <button class="map-corner-toggle map-corner-toggle-left" id="toggleDonorInfo"
                 type="button" aria-expanded="false" aria-controls="donorInfoPanel"
-                aria-label="Mostrar historial de donaciones">
+                aria-label="Mostrar donaciones">
             <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            <span class="map-corner-toggle-label">Historial</span>
+            <span class="map-corner-toggle-label">Donaciones</span>
         </button>
         <section class="beneficiary-map" aria-label="Mapa de entidades beneficiarias">
             <div id="beneficiaryMap" class="ddsi-map" role="application"
@@ -209,6 +219,21 @@
             <label class="visually-hidden" for="entitiesFilter">Buscar entidad</label>
             <input id="entitiesFilter" class="entities-filter" type="search"
                    placeholder="Buscar por nombre..." autocomplete="off">
+            <div class="entity-filter-row">
+                <label class="visually-hidden" for="entitiesRubro">Filtrar por rubro</label>
+                <select id="entitiesRubro" aria-label="Filtrar por rubro">
+                    <option value="">Todos los rubros</option>
+                </select>
+                <label class="visually-hidden" for="entitiesCity">Filtrar por ciudad</label>
+                <select id="entitiesCity" aria-label="Filtrar por ciudad">
+                    <option value="">Todas las ciudades</option>
+                </select>
+                <label class="visually-hidden" for="entitiesNeed">Filtrar por necesidad</label>
+                <select id="entitiesNeed" aria-label="Filtrar por necesidad">
+                    <option value="">Todas las necesidades</option>
+                </select>
+            </div>
+            <p class="entity-count" id="entitiesCount" aria-live="polite"></p>
             <p class="entity-selection-message" id="entitySelectionMessage" aria-live="polite"></p>
             <div class="entities-list" id="entitiesList" aria-live="polite">
                 <p class="entities-empty" id="entitiesEmpty"
@@ -220,6 +245,8 @@
                             th:attr="data-id=${entidad.id},
                                      data-name=${entidad.razonSocial ?: ''},
                                      data-rubro=${entidad.rubro ?: ''},
+                                     data-city=${entidad.direccion != null ? (entidad.direccion.ciudad ?: '') : ''},
+                                     data-needs=${#strings.listJoin(entidad.necesidadesActivas().![nombreSubcategoria], ',')},
                                      data-lat=${entidad.direccion != null ? entidad.direccion.latitud : ''},
                                      data-lon=${entidad.direccion != null ? entidad.direccion.longitud : ''}">
                         <span class="entity-title" role="heading" aria-level="2"
@@ -237,8 +264,8 @@
                         </span>
                     </button>
                 </article>
-                <p class="entities-empty" id="entitiesNoMatch" hidden>
-                    No se encontraron entidades con ese nombre.
+                <p class="entities-empty" id="entitiesNoMatch" hidden aria-live="polite">
+                    No se encontraron entidades con esos filtros.
                 </p>
             </div>
         </section>

@@ -20,6 +20,7 @@
         <h1>Camiones</h1>
         <p class="admin-page-lead">Flota registrada y estado de disponibilidad.</p>
     </div>
+    <a class="btn btn-primary" th:href="@{/admin/camiones/nuevo}">Nuevo camión</a>
     <a class="btn btn-secondary" th:href="@{/admin}">Volver al panel</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
@@ -34,11 +35,12 @@
                         <th>Altura</th>
                         <th>Capacidad de carga</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:if="${#lists.isEmpty(camiones)}">
-                        <td colspan="5" class="text-center py-4 text-muted">
+                        <td colspan="6" class="text-center py-4 text-muted">
                             <i class="bi bi-truck fs-3 d-block mb-2"></i>
                             Todavía no hay camiones registrados.
                         </td>
@@ -54,6 +56,17 @@
                             <span class="badge"
                                   th:classappend="${camion.disponible == true ? ' text-bg-success' : ' text-bg-secondary'}"
                                   th:text="${camion.disponible == true ? 'Disponible' : 'Ocupado'}">Estado</span>
+                        </td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/camiones/{p}/editar(p=${camion.patente})}">Editar</a>
+                            <form th:action="@{/admin/camiones/{p}/eliminar(p=${camion.patente})}" method="post" style="display:inline">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                            </form>
+                            <form th:action="@{/admin/camiones/{p}/estado(p=${camion.patente})}" method="post" style="display:inline">
+                                <input type="hidden" name="disponible" th:value="${camion.disponible == true ? 'false' : 'true'}">
+                                <button class="btn btn-sm btn-outline-primary" type="submit"
+                                        th:text="${camion.disponible == true ? 'Marcar ocupado' : 'Marcar disponible'}">Cambiar</button>
+                            </form>
                         </td>
                     </tr>
                     </tbody>

@@ -201,6 +201,20 @@ public class LogisticasClient {
         }
     }
 
+    /** Dispara la planificación manual de rutas en logística. */
+    public String planificarRutasManual() {
+        try {
+            String response = restClient.post()
+                    .uri(baseUrl + "/PlanificacionRutas/planificar-manual")
+                    .retrieve()
+                    .body(String.class);
+            return response != null ? response : "Planificación iniciada.";
+        } catch (Exception e) {
+            log.error("Error al disparar la planificación manual en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
     /** Detalle crudo de una ruta; lo consume la vista pública de seguimiento. */
     public JsonNode obtenerRuta(UUID idRuta) {
         try {
@@ -211,6 +225,77 @@ public class LogisticasClient {
         } catch (Exception e) {
             log.error("Error al obtener la ruta {} desde {}: {}", idRuta, baseUrl, e.getMessage());
             return null;
+        }
+    }
+
+    /** Entregas NO_RECIBIDA (pendientes de revisión). */
+    public LogisticaDTOs.Bienes obtenerEntregasNoRecibidas() {
+        try {
+            return restClient.get()
+                    .uri(baseUrl + "/entregas/no-recibidas")
+                    .retrieve()
+                    .body(LogisticaDTOs.Bienes.class);
+        } catch (Exception e) {
+            log.error("Error al obtener entregas no recibidas desde {}: {}", baseUrl, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Crea un camión (POST /api/camiones). */
+    public CamionDTO crearCamion(CamionDTO camion) {
+        try {
+            return restClient.post()
+                    .uri(baseUrl + "/camiones")
+                    .body(camion)
+                    .retrieve()
+                    .body(CamionDTO.class);
+        } catch (Exception e) {
+            log.error("Error al crear el camión en {}: {}", baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Actualiza un camión (PUT /api/camiones/{patente}). */
+    public CamionDTO actualizarCamion(String patente, CamionDTO camion) {
+        try {
+            return restClient.put()
+                    .uri(baseUrl + "/camiones/{patente}", patente)
+                    .body(camion)
+                    .retrieve()
+                    .body(CamionDTO.class);
+        } catch (Exception e) {
+            log.error("Error al actualizar el camión {} en {}: {}", patente, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Elimina un camión (DELETE /api/camiones/{patente}). */
+    public void eliminarCamion(String patente) {
+        try {
+            restClient.delete()
+                    .uri(baseUrl + "/camiones/{patente}", patente)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al eliminar el camión {} en {}: {}", patente, baseUrl, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Cambia disponibilidad (PATCH /api/camiones/{patente}/estado). */
+    public String cambiarDisponibilidad(String patente, boolean disponible) {
+        java.util.Map<String, Boolean> body = new java.util.HashMap<>();
+        try {
+            body.put("disponible", disponible);
+            String response = clientePatch.patch()
+                    .uri(baseUrl + "/camiones/{patente}/estado", patente)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+            return response != null ? response : "Estado actualizado correctamente.";
+        } catch (Exception e) {
+            log.error("Error al cambiar disponibilidad del camión {} en {}: {}", patente, baseUrl, e.getMessage());
+            throw e;
         }
     }
 }

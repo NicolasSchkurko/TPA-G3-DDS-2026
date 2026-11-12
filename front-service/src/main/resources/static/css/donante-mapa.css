@@ -211,6 +211,31 @@ body {
     gap: 8px;
 }
 
+.entity-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.entity-filter-row select {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding: 0 8px;
+    border: 1px solid #cdd4ce;
+    border-radius: 5px;
+    font: inherit;
+    font-size: 13px;
+}
+
+.entity-count {
+    margin: 0 0 8px;
+    color: #59615b;
+    font-size: 13px;
+    min-height: 1.2em;
+}
+
 .history-control-row select {
     width: 100%;
     min-width: 0;

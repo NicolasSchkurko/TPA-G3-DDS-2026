@@ -60,6 +60,20 @@ public class DonacionesClient {
         this.baseUrl = baseUrl;
     }
 
+    /** Catálogo compartido de categorías y subcategorías de bienes. */
+    public Map<String, List<String>> obtenerCatalogoCategorias() {
+        try {
+            Map<String, List<String>> catalogo = restClient.get()
+                    .uri(baseUrl + "/api/categorias")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, List<String>>>() {});
+            return catalogo != null ? catalogo : Map.of();
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el catálogo de categorías desde {}: {}", baseUrl, e.getMessage());
+            return Map.of();
+        }
+    }
+
     public List<DonacionDTO> obtenerTodasLasDonaciones() {
         try {
             int pageSize = 100;
@@ -67,7 +81,7 @@ public class DonacionesClient {
                     .uri(baseUrl + "/api/donaciones?page=0&size={size}", pageSize)
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<DonacionDTO>>() {});
-            if (page == null) {
+            if (page == null || page.getContent() == null) {
                 return Collections.emptyList();
             }
 
@@ -77,7 +91,7 @@ public class DonacionesClient {
                         .uri(baseUrl + "/api/donaciones?page={page}&size={size}", pageNumber, pageSize)
                         .retrieve()
                         .body(new ParameterizedTypeReference<PageResponse<DonacionDTO>>() {});
-                if (nextPage != null) {
+                if (nextPage != null && nextPage.getContent() != null) {
                     donaciones.addAll(nextPage.getContent());
                 }
             }
@@ -259,6 +273,10 @@ public class DonacionesClient {
      * después se consulta el reporte en {@link #obtenerReporteImportacion(UUID)}.
      */
     public UUID importarDonantesCSV(byte[] contenido, String nombreArchivo) {
+        return importarDonantesCSV(contenido, nombreArchivo, null);
+    }
+
+    public UUID importarDonantesCSV(byte[] contenido, String nombreArchivo, String mapeosJson) {
         MultiValueMap<String, Object> cuerpo = new LinkedMultiValueMap<>();
         cuerpo.add("file", new ByteArrayResource(contenido) {
             @Override
@@ -267,7 +285,8 @@ public class DonacionesClient {
                 return nombreArchivo == null || nombreArchivo.isBlank() ? "donantes.csv" : nombreArchivo;
             }
         });
-        cuerpo.add("mapeos", MAPEOS_CSV_POR_DEFECTO);
+        cuerpo.add("mapeos", mapeosJson == null || mapeosJson.isBlank()
+                ? MAPEOS_CSV_POR_DEFECTO : mapeosJson);
 
         try {
             String body = restClient.post()
@@ -427,7 +446,7 @@ public class DonacionesClient {
                     .uri(baseUrl + "/api/donaciones/pendientes?page=0&size={size}", pageSize)
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<ResultadoMatchmakingDTO>>() {});
-            if (page == null) {
+            if (page == null || page.getContent() == null) {
                 return Collections.emptyList();
             }
 
@@ -437,7 +456,7 @@ public class DonacionesClient {
                         .uri(baseUrl + "/api/donaciones/pendientes?page={page}&size={size}", pageNumber, pageSize)
                         .retrieve()
                         .body(new ParameterizedTypeReference<PageResponse<ResultadoMatchmakingDTO>>() {});
-                if (nextPage != null) {
+                if (nextPage != null && nextPage.getContent() != null) {
                     resultados.addAll(nextPage.getContent());
                 }
             }

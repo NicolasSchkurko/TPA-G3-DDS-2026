@@ -55,9 +55,17 @@ public class SeguimientoService {
     private static final Set<String> ESTADOS_ACTIVOS = Set.of("ASIGNADO", "LISTA_PARA_ENTREGAR", "EN_TRASLADO");
 
     private final LogisticasClient logisticasClient;
+    private final SeguimientoTokenService tokenService;
 
     public SeguimientoService(LogisticasClient logisticasClient) {
+        this(logisticasClient, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public SeguimientoService(LogisticasClient logisticasClient,
+                              SeguimientoTokenService tokenService) {
         this.logisticasClient = logisticasClient;
+        this.tokenService = tokenService;
     }
 
     /** Construye la vista de seguimiento para la entidad indicada. */
@@ -205,6 +213,9 @@ public class SeguimientoService {
                 : null);
         camion.setEstadoRuta(ruta.getEstado());
         camion.setUrlSeguimiento(ruta.getUrlSeguimiento());
+        if (tokenService != null && ruta.getIdRuta() != null) {
+            camion.setTokenSeguimiento(tokenService.generar(ruta.getIdRuta()));
+        }
         camion.setDonaciones(donaciones);
         camion.setTrazado(trazadoDe(ruta));
 

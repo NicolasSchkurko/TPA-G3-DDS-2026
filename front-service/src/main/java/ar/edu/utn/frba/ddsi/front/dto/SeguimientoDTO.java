@@ -43,6 +43,8 @@ public class SeguimientoDTO {
         private String ultimaActualizacion; // ISO-8601
         private Integer etaMinutos;
         private String urlSeguimiento;
+        /** Token opaco para abrir el mapa completo sin exponer el UUID de la ruta. */
+        private String tokenSeguimiento;
         private Integer paradaActual;
         private String destino;
         private List<List<Double>> trazado = new ArrayList<>();

@@ -3,12 +3,14 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
+import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
 import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
 import ar.edu.utn.frba.ddsi.front.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaMapaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,28 +50,39 @@ public class HomeController {
     private final IncentivosClient incentivosClient;
     private final KeycloakRegistrationClient keycloakRegistrationClient;
     private final PoliticaDeReclamo politicaDeReclamo;
+    private final LogisticasClient logisticasClient;
 
     @Autowired
     public HomeController(DonacionesClient donacionesClient,
                           IncentivosClient incentivosClient,
                           KeycloakRegistrationClient keycloakRegistrationClient,
-                          PoliticaDeReclamo politicaDeReclamo) {
+                          PoliticaDeReclamo politicaDeReclamo,
+                          LogisticasClient logisticasClient) {
         this.donacionesClient = donacionesClient;
         this.incentivosClient = incentivosClient;
         this.keycloakRegistrationClient = keycloakRegistrationClient;
         this.politicaDeReclamo = politicaDeReclamo;
+        this.logisticasClient = logisticasClient;
+    }
+
+    /** Compatibilidad con constructores previos (sin LogisticasClient). */
+    public HomeController(DonacionesClient donacionesClient,
+                          IncentivosClient incentivosClient,
+                          KeycloakRegistrationClient keycloakRegistrationClient,
+                          PoliticaDeReclamo politicaDeReclamo) {
+        this(donacionesClient, incentivosClient, keycloakRegistrationClient, politicaDeReclamo, null);
     }
 
     /** Compatibilidad con los stubs de tests (sin landing de destacadas). */
     public HomeController(DonacionesClient donacionesClient,
                           KeycloakRegistrationClient keycloakRegistrationClient,
                           PoliticaDeReclamo politicaDeReclamo) {
-        this(donacionesClient, null, keycloakRegistrationClient, politicaDeReclamo);
+        this(donacionesClient, null, keycloakRegistrationClient, politicaDeReclamo, null);
     }
 
     /** Compatibilidad con los stubs de tests (verificación de email desactivada). */
     public HomeController(DonacionesClient donacionesClient, KeycloakRegistrationClient keycloakRegistrationClient) {
-        this(donacionesClient, null, keycloakRegistrationClient, new PoliticaDeReclamo(false));
+        this(donacionesClient, null, keycloakRegistrationClient, new PoliticaDeReclamo(false), null);
     }
 
     @GetMapping("/login")
@@ -366,12 +379,14 @@ public class HomeController {
                 : Collections.emptyList();
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
         List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
+        List<LogisticaDTOs.Bien> galeriaEntregas = obtenerGaleriaEntregas();
         model.addAttribute("esDonante", esDonante);
         model.addAttribute("destacadas", destacadas);
         model.addAttribute("destacadasMapa", enriquecerDestacadasConUbicacion(destacadas, entidades));
         model.addAttribute("entregadasMapa",
                 enriquecerEntregadasConUbicacion(destacadas, donaciones, entidades));
         model.addAttribute("entidades", esDonante ? entidades : Collections.emptyList());
+        model.addAttribute("galeriaEntregas", galeriaEntregas);
         return "landing";
     }
 
@@ -416,6 +431,24 @@ public class HomeController {
                         donacion.getSubcategoriaName(),
                         donacion.getEntidadBeneficiaria(),
                         entidadesPorNombre))
+                .toList();
+    }
+
+    private List<LogisticaDTOs.Bien> obtenerGaleriaEntregas() {
+        if (logisticasClient == null) {
+            return Collections.emptyList();
+        }
+        LogisticaDTOs.Bienes bienes = logisticasClient.obtenerBienes();
+        if (bienes == null || bienes.getBienes() == null) {
+            return Collections.emptyList();
+        }
+        return bienes.getBienes().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(bien -> bien.getEstado() != null
+                        && "ENTREGADA".equalsIgnoreCase(bien.getEstado().trim()))
+                .filter(bien -> bien.getFotoComprobante() != null
+                        && !bien.getFotoComprobante().trim().isEmpty())
+                .limit(6)
                 .toList();
     }
 

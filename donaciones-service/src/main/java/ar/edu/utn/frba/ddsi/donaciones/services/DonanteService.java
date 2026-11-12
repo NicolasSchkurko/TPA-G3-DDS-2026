@@ -7,6 +7,7 @@ import ar.edu.utn.frba.ddsi.donaciones.dto.notificaciones.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.direccion.DireccionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.ReporteImportacionDTO;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Mail;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Ciudad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEstrategiasNotificacion;
@@ -216,8 +217,28 @@ public class DonanteService {
     }
   }
 
-  /** Notificación + persistencia local del donante para importación CSV (Punto 52: persistencia primero). */
-  private PersonaDonanteDTO persistirConNotificacion(Donante nuevoDonante) {
+  /**
+   * Persiste una fila del CSV. Si ya existe un donante activo con el mismo email, lo actualiza
+   * en lugar de crear un duplicado (requisito E1 de importación por email).
+   */
+  private ImportacionPersistida persistirConNotificacion(Donante nuevoDonante) {
+    String email = emailDe(nuevoDonante);
+    if (email != null) {
+      List<Donante> existentes = repositorioDonantes.buscarPorEmailContactoList(email);
+      if (existentes != null && existentes.size() > 1) {
+        throw new IllegalArgumentException("Hay más de un donante activo con el email " + email);
+      }
+      if (existentes != null && existentes.size() == 1) {
+        Donante existente = existentes.get(0);
+        if (existente.getPersona() == null) {
+          throw new IllegalArgumentException("El donante existente no tiene persona asociada.");
+        }
+        repositorioPersonas.modificarPersona(existente.getPersona().getId(), nuevoDonante.getPersona());
+        notificarActualizacionImportada(existente);
+        return new ImportacionPersistida(existente, false);
+      }
+    }
+
     if (nuevoDonante.getPersona() != null) {
       repositorioPersonas.registrarPersona(nuevoDonante.getPersona());
       try {
@@ -227,7 +248,38 @@ public class DonanteService {
       }
     }
     repositorioDonantes.guardar(nuevoDonante);
-    return PersonaDonanteDTO.from(nuevoDonante);
+    return new ImportacionPersistida(nuevoDonante, true);
+  }
+
+  private void notificarActualizacionImportada(Donante donante) {
+    try {
+      if (gestorIncentivos != null) {
+        gestorIncentivos.encolarActualizacionPerfil(donante.getId(), perfilDe(donante));
+      } else if (incentivosClient != null) {
+        incentivosClient.actualizarPerfil(donante.getId(), perfilDe(donante));
+      }
+    } catch (Exception e) {
+      log.warn("No se pudo propagar la actualización del donante {} a incentivos: {}", donante.getId(), e.getMessage());
+    }
+  }
+
+  private String emailDe(Donante donante) {
+    if (donante == null || donante.getPersona() == null
+        || donante.getPersona().getMediosDeContacto() == null
+        || donante.getPersona().getMediosDeContacto().getListaMediosDeContacto() == null) {
+      return null;
+    }
+    return donante.getPersona().getMediosDeContacto().getListaMediosDeContacto().stream()
+        .filter(Mail.class::isInstance)
+        .map(Mail.class::cast)
+        .map(Mail::getDireccionMail)
+        .filter(valor -> valor != null && !valor.isBlank())
+        .map(valor -> valor.trim().toLowerCase())
+        .findFirst()
+        .orElse(null);
+  }
+
+  private record ImportacionPersistida(Donante donante, boolean nuevo) {
   }
 
   @Transactional(readOnly = true)
@@ -380,8 +432,10 @@ public class DonanteService {
         LectorCSV<Donante> lector = new LectorCSV<>(',', new PersonaDonanteFilaConverter(mapeosCsv));
         ResultadoLectura<Donante> resultado = lector.importar(is, donante -> {
           try {
-            persistirConNotificacion(donante);
-            perfilesPendientes.add(perfilDe(donante));
+            ImportacionPersistida persistida = persistirConNotificacion(donante);
+            if (persistida.nuevo()) {
+              perfilesPendientes.add(perfilDe(persistida.donante()));
+            }
             exitosos.incrementAndGet();
             if (perfilesPendientes.size() >= TAMANO_LOTE_PERFILES) {
               crearPerfilesEnLote(new ArrayList<>(perfilesPendientes), errores);

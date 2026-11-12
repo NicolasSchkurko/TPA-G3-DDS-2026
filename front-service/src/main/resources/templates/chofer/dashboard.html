@@ -131,6 +131,24 @@
                 </div>
 
                 <div th:if="${dashboard.rutaActiva != null and !dashboard.paradas.isEmpty()}">
+                    <article class="parada is-deposito" th:if="${dashboard.deposito != null}"
+                             data-parada="0" tabindex="0">
+                        <div class="parada-head">
+                            <div class="parada-id">
+                                <span class="parada-numero is-deposito" aria-hidden="true">D</span>
+                                <div>
+                                    <p class="parada-dir" th:text="${dashboard.deposito.etiqueta}">Depósito</p>
+                                    <p class="parada-zona">Punto de partida de la ruta</p>
+                                </div>
+                            </div>
+                            <span class="parada-actions">
+                                <button class="btn btn-ghost btn-sm parada-map-btn" type="button"
+                                        data-parada="0" aria-label="Ver el depósito en el mapa">Ver en mapa</button>
+                                <span class="chip chip-info">Inicio</span>
+                            </span>
+                        </div>
+                    </article>
+
                     <article class="parada"
                              th:each="parada : ${dashboard.paradas}"
                              th:classappend="${parada.actual ? ' is-actual' : (parada.completa ? ' is-completa' : '')}"

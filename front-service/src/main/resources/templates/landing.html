@@ -72,6 +72,18 @@
                 </button>
             </div>
 
+            <section class="sidebar-section landing-purpose" aria-labelledby="proposito-title">
+                <h2 id="proposito-title">Propósito de DonaTrack</h2>
+                <p>Conectar personas donantes, entidades beneficiarias, choferes y administración para
+                   registrar, asignar y seguir cada donación hasta su entrega, con trazabilidad y
+                   notificaciones para todas las partes.</p>
+                <ul class="purpose-list">
+                    <li>Registrar donaciones y asignarlas según las necesidades de cada entidad.</li>
+                    <li>Coordinar el retiro y la entrega con seguimiento del estado.</li>
+                    <li>Reconocer la participación con misiones, puntos e insignias.</li>
+                </ul>
+            </section>
+
             <section class="sidebar-section" aria-labelledby="destacadas-title">
                 <div class="section-head">
                     <h2 id="destacadas-title">Donaciones destacadas</h2>
@@ -129,6 +141,40 @@
                                    data-organization=${donacion.entidadBeneficiaria ?: 'Entidad beneficiaria'},
                                    data-url=@{/donaciones/{id}(id=${donacion.idDonacion})}"></span>
                 </div>
+            </section>
+
+            <section class="sidebar-section landing-gallery" aria-labelledby="galeria-title">
+                <div class="section-head">
+                    <h2 id="galeria-title">Donaciones entregadas</h2>
+                    <span th:text="${galeriaEntregas != null ? #lists.size(galeriaEntregas) : 0}">0</span>
+                </div>
+                <div class="gallery-grid">
+                    <article class="gallery-card" th:each="entrega : ${galeriaEntregas}">
+                        <th:block th:if="${entrega.fotoComprobante != null and !#strings.isEmpty(entrega.fotoComprobante)}">
+                            <img class="gallery-photo"
+                                 th:src="${entrega.fotoComprobante}"
+                                 alt="Foto de entrega confirmada"
+                                 loading="lazy"
+                                 decoding="async">
+                        </th:block>
+                        <div class="gallery-photo gallery-photo--placeholder"
+                             th:unless="${entrega.fotoComprobante != null and !#strings.isEmpty(entrega.fotoComprobante)}"
+                             role="img"
+                             aria-label="Foto de entrega no disponible"></div>
+                        <div class="gallery-meta">
+                            <span th:text="${entrega.entidadDestino != null and entrega.entidadDestino.zona != null
+                                    ? entrega.entidadDestino.zona
+                                    : 'Entrega confirmada'}">Entrega confirmada</span>
+                            <span th:if="${entrega.cantidad != null}">
+                                · <span th:text="${entrega.cantidad}">1</span>
+                                <span th:text="${entrega.unidadDeMedida != null ? entrega.unidadDeMedida : 'unidades'}">unidades</span>
+                            </span>
+                        </div>
+                    </article>
+                </div>
+                <p class="panel-empty" th:if="${#lists.isEmpty(galeriaEntregas)}">
+                    Todavía no hay entregas con foto para mostrar.
+                </p>
             </section>
 
             <p class="sidebar-note">Destacadas en la barra lateral · Entregadas también visibles en el mapa</p>

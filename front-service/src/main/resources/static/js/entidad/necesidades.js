@@ -128,8 +128,10 @@
         const descripcion = document.getElementById("descripcion");
         if (descripcion) descripcion.value = data.descripcion || "";
         if (cantidadInput) cantidadInput.value = data.cantidad || "";
+        const unidad = document.getElementById("unidadDeMedida");
+        if (unidad) unidad.value = data.unidad || "UNIDADES";
         const plazo = document.getElementById("plazoEnDias");
-        if (plazo) plazo.value = data.plazo || "";
+        if (plazo) plazo.value = String(data.plazo) === "7" ? "7" : "30";
         actualizarPlazoVisible();
         repoblarSubcategorias();
         abrirModal(true);
@@ -190,6 +192,7 @@
                 subcategoria: btn.dataset.subcategoria,
                 descripcion: btn.dataset.descripcion,
                 cantidad: btn.dataset.cantidad,
+                unidad: btn.dataset.unidad,
                 plazo: btn.dataset.plazo
             });
         });

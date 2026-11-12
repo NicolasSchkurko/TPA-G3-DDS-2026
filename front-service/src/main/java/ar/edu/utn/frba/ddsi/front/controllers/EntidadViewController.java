@@ -255,6 +255,50 @@ public class EntidadViewController {
         return "redirect:/entidad/donaciones/" + id;
     }
 
+    @PostMapping("/donaciones/{id}/no-recibida")
+    public String marcarNoRecibida(@PathVariable UUID id,
+                                   @RequestParam(value = "justificacion", required = false) String justificacion,
+                                   Authentication authentication, HttpServletRequest request,
+                                   RedirectAttributes flash) {
+        DatosPortal datos = prepararPortal(authentication, request, null);
+        if (datos == null) return "redirect:/entidad/vincular";
+
+        DonacionDTO donacion = datos.donaciones().stream()
+                .filter(d -> id.equals(d.getId())).findFirst().orElse(null);
+        if (donacion == null) {
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", "No se encontró la donación en tu entidad.");
+            return "redirect:/entidad/donaciones";
+        }
+
+        if (justificacion == null || justificacion.isBlank()) {
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", "Indicá el motivo por el que no se recibió la donación.");
+            return "redirect:/entidad/donaciones/" + id;
+        }
+
+        if (datos.demo()) {
+            flash.addFlashAttribute("toastTipo", "info");
+            flash.addFlashAttribute("toastMensaje", "Modo demostración: la novedad no se envió al backend.");
+            return "redirect:/entidad/donaciones/" + id;
+        }
+
+        LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
+        actualizacion.setEstado("NO_RECIBIDA");
+        actualizacion.setJustificacion(justificacion.trim());
+
+        try {
+            logisticasClient.actualizarEstadoEntrega(id, actualizacion);
+            flash.addFlashAttribute("toastTipo", "success");
+            flash.addFlashAttribute("toastMensaje", "Se registró que la donación no fue recibida.");
+        } catch (Exception e) {
+            log.warn("No se pudo registrar NO_RECIBIDA para {}: {}", id, e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", "No se pudo registrar la novedad. Intentá de nuevo.");
+        }
+        return "redirect:/entidad/donaciones/" + id;
+    }
+
     /* ============================ Seguimiento ============================ */
 
     @GetMapping("/seguimiento")
@@ -448,7 +492,11 @@ public class EntidadViewController {
 
     /** Catálogo curado de categorías/subcategorías; se reemplaza por el endpoint real cuando exista. */
     private Map<String, List<String>> catalogoNecesidades() {
-        Map<String, List<String>> catalogo = new LinkedHashMap<>();
+        Map<String, List<String>> catalogo = donacionesClient.obtenerCatalogoCategorias();
+        if (catalogo != null && !catalogo.isEmpty()) {
+            return catalogo;
+        }
+        catalogo = new LinkedHashMap<>();
         catalogo.put("Alimentos", List.of("Arroz", "Fideos", "Leche en polvo", "Aceite", "Legumbres", "Enlatados", "Harina"));
         catalogo.put("Textil", List.of("Ropa de abrigo", "Frazadas", "Calzado", "Ropa para bebés"));
         catalogo.put("Salud", List.of("Medicamentos", "Botiquín", "Insumos descartables"));
@@ -463,6 +511,7 @@ public class EntidadViewController {
         dto.setTipoNecesidad(blankToNull(form.get("tipoNecesidad")) != null ? form.get("tipoNecesidad") : "RECURRENTE");
         dto.setDescripcion(blankToNull(form.get("descripcion")));
         dto.setCantidadObjetivo(parseInteger(form.get("cantidadObjetivo"), "La cantidad objetivo es obligatoria y debe ser mayor a 0."));
+        dto.setUnidadDeMedida(unidadDeMedida(form.get("unidadDeMedida")));
         dto.setNombreCategoria(blankToNull(form.get("nombreCategoria")));
         dto.setNombreSubcategoria(blankToNull(form.get("nombreSubcategoria")));
         dto.setPlazoEnDias(parsePlazo(form.get("plazoEnDias")));
@@ -485,6 +534,15 @@ public class EntidadViewController {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(message);
         }
+    }
+
+    private static String unidadDeMedida(String value) {
+        if (value == null || value.isBlank()) return "UNIDADES";
+        return switch (value.trim().toUpperCase()) {
+            case "KILOGRAMOS", "KILOS", "KG" -> "KILOGRAMOS";
+            case "LITROS", "LT" -> "LITROS";
+            default -> "UNIDADES";
+        };
     }
 
     private static Integer parsePlazo(String value) {

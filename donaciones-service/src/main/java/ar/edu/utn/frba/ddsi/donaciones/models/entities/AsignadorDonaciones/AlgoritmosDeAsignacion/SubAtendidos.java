@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.EntidadPropia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
@@ -49,6 +50,9 @@ public class SubAtendidos implements AlgoritmoAsignacion {
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
+            if (EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), entidad)) {
+                continue;
+            }
             // El historial se calcula una sola vez por entidad, con inicialización perezosa.
             double cantidadDonaciones = -1;
 

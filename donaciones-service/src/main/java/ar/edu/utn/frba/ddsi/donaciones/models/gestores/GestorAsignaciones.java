@@ -1,5 +1,6 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.gestores;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.EntidadPropia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.ResultadoMatchmaking;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
@@ -31,6 +32,11 @@ public class GestorAsignaciones {
     }
 
     public void asignarPropuesta(Donacion donacion, PropuestaAsignacion  propuesta) {
+        if (donacion != null && propuesta != null && propuesta.getEntidad() != null
+                && EntidadPropia.esPropia(donacion.getDonante(), propuesta.getEntidad())) {
+            throw new IllegalArgumentException(
+                    "No se puede asignar la donación a la entidad beneficiaria propia del donante (mismo usuario).");
+        }
         asignarEntidad(donacion.getId(), propuesta.getEntidad());
         agregarDonacionANecesidad(propuesta.getNecesidad().getId(), donacion);
     }
@@ -101,6 +107,12 @@ public class GestorAsignaciones {
     }
 
     private void asignarEntidad(UUID donacionId, EntidadBeneficiaria entidad) {
+        java.util.Optional<Donacion> donacionOpt = repositorioDonaciones.obtenerPorId(donacionId);
+        Donacion donacion = donacionOpt == null ? null : donacionOpt.orElse(null);
+        if (donacion != null && EntidadPropia.esPropia(donacion.getDonante(), entidad)) {
+            throw new IllegalArgumentException(
+                    "No se puede asignar la donación a la entidad beneficiaria propia del donante (mismo usuario).");
+        }
         try {
             repositorioDonaciones.asignarEntidad(donacionId, entidad);
             System.out.println("Entidad asignada con éxito a la donación: " + donacionId);

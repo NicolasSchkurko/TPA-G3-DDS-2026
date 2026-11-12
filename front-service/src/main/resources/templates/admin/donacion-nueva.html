@@ -164,6 +164,7 @@
                         <label class="form-label">Unidad <span class="obligatorio">*</span></label>
                         <select class="form-select" data-campo="unidadDeMedida"
                                 th:field="*{bienes[__${iter.index}__].unidadDeMedida}">
+                            <option value="UNIDADES">Unidades</option>
                             <option value="KILOGRAMOS">Kilogramos</option>
                             <option value="LITROS">Litros</option>
                         </select>
@@ -241,6 +242,7 @@
         <div class="campo campo-chico">
             <label class="form-label">Unidad <span class="obligatorio">*</span></label>
             <select class="form-select" data-campo="unidadDeMedida">
+                <option value="UNIDADES">Unidades</option>
                 <option value="KILOGRAMOS">Kilogramos</option>
                 <option value="LITROS">Litros</option>
             </select>

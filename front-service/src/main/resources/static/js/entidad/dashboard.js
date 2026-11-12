@@ -1,75 +1,83 @@
 /* =========================================================
    DDSI · Dashboard de entidad
-   Panel desplegable + seguimiento en el mapa con polling.
+   Mapa de fondo + drawers de necesidades y datos de entidad.
    ========================================================= */
 (function () {
     "use strict";
 
     const main = document.getElementById("contenido");
-    const panel = document.getElementById("panelEntidad");
-    const collapseBtn = document.getElementById("panelCollapse");
-    const expandBtn = document.getElementById("panelExpand");
-    const handle = document.getElementById("panelHandle");
+    const leftPanel = document.getElementById("necesidadesPanel");
+    const leftToggle = document.getElementById("toggleNecesidades");
+    const rightPanel = document.getElementById("entidadDataPanel");
+    const rightToggle = document.getElementById("toggleEntidadData");
     const mapError = document.getElementById("mapError");
     const mapRetry = document.getElementById("mapRetry");
 
-    /* ---------- Panel desplegable ---------- */
-    const mqDesktop = window.matchMedia("(min-width: 861px)");
-    const STORAGE_KEY = "entidad.panel.collapsed";
-
-    function setMobileOpen(open) {
-        if (!panel) return;
-        panel.classList.toggle("is-open", open);
-        if (handle) handle.setAttribute("aria-expanded", String(open));
-    }
-
-    function aplicarColapsado(colapsado) {
+    /* ---------- Drawer izquierdo (necesidades) ---------- */
+    function setLeftCollapsed(collapsed) {
         if (!main) return;
-        main.classList.toggle("is-collapsed", colapsado);
-        if (collapseBtn) {
-            collapseBtn.setAttribute("aria-expanded", String(!colapsado));
-            collapseBtn.setAttribute("aria-label", colapsado ? "Expandir panel" : "Contraer panel");
-        }
-        if (expandBtn) expandBtn.setAttribute("aria-expanded", String(!colapsado));
-        if (handle) handle.setAttribute("aria-expanded", String(!colapsado));
-        try {
-            localStorage.setItem(STORAGE_KEY, colapsado ? "1" : "0");
-        } catch (e) {
-            // localStorage puede estar bloqueado; el panel funciona igual.
+        main.classList.toggle("sidebar-collapsed", collapsed);
+        if (leftToggle) {
+            leftToggle.setAttribute("aria-expanded", String(!collapsed));
+            leftToggle.setAttribute("aria-label", collapsed ? "Mostrar necesidades de la entidad" : "Ocultar necesidades de la entidad");
+            const icon = leftToggle.querySelector("i");
+            if (icon) icon.className = collapsed ? "bi bi-chevron-right" : "bi bi-chevron-left";
+            const label = leftToggle.querySelector(".map-corner-toggle-label");
+            if (label) label.textContent = collapsed ? "Necesidades" : "Ocultar";
         }
     }
 
-    function expandir() {
-        aplicarColapsado(false);
-        setMobileOpen(true);
-        panel && panel.focus && panel.focus();
+    if (leftToggle) {
+        leftToggle.addEventListener("click", function () {
+            setLeftCollapsed(!main.classList.contains("sidebar-collapsed"));
+            if (ctx && window.EntidadMap) window.setTimeout(function () { /* noop */ }, 0);
+            invalidateMap();
+        });
     }
 
-    function toggle() {
-        if (mqDesktop.matches) {
-            aplicarColapsado(!main.classList.contains("is-collapsed"));
+    /* ---------- Drawer derecho (datos de entidad) ---------- */
+    function setRightOpen(open) {
+        if (!rightPanel || !rightToggle) return;
+        rightToggle.setAttribute("aria-expanded", String(open));
+        rightPanel.setAttribute("aria-hidden", String(!open));
+        rightPanel.classList.toggle("is-open", open);
+        const mapSection = rightToggle.closest(".beneficiary-map");
+        if (mapSection) mapSection.classList.toggle("options-open", open);
+        rightToggle.setAttribute("aria-label", open ? "Cerrar datos de la entidad" : "Abrir datos de la entidad");
+        const icon = rightToggle.querySelector("i");
+        if (icon) icon.className = open ? "bi bi-chevron-right" : "bi bi-chevron-left";
+        const label = rightToggle.querySelector(".map-corner-toggle-label");
+        if (label) label.textContent = open ? "Cerrar" : "Datos";
+        if (open) {
+            const first = rightPanel.querySelector("a, button, input, [tabindex]:not([tabindex='-1'])");
+            if (first) first.focus();
         } else {
-            setMobileOpen(!panel.classList.contains("is-open"));
+            rightToggle.focus();
+        }
+        invalidateMap();
+    }
+
+    if (rightToggle) {
+        rightToggle.addEventListener("click", function () {
+            setRightOpen(rightToggle.getAttribute("aria-expanded") !== "true");
+        });
+    }
+
+    function invalidateMap() {
+        if (ctx && ctx.map && typeof ctx.map.invalidateSize === "function") {
+            window.setTimeout(function () { ctx.map.invalidateSize(); }, 220);
         }
     }
 
-    if (collapseBtn) collapseBtn.addEventListener("click", toggle);
-    if (expandBtn) expandBtn.addEventListener("click", expandir);
-    if (handle) handle.addEventListener("click", toggle);
-
-    // En desktop el panel arranca expandido salvo que el usuario lo haya contraído antes;
-    // en mobile arranca como hoja inferior (peek).
-    if (mqDesktop.matches) {
-        let colapsado = false;
-        try {
-            colapsado = localStorage.getItem(STORAGE_KEY) === "1";
-        } catch (e) {
-            colapsado = false;
+    document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape") return;
+        if (rightPanel && rightPanel.classList.contains("is-open")) {
+            setRightOpen(false);
         }
-        aplicarColapsado(colapsado);
-    } else {
-        setMobileOpen(false);
-    }
+    });
+
+    /* Estado inicial */
+    setLeftCollapsed(true);
 
     /* ---------- Mapa + polling ---------- */
     const data = window.ENTIDAD_SEGUIMIENTO || {};

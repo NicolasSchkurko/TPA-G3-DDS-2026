@@ -966,3 +966,35 @@
     letter-spacing: .04em;
     color: #8a6d00;
 }
+
+/* =========================================================
+   Dashboard: drawers y layout responsive (entidad)
+   ========================================================= */
+.entidad-drawer-left,
+.entidad-drawer-right {
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 860px) {
+    .map-main {
+        display: block;
+    }
+
+    .donor-sidebar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-height: 70dvh;
+        border-right: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(calc(100% - 88px));
+        transition: transform .25s ease;
+    }
+
+    .map-main:not(.sidebar-collapsed) .donor-sidebar {
+        transform: translateY(0);
+    }
+}

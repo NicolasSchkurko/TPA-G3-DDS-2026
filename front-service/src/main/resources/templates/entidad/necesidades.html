@@ -95,6 +95,7 @@
 
             <p class="need-item-meta">
                 <span th:text="${n.nombreCategoria}">Alimentos</span>
+                <span th:if="${n.unidadDeMedida != null}" th:text="${n.unidadDeMedida}">UNIDADES</span>
                 <span th:if="${n.plazoEnDias != null}" th:text="'Plazo: ' + ${n.plazoEnDias} + ' días'">Plazo: 45 días</span>
                 <span th:if="${n.plazoEnDias == null}">Sin plazo</span>
             </p>
@@ -107,6 +108,7 @@
                                  data-subcategoria=${n.nombreSubcategoria},
                                  data-descripcion=${n.descripcion},
                                  data-cantidad=${n.cantidadObjetivo},
+                                 data-unidad=${n.unidadDeMedida},
                                  data-plazo=${n.plazoEnDias}">
                     Editar
                 </button>
@@ -170,11 +172,22 @@
                             <span class="hint">Unidades totales que buscás reunir.</span>
                             <span class="error" id="cantidadError" hidden>La cantidad debe ser mayor a 0.</span>
                         </div>
+                        <div class="field" id="unidadField">
+                            <label for="unidadDeMedida">Unidad de medida <span class="req" aria-hidden="true">*</span></label>
+                            <select id="unidadDeMedida" name="unidadDeMedida" required>
+                                <option value="UNIDADES">Unidades</option>
+                                <option value="KILOGRAMOS">Kilogramos</option>
+                                <option value="LITROS">Litros</option>
+                            </select>
+                            <span class="hint">Se usa para mostrar el progreso y comparar donaciones.</span>
+                        </div>
                         <div class="field" id="plazoField">
-                            <label for="plazoEnDias">Plazo (días)</label>
-                            <input id="plazoEnDias" name="plazoEnDias" type="number" min="1" step="1"
-                                   placeholder="Ej.: 30">
-                            <span class="hint">Solo para necesidades recurrentes. Dejalo vacío si no aplica.</span>
+                            <label for="plazoEnDias">Período</label>
+                            <select id="plazoEnDias" name="plazoEnDias">
+                                <option value="7">Semanal (7 días)</option>
+                                <option value="30" selected>Mensual (30 días)</option>
+                            </select>
+                            <span class="hint">Solo para necesidades recurrentes.</span>
                         </div>
                     </div>
 

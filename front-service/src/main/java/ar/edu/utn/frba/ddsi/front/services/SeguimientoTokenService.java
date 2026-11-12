@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Convierte el id interno de una ruta en un token opaco para el mapa público.
+ * Convierte el id interno de una ruta en un token opaco para el mapa autenticado.
  * El id no aparece en la URL ni en la página; el token es AES/GCM y no se puede
  * modificar sin la clave del servidor.
  */

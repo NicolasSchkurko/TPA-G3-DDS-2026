@@ -28,8 +28,10 @@ public class BienDonacionDTO {
     @NotBlank(message = "Completá la descripción de cada bien.")
     private String descripcion;
 
+    @NotBlank(message = "Seleccioná una categoría para cada bien.")
     private String categoria;
 
+    @NotBlank(message = "Seleccioná una subcategoría para cada bien.")
     private String subcategoria;
 
     private String urlFoto;
@@ -122,7 +124,8 @@ public class BienDonacionDTO {
             throw new IllegalArgumentException(
                     "Elegí la unidad de medida del bien " + numeroDeFila + ".");
         }
-        if (!"KILOGRAMOS".equals(unidadDeMedida) && !"LITROS".equals(unidadDeMedida)) {
+        if (!"UNIDADES".equals(unidadDeMedida) && !"KILOGRAMOS".equals(unidadDeMedida)
+                && !"LITROS".equals(unidadDeMedida)) {
             throw new IllegalArgumentException("Unidad de medida desconocida: " + unidadDeMedida);
         }
 

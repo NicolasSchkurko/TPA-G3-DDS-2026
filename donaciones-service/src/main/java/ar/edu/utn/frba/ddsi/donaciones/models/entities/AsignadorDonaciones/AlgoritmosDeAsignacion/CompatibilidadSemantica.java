@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion;
 
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.EntidadPropia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -27,6 +28,9 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
 
         for (EntidadBeneficiaria entidad : entidades) {
             if (!entidad.isActiva()) {
+                continue;
+            }
+            if (EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), entidad)) {
                 continue;
             }
             for (Necesidad necesidad : entidad.getNecesidades()) {

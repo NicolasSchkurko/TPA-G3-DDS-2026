@@ -73,6 +73,7 @@
                        id="inputCsv"
                        accept=".csv,text/csv"
                        hidden>
+                <input type="hidden" name="mapeos" id="csvMapeos" value="">
                 <button type="button" id="botonElegirCsv" class="btn-csv">
                     <i class="bi bi-filetype-csv"></i>
                     Importar CSV
@@ -90,6 +91,17 @@
             </form>
         </div>
     </div>
+
+    <section class="csv-mapping" id="csvMappingPanel" hidden aria-labelledby="csvMappingTitle">
+        <header>
+            <div>
+                <h2 id="csvMappingTitle">Mapear columnas del CSV</h2>
+                <p>Detectamos los encabezados. Revisá el mapeo antes de subir el archivo; podés dejar campos sin importar.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="csvMappingCerrar">Cerrar</button>
+        </header>
+        <div class="csv-mapping-grid" id="csvMappingRows"></div>
+    </section>
 
     <!-- ===== Tabla de donantes ===== -->
     <div class="tabla-donantes">

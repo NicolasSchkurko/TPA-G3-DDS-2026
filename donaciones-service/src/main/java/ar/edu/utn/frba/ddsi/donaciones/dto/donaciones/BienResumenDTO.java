@@ -51,6 +51,7 @@ public class BienResumenDTO {
     UnidadDeMedida um = null;
     if (unidadDeMedida != null) {
       um = switch (unidadDeMedida.toUpperCase()) {
+        case "UNIDADES", "UNIDAD", "U" -> UnidadDeMedida.UNIDADES;
         case "KILOGRAMOS", "KILOS", "KG" -> UnidadDeMedida.KILOGRAMOS;
         case "LITROS", "LT" -> UnidadDeMedida.LITROS;
         default -> null;

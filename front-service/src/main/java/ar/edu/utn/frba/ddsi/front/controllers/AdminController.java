@@ -3,14 +3,17 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
+import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import ar.edu.utn.frba.ddsi.front.dto.BienDonacionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EdicionDonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.FormularioDonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.FormularioDonanteDTO;
 import ar.edu.utn.frba.ddsi.front.dto.FormularioEntidadDTO;
-import ar.edu.utn.frba.ddsi.front.dto.MediosContactoDTO;
+import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;import ar.edu.utn.frba.ddsi.front.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.front.dto.RepresentanteDTO;
 import ar.edu.utn.frba.ddsi.front.dto.ResultadoMatchmakingDTO;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,6 +34,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -39,10 +44,15 @@ public class AdminController {
 
     private final LogisticasClient logisticasClient;
     private final DonacionesClient donacionesClient;
+    private final AdminResumenService adminResumenService;
+    private final SeguimientoTokenService seguimientoTokenService;
 
-    public AdminController(LogisticasClient logisticasClient, DonacionesClient donacionesClient) {
+    public AdminController(LogisticasClient logisticasClient, DonacionesClient donacionesClient,
+                          AdminResumenService adminResumenService, SeguimientoTokenService seguimientoTokenService) {
         this.logisticasClient = logisticasClient;
         this.donacionesClient = donacionesClient;
+        this.adminResumenService = adminResumenService;
+        this.seguimientoTokenService = seguimientoTokenService;
     }
 
     @GetMapping("/admin")
@@ -51,14 +61,143 @@ public class AdminController {
             Model model) {
 
         agregarDatosDelAdmin(usuario, model);
+        model.addAttribute("resumen", adminResumenService.obtenerResumen());
         return "admin/admin-landing";
     }
 
     @GetMapping("/camiones")
-    public String listarcamiones(Model model) {
-        var camiones = logisticasClient.obtenerCamiones();
-        model.addAttribute("camiones", camiones);
+    public String listarCamionesLegacy() {
+        return "redirect:/admin/camiones";
+    }
+
+    @GetMapping("/admin/camiones")
+    public String listarCamiones(Model model) {
+        model.addAttribute("camiones", logisticasClient.obtenerCamiones());
         return "admin/camiones";
+    }
+
+    @GetMapping("/admin/camiones/nuevo")
+    public String nuevoCamion(Model model) {
+        model.addAttribute("camion", new CamionDTO());
+        model.addAttribute("edicion", false);
+        model.addAttribute("accion", "/admin/camiones/nuevo");
+        return "admin/camion-formulario";
+    }
+
+    @PostMapping("/admin/camiones/nuevo")
+    public String crearCamion(@ModelAttribute CamionDTO camion, RedirectAttributes redirect) {
+        try {
+            logisticasClient.crearCamion(camion);
+            redirect.addFlashAttribute("exito", "Camión registrado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló el alta del camión: {}", e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo registrar el camión: " + e.getMessage());
+        }
+        return "redirect:/admin/camiones";
+    }
+
+    @GetMapping("/admin/camiones/{patente}/editar")
+    public String editarCamion(@PathVariable String patente, Model model, RedirectAttributes redirect) {
+        // Se busca en el listado porque el backend no expone un GET amigable para el front.
+        CamionDTO camion = logisticasClient.obtenerCamiones().stream()
+                .filter(c -> patente.equalsIgnoreCase(c.getPatente()))
+                .findFirst().orElse(null);
+        if (camion == null) {
+            redirect.addFlashAttribute("error", "No encontramos el camión que querés editar.");
+            return "redirect:/admin/camiones";
+        }
+        model.addAttribute("camion", camion);
+        model.addAttribute("edicion", true);
+        model.addAttribute("patente", patente);
+        model.addAttribute("accion", "/admin/camiones/" + patente + "/actualizar");
+        return "admin/camion-formulario";
+    }
+
+    @PostMapping("/admin/camiones/{patente}/actualizar")
+    public String actualizarCamion(@PathVariable String patente, @ModelAttribute CamionDTO camion, RedirectAttributes redirect) {
+        camion.setPatente(patente);
+        try {
+            logisticasClient.actualizarCamion(patente, camion);
+            redirect.addFlashAttribute("exito", "Camión actualizado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló la actualización del camión {}: {}", patente, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo actualizar el camión: " + e.getMessage());
+        }
+        return "redirect:/admin/camiones";
+    }
+
+    @PostMapping("/admin/camiones/{patente}/eliminar")
+    public String eliminarCamion(@PathVariable String patente, RedirectAttributes redirect) {
+        try {
+            logisticasClient.eliminarCamion(patente);
+            redirect.addFlashAttribute("exito", "Camión eliminado correctamente.");
+        } catch (Exception e) {
+            log.error("Falló la baja del camión {}: {}", patente, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo eliminar el camión: " + e.getMessage());
+        }
+        return "redirect:/admin/camiones";
+    }
+
+    @PostMapping("/admin/camiones/{patente}/estado")
+    public String cambiarEstadoCamion(@PathVariable String patente,
+                                      @RequestParam(name = "disponible", defaultValue = "true") boolean disponible,
+                                      RedirectAttributes redirect) {
+        try {
+            logisticasClient.cambiarDisponibilidad(patente, disponible);
+            redirect.addFlashAttribute("exito", "Disponibilidad actualizada.");
+        } catch (Exception e) {
+            log.error("Falló el cambio de estado del camión {}: {}", patente, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo cambiar la disponibilidad: " + e.getMessage());
+        }
+        return "redirect:/admin/camiones";
+    }
+
+    @GetMapping("/admin/rutas")
+    public String mostrarRutas(Model model) {
+        List<LogisticaDTOs.Ruta> rutas = logisticasClient.obtenerRutas();
+        // Genera token opaco por ruta para el link público de seguimiento.
+        for (LogisticaDTOs.Ruta r : rutas) {
+            if (r.getIdRuta() != null) {
+                r.setTokenSeguimiento(seguimientoTokenService.generar(r.getIdRuta()));
+            }
+        }
+        model.addAttribute("rutas", rutas);
+        return "admin/rutas";
+    }
+
+    @PostMapping("/admin/rutas/planificar")
+    public String planificarRutas(RedirectAttributes redirect) {
+        try {
+            logisticasClient.planificarRutasManual();
+            redirect.addFlashAttribute("exito", "Planificación manual iniciada. Las rutas se actualizan cuando el proveedor responda.");
+        } catch (Exception e) {
+            log.error("Falló la planificación manual de rutas: {}", e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo iniciar la planificación: " + e.getMessage());
+        }
+        return "redirect:/admin/rutas";
+    }
+
+    @GetMapping("/admin/entregas-no-recibidas")
+    public String mostrarEntregasNoRecibidas(Model model) {
+        LogisticaDTOs.Bienes bienes = logisticasClient.obtenerEntregasNoRecibidas();
+        List<LogisticaDTOs.Bien> lista = (bienes == null || bienes.getBienes() == null)
+                ? List.of() : bienes.getBienes();
+        model.addAttribute("entregas", lista);
+        return "admin/entregas-no-recibidas";
+    }
+
+    @PostMapping("/admin/entregas-no-recibidas/{id}/reingresar")
+    public String reingresarEntrega(@PathVariable UUID id, RedirectAttributes redirect) {
+        try {
+            LogisticaDTOs.ActualizacionEntrega dto = new LogisticaDTOs.ActualizacionEntrega();
+            dto.setEstado("PENDIENTE");
+            logisticasClient.actualizarEstadoEntrega(id, dto);
+            redirect.addFlashAttribute("exito", "Entrega reingresada a depósito.");
+        } catch (Exception e) {
+            log.error("Falló el reingreso de la entrega {}: {}", id, e.getMessage());
+            redirect.addFlashAttribute("error", "No se pudo reingresar la entrega: " + e.getMessage());
+        }
+        return "redirect:/admin/entregas-no-recibidas";
     }
 
     // ---------------------------------------------------------------------
@@ -80,6 +219,7 @@ public class AdminController {
 
     @PostMapping("/admin/donantes/importar")
     public String importarDonantes(@RequestParam("archivo") MultipartFile archivo,
+                                   @RequestParam(name = "mapeos", required = false) String mapeos,
                                    RedirectAttributes redirect) {
         if (archivo == null || archivo.isEmpty()) {
             redirect.addFlashAttribute("error", "Elegí un archivo CSV antes de importar.");
@@ -94,20 +234,32 @@ public class AdminController {
         }
 
         try {
-            UUID importId = donacionesClient.importarDonantesCSV(archivo.getBytes(), nombreArchivo);
-            // La importación es asincrónica: el backend responde 202 y procesa en segundo plano,
-            // así que el listado recién recargado puede todavía no incluir las filas nuevas.
-            redirect.addFlashAttribute("exito",
-                    "Importación encolada. Los donantes van a aparecer en el listado en unos segundos; "
-                            + "actualizá la página para verlos.");
+            UUID importId = donacionesClient.importarDonantesCSV(archivo.getBytes(), nombreArchivo, mapeos);
+            // La importación es asincrónica: se muestra una pantalla de progreso que consulta
+            // el reporte hasta que el backend termina de procesar.
             if (importId != null) {
-                redirect.addFlashAttribute("importId", importId.toString());
+                return "redirect:/admin/donantes/importar/" + importId;
             }
+            redirect.addFlashAttribute("exito", "Importación encolada. Actualizá el listado en unos segundos.");
         } catch (Exception e) {
             log.error("Falló la importación de donantes por CSV: {}", e.getMessage());
             redirect.addFlashAttribute("error", "No se pudo importar el archivo: " + e.getMessage());
         }
         return "redirect:/admin/donantes";
+    }
+
+    @GetMapping("/admin/donantes/importar/{importId}")
+    public String verImportacion(@PathVariable UUID importId, Model model) {
+        model.addAttribute("importId", importId);
+        model.addAttribute("reporte", donacionesClient.obtenerReporteImportacion(importId));
+        return "admin/importar-reporte";
+    }
+
+    @GetMapping("/admin/donantes/importar/{importId}/estado")
+    @ResponseBody
+    public Map<String, Object> estadoImportacion(@PathVariable UUID importId) {
+        Map<String, Object> reporte = donacionesClient.obtenerReporteImportacion(importId);
+        return reporte != null ? reporte : Map.of("estado", "DESCONOCIDO");
     }
 
     /**
@@ -252,7 +404,7 @@ public class AdminController {
     public String mostrarEntidades(@AuthenticationPrincipal OidcUser usuario, Model model) {
         agregarDatosDelAdmin(usuario, model);
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
-        model.addAttribute("entidade    s", entidades);
+        model.addAttribute("entidades", entidades);
         return "admin/entidades";
     }
 
@@ -366,20 +518,25 @@ public class AdminController {
         agregarDatosDelAdmin(usuario, model);
 
         boolean matchmaking = "matchmaking".equalsIgnoreCase(vista);
+        boolean vencidas = "vencidas".equalsIgnoreCase(vista);
         model.addAttribute("vistaMatchmaking", matchmaking);
+        model.addAttribute("vistaVencidas", vencidas);
 
         if (matchmaking) {
             List<ResultadoMatchmakingDTO> resultados = donacionesClient.obtenerResultadosMatchmaking();
             model.addAttribute("resultados", resultados);
             model.addAttribute("pendientes", resultados.size());
         } else {
-            List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
+            List<DonacionDTO> todas = donacionesClient.obtenerTodasLasDonaciones();
+            List<DonacionDTO> donaciones = vencidas
+                    ? todas.stream().filter(d -> "VENCIDO".equalsIgnoreCase(d.getEstado())).toList()
+                    : todas;
             model.addAttribute("donaciones", donaciones);
-            // Para el contador del botón de matchmaking: cuántas están esperando que alguien
-            // elija la entidad.
-            model.addAttribute("pendientes", donaciones.stream()
+            model.addAttribute("pendientes", todas.stream()
                     .filter(d -> "PENDIENTE_ASIGNACION".equalsIgnoreCase(d.getEstado()))
                     .count());
+            model.addAttribute("vencidas", todas.stream()
+                    .filter(d -> "VENCIDO".equalsIgnoreCase(d.getEstado())).count());
         }
         return "admin/donaciones";
     }

@@ -458,6 +458,41 @@ public class DonanteServiceTest {
     }
 
     @Test
+    @DisplayName("Importar CSV actualiza el donante existente por email en vez de duplicarlo")
+    void actualizaExistentePorEmail() throws Exception {
+      ExecutorService unHilo = poolDeUnHilo();
+      try {
+        RepositorioDePersonas personas = mock(RepositorioDePersonas.class);
+        RepositorioDeDonantes donantes = mock(RepositorioDeDonantes.class);
+        IncentivosClient incentivos = mock(IncentivosClient.class);
+        Donante existente = new Donante(null, new Humana("Ana", "Vieja", 0, 1, Genero.OTRO));
+        existente.getPersona().agregarMedioDeContacto(new Mail("ana@test.com"));
+        when(donantes.buscarPorEmailContactoList("ana@test.com")).thenReturn(List.of(existente));
+
+        DonanteService servicio = new DonanteService(
+            personas, mock(GestorCatalogo.class), mock(FabricaEstrategiasNotificacion.class),
+            incentivos, donantes, unHilo);
+
+        byte[] csv = "TipoPersona,Nombre,Documento,Email\nHUMANA,Ana Nueva,2,ana@test.com\n"
+            .getBytes(StandardCharsets.UTF_8);
+        UUID importId = servicio.importarDonantes(
+            new MockMultipartFile("file", "donantes.csv", "text/csv", csv),
+            List.of(
+                new MapeoCSV("TIPO_PERSONA", List.of("TipoPersona")),
+                new MapeoCSV("NOMBRE_RAZON_SOCIAL", List.of("Nombre")),
+                new MapeoCSV("DOCUMENTO", List.of("Documento")),
+                new MapeoCSV("EMAIL", List.of("Email"))));
+
+        ReporteImportacionDTO reporte = esperarCompletado(servicio, importId, Duration.ofSeconds(10));
+        assertEquals(1, reporte.getImportadosExitosos());
+        verify(personas).modificarPersona(eq(existente.getPersona().getId()), any());
+        verify(donantes, never()).guardar(any());
+      } finally {
+        unHilo.shutdownNow();
+      }
+    }
+
+    @Test
     @DisplayName("Punto 78: la importación no llama a MultipartFile.getBytes()")
     void noUsaGetBytes() throws Exception {
       ExecutorService unHilo = poolDeUnHilo();

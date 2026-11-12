@@ -23,6 +23,7 @@ public class ChoferDashboardDTO {
     private String usuario;
     private LogisticaDTOs.Camion camion;
     private LogisticaDTOs.Ruta rutaActiva;
+    private DepositoVista deposito;
     private List<ParadaVista> paradas = new ArrayList<>();
     private List<LogisticaDTOs.Ruta> historial = new ArrayList<>();
     private int entregasPendientes;
@@ -51,6 +52,14 @@ public class ChoferDashboardDTO {
         if (camion != null && camion.getPatente() != null) return camion.getPatente();
         if (rutaActiva != null) return rutaActiva.patente();
         return "Sin asignar";
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class DepositoVista {
+        private String etiqueta;
+        private LogisticaDTOs.DireccionLogistica direccion;
     }
 
     @Getter

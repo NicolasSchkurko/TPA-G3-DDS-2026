@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Rutas — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1>Rutas</h1>
+        <p class="admin-page-lead">Rutas generadas, paradas y seguimiento para usuarios autenticados.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="post" th:action="@{/admin/rutas/planificar}">
+            <button class="btn btn-primary" type="submit">Planificar rutas</button>
+        </form>
+        <a class="btn btn-secondary" th:href="@{/admin}">Volver al panel</a>
+    </div>
+</header>
+<main class="main-admin" id="contenido" tabindex="-1">
+    <div th:if="${exito}" class="alert alert-success" role="status" th:text="${exito}"></div>
+    <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Patente</th>
+                        <th>Estado</th>
+                        <th>Paradas</th>
+                        <th>Fecha</th>
+                        <th>Seguimiento</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(rutas)}">
+                        <td colspan="5" class="text-center py-4 text-muted">No hay rutas registradas.</td>
+                    </tr>
+                    <tr th:each="ruta : ${rutas}">
+                        <td th:text="${ruta.patente()}">patente</td>
+                        <td th:text="${ruta.estadoEtiqueta()}">estado</td>
+                        <td th:text="${#lists.size(ruta.paradas)}">0</td>
+                        <td th:text="${ruta.fechaProgramada}">fecha</td>
+                        <td>
+                            <a th:if="${ruta.tokenSeguimiento != null}" th:href="@{/seguimiento/{t}(t=${ruta.tokenSeguimiento})}" target="_blank">Ver seguimiento</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

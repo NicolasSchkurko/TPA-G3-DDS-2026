@@ -56,8 +56,8 @@
                     popupAnchor: [0, -16]
                 });
                 const marker = L.marker(latlng, { icon: icon, keyboard: true });
-                const nro = Number(numero);
-                if (estado !== "deposito" && Number.isFinite(nro)) {
+                const nro = estado === "deposito" ? 0 : Number(numero);
+                if (Number.isFinite(nro)) {
                     paradaMarkers.set(nro, marker);
                 }
                 return marker;

@@ -66,6 +66,7 @@ public class ChoferPortalService {
 
         if (activa != null) {
             construirParadas(dashboard, activa);
+            construirDeposito(dashboard, activa);
             construirGeojson(dashboard);
         }
 
@@ -215,6 +216,22 @@ public class ChoferPortalService {
         dashboard.setParadas(paradas);
         dashboard.setEntregasTotales(totalEntregas);
         dashboard.setEntregasPendientes(pendientes);
+    }
+
+    private void construirDeposito(ChoferDashboardDTO dashboard, LogisticaDTOs.Ruta ruta) {
+        LogisticaDTOs.Deposito deposito = ruta.getDeposito();
+        if (deposito == null || !deposito.tieneCoordenadas()) {
+            return;
+        }
+        LogisticaDTOs.DireccionLogistica direccion = new LogisticaDTOs.DireccionLogistica();
+        direccion.setCalleUno(deposito.getEtiqueta() != null && !deposito.getEtiqueta().isBlank()
+                ? deposito.getEtiqueta() : "Depósito");
+        direccion.setLatitud(deposito.getLatitud());
+        direccion.setLongitud(deposito.getLongitud());
+        ChoferDashboardDTO.DepositoVista vista = new ChoferDashboardDTO.DepositoVista();
+        vista.setEtiqueta(direccion.getCalleUno());
+        vista.setDireccion(direccion);
+        dashboard.setDeposito(vista);
     }
 
     private List<ChoferDashboardDTO.BienVista> bienesDe(LogisticaDTOs.Parada parada) {

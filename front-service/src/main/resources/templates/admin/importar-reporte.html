@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Importación CSV — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1>Importación de donantes</h1>
+        <p class="admin-page-lead">El archivo se procesa en segundo plano. Esta pantalla se actualiza sola.</p>
+    </div>
+    <a class="btn btn-secondary" th:href="@{/admin/donantes}">Volver a donantes</a>
+</header>
+<main class="main-admin" id="contenido" tabindex="-1">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="spinner-border text-success" id="importSpinner" role="status" aria-hidden="true"></span>
+                <div>
+                    <h2 class="h5 mb-1" id="importEstado">Procesando importación…</h2>
+                    <p class="text-muted mb-0" th:text="${'ID: ' + importId}">ID</p>
+                </div>
+            </div>
+            <div class="progress mb-3" role="progressbar" aria-label="Progreso de importación"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="importProgress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 10%" id="importBar"></div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4"><div class="border rounded p-3"><span class="text-muted d-block">Filas</span><strong id="importTotal">0</strong></div></div>
+                <div class="col-md-4"><div class="border rounded p-3"><span class="text-muted d-block">Importados</span><strong class="text-success" id="importOk">0</strong></div></div>
+                <div class="col-md-4"><div class="border rounded p-3"><span class="text-muted d-block">Fallidos</span><strong class="text-danger" id="importFail">0</strong></div></div>
+            </div>
+            <div id="importErrores" class="mt-3" hidden>
+                <h3 class="h6">Errores</h3>
+                <ul class="small text-danger" id="importErrorList"></ul>
+            </div>
+            <a class="btn btn-primary mt-4" th:href="@{/admin/donantes}" id="importVolver" hidden>Ver donantes importados</a>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+<script th:inline="javascript">
+    window.IMPORT_ID = "[(${importId})]";
+</script>
+<script>
+(function () {
+    "use strict";
+    const id = window.IMPORT_ID;
+    if (!id) return;
+    const estado = document.getElementById("importEstado");
+    const total = document.getElementById("importTotal");
+    const ok = document.getElementById("importOk");
+    const fail = document.getElementById("importFail");
+    const bar = document.getElementById("importBar");
+    const progress = document.getElementById("importProgress");
+    const spinner = document.getElementById("importSpinner");
+    const volver = document.getElementById("importVolver");
+    const errores = document.getElementById("importErrores");
+    const lista = document.getElementById("importErrorList");
+    let timer = null;
+
+    function pintar(data) {
+        const completado = data.estado === "COMPLETADO" || data.estado === "FALLIDO";
+        const totalFilas = Number(data.totalFilas || 0);
+        const importados = Number(data.importadosExitosos || 0);
+        const fallidos = Number(data.fallidos || 0);
+        total.textContent = totalFilas;
+        ok.textContent = importados;
+        fail.textContent = fallidos;
+        estado.textContent = data.estado === "COMPLETADO" ? "Importación completada"
+            : data.estado === "FALLIDO" ? "La importación falló" : "Procesando importación…";
+        const porcentaje = completado ? 100 : Math.min(90, 10 + (totalFilas > 0 ? Math.round((importados + fallidos) * 100 / totalFilas) : 0));
+        bar.style.width = porcentaje + "%";
+        progress.setAttribute("aria-valuenow", String(porcentaje));
+        spinner.hidden = completado;
+        spinner.classList.toggle("d-none", completado);
+        volver.hidden = !completado;
+        if (Array.isArray(data.errores) && data.errores.length > 0) {
+            errores.hidden = false;
+            lista.innerHTML = "";
+            data.errores.slice(0, 20).forEach(function (error) {
+                const li = document.createElement("li");
+                li.textContent = error;
+                lista.appendChild(li);
+            });
+        }
+        if (completado && timer) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    function consultar() {
+        fetch("/admin/donantes/importar/" + encodeURIComponent(id) + "/estado", {headers: {"Accept": "application/json"}})
+            .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error("estado")); })
+            .then(pintar)
+            .catch(function () { estado.textContent = "No pudimos consultar el estado. Reintentando…"; });
+    }
+
+    consultar();
+    timer = window.setInterval(consultar, 2000);
+})();
+</script>
+</body>
+</html>

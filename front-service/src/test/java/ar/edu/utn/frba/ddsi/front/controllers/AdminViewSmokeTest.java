@@ -3,6 +3,8 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
+import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -42,18 +44,30 @@ class AdminViewSmokeTest {
     @MockBean
     private LogisticasClient logisticasClient;
 
+    @MockBean
+    private AdminResumenService adminResumenService;
+
+    @MockBean
+    private SeguimientoTokenService seguimientoTokenService;
+
     @Test
     void adminViewsRenderWithoutBrokenTemplates() throws Exception {
         when(donacionesClient.obtenerDonantes()).thenReturn(List.of());
         when(donacionesClient.obtenerEntidades()).thenReturn(List.of());
         when(donacionesClient.obtenerTodasLasDonaciones()).thenReturn(List.of());
         when(logisticasClient.obtenerCamiones()).thenReturn(List.of());
+        when(logisticasClient.obtenerRutas()).thenReturn(List.of());
+        when(logisticasClient.obtenerEntregasNoRecibidas()).thenReturn(null);
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of());
 
         when(donacionesClient.obtenerResultadosMatchmaking()).thenReturn(List.of());
+        when(adminResumenService.obtenerResumen()).thenReturn(new AdminResumenService.Resumen());
 
         for (String path : List.of("/admin", "/admin/donaciones", "/admin/donaciones?vista=matchmaking",
                 "/admin/entidades", "/admin/donantes", "/admin/donaciones/nuevo",
-                "/admin/donantes/nuevo", "/admin/entidades/nuevo", "/camiones")) {
+                "/admin/donantes/nuevo", "/admin/entidades/nuevo", "/admin/camiones",
+                "/admin/camiones/nuevo", "/admin/rutas", "/admin/entregas-no-recibidas",
+                "/admin/donaciones?vista=vencidas", "/admin/donantes/importar/" + java.util.UUID.randomUUID())) {
             mockMvc.perform(get(path).session(sessionAdmin()))
                     .andExpect(status().isOk());
         }

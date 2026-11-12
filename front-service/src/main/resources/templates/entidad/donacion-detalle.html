@@ -128,6 +128,18 @@
                         </button>
                         <p id="confirmHint" class="hint" role="status" style="text-align: center; margin-bottom: 0;">Adjuntá una foto para habilitar la confirmación.</p>
                     </form>
+
+                    <form method="post" th:action="@{/entidad/donaciones/{id}/no-recibida(id=${donacion.id})}" style="margin-top: var(--gap-4);">
+                        <div class="field">
+                            <label for="justificacionNoRecibida">Motivo por el que no se recibió (obligatorio)</label>
+                            <textarea id="justificacionNoRecibida" name="justificacion" rows="2" maxlength="300" required
+                                      placeholder="Ej.: el camión no llegó o la mercadería estaba dañada"></textarea>
+                        </div>
+                        <button class="btn btn-danger btn-block" type="submit" style="margin-top: var(--gap-3);"
+                                onclick="return confirm('¿Registrar que la donación no fue recibida?');">
+                            No recibida
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>

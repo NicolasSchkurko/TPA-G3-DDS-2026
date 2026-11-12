@@ -67,15 +67,17 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCategoria' + ${stat.index}">Categoría</label>
-                                    <input class="form-control" th:id="'bienCategoria' + ${stat.index}"
+                                    <input class="form-control bien-categoria" th:id="'bienCategoria' + ${stat.index}"
                                            th:field="*{bienes[__${stat.index}__].categoria}" type="text"
-                                           placeholder="Alimentos">
+                                           list="catCategorias" placeholder="Elegí o escribí una categoría"
+                                           autocomplete="off" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienSubcategoria' + ${stat.index}">Subcategoría</label>
-                                    <input class="form-control" th:id="'bienSubcategoria' + ${stat.index}"
+                                    <input class="form-control bien-subcategoria" th:id="'bienSubcategoria' + ${stat.index}"
                                            th:field="*{bienes[__${stat.index}__].subcategoria}" type="text"
-                                           placeholder="Arroz">
+                                           list="catSubcategorias" placeholder="Elegí o escribí una subcategoría"
+                                           autocomplete="off" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCantidad' + ${stat.index}">Cantidad</label>
@@ -86,6 +88,7 @@
                                     <label class="form-label" th:for="'bienUnidad' + ${stat.index}">Unidad de medida</label>
                                     <select class="form-select" th:id="'bienUnidad' + ${stat.index}"
                                             th:field="*{bienes[__${stat.index}__].unidadDeMedida}" required>
+                                        <option value="UNIDADES">Unidades</option>
                                         <option value="KILOGRAMOS">Kilogramos</option>
                                         <option value="LITROS">Litros</option>
                                     </select>
@@ -119,6 +122,17 @@
                     </div>
                 </section>
 
+                <datalist id="catCategorias">
+                    <option th:each="categoria : ${catalogo != null ? catalogo.keySet() : {}}"
+                            th:value="${categoria}"></option>
+                </datalist>
+                <datalist id="catSubcategorias">
+                    <th:block th:each="entrada : ${catalogo != null ? catalogo : {}}">
+                        <option th:each="subcategoria : ${entrada.value}"
+                                th:value="${subcategoria}"></option>
+                    </th:block>
+                </datalist>
+
                 <div class="d-flex justify-content-end gap-2">
                     <a class="btn btn-outline-secondary" th:href="@{/}">Cancelar</a>
                     <button class="btn btn-primary" type="submit">
@@ -130,6 +144,9 @@
     </div>
 </main>
 
+<script th:inline="javascript">
+    window.CATALOGO_DONACION = /*[[${catalogo}]]*/ {};
+</script>
 <script>
     const listaBienes = document.getElementById("listaBienes");
     const plantillaBien = listaBienes.querySelector(".bien-item");
@@ -148,6 +165,7 @@
                 label.htmlFor = label.htmlFor.replace(/\d+$/, index);
             });
             bien.querySelector(".quitar-bien").hidden = bienes.length === 1;
+            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
             actualizarTipoBien(bien);
         });
     }
@@ -188,6 +206,28 @@
     listaBienes.addEventListener("change", (evento) => {
         if (evento.target.matches(".bien-tipo")) {
             actualizarTipoBien(evento.target.closest(".bien-item"));
+        }
+    });
+
+    const CATALOGO = window.CATALOGO_DONACION || {};
+
+    function repoblarSubcategorias(bien, valorSeleccionado) {
+        const categoria = (bien.querySelector(".bien-categoria").value || "").trim().toLowerCase();
+        const datalist = document.getElementById("catSubcategorias");
+        if (!datalist) return;
+        datalist.innerHTML = "";
+        const clave = Object.keys(CATALOGO).find((c) => c.toLowerCase() === categoria);
+        (clave ? CATALOGO[clave] : []).forEach((subcategoria) => {
+            const option = document.createElement("option");
+            option.value = subcategoria;
+            datalist.appendChild(option);
+        });
+    }
+
+    listaBienes.addEventListener("input", (evento) => {
+        if (evento.target.matches(".bien-categoria")) {
+            const bien = evento.target.closest(".bien-item");
+            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
         }
     });
 

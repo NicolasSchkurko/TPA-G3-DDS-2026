@@ -15,6 +15,7 @@ public class NecesidadDTO {
     private String tipoNecesidad;
     private String descripcion;
     private Integer cantidadObjetivo;
+    private String unidadDeMedida;
     private String nombreSubcategoria;
     private String nombreCategoria;
     private Integer plazoEnDias;
@@ -56,6 +57,7 @@ public class NecesidadDTO {
         if (this.activa != null) {
             necesidad.setActiva(this.activa);
         }
+        necesidad.setUnidadDeMedida(normalizarUnidad(this.unidadDeMedida));
 
         return necesidad;
     }
@@ -65,6 +67,7 @@ public class NecesidadDTO {
         NecesidadDTO dto = new NecesidadDTO();
         dto.setDescripcion(necesidad.getDescripcion());
         dto.setCantidadObjetivo(necesidad.getCantidadObjetivo());
+        dto.setUnidadDeMedida(necesidad.getUnidadDeMedida());
         if (necesidad.getSubcategoria() != null) {
             dto.setNombreSubcategoria(necesidad.getSubcategoria().getNombre());
             if (necesidad.getSubcategoria().getCategoria() != null) dto.setNombreCategoria(necesidad.getSubcategoria().getCategoria().getNombre());
@@ -75,5 +78,16 @@ public class NecesidadDTO {
         if (necesidad instanceof NecesidadRecurrente recurrente) dto.setPlazoEnDias(recurrente.getPlazoEnDias());
 
         return dto;
+    }
+
+    private static String normalizarUnidad(String unidad) {
+        if (unidad == null || unidad.isBlank()) {
+            return "UNIDADES";
+        }
+        return switch (unidad.trim().toUpperCase()) {
+            case "KILOGRAMOS", "KILOS", "KG" -> "KILOGRAMOS";
+            case "LITROS", "LT" -> "LITROS";
+            default -> "UNIDADES";
+        };
     }
 }

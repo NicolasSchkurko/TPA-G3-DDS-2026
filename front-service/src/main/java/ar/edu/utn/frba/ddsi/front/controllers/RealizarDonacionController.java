@@ -51,6 +51,7 @@ public class RealizarDonacionController {
             // La fecha de realización no es editable: se fija al día de hoy.
             formulario.setFechaRealizacion(java.time.LocalDate.now());
             model.addAttribute("formulario", formulario);
+            prepararCatalogo(model);
             return "realizar-donacion";
         } catch (RestClientResponseException | ResourceAccessException e) {
             log.error("No se pudo consultar el perfil del donante en el servicio de donaciones", e);
@@ -88,6 +89,7 @@ public class RealizarDonacionController {
         // La fecha de realización no es editable: se fuerza al día de hoy.
         formulario.setFechaRealizacion(java.time.LocalDate.now());
         model.addAttribute("donante", donante.get());
+        prepararCatalogo(model);
         if (bindingResult.hasErrors()) {
             model.addAttribute("error", bindingResult.getAllErrors().get(0).getDefaultMessage());
             return "realizar-donacion";
@@ -146,6 +148,20 @@ public class RealizarDonacionController {
             return Optional.empty();
         }
         return Optional.of(donantes.get(0));
+    }
+
+    private void prepararCatalogo(Model model) {
+        java.util.Map<String, java.util.List<String>> catalogo = donacionesClient.obtenerCatalogoCategorias();
+        if (catalogo == null || catalogo.isEmpty()) {
+            catalogo = new java.util.LinkedHashMap<>();
+            catalogo.put("Alimentos", java.util.List.of("Arroz", "Fideos", "Leche en polvo", "Aceite", "Legumbres", "Enlatados", "Harina"));
+            catalogo.put("Textil", java.util.List.of("Ropa de abrigo", "Frazadas", "Calzado", "Ropa para bebés"));
+            catalogo.put("Salud", java.util.List.of("Medicamentos", "Botiquín", "Insumos descartables"));
+            catalogo.put("Higiene", java.util.List.of("Jabón", "Pañales", "Toallas", "Lavandina"));
+            catalogo.put("Educación", java.util.List.of("Útiles escolares", "Libros", "Mochilas"));
+            catalogo.put("Hogar", java.util.List.of("Muebles", "Electrodomésticos", "Ropa de cama"));
+        }
+        model.addAttribute("catalogo", catalogo);
     }
 
     private static boolean tieneRolDonante(Authentication authentication) {

@@ -2107,3 +2107,209 @@
         width: 30%;
     }
 }
+/* ==================================================================
+   PANEL ADMIN LANDING (resumen real)
+   ================================================================== */
+.admin-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.admin-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.admin-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background-color: var(--accent-soft);
+    color: var(--accent);
+    font-size: 20px;
+}
+
+.admin-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.admin-card-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+}
+
+.admin-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink-2);
+    line-height: 1.1;
+}
+
+.admin-section {
+    margin-bottom: 24px;
+    padding: 20px 22px;
+    background-color: var(--white);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.admin-section h2 {
+    margin: 0 0 14px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink-2);
+}
+
+.admin-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    background-color: var(--map-bg);
+    color: var(--ink-2);
+    font-size: 13.5px;
+}
+
+.admin-chip strong {
+    color: var(--accent);
+}
+
+.admin-attention {
+    border-left: 4px solid #c2410c;
+}
+
+.admin-attention-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-attention-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: var(--ink-2);
+}
+
+.admin-attention-list li i {
+    color: #c2410c;
+    font-size: 17px;
+}
+
+.admin-attention-list li a {
+    margin-left: auto;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+@media (max-width: 800px) {
+    .admin-cards {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    .admin-attention-list li a {
+        margin-left: 0;
+    }
+}
+
+/* ---------- Importación CSV: mapeo de encabezados ---------- */
+.csv-mapping {
+    margin: 0 0 var(--gap-4);
+    padding: var(--gap-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.csv-mapping header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    margin-bottom: var(--gap-4);
+}
+
+.csv-mapping h2 {
+    margin: 0 0 4px;
+    color: var(--ink);
+    font-size: 17px;
+}
+
+.csv-mapping p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.csv-mapping-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: var(--gap-3);
+}
+
+.csv-mapping-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.csv-mapping-field select {
+    min-height: var(--hit);
+    width: 100%;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 400;
+}
+
+@media (max-width: 640px) {
+    .csv-mapping header {
+        flex-direction: column;
+    }
+}

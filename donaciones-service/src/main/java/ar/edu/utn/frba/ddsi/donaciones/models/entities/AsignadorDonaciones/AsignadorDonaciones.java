@@ -81,8 +81,17 @@ public class AsignadorDonaciones {
 
         validarAlgoritmosConfigurados();
 
+        // Excluir la entidad propia del donante ANTES de ejecutar los algoritmos, para que
+        // no aparezca en ningún ranking ni en la intersección.
+        List<EntidadBeneficiaria> entidadesElegibles = todasLasEntidades;
+        if (entidadesElegibles != null) {
+            entidadesElegibles = entidadesElegibles.stream()
+                    .filter(e -> !EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), e))
+                    .collect(Collectors.toList());
+        }
+
         // 1. Ejecutar todos los algoritmos devolviendo una única lista plana
-        List<PropuestaAsignacion> todasLasPropuestas = ejecutarTodosLosAlgoritmos(donacion, todasLasEntidades);
+        List<PropuestaAsignacion> todasLasPropuestas = ejecutarTodosLosAlgoritmos(donacion, entidadesElegibles);
 
         // 2. Calcular la intersección consolidada
         List<PropuestaAsignacion> interseccion = obtenerInterseccion(todasLasPropuestas);

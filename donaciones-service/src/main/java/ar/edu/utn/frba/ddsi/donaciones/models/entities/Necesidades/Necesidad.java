@@ -42,6 +42,8 @@ public abstract class Necesidad {
 
     String descripcion;
     Integer cantidadObjetivo;
+    /** Unidad de medida declarada por la entidad (UNIDADES, KILOGRAMOS, LITROS). */
+    private String unidadDeMedida;
 
     public Necesidad(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo) {
         this.subcategoria = subcategoria;

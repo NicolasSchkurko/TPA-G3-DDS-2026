@@ -192,6 +192,16 @@
     background: #fbfcfb;
 }
 
+.parada.is-deposito {
+    background: #f7f8f6;
+    box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.parada.is-deposito .parada-numero.is-deposito {
+    background: var(--ink);
+    color: var(--white);
+}
+
 .parada-head {
     display: flex;
     align-items: flex-start;

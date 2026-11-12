@@ -101,9 +101,18 @@
             const lng = camion.lng != null ? Number(camion.lng) : NaN;
             if (!camion.patente || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-            const popup = "<strong>Camión " + escapeHtml(camion.patente) + "</strong><br>"
-                + "En camino a: " + escapeHtml(camion.destino || "próxima parada") + "<br>"
-                + (camion.donaciones ? camion.donaciones.length + " donación(es)" : "");
+            const popupParts = [
+                "<strong>Camión " + escapeHtml(camion.patente) + "</strong>",
+                "En camino a: " + escapeHtml(camion.destino || "próxima parada"),
+                (camion.donaciones ? camion.donaciones.length + " donación(es)" : "")
+            ];
+            if (camion.ultimaActualizacion) {
+                popupParts.push("Última actualización: " + escapeHtml(camion.ultimaActualizacion));
+            }
+            if (camion.tokenSeguimiento) {
+                popupParts.push('<a href="/seguimiento/' + encodeURIComponent(camion.tokenSeguimiento) + '" target="_blank" rel="noopener noreferrer">Ver mapa completo</a>');
+            }
+            const popup = popupParts.filter(Boolean).join("<br>");
 
             if (truckMarkers.has(camion.patente)) {
                 truckMarkers.get(camion.patente).setLatLng([lat, lng]).setPopupContent(popup);
@@ -157,18 +166,66 @@
         const input = document.getElementById("entitiesFilter");
         const noMatch = document.getElementById("entitiesNoMatch");
         const message = document.getElementById("entitySelectionMessage");
+        const countEl = document.getElementById("entitiesCount");
+        const rubroSelect = document.getElementById("entitiesRubro");
+        const citySelect = document.getElementById("entitiesCity");
+        const needSelect = document.getElementById("entitiesNeed");
         if (!modal || !trigger || !input) return;
 
         let lastFocusedElement = null;
         const cards = Array.from(modal.querySelectorAll(".entity-card-select"));
 
+        function populateSelect(select, values) {
+            if (!select) return;
+            const first = select.options[0];
+            select.innerHTML = "";
+            if (first) select.appendChild(first);
+            Array.from(values).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+                .forEach((value) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = value;
+                    select.appendChild(option);
+                });
+        }
+
+        const rubros = new Set();
+        const cities = new Set();
+        const needs = new Set();
+        cards.forEach((card) => {
+            if (card.dataset.rubro) rubros.add(card.dataset.rubro);
+            if (card.dataset.city) cities.add(card.dataset.city);
+            (card.dataset.needs || "").split(",").map((s) => s.trim()).filter(Boolean)
+                .forEach((n) => needs.add(n));
+        });
+        populateSelect(rubroSelect, rubros);
+        populateSelect(citySelect, cities);
+        populateSelect(needSelect, needs);
+
         function filterEntities() {
             const query = input.value.trim().toLocaleLowerCase();
+            const selectedRubro = rubroSelect ? rubroSelect.value : "";
+            const selectedCity = citySelect ? citySelect.value : "";
+            const selectedNeed = needSelect ? needSelect.value : "";
+            let visible = 0;
             cards.forEach((card) => {
-                card.hidden = !card.dataset.name.toLocaleLowerCase().includes(query);
+                const nameMatch = (card.dataset.name || "").toLocaleLowerCase().includes(query);
+                const rubroMatch = !selectedRubro || card.dataset.rubro === selectedRubro;
+                const cityMatch = !selectedCity || card.dataset.city === selectedCity;
+                const needs = (card.dataset.needs || "").split(",").map((s) => s.trim());
+                const needMatch = !selectedNeed || needs.includes(selectedNeed);
+                card.hidden = !(nameMatch && rubroMatch && cityMatch && needMatch);
+                if (!card.hidden) visible += 1;
             });
             if (noMatch) {
-                noMatch.hidden = cards.length === 0 || cards.some((card) => !card.hidden);
+                noMatch.hidden = cards.length === 0 || visible > 0;
+            }
+            if (countEl) {
+                countEl.textContent = cards.length === 0
+                    ? ""
+                    : (visible === cards.length
+                        ? `${visible} entidad${visible === 1 ? "" : "es"} disponibles`
+                        : `${visible} de ${cards.length} entidades`);
             }
         }
 
@@ -219,6 +276,9 @@
             button.addEventListener("click", close);
         });
         input.addEventListener("input", filterEntities);
+        if (rubroSelect) rubroSelect.addEventListener("change", filterEntities);
+        if (citySelect) citySelect.addEventListener("change", filterEntities);
+        if (needSelect) needSelect.addEventListener("change", filterEntities);
         cards.forEach((card) => card.addEventListener("click", () => selectEntity(card)));
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape" && modal.classList.contains("is-open")) close();
@@ -234,6 +294,8 @@
         const search = document.getElementById("historySearch");
         const status = document.getElementById("historyStatus");
         const sort = document.getElementById("historySort");
+        const category = document.getElementById("historyCategory");
+        const subcategory = document.getElementById("historySubcategory");
         const inProgressToggle = document.getElementById("toggleInProgress");
         const notice = document.getElementById("historyFilterNotice");
         const mapNotice = document.getElementById("mapSelectionNotice");
@@ -243,6 +305,29 @@
         const noResults = document.getElementById("historyNoResults");
         const activeStatuses = new Set(["ASIGNADO", "LISTA_PARA_ENTREGAR", "EN_TRASLADO"]);
         let showInProgress = false;
+
+        function populateSelect(select, values) {
+            if (!select) return;
+            const first = select.options[0];
+            select.innerHTML = "";
+            if (first) select.appendChild(first);
+            Array.from(values).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+                .forEach((value) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = value;
+                    select.appendChild(option);
+                });
+        }
+
+        const categories = new Set();
+        const subcategories = new Set();
+        cards.forEach((card) => {
+            if (card.dataset.category) categories.add(card.dataset.category);
+            if (card.dataset.subcategory) subcategories.add(card.dataset.subcategory);
+        });
+        populateSelect(category, categories);
+        populateSelect(subcategory, subcategories);
 
         function focusDeliveries() {
             const markers = cards
@@ -277,6 +362,8 @@
         function updateHistory() {
             const query = normalize(search.value);
             const selectedStatus = status.value;
+            const selectedCategory = category ? category.value : "";
+            const selectedSubcategory = subcategory ? subcategory.value : "";
 
             cards.forEach((card) => {
                 const searchableText = normalize([
@@ -287,8 +374,10 @@
                 ].join(" "));
                 const matchesQuery = searchableText.includes(query);
                 const matchesStatus = !selectedStatus || card.dataset.status === selectedStatus;
+                const matchesCategory = !selectedCategory || card.dataset.category === selectedCategory;
+                const matchesSubcategory = !selectedSubcategory || card.dataset.subcategory === selectedSubcategory;
                 const matchesInProgress = !showInProgress || activeStatuses.has(card.dataset.status);
-                card.hidden = !(matchesQuery && matchesStatus && matchesInProgress);
+                card.hidden = !(matchesQuery && matchesStatus && matchesCategory && matchesSubcategory && matchesInProgress);
             });
 
             cards.sort((first, second) => {
@@ -313,13 +402,13 @@
             const collapsed = layout.classList.toggle("sidebar-collapsed");
             sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
             sidebarToggle.setAttribute("aria-label", collapsed
-                ? "Mostrar historial de donaciones"
-                : "Ocultar historial de donaciones");
+                ? "Mostrar donaciones"
+                : "Ocultar donaciones");
             sidebarToggle.querySelector("i").className = collapsed
                 ? "bi bi-chevron-right"
                 : "bi bi-chevron-left";
             const label = sidebarToggle.querySelector(".map-corner-toggle-label");
-            if (label) label.textContent = collapsed ? "Historial" : "Ocultar";
+            if (label) label.textContent = collapsed ? "Donaciones" : "Ocultar";
             if (map) {
                 window.setTimeout(() => map.invalidateSize(), 220);
             }
@@ -328,6 +417,8 @@
         search.addEventListener("input", updateHistory);
         status.addEventListener("change", updateHistory);
         sort.addEventListener("change", updateHistory);
+        if (category) category.addEventListener("change", updateHistory);
+        if (subcategory) subcategory.addEventListener("change", updateHistory);
         inProgressToggle.addEventListener("click", () => {
             showInProgress = !showInProgress;
             inProgressToggle.setAttribute("aria-pressed", String(showInProgress));

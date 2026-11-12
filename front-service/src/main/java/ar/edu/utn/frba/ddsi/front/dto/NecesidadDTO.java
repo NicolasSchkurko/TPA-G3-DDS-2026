@@ -16,6 +16,7 @@ public class NecesidadDTO {
     private String tipoNecesidad;
     private String descripcion;
     private Integer cantidadObjetivo;
+    private String unidadDeMedida;
     private String nombreSubcategoria;
     private String nombreCategoria;
     private Integer plazoEnDias;
