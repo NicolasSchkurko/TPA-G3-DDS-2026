@@ -100,7 +100,6 @@
                                              data-descripcion=${m.descripcion},
                                              data-insignia=${m.insigniaObjetivo},
                                              data-insignia-desc=${m.insigniaDescripcion},
-                                             data-insignia-img=${m.insigniaUrlImagen},
                                              data-atributo=${m.regla?.atributo},
                                              data-tipo-op=${m.regla?.operacion?.tipoOperacion},
                                              data-progreso=${m.regla?.operacion?.progresoObjetivo},
@@ -227,12 +226,6 @@
                         <label for="f-insignia-desc">Descripción de la insignia</label>
                         <input id="f-insignia-desc" name="insigniaDescripcion" maxlength="200">
                     </div>
-                </div>
-
-                <div class="field">
-                    <label for="f-insignia-img">URL de la imagen de la insignia</label>
-                    <input id="f-insignia-img" name="insigniaUrlImagen" type="url" placeholder="https://...">
-                    <span class="hint">Se guarda la URL, no los bytes.</span>
                 </div>
 
                 <div class="form-subtitle">Regla de progreso</div>
@@ -429,7 +422,6 @@
             set('f-descripcion', d.descripcion);
             set('f-insignia', d.insignia);
             set('f-insignia-desc', d.insigniaDesc);
-            set('f-insignia-img', d.insigniaImg);
             set('f-atributo', d.atributo);
             set('f-tipo-op', d.tipoOp);
             set('f-progreso', d.progreso);

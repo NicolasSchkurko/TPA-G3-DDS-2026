@@ -14,13 +14,13 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import org.springframework.web.client.RestClientException;
 
 /**
  * Pantallas de administración de incentivos.
@@ -46,6 +46,34 @@ public class IncentivosAdminController {
         model.addAttribute("misiones", incentivosClient.obtenerMisiones());
         model.addAttribute("categorias", incentivosClient.obtenerCategorias());
         return "admin/incentivos-misiones";
+    }
+
+    @PostMapping("/admin/incentivos/misiones")
+    public String crearMision(@ModelAttribute IncentivosAdminDTOs.Mision mision,
+                              @AuthenticationPrincipal OidcUser usuario,
+                              RedirectAttributes flash) {
+        UUID idAdmin;
+        try {
+            idAdmin = UUID.fromString(usuario.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.error("El sub de Keycloak del administrador no es un UUID válido.");
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo identificar al administrador para guardar la misión.");
+            return "redirect:/admin/incentivos";
+        }
+
+        try {
+            incentivosClient.crearMision(idAdmin, mision);
+            flash.addFlashAttribute("toastTipo", "success");
+            flash.addFlashAttribute("toastMensaje", "La misión se creó correctamente.");
+        } catch (RestClientException e) {
+            log.error("No se pudo crear la misión desde incentivos-service: {}", e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo crear la misión. Revisá los datos e intentá de nuevo.");
+        }
+        return "redirect:/admin/incentivos";
     }
 
     @PostMapping("/admin/incentivos/categorias")
@@ -90,6 +118,59 @@ public class IncentivosAdminController {
             notificar(redirectAttributes, "success", "La categoría se eliminó correctamente.");
         } catch (RestClientResponseException e) {
             notificarError(redirectAttributes, e, "eliminar");
+        }
+        return "redirect:/admin/incentivos";
+    }
+
+    @PostMapping("/admin/incentivos/misiones/{id}")
+    public String actualizarMision(@PathVariable UUID id,
+                                   @ModelAttribute IncentivosAdminDTOs.Mision mision,
+                                   @AuthenticationPrincipal OidcUser usuario,
+                                   RedirectAttributes flash) {
+        UUID idAdmin;
+        try {
+            idAdmin = UUID.fromString(usuario.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.error("El sub de Keycloak del administrador no es un UUID válido.");
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo identificar al administrador para guardar la misión.");
+            return "redirect:/admin/incentivos";
+        }
+
+        try {
+            incentivosClient.actualizarMision(idAdmin, id, mision);
+            flash.addFlashAttribute("toastTipo", "success");
+            flash.addFlashAttribute("toastMensaje", "La misión se actualizó correctamente.");
+        } catch (RestClientException e) {
+            log.error("No se pudo actualizar la misión {} desde incentivos-service: {}", id, e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo actualizar la misión. Revisá los datos e intentá de nuevo.");
+        }
+        return "redirect:/admin/incentivos";
+    }
+
+    @PostMapping("/admin/incentivos/misiones/{id}/eliminar")
+    public String eliminarMision(@PathVariable UUID id,
+                                 @AuthenticationPrincipal OidcUser usuario,
+                                 RedirectAttributes flash) {
+        try {
+            incentivosClient.eliminarMision(idAdmin(usuario), id);
+            flash.addFlashAttribute("toastTipo", "success");
+            flash.addFlashAttribute("toastMensaje", "La misión se dio de baja correctamente.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.error("No se pudo identificar al administrador para eliminar la misión {}: {}",
+                    id, e.getMessage());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo identificar al administrador para eliminar la misión.");
+        } catch (RestClientResponseException e) {
+            log.warn("No se pudo eliminar la misión {} desde incentivos-service ({}): {}",
+                    id, e.getStatusCode(), e.getResponseBodyAsString());
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje",
+                    "No se pudo dar de baja la misión. " + e.getResponseBodyAsString());
         }
         return "redirect:/admin/incentivos";
     }

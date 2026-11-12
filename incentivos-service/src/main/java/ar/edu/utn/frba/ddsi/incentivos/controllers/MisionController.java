@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -90,11 +91,11 @@ public class MisionController {
     })
     @PostMapping("/admin")
     public ResponseEntity<MisionDTO> crearMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody MisionDTO request
     ) {
-        MisionDTO nuevaMision = service.crearMision(idDe(principal), request);
+        MisionDTO nuevaMision = service.crearMision(idAdmin, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevaMision);
     }
 
@@ -110,13 +111,13 @@ public class MisionController {
     })
     @PutMapping("/admin/{id}")
     public ResponseEntity<MisionDTO> actualizarMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado por el front", required = true)
+            @RequestHeader("X-Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a actualizar", required = true)
             @PathVariable UUID id,
             @Valid @RequestBody MisionDTO mision
     ) {
-        return ResponseEntity.ok(service.actualizarMision(idDe(principal), id, mision));
+        return ResponseEntity.ok(service.actualizarMision(idAdmin, id, mision));
     }
 
     @Operation(
@@ -130,12 +131,12 @@ public class MisionController {
     })
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<Void> eliminarMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a eliminar", required = true)
             @PathVariable UUID id
     ) {
-        service.eliminarMision(idDe(principal), id);
+        service.eliminarMision(idAdmin, id);
         return ResponseEntity.noContent().build();
     }
 
