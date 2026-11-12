@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.security.Principal;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,9 +56,9 @@ public class RankingController {
     @PostMapping
     public ResponseEntity<RankingMesDTO> crearRanking(
             @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody CrearRankingDTO request) {
-        RankingMesDTO rankingCreado = service.crearRankingMensual(idDe(principal), request.getPeriodo());
+        RankingMesDTO rankingCreado = service.crearRankingMensual(idAdmin, request.getPeriodo());
         return ResponseEntity.ok(rankingCreado);
     }
 
@@ -163,14 +163,10 @@ public class RankingController {
     @DeleteMapping("/{idRanking}")
     public ResponseEntity<Void> eliminarRanking(
             @Parameter(description = "UUID del administrador", required = true)
-            Principal principal,
+            @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID del ranking a eliminar", example = "123e4567-e89b-12d3-a456-426614174000")
             @PathVariable UUID idRanking) {
-        service.eliminarRanking(idDe(principal), idRanking);
+        service.eliminarRanking(idAdmin, idRanking);
         return ResponseEntity.ok().build();
-    }
-
-    private static UUID idDe(Principal principal) {
-        return UUID.fromString(principal.getName());
     }
 }

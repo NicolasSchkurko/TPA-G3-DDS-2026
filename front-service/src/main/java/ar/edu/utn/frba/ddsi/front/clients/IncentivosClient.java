@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
+import java.time.YearMonth;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -208,5 +209,25 @@ public class IncentivosClient {
             log.error("Error al obtener rankings desde {}: {}", baseUrl, e.getMessage());
             return List.of();
         }
+    }
+
+    /** Genera un ranking mensual usando la identidad del administrador autenticado en el front. */
+    public void crearRanking(YearMonth periodo, UUID idAdmin) {
+        restClient.post()
+                .uri(baseUrl + "/api/rankings")
+                .header("Admin-Id", idAdmin.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("periodo", periodo.toString()))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Elimina un ranking mensual usando la identidad del administrador autenticado en el front. */
+    public void eliminarRanking(UUID idRanking, UUID idAdmin) {
+        restClient.delete()
+                .uri(baseUrl + "/api/rankings/{idRanking}", idRanking)
+                .header("Admin-Id", idAdmin.toString())
+                .retrieve()
+                .toBodilessEntity();
     }
 }
