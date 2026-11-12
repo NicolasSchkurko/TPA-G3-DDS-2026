@@ -194,7 +194,7 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    height: 40px;
+    min-height: var(--hit);
     padding: 0 16px;
     border: 1px solid transparent;
     border-radius: var(--radius);
@@ -2319,3 +2319,9 @@
 .foto-donacion { position: relative; width: 120px; margin: 0; }
 .foto-donacion img { width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--line-strong, #cdd4ce); border-radius: 8px; }
 .foto-donacion-quitar { display: block; width: 100%; margin-top: 4px; border: 0; background: transparent; color: #b91c1c; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* Área táctil mínima WCAG 2.5.5 / consigna TP (48x48) */
+button, .btn, .btn-nuevo, a.btn, input[type="submit"], input[type="button"],
+input[type="text"], input[type="search"], input[type="number"], select, .pagination button {
+    min-height: var(--hit);
+}

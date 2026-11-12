@@ -18,6 +18,7 @@
 <div th:replace="~{fragments/toast-region :: toastRegion}"></div>
 
 <main class="map-main sidebar-collapsed" id="contenido" tabindex="-1">
+    <h1 class="visually-hidden" th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad' : 'Mi entidad'}">Mi entidad</h1>
 
     <!-- ============ Drawer izquierdo: necesidades ============ -->
     <aside class="donor-sidebar" id="necesidadesPanel" aria-label="Necesidades de la entidad">
@@ -90,14 +91,6 @@
                     <h2 th:text="${entidad.razonSocial}">Comedor Los Piletones</h2>
                 </div>
                 <i class="bi bi-building" aria-hidden="true"></i>
-            </div>
-
-            <div th:if="${demo}" class="banner banner-demo" role="status" style="margin: 12px 20px;">
-                <div><strong>Estás viendo datos de demostración.</strong><br>
-                    <span th:if="${vinculado}">No pudimos cargar los datos de tu entidad.</span>
-                    <span th:unless="${vinculado}">Vinculá tu cuenta para ver información real.</span>
-                    <a th:href="@{/entidad/vincular}">Vincular mi entidad</a>
-                </div>
             </div>
 
             <div class="incentive-section">

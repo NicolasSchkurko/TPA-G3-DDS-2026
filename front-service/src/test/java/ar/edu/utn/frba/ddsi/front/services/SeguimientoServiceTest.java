@@ -64,6 +64,80 @@ class SeguimientoServiceTest {
         assertThat(dto.getCamiones().get(0).getDestino()).isEqualTo("Av. La Plata 1500");
     }
 
+    @Test
+    void sinRutasConEntregasActivasNoInventaCamionesNiDeposito() {
+        UUID idEntidad = UUID.randomUUID();
+        LogisticaDTOs.Bien bien = new LogisticaDTOs.Bien();
+        LogisticaDTOs.DireccionLogistica destino = new LogisticaDTOs.DireccionLogistica();
+        destino.setIdEntidad(idEntidad);
+        destino.setCiudad("CABA");
+        destino.setLatitud(-34.6375);
+        destino.setLongitud(-58.3816);
+        bien.setEntidadDestino(destino);
+        bien.setEstado("EN_CAMINO");
+        bien.setCantidad(10);
+
+        LogisticaDTOs.Bienes bienes = new LogisticaDTOs.Bienes();
+        bienes.setIdsDonaciones(List.of(UUID.randomUUID()));
+        bienes.setBienes(List.of(bien));
+
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of());
+        when(logisticasClient.obtenerBienes()).thenReturn(bienes);
+
+        SeguimientoDTO dto = new SeguimientoService(logisticasClient).construir(idEntidad, List.of());
+
+        assertThat(dto.getCamiones()).isEmpty();
+        assertThat(dto.getEntregas()).hasSize(1);
+        assertThat(dto.getDepositoLat()).isNull();
+        assertThat(dto.getDepositoLng()).isNull();
+        assertThat(dto.getDepositoEtiqueta()).isNull();
+    }
+
+    @Test
+    void rutaRealNoTieneEtaYConservaDepositoReal() {
+        UUID idEntidad = UUID.randomUUID();
+        UUID idDonacion = UUID.randomUUID();
+        LogisticaDTOs.Ruta ruta = ruta(idEntidad, idDonacion);
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of(ruta));
+        when(logisticasClient.obtenerBienes()).thenReturn(new LogisticaDTOs.Bienes());
+
+        SeguimientoDTO dto = new SeguimientoService(logisticasClient).construir(idEntidad, List.of());
+
+        assertThat(dto.getCamiones()).hasSize(1);
+        assertThat(dto.getCamiones().get(0).getEtaMinutos()).isNull();
+        assertThat(dto.getDepositoLat()).isEqualTo(-34.5986317);
+        assertThat(dto.getDepositoEtiqueta()).isEqualTo("Depósito");
+    }
+
+    @Test
+    void rutaSinDepositoNoInventaDeposito() {
+        UUID idEntidad = UUID.randomUUID();
+        UUID idDonacion = UUID.randomUUID();
+        LogisticaDTOs.Ruta ruta = rutaSinDeposito(idEntidad, idDonacion);
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of(ruta));
+        when(logisticasClient.obtenerBienes()).thenReturn(new LogisticaDTOs.Bienes());
+
+        SeguimientoDTO dto = new SeguimientoService(logisticasClient).construir(idEntidad, List.of());
+
+        assertThat(dto.getCamiones()).hasSize(1);
+        assertThat(dto.getDepositoLat()).isNull();
+        assertThat(dto.getDepositoLng()).isNull();
+        assertThat(dto.getDepositoEtiqueta()).isNull();
+    }
+
+    @Test
+    void ultimaActualizacionUsaFechaRealDeCambioDeEstado() {
+        UUID idEntidad = UUID.randomUUID();
+        UUID idDonacion = UUID.randomUUID();
+        LogisticaDTOs.Ruta ruta = rutaConFecha(idEntidad, idDonacion);
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of(ruta));
+        when(logisticasClient.obtenerBienes()).thenReturn(new LogisticaDTOs.Bienes());
+
+        SeguimientoDTO dto = new SeguimientoService(logisticasClient).construir(idEntidad, List.of());
+
+        assertThat(dto.getCamiones().get(0).getUltimaActualizacion()).isEqualTo("2026-06-12T10:30");
+    }
+
     private static LogisticaDTOs.Ruta ruta(UUID idEntidad, UUID idDonacion) {
         LogisticaDTOs.Deposito deposito = new LogisticaDTOs.Deposito();
         deposito.setLatitud(-34.5986317);
@@ -108,5 +182,19 @@ class SeguimientoServiceTest {
         parada.setDireccion(direccion);
         parada.setItems(items);
         return parada;
+    }
+
+    private static LogisticaDTOs.Ruta rutaSinDeposito(UUID idEntidad, UUID idDonacion) {
+        LogisticaDTOs.Ruta ruta = ruta(idEntidad, idDonacion);
+        ruta.setDeposito(null);
+        return ruta;
+    }
+
+    private static LogisticaDTOs.Ruta rutaConFecha(UUID idEntidad, UUID idDonacion) {
+        LogisticaDTOs.Ruta ruta = ruta(idEntidad, idDonacion);
+        // marcar fecha de cambio de estado en el bien de la parada pendiente
+        LogisticaDTOs.Parada parada = ruta.getParadas().get(1);
+        parada.getItems().getBienes().get(0).setFechaCambioEstado(java.time.LocalDateTime.parse("2026-06-12T10:30"));
+        return ruta;
     }
 }

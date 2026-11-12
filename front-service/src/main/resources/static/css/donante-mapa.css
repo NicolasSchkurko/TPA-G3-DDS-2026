@@ -4,6 +4,7 @@
     background: #f0f2ee;
     font-synthesis: none;
     --donor-sidebar-width: 360px;
+    --map-zoom-offset: 68px;
 }
 
 * {
@@ -458,12 +459,12 @@ body {
 .map-corner-toggle {
     position: absolute;
     z-index: 650;
-    top: 20px;
+    top: 10px;
     display: inline-flex;
-    height: 42px;
+    min-height: var(--hit);
     align-items: center;
     gap: 8px;
-    padding: 0 14px;
+    padding: 0 16px;
     border: 0;
     border-radius: 6px;
     color: #1b7838;
@@ -479,12 +480,12 @@ body {
 }
 
 .map-corner-toggle-left {
-    left: calc(var(--donor-sidebar-width) + 12px);
+    left: calc(var(--donor-sidebar-width) + var(--map-zoom-offset));
     transition: left 200ms ease;
 }
 
 .map-main.sidebar-collapsed .map-corner-toggle-left {
-    left: 12px;
+    left: var(--map-zoom-offset);
 }
 
 .map-corner-toggle-right {
@@ -1131,7 +1132,7 @@ body {
 
     .map-notice {
         right: 12px;
-        bottom: calc(62px + env(safe-area-inset-bottom));
+        bottom: calc(72px + env(safe-area-inset-bottom));
         left: 12px;
         max-width: none;
         font-size: 11px;

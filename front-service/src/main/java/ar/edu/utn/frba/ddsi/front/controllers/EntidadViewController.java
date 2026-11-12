@@ -7,7 +7,7 @@ import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.front.dto.SeguimientoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
-import ar.edu.utn.frba.ddsi.front.services.DemoDataService;
+
 import ar.edu.utn.frba.ddsi.front.services.EntidadContext;
 import ar.edu.utn.frba.ddsi.front.services.IdentidadService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
@@ -60,7 +60,7 @@ public class EntidadViewController {
         if (datos == null) return "entidad/vincular-perfil";
 
         SeguimientoDTO seguimiento = datos.seguimiento();
-        model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), seguimiento, datos.demo())));
+        model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), seguimiento)));
         model.addAttribute("entregasActivas", seguimiento.getEntregas());
         model.addAttribute("camiones", seguimiento.getCamiones());
         model.addAttribute("necesidadesDestacadas",
@@ -99,11 +99,6 @@ public class EntidadViewController {
             flash.addFlashAttribute("toastMensaje", "Vinculá tu perfil de entidad para registrar necesidades.");
             return "redirect:/entidad/vincular";
         }
-        if (DemoDataService.ID_DEMO.equals(entidadId)) {
-            flash.addFlashAttribute("toastTipo", "info");
-            flash.addFlashAttribute("toastMensaje", "Modo demostración: la necesidad no se guardó.");
-            return "redirect:/entidad/necesidades";
-        }
         try {
             NecesidadDTO dto = necesidadDesdeForm(form);
             donacionesClient.crearNecesidad(entidadId, dto);
@@ -122,7 +117,7 @@ public class EntidadViewController {
                                       Authentication authentication, HttpServletRequest request,
                                       RedirectAttributes flash) {
         UUID entidadId = entidadContext.entidadId(request, authentication);
-        if (entidadId == null || DemoDataService.ID_DEMO.equals(entidadId)) {
+        if (entidadId == null) {
             flash.addFlashAttribute("toastTipo", "info");
             flash.addFlashAttribute("toastMensaje", "Modo demostración: los cambios no se guardaron.");
             return "redirect:/entidad/necesidades";
@@ -145,7 +140,7 @@ public class EntidadViewController {
                                     Authentication authentication, HttpServletRequest request,
                                     RedirectAttributes flash) {
         UUID entidadId = entidadContext.entidadId(request, authentication);
-        if (entidadId == null || DemoDataService.ID_DEMO.equals(entidadId)) {
+        if (entidadId == null) {
             flash.addFlashAttribute("toastTipo", "info");
             flash.addFlashAttribute("toastMensaje", "Modo demostración: la necesidad no se eliminó.");
             return "redirect:/entidad/necesidades";
@@ -184,7 +179,7 @@ public class EntidadViewController {
                 .filter(d -> id.equals(d.getId()))
                 .findFirst()
                 .orElse(null);
-        if (donacion == null && datos.demo()) {
+        if (donacion == null) {
             donacion = datos.donaciones().stream().findFirst().orElse(null);
         }
         if (donacion == null) {
@@ -232,11 +227,6 @@ public class EntidadViewController {
             return "redirect:/entidad/donaciones/" + id;
         }
 
-        if (datos.demo()) {
-            flash.addFlashAttribute("toastTipo", "info");
-            flash.addFlashAttribute("toastMensaje", "Modo demostración: la confirmación no se envió al backend.");
-            return "redirect:/entidad/donaciones/" + id;
-        }
 
         LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
         actualizacion.setEstado("ENTREGADA");
@@ -277,11 +267,6 @@ public class EntidadViewController {
             return "redirect:/entidad/donaciones/" + id;
         }
 
-        if (datos.demo()) {
-            flash.addFlashAttribute("toastTipo", "info");
-            flash.addFlashAttribute("toastMensaje", "Modo demostración: la novedad no se envió al backend.");
-            return "redirect:/entidad/donaciones/" + id;
-        }
 
         LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
         actualizacion.setEstado("NO_RECIBIDA");
@@ -305,7 +290,7 @@ public class EntidadViewController {
     public String seguimiento(Authentication authentication, HttpServletRequest request, Model model) {
         DatosPortal datos = prepararPortal(authentication, request, model);
         if (datos == null) return "entidad/vincular-perfil";
-        model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), datos.seguimiento(), datos.demo())));
+        model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), datos.seguimiento())));
         model.addAttribute("camiones", datos.seguimiento().getCamiones());
         model.addAttribute("entregasActivas", datos.seguimiento().getEntregas());
         model.addAttribute("pollingMs", 30000);
@@ -424,56 +409,54 @@ public class EntidadViewController {
     private DatosPortal prepararPortal(Authentication authentication, HttpServletRequest request, Model model) {
         EntidadBeneficiariaDTO entidad = entidadContext.entidad(request, authentication);
         boolean tieneVinculo = entidadContext.entidadId(request, authentication) != null;
-        boolean demo = entidad == null;
 
-        if (demo && !tieneVinculo) {
-            entidad = DemoDataService.entidadDemo();
+        if (entidad == null && !tieneVinculo) {
+            if (model != null) {
+                model.addAttribute("vinculado", false);
+                model.addAttribute("errorCarga", false);
+            }
+            return null;
         }
 
         if (entidad == null) {
-            // Hay vínculo pero el backend no respondió: mostramos demo con aviso.
-            entidad = DemoDataService.entidadDemo();
-            demo = true;
+            // Hay vínculo pero el backend no respondió: no inventamos datos.
+            if (model != null) {
+                model.addAttribute("vinculado", true);
+                model.addAttribute("errorCarga", true);
+            }
+            return null;
         }
 
-        List<DonacionDTO> donaciones = demo && DemoDataService.ID_DEMO.equals(entidad.getId())
-                ? DemoDataService.donacionesDemo()
-                : entidadContext.donaciones(request, authentication);
+        List<DonacionDTO> donaciones = entidadContext.donaciones(request, authentication);
         Map<UUID, LogisticaDTOs.Bien> entregas = entidadContext.entregasPorDonacion(request);
         SeguimientoDTO seguimiento = entidadContext.seguimiento(request, authentication);
-        if (demo && DemoDataService.ID_DEMO.equals(entidad.getId())) {
-            seguimiento = DemoDataService.seguimientoDemo();
-            entregas = new LinkedHashMap<>();
-        }
         List<NecesidadDTO> necesidades = entidad.getNecesidades() != null ? entidad.getNecesidades() : List.of();
 
         if (model != null) {
             model.addAttribute("entidad", entidad);
             model.addAttribute("vinculado", tieneVinculo);
-            model.addAttribute("demo", demo);
+            model.addAttribute("errorCarga", false);
             model.addAttribute("ubicacionSimulada", seguimiento.isUbicacionSimulada());
             model.addAttribute("donaciones", donaciones);
             model.addAttribute("necesidades", necesidades);
         }
-        return new DatosPortal(entidad, donaciones, entregas, seguimiento, demo, necesidades);
+        return new DatosPortal(entidad, donaciones, entregas, seguimiento, false, necesidades);
     }
 
-    private Map<String, Object> mapDataSeguimiento(EntidadBeneficiariaDTO entidad, SeguimientoDTO seguimiento, boolean demo) {
-        double[] coords = ar.edu.utn.frba.ddsi.front.services.SeguimientoService
-                .centroDe(entidad.getDireccion() != null ? entidad.getDireccion().getCiudad() : null);
+    private Map<String, Object> mapDataSeguimiento(EntidadBeneficiariaDTO entidad, SeguimientoDTO seguimiento) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("ubicacionSimulada", seguimiento.isUbicacionSimulada());
         data.put("generadoEn", seguimiento.getGeneradoEn());
-        data.put("demo", demo);
         boolean tieneCoordenadas = entidad.getDireccion() != null
                 && entidad.getDireccion().getLatitud() != null
                 && entidad.getDireccion().getLongitud() != null;
-        data.put("entidad", Map.of(
-                "razonSocial", entidad.getRazonSocial() != null ? entidad.getRazonSocial() : "Mi entidad",
-                "direccion", entidad.getDireccion() != null ? entidad.getDireccion().etiqueta() : "Sin dirección",
-                "zona", entidad.getDireccion() != null && entidad.getDireccion().getCiudad() != null ? entidad.getDireccion().getCiudad() : "CABA",
-                "lat", tieneCoordenadas ? entidad.getDireccion().getLatitud() : coords[0],
-                "lng", tieneCoordenadas ? entidad.getDireccion().getLongitud() : coords[1]));
+        Map<String, Object> entidadData = new LinkedHashMap<>();
+        entidadData.put("razonSocial", entidad.getRazonSocial() != null ? entidad.getRazonSocial() : "Mi entidad");
+        entidadData.put("direccion", entidad.getDireccion() != null ? entidad.getDireccion().etiqueta() : "Sin dirección");
+        entidadData.put("zona", entidad.getDireccion() != null && entidad.getDireccion().getCiudad() != null ? entidad.getDireccion().getCiudad() : "CABA");
+        entidadData.put("lat", tieneCoordenadas ? entidad.getDireccion().getLatitud() : null);
+        entidadData.put("lng", tieneCoordenadas ? entidad.getDireccion().getLongitud() : null);
+        data.put("entidad", entidadData);
         data.put("entregas", seguimiento.getEntregas());
         data.put("camiones", seguimiento.getCamiones());
         data.put("depositoLat", seguimiento.getDepositoLat());

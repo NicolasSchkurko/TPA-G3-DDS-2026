@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.front.dto.SeguimientoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -28,10 +29,7 @@ public class SeguimientoService {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-    /** Fallback si logística no devuelve el depósito configurado. */
-    private static final double[] DEPOSITO = {-34.5986317, -58.4226973};
-
-    /** Coordenadas aproximadas de barrios/zonas de CABA para el geocoding demo. */
+    /** Coordenadas aproximadas de barrios/zonas de CABA para direcciones sin lat/lng. */
     private static final Map<String, double[]> ZONAS_CABA = Map.ofEntries(
             Map.entry("palermo", new double[]{-34.5875, -58.4200}),
             Map.entry("belgrano", new double[]{-34.5628, -58.4560}),
@@ -182,26 +180,6 @@ public class SeguimientoService {
             camiones.add(camionDeRuta(ruta, donacionesDeEstaEntidad));
         }
 
-        // Sin rutas reales pero con entregas activas: se mantiene un camión por entrega para no
-        // dejar el mapa vacío en modo demo.
-        if (camiones.isEmpty()) {
-            for (SeguimientoDTO.EntregaActiva entrega : activas) {
-                double[] destino = centroDe(entrega.getZona());
-                String semilla = entrega.getIdDonacion() != null ? entrega.getIdDonacion().toString() : "entrega";
-                SeguimientoDTO.CamionEnRuta camion = new SeguimientoDTO.CamionEnRuta();
-                camion.setPatente(patenteSimulada(semilla));
-                camion.setEstadoRuta("EN_CURSO");
-                camion.setDonaciones(entrega.getIdDonacion() != null ? List.of(entrega.getIdDonacion()) : List.of());
-                camion.setLat(destino[0]);
-                camion.setLng(destino[1]);
-                camion.setParadaActual(0);
-                camion.setDestino("Destino de la entrega");
-                camion.setTrazado(List.of(List.of(DEPOSITO[1], DEPOSITO[0]), List.of(destino[1], destino[0])));
-                camion.setUltimaActualizacion(ISO.format(OffsetDateTime.now(ZoneOffset.ofHours(-3))));
-                camion.setEtaMinutos(8 + ThreadLocalRandom.current().nextInt(25));
-                camiones.add(camion);
-            }
-        }
         return camiones;
     }
 
@@ -223,18 +201,21 @@ public class SeguimientoService {
         camion.setParadaActual(indice);
         LogisticaDTOs.Parada parada = indice > 0 && ruta.getParadas() != null
                 ? ruta.getParadas().get(indice - 1) : null;
+        double[] deposito = depositoDe(ruta);
         double[] posicion = parada != null && parada.getDireccion() != null
                 && parada.getDireccion().getLatitud() != null
                 && parada.getDireccion().getLongitud() != null
                 ? coordenadasDe(parada.getDireccion(), null)
-                : depositoDe(ruta);
-        camion.setLat(posicion[0]);
-        camion.setLng(posicion[1]);
+                : (deposito != null ? deposito : null);
+        if (posicion != null) {
+            camion.setLat(posicion[0]);
+            camion.setLng(posicion[1]);
+        }
         camion.setDestino(parada != null && parada.getDireccion() != null
                 ? parada.getDireccion().etiqueta()
                 : "Depósito");
-        camion.setUltimaActualizacion(ISO.format(OffsetDateTime.now(ZoneOffset.ofHours(-3))));
-        camion.setEtaMinutos(indice > 0 ? 8 + ThreadLocalRandom.current().nextInt(25) : null);
+        camion.setUltimaActualizacion(ultimaActualizacionDe(ruta));
+        camion.setEtaMinutos(null);
         return camion;
     }
 
@@ -296,7 +277,9 @@ public class SeguimientoService {
     private static List<List<Double>> trazadoDe(LogisticaDTOs.Ruta ruta) {
         List<List<Double>> puntos = new ArrayList<>();
         double[] deposito = depositoDe(ruta);
-        puntos.add(List.of(deposito[1], deposito[0]));
+        if (deposito != null) {
+            puntos.add(List.of(deposito[1], deposito[0]));
+        }
         if (ruta.getParadas() != null) {
             for (LogisticaDTOs.Parada parada : ruta.getParadas()) {
                 LogisticaDTOs.DireccionLogistica direccion = parada.getDireccion();
@@ -309,22 +292,46 @@ public class SeguimientoService {
         return puntos;
     }
 
+    /** Fecha real del último cambio de estado de los bienes de la ruta, o null si no hay datos. */
+    private static String ultimaActualizacionDe(LogisticaDTOs.Ruta ruta) {
+        LocalDateTime max = null;
+        if (ruta != null && ruta.getParadas() != null) {
+            for (LogisticaDTOs.Parada parada : ruta.getParadas()) {
+                if (parada.getItems() == null || parada.getItems().getBienes() == null) continue;
+                for (LogisticaDTOs.Bien bien : parada.getItems().getBienes()) {
+                    LocalDateTime fecha = bien.getFechaCambioEstado();
+                    if (fecha != null && (max == null || fecha.isAfter(max))) {
+                        max = fecha;
+                    }
+                }
+            }
+        }
+        return max != null ? max.toString() : null;
+    }
+
     private static double[] depositoDe(LogisticaDTOs.Ruta ruta) {
         if (ruta != null && ruta.getDeposito() != null && ruta.getDeposito().tieneCoordenadas()) {
             return new double[]{ruta.getDeposito().getLatitud(), ruta.getDeposito().getLongitud()};
         }
-        return DEPOSITO;
+        return null;
     }
 
     private static void aplicarDeposito(SeguimientoDTO dto, List<LogisticaDTOs.Ruta> rutas) {
         LogisticaDTOs.Deposito deposito = rutas.stream()
                 .map(LogisticaDTOs.Ruta::getDeposito)
                 .filter(java.util.Objects::nonNull)
+                .filter(LogisticaDTOs.Deposito::tieneCoordenadas)
                 .findFirst()
                 .orElse(null);
-        dto.setDepositoLat(deposito != null ? deposito.getLatitud() : DEPOSITO[0]);
-        dto.setDepositoLng(deposito != null ? deposito.getLongitud() : DEPOSITO[1]);
-        dto.setDepositoEtiqueta(deposito != null ? deposito.getEtiqueta() : "Depósito");
+        if (deposito != null) {
+            dto.setDepositoLat(deposito.getLatitud());
+            dto.setDepositoLng(deposito.getLongitud());
+            dto.setDepositoEtiqueta(deposito.getEtiqueta());
+        } else {
+            dto.setDepositoLat(null);
+            dto.setDepositoLng(null);
+            dto.setDepositoEtiqueta(null);
+        }
     }
 
     private static double[] coordenadasDe(LogisticaDTOs.DireccionLogistica direccion, String zona) {
@@ -336,15 +343,6 @@ public class SeguimientoService {
 
     private static String normalizarEstado(String estado) {
         return estado != null ? estado.toUpperCase(java.util.Locale.ROOT) : "";
-    }
-
-    private static String patenteSimulada(String semilla) {
-        char a = (char) ('A' + Math.floorMod(semilla.hashCode(), 26));
-        char b = (char) ('A' + Math.floorMod(semilla.hashCode() / 26, 26));
-        int n1 = Math.floorMod(semilla.hashCode() / 676, 1000);
-        char c = (char) ('A' + Math.floorMod(semilla.hashCode() / 676000, 26));
-        char d = (char) ('A' + Math.floorMod(semilla.hashCode() / 676000 / 26, 26));
-        return String.format("%c%c%03d%c%c", a, b, n1, c, d);
     }
 
     private static String zonaDe(LogisticaDTOs.DireccionLogistica direccion) {
