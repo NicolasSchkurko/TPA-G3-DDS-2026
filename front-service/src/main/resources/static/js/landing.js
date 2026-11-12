@@ -418,6 +418,8 @@
 
     function popupHtml(donation) {
         return `
+            <img class="popup-image" src="/images/donaciones/ejemplo.png"
+                 alt="Imagen de ejemplo de una donación">
             <span class="popup-eyebrow" style="color:${statusColor(donation.status)}">
                 <i class="legend-dot ${donation.status}" aria-hidden="true"></i>
                 ${statusLabel(donation.status)}
