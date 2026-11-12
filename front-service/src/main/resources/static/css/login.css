@@ -1,0 +1,299 @@
+/* =========================================================
+   DDSI · Iniciar sesión
+   Pantalla de acceso con la identidad visual de DonaTrack.
+   ========================================================= */
+
+.login-page {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(circle at 12% 8%, rgba(27, 120, 56, .10), transparent 34%),
+        radial-gradient(circle at 92% 92%, rgba(27, 120, 56, .08), transparent 38%),
+        #f5f6f4;
+    color: var(--ink);
+    font-family: var(--font);
+}
+
+.login-main {
+    flex: 1 1 auto;
+    display: grid;
+    place-items: center;
+    padding: clamp(24px, 5vw, 64px) var(--gap-4);
+}
+
+.login-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr);
+    width: min(1040px, 100%);
+    min-height: 540px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius-lg) + 6px);
+    background: var(--white);
+    box-shadow: 0 28px 70px rgba(15, 18, 16, .16);
+}
+
+/* ---------- Columna visual ---------- */
+.login-visual {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--gap-6);
+    padding: clamp(28px, 4vw, 52px);
+    overflow: hidden;
+    color: var(--white);
+    background:
+        linear-gradient(155deg, #155f2d 0%, #1b7838 55%, #2f8f4d 100%);
+}
+
+.login-visual::before,
+.login-visual::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .20);
+    pointer-events: none;
+}
+
+.login-visual::before {
+    width: 420px;
+    height: 420px;
+    right: -190px;
+    top: -170px;
+}
+
+.login-visual::after {
+    width: 280px;
+    height: 280px;
+    right: -80px;
+    bottom: -130px;
+    background: rgba(255, 255, 255, .05);
+}
+
+.login-visual-content {
+    position: relative;
+    z-index: 1;
+}
+
+.login-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-2);
+    margin: 0 0 var(--gap-5);
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, .26);
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, .10);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+}
+
+.login-visual h1 {
+    margin: 0 0 var(--gap-4);
+    max-width: 14ch;
+    font-size: clamp(30px, 3.4vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+.login-visual p {
+    margin: 0;
+    max-width: 42ch;
+    color: rgba(255, 255, 255, .82);
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.login-benefits {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: var(--gap-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.login-benefits li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap-3);
+    color: rgba(255, 255, 255, .92);
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.login-benefits svg {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    padding: 4px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+}
+
+/* ---------- Columna del formulario ---------- */
+.login-form-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(28px, 4vw, 52px);
+}
+
+.login-form-panel .brand {
+    padding: 0;
+    margin-bottom: var(--gap-6);
+    min-height: 0;
+    align-self: flex-start;
+}
+
+.login-form-panel h2 {
+    margin: 0 0 var(--gap-2);
+    font-size: clamp(24px, 2.2vw, 30px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.login-form-panel .login-subtitle {
+    margin: 0 0 var(--gap-5);
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.login-error,
+.login-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap-2);
+    margin: 0 0 var(--gap-4);
+    padding: var(--gap-3) var(--gap-4);
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.login-error {
+    border: 1px solid #f3c1c1;
+    background: #fbeaea;
+    color: #6b1515;
+}
+
+.login-info {
+    border: 1px solid #c7d5f5;
+    background: #eef2fd;
+    color: #173a6b;
+}
+
+.login-error svg,
+.login-info svg {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+}
+
+.login-form-panel .login-submit {
+    width: 100%;
+    min-height: 52px;
+    font-size: 15px;
+}
+
+.login-alt {
+    margin: var(--gap-5) 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.login-alt a {
+    color: var(--accent-dark);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.login-alt a:hover,
+.login-alt a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.login-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-2);
+    margin-top: var(--gap-4);
+    min-height: 44px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-back:hover,
+.login-back:focus-visible {
+    color: var(--accent-dark);
+}
+
+.login-secure {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    margin: var(--gap-5) 0 0;
+    padding-top: var(--gap-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted-2);
+    font-size: 11.5px;
+    line-height: 1.45;
+}
+
+.login-secure svg {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+}
+
+@media (max-width: 860px) {
+    .login-main {
+        padding: var(--gap-4) var(--gap-3);
+    }
+
+    .login-shell {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .login-visual {
+        gap: var(--gap-4);
+        padding: var(--gap-6) var(--gap-5);
+    }
+
+    .login-visual h1 {
+        max-width: none;
+        font-size: clamp(26px, 7vw, 34px);
+    }
+
+    .login-benefits {
+        display: none;
+    }
+
+    .login-form-panel {
+        padding: var(--gap-6) var(--gap-5);
+    }
+}
+
+@media (max-width: 480px) {
+    .login-shell {
+        border-radius: var(--radius-lg);
+    }
+
+    .login-form-panel {
+        padding: var(--gap-5) var(--gap-4);
+    }
+}
