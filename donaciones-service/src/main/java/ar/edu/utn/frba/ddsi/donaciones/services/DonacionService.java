@@ -233,9 +233,14 @@ public class DonacionService {
         throw new IllegalArgumentException(
                 "No se pueden modificar los bienes de una donación que no está en depósito (estado actual: " + existente.getEstado() + ")");
       }
-      List<Bien> bienesActualizados = resolverBienes(dto.getBienes());
-      bienesActualizados.forEach(this::crearBien);
-      existente.setBienes(bienesActualizados);
+      // Los bienes nuevos NO se guardan acá uno por uno: Bien.id se inicializa en el campo
+      // (UUID.randomUUID()), así que para Spring Data nunca son "nuevos" y save() termina en
+      // em.merge(), que deja en la sesión una copia administrada aparte de la instancia que
+      // guardamos en la colección. Al flushear una Donacion ya administrada, Hibernate se
+      // encontraba con las dos y cortaba con NonUniqueObjectException ("A different object with
+      // the same identifier value was already associated with the session"). Donacion.bienes
+      // cascadea PERSIST/MERGE, así que el insert sale solo al guardar la donación.
+      existente.setBienes(resolverBienes(dto.getBienes()));
     }
 
     return DonacionDTO.from(repositorioDonaciones.actualizar(existente.getId(), existente).get());

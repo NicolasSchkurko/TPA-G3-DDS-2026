@@ -86,32 +86,42 @@
             </button>
         </div>
 
-        <!-- Importar CSV: el input file está oculto, lo dispara el botón -->
-        <form th:action="@{/admin/donantes/importar}"
-              method="post"
-              enctype="multipart/form-data"
-              id="formImportarCsv"
-              class="form-importar">
-            <input type="file"
-                   name="archivo"
-                   id="inputCsv"
-                   accept=".csv,text/csv"
-                   hidden>
-            <button type="button" id="botonElegirCsv" class="btn-csv">
-                <i class="bi bi-filetype-csv"></i>
-                Importar CSV
-            </button>
-            <div id="archivoElegido" class="archivo-elegido" hidden>
-                <i class="bi bi-paperclip"></i>
-                <span id="nombreArchivo"></span>
-                <button type="submit" class="btn-subir">
-                    <i class="bi bi-upload"></i> Subir
+        <div class="acciones-barra">
+
+            <!-- Alta manual: pantalla propia porque el formulario completo tiene más de veinte
+                 campos más las secciones repetibles de contactos y representantes. -->
+            <a th:href="@{/admin/donantes/nuevo}" class="btn-nuevo">
+                <i class="bi bi-person-plus"></i>
+                Registrar donante
+            </a>
+
+            <!-- Importar CSV: el input file está oculto, lo dispara el botón -->
+            <form th:action="@{/admin/donantes/importar}"
+                  method="post"
+                  enctype="multipart/form-data"
+                  id="formImportarCsv"
+                  class="form-importar">
+                <input type="file"
+                       name="archivo"
+                       id="inputCsv"
+                       accept=".csv,text/csv"
+                       hidden>
+                <button type="button" id="botonElegirCsv" class="btn-csv">
+                    <i class="bi bi-filetype-csv"></i>
+                    Importar CSV
                 </button>
-                <button type="button" id="cancelarCsv" class="btn-cancelar" aria-label="Cancelar">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-        </form>
+                <div id="archivoElegido" class="archivo-elegido" hidden>
+                    <i class="bi bi-paperclip"></i>
+                    <span id="nombreArchivo"></span>
+                    <button type="submit" class="btn-subir">
+                        <i class="bi bi-upload"></i> Subir
+                    </button>
+                    <button type="button" id="cancelarCsv" class="btn-cancelar" aria-label="Cancelar">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- ===== Tabla de donantes ===== -->
@@ -174,19 +184,11 @@
                 </div>
 
                 <div class="col-acciones">
-                    <button type="button"
-                            class="btn-actualizar"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalActualizar"
-                            th:attr="data-id=${donante.id},
-                                     data-nombre=${donante.nombre},
-                                     data-apellido=${donante.apellido},
-                                     data-razon-social=${donante.razonSocial},
-                                     data-telefono=${donante.telefono},
-                                     data-correo=${donante.correoElectronico},
-                                     data-tipo=${donante.tipoPersona}">
+                    <!-- Lleva al formulario completo: el modal anterior sólo editaba cinco campos y
+                         no alcanzaba para domicilio, medios de contacto ni representantes. -->
+                    <a th:href="@{'/admin/donantes/' + ${donante.id} + '/editar'}" class="btn-actualizar">
                         <i class="bi bi-pencil-square"></i> Actualizar
-                    </button>
+                    </a>
 
                     <form th:action="@{'/admin/donantes/' + ${donante.id} + '/eliminar'}"
                           method="post"
@@ -209,59 +211,6 @@
     </div>
 
 </main>
-
-<!-- ===== Modal: actualizar donante ===== -->
-<div class="modal fade" id="modalActualizar" tabindex="-1" aria-labelledby="tituloModalActualizar" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <!-- El th:action es imprescindible aunque el destino real lo reescriba el JS con el id del
-             donante: Thymeleaf sólo inyecta el hidden _csrf en formularios que lo declaran, y sin
-             ese token Spring Security rechaza el POST con 403. -->
-        <form method="post"
-              id="formActualizar"
-              th:action="@{/admin/donantes}"
-              class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="tituloModalActualizar">
-                    <i class="bi bi-pencil-square text-success me-1"></i> Actualizar donante
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-
-            <div class="modal-body">
-                <div class="mb-3" id="campoNombre">
-                    <label for="inputNombre" class="form-label">Nombre</label>
-                    <input type="text" class="form-control" id="inputNombre" name="nombre">
-                </div>
-                <div class="mb-3" id="campoApellido">
-                    <label for="inputApellido" class="form-label">Apellido</label>
-                    <input type="text" class="form-control" id="inputApellido" name="apellido">
-                </div>
-                <div class="mb-3" id="campoRazonSocial">
-                    <label for="inputRazonSocial" class="form-label">Razón social</label>
-                    <input type="text" class="form-control" id="inputRazonSocial" name="razonSocial">
-                </div>
-                <div class="mb-3">
-                    <label for="inputCorreo" class="form-label">Correo electrónico</label>
-                    <input type="email" class="form-control" id="inputCorreo" name="correoElectronico">
-                </div>
-                <div class="mb-0">
-                    <label for="inputTelefono" class="form-label">Teléfono</label>
-                    <input type="text" class="form-control" id="inputTelefono" name="telefono">
-                </div>
-                <p class="text-muted small mt-3 mb-0">
-                    Los campos que dejes vacíos conservan su valor actual.
-                </p>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn-actualizar">
-                    <i class="bi bi-check-lg"></i> Guardar cambios
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../static/js/admin-donantes.js" th:src="@{/js/admin-donantes.js}"></script>

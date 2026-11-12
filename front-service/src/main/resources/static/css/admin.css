@@ -355,6 +355,46 @@ body {
     color: #292d32;
 }
 
+/* --- Acciones de la barra: registrar + importar --- */
+.acciones-barra {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-nuevo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 22px;
+    border: none;
+    border-radius: 22px;
+    background-color: #1b7838;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(27, 120, 56, 0.3);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.btn-nuevo:hover,
+.btn-nuevo:focus {
+    background-color: #155f2d;
+    box-shadow: 0 5px 14px rgba(27, 120, 56, 0.42);
+    transform: translateY(-1px);
+    color: #ffffff;
+}
+
+.btn-nuevo i {
+    font-size: 16px;
+}
+
 /* --- Importar CSV --- */
 .form-importar {
     display: flex;
@@ -451,8 +491,12 @@ body {
     color: #c92a2a;
 }
 
-/* --- Tabla de donantes --- */
-.tabla-donantes {
+/* --- Tabla de donantes y de entidades ---
+   Comparten contenedor, encabezado y columnas. La diferencia es que la fila de entidad envuelve
+   un .fila-principal (la grilla propiamente dicha) más el panel de necesidades desplegable, y por
+   eso suma una primera columna angosta para la flecha. */
+.tabla-donantes,
+.tabla-entidades {
     background-color: #ffffff;
     border: 1px solid #dee2e6;
     border-radius: 10px;
@@ -461,12 +505,18 @@ body {
 }
 
 .tabla-encabezado,
-.fila-donante {
+.fila-donante,
+.fila-entidad .fila-principal {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
     align-items: center;
     gap: 16px;
     padding: 14px 22px;
+}
+
+.tabla-entidades .tabla-encabezado,
+.fila-entidad .fila-principal {
+    grid-template-columns: 30px minmax(0, 2fr) minmax(0, 2fr) auto;
 }
 
 .tabla-encabezado {
@@ -483,27 +533,32 @@ body {
     text-align: right;
 }
 
-.fila-donante {
+.fila-donante,
+.fila-entidad {
     border-bottom: 1px solid #f1f3f5;
     transition: background 0.15s;
 }
 
-.fila-donante:last-child {
+.fila-donante:last-child,
+.fila-entidad:last-child {
     border-bottom: none;
 }
 
-.fila-donante:hover {
+.fila-donante:hover,
+.fila-entidad .fila-principal:hover {
     background-color: #fafbfc;
 }
 
-.fila-donante .col-donante {
+.fila-donante .col-donante,
+.fila-entidad .col-entidad {
     display: flex;
     align-items: center;
     gap: 12px;
     min-width: 0;
 }
 
-.avatar-donante {
+.avatar-donante,
+.avatar-entidad {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -516,14 +571,16 @@ body {
     font-size: 17px;
 }
 
-.datos-donante {
+.datos-donante,
+.datos-entidad {
     display: flex;
     flex-direction: column;
     gap: 4px;
     min-width: 0;
 }
 
-.nombre-donante {
+.nombre-donante,
+.nombre-entidad {
     font-size: 15px;
     font-weight: 600;
     color: #292d32;
@@ -550,7 +607,8 @@ body {
     color: #c2410c;
 }
 
-.fila-donante .col-contacto {
+.fila-donante .col-contacto,
+.fila-entidad .col-contacto {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -559,17 +617,20 @@ body {
     color: #495057;
 }
 
-.fila-donante .col-contacto i {
+.fila-donante .col-contacto i,
+.fila-entidad .col-contacto i {
     margin-right: 6px;
     color: #adb5bd;
 }
 
-.fila-donante .col-contacto .sin-contacto {
+.fila-donante .col-contacto .sin-contacto,
+.fila-entidad .col-contacto .sin-contacto {
     color: #adb5bd;
     font-style: italic;
 }
 
-.fila-donante .col-acciones {
+.fila-donante .col-acciones,
+.fila-entidad .col-acciones {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -590,6 +651,9 @@ body {
     font-size: 13.5px;
     font-weight: 600;
     white-space: nowrap;
+    /* "Actualizar" es un <a> al formulario de edición y "Eliminar" un <button> de submit: comparten
+       estilo, así que hace falta neutralizar el subrayado del link. */
+    text-decoration: none;
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
 }
@@ -642,6 +706,1190 @@ body {
     margin: 0;
 }
 
+/* ==================================================================
+   ENTIDADES: flecha desplegable y panel de necesidades
+   ================================================================== */
+
+/* Toda la fila principal es clickeable (menos la columna de acciones), así que el cursor lo
+   anticipa aunque el control accesible real sea el botón de la flecha. */
+.fila-entidad .fila-principal {
+    cursor: pointer;
+}
+
+.fila-entidad .col-acciones {
+    cursor: default;
+}
+
+.btn-desplegar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #6c757d;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.btn-desplegar:hover,
+.btn-desplegar:focus {
+    background-color: #eef5f0;
+    color: #1b7838;
+}
+
+.fila-entidad.fila-desplegada {
+    background-color: #fafbfc;
+}
+
+.fila-entidad.fila-desplegada .btn-desplegar {
+    color: #1b7838;
+}
+
+.linea-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.contador-necesidades {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1b7838;
+}
+
+.contador-necesidades.contador-vacio {
+    color: #adb5bd;
+    font-weight: 500;
+    font-style: italic;
+}
+
+/* --- Panel desplegable --- */
+.panel-necesidades {
+    padding: 4px 22px 20px 58px;
+    border-top: 1px dashed #e9ecef;
+    background-color: #fbfcfd;
+}
+
+.panel-vacio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    font-size: 13.5px;
+    font-style: italic;
+    color: #adb5bd;
+}
+
+.lista-necesidades {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.necesidad {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 14px 16px;
+    border: 1px solid #e9ecef;
+    border-radius: 9px;
+    background-color: #ffffff;
+}
+
+.necesidad-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.necesidad-titulo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #292d32;
+}
+
+.necesidad-titulo i {
+    color: #1b7838;
+}
+
+.badge-necesidad {
+    flex-shrink: 0;
+    padding: 2px 9px;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-recurrente {
+    background-color: #e7f5ff;
+    color: #1864ab;
+}
+
+.badge-extraordinaria {
+    background-color: #fff4e6;
+    color: #c2410c;
+}
+
+.necesidad-categoria,
+.necesidad-plazo {
+    margin: 0;
+    font-size: 12.5px;
+    color: #868e96;
+}
+
+.necesidad-descripcion {
+    margin: 0;
+    font-size: 13.5px;
+    color: #495057;
+}
+
+.necesidad-progreso {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.barra-progreso {
+    height: 7px;
+    border-radius: 4px;
+    background-color: #e9ecef;
+    overflow: hidden;
+}
+
+.barra-progreso-relleno {
+    height: 100%;
+    border-radius: 4px;
+    background-color: #1b7838;
+    transition: width 0.3s;
+}
+
+.progreso-texto {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* --- Aviso informativo del formulario de entidad --- */
+.aviso-informativo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    border: 1px solid #d0ebff;
+    border-radius: 9px;
+    background-color: #f1f8ff;
+    font-size: 13.5px;
+    color: #1864ab;
+}
+
+/* ==================================================================
+   FORMULARIO DE DONANTE (/admin/donantes/nuevo y /{id}/editar)
+   ================================================================== */
+
+.formulario-admin {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.form-seccion {
+    padding: 22px 24px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.form-seccion h2 {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #292d32;
+}
+
+.form-seccion h2 i {
+    color: #1b7838;
+    font-size: 18px;
+}
+
+.form-ayuda {
+    margin: 0 0 16px;
+    font-size: 13.5px;
+    color: #868e96;
+}
+
+/* Cuando la sección no tiene texto de ayuda, el aire lo pone la grilla. */
+.form-seccion h2 + .grilla-campos,
+.form-seccion h2 + .filas-repetibles,
+.form-seccion h2 + .opciones-tipo {
+    margin-top: 16px;
+}
+
+.obligatorio {
+    color: #c92a2a;
+}
+
+/* --- Grilla de campos: las columnas se acomodan solas según el ancho --- */
+.grilla-campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px 16px;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.campo-ancho {
+    grid-column: span 2;
+}
+
+.campo-chico {
+    max-width: 150px;
+}
+
+.formulario-admin .form-label {
+    margin-bottom: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.formulario-admin .form-control,
+.formulario-admin .form-select {
+    height: 42px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14.5px;
+    color: #292d32;
+}
+
+.formulario-admin .form-control:focus,
+.formulario-admin .form-select:focus {
+    border-color: #1b7838;
+    box-shadow: 0 0 0 3px rgba(27, 120, 56, 0.12);
+}
+
+/* --- Selector persona humana / jurídica --- */
+.opciones-tipo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+.opcion-tipo {
+    cursor: pointer;
+}
+
+.opcion-tipo input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.opcion-tipo > span {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 2px 12px;
+    height: 100%;
+    padding: 14px 18px;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    background-color: #ffffff;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.opcion-tipo > span i {
+    grid-row: span 2;
+    font-size: 24px;
+    color: #adb5bd;
+}
+
+.opcion-tipo > span strong {
+    font-size: 15px;
+    color: #292d32;
+}
+
+.opcion-tipo > span small {
+    font-size: 12.5px;
+    color: #868e96;
+}
+
+.opcion-tipo input:checked + span {
+    border-color: #1b7838;
+    background-color: #f4faf6;
+}
+
+.opcion-tipo input:checked + span i {
+    color: #1b7838;
+}
+
+.opcion-tipo input:focus-visible + span {
+    box-shadow: 0 0 0 3px rgba(27, 120, 56, 0.18);
+}
+
+/* --- Filas repetibles (medios de contacto y representantes) --- */
+.filas-repetibles {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fila-repetible {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border: 1px solid #f1f3f5;
+    border-radius: 9px;
+    background-color: #fbfcfc;
+}
+
+.fila-repetible .campo {
+    flex: 1 1 160px;
+}
+
+.fila-repetible .campo-chico {
+    flex: 0 0 120px;
+    max-width: 120px;
+}
+
+.campo-predeterminado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    padding-bottom: 10px;
+}
+
+.campo-predeterminado .form-check-input {
+    width: 19px;
+    height: 19px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.campo-predeterminado .form-check-input:checked {
+    background-color: #1b7838;
+    border-color: #1b7838;
+}
+
+.btn-quitar-fila {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 2px;
+    padding: 0;
+    border: 1px solid #ffd3d3;
+    border-radius: 9px;
+    background-color: #fff5f5;
+    color: #c92a2a;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-quitar-fila:hover {
+    background-color: #ffe3e3;
+    border-color: #f5a3a3;
+}
+
+.btn-agregar {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 14px;
+    padding: 9px 18px;
+    border: 1px dashed #1b7838;
+    border-radius: 20px;
+    background-color: #eef5f0;
+    color: #155f2d;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-agregar:hover {
+    background-color: #e0eee6;
+}
+
+.form-vacio {
+    margin: 10px 0 0;
+    font-size: 13.5px;
+    font-style: italic;
+    color: #adb5bd;
+}
+
+/* --- Pie del formulario --- */
+.acciones-formulario {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-bottom: 10px;
+}
+
+.acciones-formulario .btn-actualizar {
+    height: 44px;
+    padding: 0 26px;
+    border-radius: 22px;
+    font-size: 14.5px;
+}
+
+.btn-cancelar-form {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 22px;
+    border: 1px solid #dee2e6;
+    border-radius: 22px;
+    background-color: #ffffff;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-cancelar-form:hover {
+    background-color: #f1f3f5;
+    border-color: #ced4da;
+    color: #292d32;
+}
+
+/* ==================================================================
+   DONACIONES (/admin/donaciones, sus dos vistas y sus formularios)
+   ================================================================== */
+
+/* --- Botones propios de la barra de herramientas --- */
+
+/* Matchmaking no es una acción destructiva ni un alta: es "cambiar la lista que estoy viendo",
+   así que se diferencia del verde de "Registrar" sin pelearle protagonismo. */
+.btn-matchmaking {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 20px;
+    border: 1px solid #1864ab;
+    border-radius: 22px;
+    background-color: #e7f5ff;
+    color: #1864ab;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-matchmaking:hover,
+.btn-matchmaking:focus {
+    background-color: #1864ab;
+    color: #ffffff;
+}
+
+.btn-matchmaking-activo {
+    border-color: #ced4da;
+    background-color: #ffffff;
+    color: #495057;
+}
+
+.btn-matchmaking-activo:hover,
+.btn-matchmaking-activo:focus {
+    background-color: #f1f3f5;
+    color: #292d32;
+}
+
+.contador-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 21px;
+    height: 21px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background-color: #1864ab;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.btn-matchmaking:hover .contador-boton,
+.btn-matchmaking:focus .contador-boton {
+    background-color: #ffffff;
+    color: #1864ab;
+}
+
+.form-ejecutar {
+    display: inline-flex;
+}
+
+.btn-ejecutar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 22px;
+    background-color: #292d32;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(41, 45, 50, 0.25);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s;
+}
+
+.btn-ejecutar:hover,
+.btn-ejecutar:focus {
+    background-color: #15181c;
+    transform: translateY(-1px);
+}
+
+/* --- Tabla de donaciones ---
+   Misma anatomía que la de entidades: la fila envuelve un .fila-principal (la grilla) más un panel
+   desplegable. Suma una columna para el badge de estado. */
+.tabla-donaciones {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.tabla-donaciones .tabla-encabezado,
+.fila-donacion .fila-principal {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 2.2fr) minmax(0, 1.6fr) 190px auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 22px;
+}
+
+/* En matchmaking no hay columna de acciones: asignar vive en el panel, una vez por propuesta. */
+.tabla-matchmaking .tabla-encabezado,
+.fila-donacion.fila-pendiente .fila-principal {
+    grid-template-columns: 30px minmax(0, 2.2fr) minmax(0, 1.6fr) auto;
+}
+
+.fila-donacion {
+    border-bottom: 1px solid #f1f3f5;
+    transition: background 0.15s;
+}
+
+.fila-donacion:last-child {
+    border-bottom: none;
+}
+
+.fila-donacion .fila-principal {
+    cursor: pointer;
+}
+
+.fila-donacion .fila-principal:hover {
+    background-color: #fafbfc;
+}
+
+.fila-donacion .col-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    cursor: default;
+}
+
+.fila-donacion.fila-desplegada {
+    background-color: #fafbfc;
+}
+
+.fila-donacion.fila-desplegada .btn-desplegar {
+    color: #1b7838;
+}
+
+.fila-donacion .col-donacion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.avatar-donacion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #eef5f0;
+    color: #1b7838;
+    font-size: 17px;
+}
+
+.datos-donacion {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.nombre-donacion {
+    font-size: 15px;
+    font-weight: 600;
+    color: #292d32;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.etiqueta-categoria {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1b7838;
+}
+
+.contador-bienes {
+    font-size: 12px;
+    color: #868e96;
+}
+
+.fila-donacion .col-partes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    font-size: 13.5px;
+    color: #495057;
+}
+
+.fila-donacion .col-partes i {
+    margin-right: 6px;
+    color: #adb5bd;
+}
+
+.fila-donacion .col-partes .sin-contacto {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+.fila-donacion .col-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+}
+
+.fecha-entrega {
+    font-size: 12px;
+    color: #868e96;
+}
+
+/* --- Badges de estado: un color por etapa del recorrido de la donación --- */
+.badge-estado {
+    width: fit-content;
+    padding: 4px 11px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.estado-en-deposito {
+    background-color: #f1f3f5;
+    color: #495057;
+}
+
+.estado-pendiente-asignacion {
+    background-color: #fff4e6;
+    color: #c2410c;
+}
+
+.estado-asignado {
+    background-color: #e7f5ff;
+    color: #1864ab;
+}
+
+.estado-lista-para-entregar {
+    background-color: #e3f2f7;
+    color: #0b7285;
+}
+
+.estado-en-traslado {
+    background-color: #f3f0ff;
+    color: #5f3dc4;
+}
+
+.estado-entregado {
+    background-color: #e9f7ef;
+    color: #1b7838;
+}
+
+.estado-entrega-fallida,
+.estado-vencido {
+    background-color: #fff5f5;
+    color: #c92a2a;
+}
+
+.estado-desconocido {
+    background-color: #f1f3f5;
+    color: #adb5bd;
+}
+
+.badge-coincidencia {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #1b7838;
+}
+
+/* --- Panel desplegable: bienes (vista normal) y propuestas (matchmaking) --- */
+.panel-bienes,
+.panel-propuestas {
+    padding: 4px 22px 20px 58px;
+    border-top: 1px dashed #e9ecef;
+    background-color: #fbfcfd;
+}
+
+.lista-bienes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.bien {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 13px 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 9px;
+    background-color: #ffffff;
+}
+
+.bien-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.bien-titulo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #292d32;
+}
+
+.bien-titulo i {
+    color: #1b7838;
+}
+
+.bien-detalle {
+    margin: 0;
+    font-size: 12.5px;
+    color: #868e96;
+}
+
+/* --- Propuestas del asignador --- */
+.lista-propuestas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.propuesta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px 17px;
+    border: 1px solid #e9ecef;
+    border-radius: 9px;
+    background-color: #ffffff;
+}
+
+/* La primera del ranking es la que el asignador elegiría: se destaca sin bloquear a las demás. */
+.propuesta-recomendada {
+    border-color: #1b7838;
+    box-shadow: 0 2px 10px rgba(27, 120, 56, 0.14);
+}
+
+.propuesta-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.propuesta-posicion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: #f1f3f5;
+    color: #495057;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.propuesta-recomendada .propuesta-posicion {
+    background-color: #1b7838;
+    color: #ffffff;
+}
+
+.propuesta-entidad {
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #292d32;
+}
+
+.badge-recomendada {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 11px;
+    background-color: #e9f7ef;
+    color: #1b7838;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.propuesta-necesidad {
+    margin: 0;
+    font-size: 13.5px;
+    color: #495057;
+}
+
+.propuesta-necesidad i {
+    margin-right: 5px;
+    color: #adb5bd;
+}
+
+.propuesta-progreso {
+    margin-bottom: 2px;
+}
+
+.propuesta-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: 12px;
+    color: #868e96;
+}
+
+.badge-algoritmo {
+    padding: 2px 9px;
+    border-radius: 11px;
+    background-color: #f3f0ff;
+    color: #5f3dc4;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.propuesta-contacto {
+    margin: 0;
+    font-size: 12.5px;
+    color: #868e96;
+}
+
+.propuesta-contacto i {
+    margin-right: 5px;
+    color: #adb5bd;
+}
+
+.form-asignar {
+    margin-top: 4px;
+}
+
+.btn-asignar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    height: 38px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 19px;
+    background-color: #1b7838;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(27, 120, 56, 0.28);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.btn-asignar:hover,
+.btn-asignar:focus {
+    background-color: #155f2d;
+    box-shadow: 0 4px 12px rgba(27, 120, 56, 0.4);
+    transform: translateY(-1px);
+}
+
+/* ==================================================================
+   FORMULARIOS DE DONACIÓN
+   ================================================================== */
+
+/* --- Selector de donante del alta --- */
+.buscador-interno {
+    max-width: none;
+    margin-bottom: 12px;
+}
+
+/* Scroll propio: la lista de donantes puede ser larga y el formulario sigue abajo. */
+.lista-donantes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+    max-height: 290px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.opcion-donante {
+    cursor: pointer;
+}
+
+.opcion-donante input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.opcion-donante > span {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 2px 11px;
+    height: 100%;
+    padding: 12px 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    background-color: #ffffff;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.opcion-donante > span i {
+    grid-row: span 2;
+    font-size: 21px;
+    color: #adb5bd;
+}
+
+.opcion-donante > span strong {
+    font-size: 14.5px;
+    color: #292d32;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.opcion-donante > span small {
+    font-size: 12px;
+    color: #868e96;
+}
+
+.opcion-donante input:checked + span {
+    border-color: #1b7838;
+    background-color: #f4faf6;
+}
+
+.opcion-donante input:checked + span i {
+    color: #1b7838;
+}
+
+.opcion-donante input:focus-visible + span {
+    box-shadow: 0 0 0 3px rgba(27, 120, 56, 0.18);
+}
+
+/* --- "No reconozco al donador": registrarlo o ir a administrar donantes --- */
+.donante-no-encontrado {
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px dashed #ffd8a8;
+    border-radius: 10px;
+    background-color: #fff9f0;
+}
+
+.donante-no-encontrado p {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #c2410c;
+}
+
+.donante-no-encontrado p i {
+    font-size: 18px;
+}
+
+.acciones-no-encontrado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.acciones-no-encontrado .btn-cancelar-form {
+    gap: 8px;
+}
+
+.acciones-no-encontrado .btn-cancelar-form i {
+    margin-right: 7px;
+}
+
+/* --- Ficha de sólo lectura de la pantalla de actualización --- */
+.ficha-donacion {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 18px 22px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.ficha-dato {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.ficha-etiqueta {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #adb5bd;
+}
+
+.ficha-valor {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #292d32;
+}
+
+/* --- Bienes en modo lectura (donación fuera del depósito) --- */
+.lista-bienes-lectura {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    color: #495057;
+}
+
+.lista-bienes-lectura li {
+    margin-bottom: 5px;
+}
+
+/* --- Tarjeta de cambio de estado --- */
+.seccion-estado {
+    border-color: #d0ebff;
+}
+
+.campo-motivo {
+    display: flex;
+    flex-direction: column;
+    margin-top: 14px;
+}
+
+.formulario-admin textarea.form-control {
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14.5px;
+    color: #292d32;
+}
+
+.aviso-estado {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 14px 0 0;
+    padding: 12px 15px;
+    border: 1px solid #ffe8cc;
+    border-radius: 9px;
+    background-color: #fff9f0;
+    font-size: 13px;
+    color: #c2410c;
+}
+
+.btn-cambiar-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 26px;
+    border: none;
+    border-radius: 22px;
+    background-color: #1864ab;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(24, 100, 171, 0.28);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.btn-cambiar-estado:hover,
+.btn-cambiar-estado:focus {
+    background-color: #145189;
+    box-shadow: 0 4px 12px rgba(24, 100, 171, 0.4);
+    transform: translateY(-1px);
+}
+
 /* RESPONSIVE */
 @media (max-width: 800px) {
 
@@ -674,8 +1922,85 @@ body {
         padding: 16px 18px;
     }
 
-    .fila-donante .col-acciones {
+    /* La flecha se queda en su columna y el resto de la fila se apila al lado. */
+    .fila-entidad .fila-principal {
+        grid-template-columns: 30px 1fr;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .fila-entidad .col-entidad,
+    .fila-entidad .col-contacto,
+    .fila-entidad .col-acciones {
+        grid-column: 2;
+    }
+
+    .fila-donante .col-acciones,
+    .fila-entidad .col-acciones {
         justify-content: flex-start;
+    }
+
+    /* Donaciones: igual que entidades, la flecha se queda en su columna y el resto se apila. */
+    .tabla-donaciones .tabla-encabezado,
+    .tabla-matchmaking .tabla-encabezado {
+        display: none;
+    }
+
+    .fila-donacion .fila-principal,
+    .fila-donacion.fila-pendiente .fila-principal {
+        grid-template-columns: 30px 1fr;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .fila-donacion .col-donacion,
+    .fila-donacion .col-partes,
+    .fila-donacion .col-estado,
+    .fila-donacion .col-acciones {
+        grid-column: 2;
+    }
+
+    .fila-donacion .col-acciones {
+        justify-content: flex-start;
+    }
+
+    .panel-necesidades,
+    .panel-bienes,
+    .panel-propuestas {
+        padding: 4px 18px 18px 18px;
+    }
+
+    .lista-necesidades,
+    .lista-bienes,
+    .lista-propuestas,
+    .lista-donantes {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-matchmaking,
+    .form-ejecutar,
+    .btn-ejecutar {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .acciones-no-encontrado,
+    .acciones-no-encontrado .btn-nuevo,
+    .acciones-no-encontrado .btn-cancelar-form {
+        width: 100%;
+    }
+
+    .acciones-no-encontrado {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .acciones-no-encontrado .btn-cancelar-form {
+        justify-content: center;
+    }
+
+    .btn-cambiar-estado {
+        justify-content: center;
     }
 
     .barra-herramientas {
@@ -687,17 +2012,67 @@ body {
         max-width: none;
     }
 
+    .acciones-barra,
     .form-importar,
-    .btn-csv {
+    .btn-csv,
+    .btn-nuevo {
         width: 100%;
     }
 
-    .btn-csv {
+    .acciones-barra {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-csv,
+    .btn-nuevo {
         justify-content: center;
     }
 
     .banner-contenido h1 {
         font-size: 25px;
+    }
+
+    /* Formulario: una columna y filas repetibles apiladas */
+    .grilla-campos,
+    .opciones-tipo {
+        grid-template-columns: 1fr;
+    }
+
+    .campo-ancho {
+        grid-column: span 1;
+    }
+
+    .campo-chico,
+    .fila-repetible .campo-chico {
+        max-width: none;
+        flex: 1 1 100%;
+    }
+
+    .fila-repetible {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .campo-predeterminado {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 9px;
+        padding-bottom: 0;
+    }
+
+    .btn-quitar-fila {
+        width: 100%;
+    }
+
+    .acciones-formulario {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .acciones-formulario .btn-actualizar,
+    .btn-cancelar-form {
+        justify-content: center;
     }
 }
 

@@ -5,7 +5,10 @@
  *    la página ni esperar un click. El listado completo viene del servidor en el HTML inicial.
  *  - Importar CSV: el <input type="file"> está oculto y lo dispara el botón "Importar CSV";
  *    una vez elegido el archivo se muestra el nombre y recién ahí se habilita el submit.
- *  - Modal de actualización: se completa con los data-* de la fila que disparó el modal.
+ *  - Confirmación antes de dar de baja a un donante.
+ *
+ * El alta y la edición viven en /admin/donantes/nuevo y /admin/donantes/{id}/editar, con su propio
+ * script (admin-donante-formulario.js).
  */
 (function () {
     'use strict';
@@ -97,37 +100,6 @@
             inputCsv.value = '';
             archivoElegido.hidden = true;
             botonElegirCsv.hidden = false;
-        });
-    }
-
-    // ------------------------------------------------------------------
-    // Modal de actualización
-    // ------------------------------------------------------------------
-    const modalActualizar = document.getElementById('modalActualizar');
-
-    if (modalActualizar) {
-        modalActualizar.addEventListener('show.bs.modal', function (evento) {
-            const boton = evento.relatedTarget;
-            if (!boton) {
-                return;
-            }
-
-            const esJuridica = boton.getAttribute('data-tipo') === 'JURIDICA';
-
-            document.getElementById('formActualizar').action =
-                '/admin/donantes/' + boton.getAttribute('data-id') + '/actualizar';
-
-            document.getElementById('inputNombre').value = boton.getAttribute('data-nombre') || '';
-            document.getElementById('inputApellido').value = boton.getAttribute('data-apellido') || '';
-            document.getElementById('inputRazonSocial').value = boton.getAttribute('data-razon-social') || '';
-            document.getElementById('inputCorreo').value = boton.getAttribute('data-correo') || '';
-            document.getElementById('inputTelefono').value = boton.getAttribute('data-telefono') || '';
-
-            // Una persona humana no tiene razón social y una jurídica no tiene nombre/apellido:
-            // mostramos sólo los campos que aplican para no mandar datos que el backend ignora.
-            document.getElementById('campoNombre').hidden = esJuridica;
-            document.getElementById('campoApellido').hidden = esJuridica;
-            document.getElementById('campoRazonSocial').hidden = !esJuridica;
         });
     }
 

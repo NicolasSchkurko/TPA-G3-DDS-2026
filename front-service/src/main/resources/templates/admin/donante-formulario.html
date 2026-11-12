@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${edicion} ? 'Actualizar donante — DDSI' : 'Registrar donante — DDSI'">Registrar donante — DDSI</title>
+    <meta name="description" content="Alta y edición de donantes del sistema">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+
+<body>
+
+<!-- ===== Header (mismo que el resto del panel) ===== -->
+<header class="encabezado">
+    <div class="encabezado-contenido">
+
+        <a href="/landing" class="logo">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
+        </a>
+
+        <nav class="nav-links-admin">
+            <a href="#">Quiénes somos</a>
+            <a> - </a>
+            <a href="#">Qué hacemos</a>
+            <a> - </a>
+            <a href="#">Contactanos</a>
+        </nav>
+
+        <div class="usuario-administrador">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="foto de usuario">
+            <div class="datos-usuario">
+                <span th:text="${nombre + ' ' + apellido}">Nombre Apellido</span>
+                <span th:text="${rol}">Administrador</span>
+            </div>
+        </div>
+
+    </div>
+</header>
+
+<!-- ===== Banner ===== -->
+<section class="banner-seccion">
+    <img class="banner-imagen"
+         src="../../static/images/donante.jpg"
+         th:src="@{/images/donante.jpg}"
+         alt="Donantes">
+    <div class="banner-overlay"></div>
+    <div class="banner-contenido">
+        <!-- Si vinimos desde otra pantalla del panel (ver el hidden volverA más abajo), cancelar
+             y volver tienen que llevar de nuevo ahí y no al listado de donantes. -->
+        <a th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" class="banner-volver">
+            <i class="bi bi-arrow-left"></i>
+            <span th:text="${volverA != null} ? 'Volver sin registrar' : 'Volver a donantes'">Volver a donantes</span>
+        </a>
+        <h1 th:text="${edicion} ? 'Actualizar donante' : 'Registrar donante'">Registrar donante</h1>
+        <p th:text="${edicion}
+                      ? 'Modificá los datos del donante, su domicilio, sus medios de contacto y sus representantes'
+                      : 'Cargá los datos del nuevo donante: podés agregar domicilio, medios de contacto y representantes'">
+            Cargá los datos del nuevo donante
+        </p>
+    </div>
+</section>
+
+<main class="main-admin">
+
+    <div th:if="${error}" class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${error}">Ocurrió un error</span>
+    </div>
+
+    <!-- th:action siempre presente: Thymeleaf inyecta el hidden _csrf sólo en los formularios que
+         lo declaran, y sin ese token Spring Security rechaza el POST con 403. -->
+    <form th:action="@{${accion}}"
+          th:object="${formulario}"
+          method="post"
+          id="formularioDonante"
+          class="formulario-admin"
+          novalidate>
+
+        <!-- Si llegamos acá desde el alta de donación ("no reconozco al donador"), volvemos a esa
+             pantalla con el donante nuevo ya seleccionado. El controlador sólo acepta rutas de
+             /admin/, así que el valor no puede llevarnos afuera. -->
+        <input type="hidden" name="volverA" th:if="${volverA != null}" th:value="${volverA}">
+
+        <!-- ===== Tipo de donante ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-person-badge"></i> Tipo de donante</h2>
+            <p class="form-ayuda">
+                Define qué datos hay que cargar: una persona humana tiene nombre, apellido y
+                documento; una jurídica tiene razón social, CUIT y representantes.
+            </p>
+
+            <div class="opciones-tipo">
+                <label class="opcion-tipo">
+                    <input type="radio" th:field="*{tipoPersona}" value="HUMANA">
+                    <span>
+                        <i class="bi bi-person-fill"></i>
+                        <strong>Persona humana</strong>
+                        <small>Un individuo que dona a título personal</small>
+                    </span>
+                </label>
+                <label class="opcion-tipo">
+                    <input type="radio" th:field="*{tipoPersona}" value="JURIDICA">
+                    <span>
+                        <i class="bi bi-building"></i>
+                        <strong>Persona jurídica</strong>
+                        <small>Empresa, ONG, organismo o institución</small>
+                    </span>
+                </label>
+            </div>
+        </section>
+
+        <!-- ===== Datos de persona humana ===== -->
+        <section class="form-seccion" data-persona="HUMANA">
+            <h2><i class="bi bi-person-lines-fill"></i> Datos personales</h2>
+            <div class="grilla-campos">
+                <div class="campo">
+                    <label for="nombre" class="form-label">Nombre <span class="obligatorio">*</span></label>
+                    <input type="text" class="form-control" id="nombre" th:field="*{nombre}">
+                </div>
+                <div class="campo">
+                    <label for="apellido" class="form-label">Apellido <span class="obligatorio">*</span></label>
+                    <input type="text" class="form-control" id="apellido" th:field="*{apellido}">
+                </div>
+                <div class="campo">
+                    <label for="numeroDeDocumento" class="form-label">Número de documento</label>
+                    <input type="text" class="form-control" id="numeroDeDocumento"
+                           inputmode="numeric" placeholder="41222333" th:field="*{numeroDeDocumento}">
+                </div>
+                <div class="campo campo-chico">
+                    <label for="edad" class="form-label">Edad</label>
+                    <input type="text" class="form-control" id="edad"
+                           inputmode="numeric" placeholder="22" th:field="*{edad}">
+                </div>
+                <div class="campo">
+                    <label for="genero" class="form-label">Género</label>
+                    <select class="form-select" id="genero" th:field="*{genero}">
+                        <option value="OTRO">Otro / sin especificar</option>
+                        <option value="HOMBRE">Hombre</option>
+                        <option value="MUJER">Mujer</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Datos de persona jurídica ===== -->
+        <section class="form-seccion" data-persona="JURIDICA">
+            <h2><i class="bi bi-buildings"></i> Datos de la organización</h2>
+            <div class="grilla-campos">
+                <div class="campo campo-ancho">
+                    <label for="razonSocial" class="form-label">Razón social <span class="obligatorio">*</span></label>
+                    <input type="text" class="form-control" id="razonSocial" th:field="*{razonSocial}">
+                </div>
+                <div class="campo">
+                    <label for="cuit" class="form-label">CUIT</label>
+                    <input type="text" class="form-control" id="cuit"
+                           placeholder="30-12345678-9" th:field="*{cuit}">
+                </div>
+                <div class="campo">
+                    <label for="rubro" class="form-label">Rubro</label>
+                    <input type="text" class="form-control" id="rubro"
+                           placeholder="Supermercado, logística, salud..." th:field="*{rubro}">
+                </div>
+                <div class="campo">
+                    <label for="tipoJuridico" class="form-label">Tipo jurídico</label>
+                    <select class="form-select" id="tipoJuridico" th:field="*{tipoJuridico}">
+                        <option value="ONG">ONG</option>
+                        <option value="EMPRESA">Empresa</option>
+                        <option value="GUBERNAMENTAL">Organismo gubernamental</option>
+                        <option value="INSTITUCION">Institución</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Domicilio ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-geo-alt"></i> Domicilio</h2>
+            <p class="form-ayuda">
+                Opcional. Si dejás todo vacío, el donante queda sin domicilio cargado.
+            </p>
+            <div class="grilla-campos">
+                <div class="campo campo-ancho">
+                    <label for="calleUno" class="form-label">Calle</label>
+                    <input type="text" class="form-control" id="calleUno" th:field="*{calleUno}">
+                </div>
+                <div class="campo campo-chico">
+                    <label for="altura" class="form-label">Altura</label>
+                    <input type="text" class="form-control" id="altura"
+                           inputmode="numeric" th:field="*{altura}">
+                </div>
+                <div class="campo">
+                    <label for="calleDos" class="form-label">Entre calle / esquina</label>
+                    <input type="text" class="form-control" id="calleDos" th:field="*{calleDos}">
+                </div>
+                <div class="campo campo-chico">
+                    <label for="piso" class="form-label">Piso</label>
+                    <input type="text" class="form-control" id="piso"
+                           inputmode="numeric" th:field="*{piso}">
+                </div>
+                <div class="campo campo-chico">
+                    <label for="departamento" class="form-label">Depto.</label>
+                    <input type="text" class="form-control" id="departamento" th:field="*{departamento}">
+                </div>
+                <div class="campo">
+                    <label for="ciudad" class="form-label">Ciudad</label>
+                    <input type="text" class="form-control" id="ciudad"
+                           placeholder="CABA" th:field="*{ciudad}">
+                </div>
+                <div class="campo">
+                    <label for="provincia" class="form-label">Provincia</label>
+                    <input type="text" class="form-control" id="provincia"
+                           placeholder="Buenos Aires" th:field="*{provincia}">
+                </div>
+                <div class="campo">
+                    <label for="pais" class="form-label">País</label>
+                    <input type="text" class="form-control" id="pais"
+                           placeholder="Argentina" th:field="*{pais}">
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Medios de contacto (repetibles) ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-chat-dots"></i> Medios de contacto</h2>
+            <p class="form-ayuda">
+                Agregá tantos como necesites. El marcado como predeterminado es el que usa el sistema
+                para avisarle al donante.
+            </p>
+
+            <div id="filasMedios" class="filas-repetibles">
+                <!-- Filas ya cargadas (edición) o reenviadas tras un error -->
+                <div th:each="medio, iter : ${mediosPrecargados}" class="fila-repetible fila-medio">
+                    <div class="campo campo-chico">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" name="medioTipo">
+                            <option value="EMAIL"
+                                    th:selected="${medio.tipo == null or #strings.toUpperCase(medio.tipo) == 'EMAIL' or #strings.toUpperCase(medio.tipo) == 'MAIL'}">
+                                Email
+                            </option>
+                            <option value="TELEFONO"
+                                    th:selected="${medio.tipo != null and #strings.toUpperCase(medio.tipo) == 'TELEFONO'}">
+                                Teléfono
+                            </option>
+                            <option value="WHATSAPP"
+                                    th:selected="${medio.tipo != null and #strings.toUpperCase(medio.tipo) == 'WHATSAPP'}">
+                                WhatsApp
+                            </option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label class="form-label">Valor</label>
+                        <input type="text" class="form-control" name="medioValor"
+                               th:value="${medio.valor}" placeholder="mail@ejemplo.com / 11 1234-5678">
+                    </div>
+                    <div class="campo-predeterminado">
+                        <label class="form-label">Predeterminado</label>
+                        <!-- Sin predeterminado explícito queda el primero, igual que resuelve el backend. -->
+                        <input type="radio" class="form-check-input" name="medioPredeterminado"
+                               th:value="${iter.index}"
+                               th:checked="${formulario.medioPredeterminado != null
+                                              ? formulario.medioPredeterminado == iter.index
+                                              : iter.first}">
+                    </div>
+                    <button type="button" class="btn-quitar-fila" aria-label="Quitar medio de contacto">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="btn-agregar" id="agregarMedio">
+                <i class="bi bi-plus-lg"></i> Agregar medio de contacto
+            </button>
+            <p class="form-vacio" id="sinMedios" hidden>Todavía no cargaste ningún medio de contacto.</p>
+        </section>
+
+        <!-- ===== Representantes (sólo persona jurídica, repetibles) ===== -->
+        <section class="form-seccion" data-persona="JURIDICA">
+            <h2><i class="bi bi-people"></i> Representantes</h2>
+            <p class="form-ayuda">
+                Las personas que representan a la organización ante el sistema.
+            </p>
+
+            <div id="filasRepresentantes" class="filas-repetibles">
+                <div th:each="representante : ${representantesPrecargados}" class="fila-repetible fila-representante">
+                    <div class="campo">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="repNombre" th:value="${representante.nombre}">
+                    </div>
+                    <div class="campo">
+                        <label class="form-label">Apellido</label>
+                        <input type="text" class="form-control" name="repApellido" th:value="${representante.apellido}">
+                    </div>
+                    <div class="campo campo-chico">
+                        <label class="form-label">Documento</label>
+                        <input type="text" class="form-control" name="repDocumento" inputmode="numeric"
+                               th:value="${representante.numeroDeDocumento == null or representante.numeroDeDocumento == 0
+                                            ? '' : representante.numeroDeDocumento}">
+                    </div>
+                    <div class="campo campo-chico">
+                        <label class="form-label">Edad</label>
+                        <input type="text" class="form-control" name="repEdad" inputmode="numeric"
+                               th:value="${representante.edad == null or representante.edad == 0
+                                            ? '' : representante.edad}">
+                    </div>
+                    <div class="campo campo-chico">
+                        <label class="form-label">Género</label>
+                        <select class="form-select" name="repGenero">
+                            <option value="OTRO" th:selected="${representante.genero == null or representante.genero == 'OTRO'}">Otro</option>
+                            <option value="HOMBRE" th:selected="${representante.genero == 'HOMBRE'}">Hombre</option>
+                            <option value="MUJER" th:selected="${representante.genero == 'MUJER'}">Mujer</option>
+                        </select>
+                    </div>
+                    <div class="campo campo-chico">
+                        <!-- Select y no checkbox: un checkbox sin marcar no se manda y correría una
+                             posición el array respecto del resto de las columnas de la fila. -->
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" name="repActivo">
+                            <option value="true" th:selected="${representante.activo == null or representante.activo}">Activo</option>
+                            <option value="false" th:selected="${representante.activo != null and !representante.activo}">Inactivo</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-quitar-fila" aria-label="Quitar representante">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="btn-agregar" id="agregarRepresentante">
+                <i class="bi bi-plus-lg"></i> Agregar representante
+            </button>
+            <p class="form-vacio" id="sinRepresentantes" hidden>Todavía no cargaste ningún representante.</p>
+        </section>
+
+        <div class="acciones-formulario">
+            <a th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" class="btn-cancelar-form">Cancelar</a>
+            <button type="submit" class="btn-actualizar">
+                <i class="bi bi-check-lg"></i>
+                <span th:text="${edicion} ? 'Guardar cambios' : 'Registrar donante'">Registrar donante</span>
+            </button>
+        </div>
+    </form>
+
+</main>
+
+<!-- ===== Moldes para las filas que agrega el JS ===== -->
+<template id="moldeMedio">
+    <div class="fila-repetible fila-medio">
+        <div class="campo campo-chico">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="medioTipo">
+                <option value="EMAIL">Email</option>
+                <option value="TELEFONO">Teléfono</option>
+                <option value="WHATSAPP">WhatsApp</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label class="form-label">Valor</label>
+            <input type="text" class="form-control" name="medioValor" placeholder="mail@ejemplo.com / 11 1234-5678">
+        </div>
+        <div class="campo-predeterminado">
+            <label class="form-label">Predeterminado</label>
+            <input type="radio" class="form-check-input" name="medioPredeterminado" value="0">
+        </div>
+        <button type="button" class="btn-quitar-fila" aria-label="Quitar medio de contacto">
+            <i class="bi bi-trash3"></i>
+        </button>
+    </div>
+</template>
+
+<template id="moldeRepresentante">
+    <div class="fila-repetible fila-representante">
+        <div class="campo">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-control" name="repNombre">
+        </div>
+        <div class="campo">
+            <label class="form-label">Apellido</label>
+            <input type="text" class="form-control" name="repApellido">
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Documento</label>
+            <input type="text" class="form-control" name="repDocumento" inputmode="numeric">
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Edad</label>
+            <input type="text" class="form-control" name="repEdad" inputmode="numeric">
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Género</label>
+            <select class="form-select" name="repGenero">
+                <option value="OTRO">Otro</option>
+                <option value="HOMBRE">Hombre</option>
+                <option value="MUJER">Mujer</option>
+            </select>
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Estado</label>
+            <select class="form-select" name="repActivo">
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+            </select>
+        </div>
+        <button type="button" class="btn-quitar-fila" aria-label="Quitar representante">
+            <i class="bi bi-trash3"></i>
+        </button>
+    </div>
+</template>
+
+<script src="../../static/js/admin-donante-formulario.js"
+        th:src="@{/js/admin-donante-formulario.js}"></script>
+
+</body>
+</html>

@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -22,4 +24,60 @@ public class DonacionDTO {
     private String categoriaBienName;
     private LocalDate fechaEntrega;
     private Integer cantidadTotalBienes;
+
+    /**
+     * Bienes de la donación. GET /api/donaciones los devuelve embebidos, así que el panel de
+     * detalle y el formulario de edición se arman sin un segundo request.
+     */
+    private List<BienDonacionDTO> bienes = new ArrayList<>();
+
+    /** El backend escribe "No asignada" cuando la donación todavía no tiene entidad. */
+    public boolean tieneEntidad() {
+        return entidadBeneficiaria != null
+                && !entidadBeneficiaria.isBlank()
+                && !"No asignada".equalsIgnoreCase(entidadBeneficiaria);
+    }
+
+    /**
+     * Los bienes sólo se pueden reescribir mientras la donación está en depósito: después, los
+     * conteos de las necesidades ya cuentan lo entregado y el PUT del backend responde 400
+     * (ver DonacionService.actualizarDonacion).
+     */
+    public boolean puedeEditarBienes() {
+        return "EN_DEPOSITO".equalsIgnoreCase(estado);
+    }
+
+    public String etiquetaEstado() {
+        return etiquetaDeEstado(estado);
+    }
+
+    /** Sufijo de clase CSS para el badge de estado (estado-en-deposito, estado-entregado...). */
+    public String claseEstado() {
+        return claseDeEstado(estado);
+    }
+
+    /** Nombre legible de cada Estado del backend. */
+    public static String etiquetaDeEstado(String estado) {
+        if (estado == null || estado.isBlank()) {
+            return "Sin estado";
+        }
+        return switch (estado.toUpperCase()) {
+            case "EN_DEPOSITO" -> "En depósito";
+            case "PENDIENTE_ASIGNACION" -> "Pendiente de asignación";
+            case "ASIGNADO" -> "Asignada";
+            case "LISTA_PARA_ENTREGAR" -> "Lista para entregar";
+            case "EN_TRASLADO" -> "En traslado";
+            case "ENTREGADO" -> "Entregada";
+            case "ENTREGA_FALLIDA" -> "Entrega fallida";
+            case "VENCIDO" -> "Vencida";
+            default -> estado;
+        };
+    }
+
+    public static String claseDeEstado(String estado) {
+        if (estado == null || estado.isBlank()) {
+            return "estado-desconocido";
+        }
+        return "estado-" + estado.toLowerCase().replace('_', '-');
+    }
 }

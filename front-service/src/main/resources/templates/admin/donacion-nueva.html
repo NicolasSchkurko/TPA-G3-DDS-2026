@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar donación — DDSI</title>
+    <meta name="description" content="Alta de una donación a nombre de un donante registrado">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+
+<body>
+
+<!-- ===== Header (mismo que el resto del panel) ===== -->
+<header class="encabezado">
+    <div class="encabezado-contenido">
+
+        <a href="/landing" class="logo">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="DonaTrack">
+        </a>
+
+        <nav class="nav-links-admin">
+            <a href="#">Quiénes somos</a>
+            <a> - </a>
+            <a href="#">Qué hacemos</a>
+            <a> - </a>
+            <a href="#">Contactanos</a>
+        </nav>
+
+        <div class="usuario-administrador">
+            <img src="https://i.ibb.co/4ZTdh0Nv/Code-Generated-Image.png" alt="foto de usuario">
+            <div class="datos-usuario">
+                <span th:text="${nombre + ' ' + apellido}">Nombre Apellido</span>
+                <span th:text="${rol}">Administrador</span>
+            </div>
+        </div>
+
+    </div>
+</header>
+
+<!-- ===== Banner ===== -->
+<section class="banner-seccion">
+    <img class="banner-imagen"
+         src="../../static/images/donaciones.jpg"
+         th:src="@{/images/donaciones.jpg}"
+         alt="Donaciones">
+    <div class="banner-overlay"></div>
+    <div class="banner-contenido">
+        <a th:href="@{/admin/donaciones}" class="banner-volver">
+            <i class="bi bi-arrow-left"></i> Volver a donaciones
+        </a>
+        <h1>Registrar donación</h1>
+        <p>Elegí el donante que la entregó y cargá los bienes que trajo</p>
+    </div>
+</section>
+
+<main class="main-admin">
+
+    <div th:if="${error}" class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${error}">Ocurrió un error</span>
+    </div>
+
+    <!-- th:action siempre presente: Thymeleaf inyecta el hidden _csrf sólo en los formularios que
+         lo declaran, y sin ese token Spring Security rechaza el POST con 403. -->
+    <form th:action="@{/admin/donaciones/nuevo}"
+          th:object="${formulario}"
+          method="post"
+          id="formularioDonacion"
+          class="formulario-admin"
+          novalidate>
+
+        <!-- ===== Donante ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-person-heart"></i> Donante</h2>
+            <p class="form-ayuda">
+                Toda donación se registra a nombre de un donante ya cargado en el sistema. Buscalo
+                por nombre y seleccionalo; si no lo encontrás, podés registrarlo sin perder lo que
+                ya completaste acá abajo.
+            </p>
+
+            <div class="buscador buscador-interno">
+                <i class="bi bi-search buscador-icono" aria-hidden="true"></i>
+                <input type="search"
+                       id="buscadorDonante"
+                       class="buscador-input"
+                       placeholder="Buscar donante por nombre, apellido o razón social..."
+                       autocomplete="off"
+                       aria-label="Buscar donante">
+            </div>
+
+            <!-- Radios en vez de un <select>: así se puede filtrar en vivo y mostrar el estado
+                 "no lo encontramos" con las dos salidas que necesita el admin. -->
+            <div class="lista-donantes" id="listaDonantes">
+                <p class="form-vacio" th:if="${#lists.isEmpty(donantes)}">
+                    Todavía no hay donantes registrados en el sistema.
+                </p>
+
+                <label th:each="donante : ${donantes}"
+                       class="opcion-donante"
+                       th:attr="data-nombre=${donante.etiqueta()
+                                 + ' ' + (donante.numeroDeDocumento != null ? donante.numeroDeDocumento : '')
+                                 + ' ' + (donante.cuit != null ? donante.cuit : '')
+                                 + ' ' + (donante.correoElectronico != null ? donante.correoElectronico : '')}">
+                    <input type="radio" th:field="*{idDonante}" th:value="${donante.id}">
+                    <span>
+                        <i th:class="${donante.esJuridica()} ? 'bi bi-buildings' : 'bi bi-person'"></i>
+                        <strong th:text="${donante.etiqueta()}">Nombre Apellido</strong>
+                        <small th:text="${donante.esJuridica()
+                                          ? 'Persona jurídica' + (donante.cuit != null ? ' — CUIT ' + donante.cuit : '')
+                                          : 'Persona humana' + (donante.numeroDeDocumento != null ? ' — DNI ' + donante.numeroDeDocumento : '')}">
+                            Persona humana
+                        </small>
+                    </span>
+                </label>
+            </div>
+
+            <!-- "En caso de no reconocer al donador": las dos salidas que pidió el admin. La de
+                 registrar vuelve acá con el donante nuevo ya elegido (volverA + ?donante=id). -->
+            <div class="donante-no-encontrado" id="donanteNoEncontrado" hidden>
+                <p>
+                    <i class="bi bi-person-x"></i>
+                    No encontramos ningún donante con ese nombre. ¿Es la primera vez que dona?
+                </p>
+                <div class="acciones-no-encontrado">
+                    <a th:href="@{/admin/donantes/nuevo(volverA='/admin/donaciones/nuevo')}" class="btn-nuevo">
+                        <i class="bi bi-person-plus"></i>
+                        Registrar donante
+                    </a>
+                    <a th:href="@{/admin/donantes}" class="btn-cancelar-form">
+                        <i class="bi bi-people"></i>
+                        Ir a administrar donantes
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Datos de la donación ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-calendar-check"></i> Fecha de la donación</h2>
+            <p class="form-ayuda">
+                Es el día en que el donante entregó los bienes. No puede ser futura.
+            </p>
+            <div class="grilla-campos">
+                <div class="campo">
+                    <label for="fechaRealizacion" class="form-label">
+                        Fecha de realización <span class="obligatorio">*</span>
+                    </label>
+                    <input type="date" class="form-control" id="fechaRealizacion"
+                           th:field="*{fechaRealizacion}">
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Bienes ===== -->
+        <section class="form-seccion">
+            <h2><i class="bi bi-basket"></i> Bienes donados</h2>
+            <p class="form-ayuda">
+                La subcategoría es la que decide con qué necesidades puede matchear la donación:
+                el asignador sólo propone entidades que pidieron bienes de esa misma subcategoría.
+                Si cargás bienes de subcategorías o unidades distintas, el sistema parte el
+                formulario en una donación por grupo.
+            </p>
+
+            <div class="filas-repetibles" id="filasBienes">
+                <div th:each="bien, iter : *{bienes}" class="fila-repetible fila-bien">
+
+                    <div class="campo">
+                        <label class="form-label">Descripción</label>
+                        <input type="text" class="form-control" data-campo="descripcion"
+                               placeholder="Arroz largo fino"
+                               th:field="*{bienes[__${iter.index}__].descripcion}">
+                    </div>
+
+                    <div class="campo">
+                        <label class="form-label">Categoría</label>
+                        <input type="text" class="form-control" data-campo="categoria"
+                               placeholder="Alimentos"
+                               th:field="*{bienes[__${iter.index}__].categoria}">
+                    </div>
+
+                    <div class="campo">
+                        <label class="form-label">Subcategoría <span class="obligatorio">*</span></label>
+                        <input type="text" class="form-control" data-campo="subcategoria"
+                               placeholder="Arroz"
+                               th:field="*{bienes[__${iter.index}__].subcategoria}">
+                    </div>
+
+                    <div class="campo campo-chico">
+                        <label class="form-label">Cantidad <span class="obligatorio">*</span></label>
+                        <input type="number" min="1" step="1" class="form-control" data-campo="cantidad"
+                               th:field="*{bienes[__${iter.index}__].cantidad}">
+                    </div>
+
+                    <div class="campo campo-chico">
+                        <label class="form-label">Unidad <span class="obligatorio">*</span></label>
+                        <select class="form-select" data-campo="unidadDeMedida"
+                                th:field="*{bienes[__${iter.index}__].unidadDeMedida}">
+                            <option value="KILOGRAMOS">Kilogramos</option>
+                            <option value="LITROS">Litros</option>
+                        </select>
+                    </div>
+
+                    <div class="campo campo-chico">
+                        <label class="form-label">Tipo <span class="obligatorio">*</span></label>
+                        <select class="form-select selector-tipo-bien" data-campo="tipoBien"
+                                th:field="*{bienes[__${iter.index}__].tipoBien}">
+                            <option value="CON_ESTADO">Con estado</option>
+                            <option value="PERECEDERO">Perecedero</option>
+                        </select>
+                    </div>
+
+                    <!-- Sólo uno de los dos aplica: el backend elige la subclase del bien por
+                         tipoBien e ignora el campo del otro, así que el JS esconde y deshabilita
+                         el que no corresponde. -->
+                    <div class="campo campo-chico campo-usado">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" data-campo="usado"
+                                th:field="*{bienes[__${iter.index}__].usado}">
+                            <option value="false">Nuevo</option>
+                            <option value="true">Usado</option>
+                        </select>
+                    </div>
+
+                    <div class="campo campo-vencimiento">
+                        <label class="form-label">Vence el <span class="obligatorio">*</span></label>
+                        <input type="date" class="form-control" data-campo="fechaVencimiento"
+                               th:field="*{bienes[__${iter.index}__].fechaVencimiento}">
+                    </div>
+
+                    <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="btn-agregar" id="agregarBien">
+                <i class="bi bi-plus-lg"></i> Agregar otro bien
+            </button>
+        </section>
+
+        <div class="acciones-formulario">
+            <a th:href="@{/admin/donaciones}" class="btn-cancelar-form">Cancelar</a>
+            <button type="submit" class="btn-actualizar">
+                <i class="bi bi-check-lg"></i>
+                Registrar donación
+            </button>
+        </div>
+    </form>
+
+</main>
+
+<!-- Molde de fila de bien. Los name se renumeran por JS al agregar o quitar filas, porque Spring
+     bindea la lista por índice (bienes[0].descripcion, bienes[1].descripcion...). -->
+<template id="moldeBien">
+    <div class="fila-repetible fila-bien">
+        <div class="campo">
+            <label class="form-label">Descripción</label>
+            <input type="text" class="form-control" data-campo="descripcion" placeholder="Arroz largo fino">
+        </div>
+        <div class="campo">
+            <label class="form-label">Categoría</label>
+            <input type="text" class="form-control" data-campo="categoria" placeholder="Alimentos">
+        </div>
+        <div class="campo">
+            <label class="form-label">Subcategoría <span class="obligatorio">*</span></label>
+            <input type="text" class="form-control" data-campo="subcategoria" placeholder="Arroz">
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Cantidad <span class="obligatorio">*</span></label>
+            <input type="number" min="1" step="1" class="form-control" data-campo="cantidad">
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Unidad <span class="obligatorio">*</span></label>
+            <select class="form-select" data-campo="unidadDeMedida">
+                <option value="KILOGRAMOS">Kilogramos</option>
+                <option value="LITROS">Litros</option>
+            </select>
+        </div>
+        <div class="campo campo-chico">
+            <label class="form-label">Tipo <span class="obligatorio">*</span></label>
+            <select class="form-select selector-tipo-bien" data-campo="tipoBien">
+                <option value="CON_ESTADO">Con estado</option>
+                <option value="PERECEDERO">Perecedero</option>
+            </select>
+        </div>
+        <div class="campo campo-chico campo-usado">
+            <label class="form-label">Estado</label>
+            <select class="form-select" data-campo="usado">
+                <option value="false">Nuevo</option>
+                <option value="true">Usado</option>
+            </select>
+        </div>
+        <div class="campo campo-vencimiento">
+            <label class="form-label">Vence el <span class="obligatorio">*</span></label>
+            <input type="date" class="form-control" data-campo="fechaVencimiento">
+        </div>
+        <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
+            <i class="bi bi-trash3"></i>
+        </button>
+    </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../static/js/admin-donacion-formulario.js" th:src="@{/js/admin-donacion-formulario.js}"></script>
+
+</body>
+</html>
