@@ -128,18 +128,6 @@ Cada microservicio tiene su Swagger en `/api-docs`, y la carpeta `postman/` trae
 
 Los cuatro mantienen un `PENDIENTES.md` propio con los problemas técnicos conocidos que quedaron abiertos. Los IDs nunca se renumeran, así que hay huecos: cada punto dice su severidad, los archivos afectados y una propuesta concreta. Lo que ya se corrigió queda en la sección `# Corregidos` de cada archivo, con el motivo por el que se cambió.
 
-## Pendiente de enunciado: visibilidad configurable de insignias
-
-> Estado: **no implementado** en `incentivos-service`.
-
-El enunciado pide que las insignias obtenidas puedan visualizarse en el perfil de la persona donante *"siempre que la persona usuaria las configure como visibles"*. O sea, la visibilidad tiene que ser **una decisión de la persona donante**, no un dato que el servicio asuma.
-
-Hoy no hay forma de configurarla:
-
-- `InsigniaObtenida` (`models/entities/Perfil/InsigniaObtenida.java`) solo tiene `perfil`, `insignia` y `fechaObtencion`. **No existe el campo de visibilidad.**
-- En consecuencia, `GET /api/perfiles/{idUsuario}/insignias` devuelve **todas** las insignias otorgadas, sin filtro.
-- No hay endpoint para cambiar ese estado.
-
 ### Qué hay que hacer
 
 1. Agregar `Boolean visible` a `InsigniaObtenida`, con `true` por defecto en el constructor para no cambiar el comportamiento de las insignias ya emitidas.
