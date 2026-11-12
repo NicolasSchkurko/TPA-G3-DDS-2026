@@ -8,6 +8,7 @@ import java.util.List;
 public class PageResponse<T> {
     private List<T> content = new ArrayList<>();
     private int totalPages;
+    private long totalElements;
 
     public PageResponse() {
     }
@@ -30,5 +31,13 @@ public class PageResponse<T> {
 
     public void setTotalPages(int totalPages) {
         this.totalPages = totalPages;
+    }
+
+    public long getTotalElements() {
+        return totalElements;
+    }
+
+    public void setTotalElements(long totalElements) {
+        this.totalElements = totalElements;
     }
 }

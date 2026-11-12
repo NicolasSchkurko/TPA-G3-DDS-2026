@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Mi ruta — DonaTrack</title>
+    <meta name="description" content="Ruta asignada, paradas, entregas e historial del chofer en DonaTrack.">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/chofer.css}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="chofer-page" id="contenido" tabindex="-1">
+
+    <nav class="crumbs" aria-label="Migas de pan">
+        <a th:href="@{/}">Inicio</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Mi ruta</span>
+    </nav>
+
+    <th:block th:if="${!dashboard.perfilEncontrado}">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Espacio chofer</p>
+                <h1>Mi ruta</h1>
+            </div>
+        </header>
+
+        <section class="empty-state panel" aria-labelledby="sinPerfilTitulo">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+                <circle cx="8" cy="5" r="2.6"/>
+                <path d="M2.5 14c.6-2.8 2.8-4.2 5.5-4.2s4.9 1.4 5.5 4.2"/>
+            </svg>
+            <h2 id="sinPerfilTitulo">No pudimos identificar tu perfil de chofer</h2>
+            <p>La cuenta <strong th:text="${dashboard.usuario}">chofer</strong> no coincide con ningún chofer de la flota.
+                Pedile a administración que cargue tu nombre completo en el registro de choferes.</p>
+        </section>
+    </th:block>
+
+    <th:block th:if="${dashboard.perfilEncontrado}">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Espacio chofer</p>
+                <h1>Mi ruta de hoy</h1>
+                <p class="lead">
+                    Hola, <strong th:text="${dashboard.chofer.nombre}">Chofer</strong>.
+                    <span th:if="${dashboard.rutaActiva != null}">
+                        Tenés la ruta <strong th:text="${dashboard.rutaActiva.estadoEtiqueta()}">programada</strong>
+                        con <span th:text="${dashboard.entregasPendientes}">0</span> entrega(s) pendiente(s).
+                    </span>
+                    <span th:if="${dashboard.rutaActiva == null}">Hoy no tenés una ruta asignada.</span>
+                </p>
+            </div>
+
+            <div class="chofer-actions">
+                <form th:if="${dashboard.rutaProgramada}" method="post" th:action="@{/chofer/ruta/iniciar}">
+                    <button class="btn btn-primary" type="submit">Iniciar ruta</button>
+                </form>
+                <form th:if="${dashboard.rutaEnCurso}" method="post" th:action="@{/chofer/ruta/terminar}"
+                      data-confirm="¿Finalizar la ruta? Las entregas que no confirmaste vuelven a depósito.">
+                    <button class="btn btn-secondary" type="submit">Finalizar ruta</button>
+                </form>
+            </div>
+        </header>
+
+        <section class="summary-grid" aria-label="Resumen de la jornada">
+            <article class="summary-card">
+                <span class="summary-label">Camión asignado</span>
+                <strong class="summary-value" th:text="${dashboard.patente}">AB123CD</strong>
+                <span class="summary-meta" th:text="${dashboard.camion != null and dashboard.camion.disponible != null and !dashboard.camion.disponible ? 'Ocupado en esta ruta' : 'Asignado a tu usuario'}">Asignado a tu usuario</span>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Ruta</span>
+                <strong class="summary-value"
+                        th:text="${dashboard.rutaActiva != null ? dashboard.rutaActiva.estadoEtiqueta() : 'Sin ruta activa'}">Sin ruta activa</strong>
+                <span class="summary-meta" th:if="${dashboard.rutaActiva != null and dashboard.rutaActiva.fechaProgramada != null}"
+                      th:text="${'Programada para el ' + #temporals.format(dashboard.rutaActiva.fechaProgramada, 'dd/MM/yyyy')}">Programada para el 12/11/2026</span>
+                <span class="summary-meta" th:if="${dashboard.rutaActiva != null}"
+                      th:text="${dashboard.paradas.size() + ' parada(s)'}">0 paradas</span>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Entregas</span>
+                <strong class="summary-value"
+                        th:text="${dashboard.entregasPendientes + ' pendientes de ' + dashboard.entregasTotales}">0 pendientes</strong>
+                <div class="progress" role="progressbar"
+                     th:attr="aria-valuenow=${dashboard.entregasTotales - dashboard.entregasPendientes}, aria-valuemin=0, aria-valuemax=${dashboard.entregasTotales}"
+                     th:if="${dashboard.entregasTotales > 0}">
+                    <div class="progress-bar"
+                         th:classappend="${dashboard.entregasPendientes == 0 ? ' is-complete' : ''}"
+                         th:style="${'width:' + ((dashboard.entregasTotales - dashboard.entregasPendientes) * 100 / dashboard.entregasTotales) + '%'}"></div>
+                </div>
+                <span class="summary-meta" th:text="${dashboard.entregasTotales == 0 ? 'Sin paquetes asignados' : (dashboard.entregasPendientes == 0 ? 'Ruta completa' : 'Marcá cada paquete al entregarlo')}">Marcá cada paquete al entregarlo</span>
+            </article>
+        </section>
+
+        <div class="content-grid">
+            <section class="panel ruta-panel" aria-labelledby="paradasTitulo">
+                <header class="panel-head">
+                    <div>
+                        <h2 id="paradasTitulo">Paradas de la ruta</h2>
+                        <p class="panel-subtitle" th:if="${dashboard.rutaActiva != null}"
+                           th:text="${dashboard.rutaEnCurso ? 'Seguí el orden de las paradas y confirmá cada paquete al entregarlo.' : 'Iniciá la ruta para habilitar la confirmación de entregas.'}">
+                            Seguí el orden de las paradas.
+                        </p>
+                    </div>
+                    <span class="chip"
+                          th:if="${dashboard.rutaActiva != null}"
+                          th:classappend="${dashboard.rutaEnCurso ? ' chip-success' : ' chip-info'}"
+                          th:text="${dashboard.rutaActiva.estadoEtiqueta()}">En curso</span>
+                </header>
+
+                <div class="panel-body" th:if="${dashboard.rutaActiva == null}">
+                    <div class="empty-state" style="padding: var(--gap-5) var(--gap-3);">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+                            <path d="M1 3h9v8H1zM10 6h3l2 2v3h-5M4 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm9 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                        </svg>
+                        <h3>Sin ruta activa</h3>
+                        <p>Cuando administración te asigne una ruta, la vas a ver acá con sus paradas y paquetes.</p>
+                    </div>
+                </div>
+
+                <div class="panel-body" th:if="${dashboard.rutaActiva != null and dashboard.paradas.isEmpty()}">
+                    <div class="empty-state" style="padding: var(--gap-5) var(--gap-3);">
+                        <h3>La ruta todavía no tiene paradas</h3>
+                        <p>Volvé a cargar la página en unos minutos o consultá con administración.</p>
+                    </div>
+                </div>
+
+                <div th:if="${dashboard.rutaActiva != null and !dashboard.paradas.isEmpty()}">
+                    <article class="parada"
+                             th:each="parada : ${dashboard.paradas}"
+                             th:classappend="${parada.actual ? ' is-actual' : (parada.completa ? ' is-completa' : '')}"
+                             th:attr="aria-current=${parada.actual ? 'step' : null}">
+                        <div class="parada-head">
+                            <div class="parada-id">
+                                <span class="parada-numero" aria-hidden="true">
+                                    <span th:if="${!parada.completa}" th:text="${parada.numero}">1</span>
+                                    <svg th:if="${parada.completa}" viewBox="0 0 16 16" width="15" height="15"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+                                </span>
+                                <div>
+                                    <p class="parada-dir"
+                                       th:text="${parada.direccion != null ? parada.direccion.etiqueta() : 'Dirección no informada'}">Av. Perito Moreno 2400</p>
+                                    <p class="parada-zona" th:if="${parada.direccion != null}"
+                                       th:text="${(parada.direccion.ciudad != null ? parada.direccion.ciudad : '') + (parada.total > 0 ? ' · ' + parada.total + ' paquete(s)' : '')}">Villa Soldati · 2 paquetes</p>
+                                </div>
+                            </div>
+                            <span class="chip"
+                                  th:classappend="${parada.actual ? ' chip-actual' : (parada.completa ? ' chip-success' : '')}"
+                                  th:text="${parada.actual ? 'Actual' : (parada.completa ? 'Completada' : 'Pendiente')}">Pendiente</span>
+                        </div>
+
+                        <p class="parada-hint" th:if="${parada.actual and !dashboard.rutaEnCurso}">
+                            Iniciá la ruta para marcar las entregas de esta parada.
+                        </p>
+                        <p class="parada-lock" th:if="${!parada.actual and !parada.completa and dashboard.rutaEnCurso}">
+                            Se habilita al completar la parada anterior.
+                        </p>
+
+                        <ul class="bienes" th:if="${!parada.bienes.isEmpty()}">
+                            <li class="bien" th:each="bien : ${parada.bienes}"
+                                th:classappend="${bien.entregada ? ' is-entregada' : ''}">
+                                <div class="bien-main">
+                                    <span class="bien-dot" th:classappend="${bien.entregada ? ' is-done' : ''}" aria-hidden="true"></span>
+                                    <div>
+                                        <span class="bien-cantidad" th:text="${bien.cantidadConUnidad}">12 kg</span>
+                                        <span class="bien-id" th:if="${bien.idDonacion != null}"
+                                              th:text="${'Donación ' + bien.idCorto}">Donación 123e4567</span>
+                                    </div>
+                                </div>
+                                <div class="bien-actions">
+                                    <span class="chip"
+                                          th:classappend="${bien.entregada ? ' chip-success' : (bien.estado == 'EN_CAMINO' ? ' chip-warning' : '')}"
+                                          th:text="${bien.estadoEtiqueta}">Pendiente</span>
+                                    <button class="btn btn-primary btn-sm entrega-trigger"
+                                            type="button"
+                                            th:if="${!bien.entregada and dashboard.rutaEnCurso and parada.actual and bien.idDonacion != null}"
+                                            th:attr="data-action=@{/chofer/entregas/{id}/entregar(id=${bien.idDonacion})},
+                                                     data-resumen=${'Parada ' + parada.numero + ' · ' + bien.cantidadConUnidad},
+                                                     aria-label=${'Marcar como entregada la donación ' + bien.idCorto}">
+                                        Entregar
+                                    </button>
+                                </div>
+                            </li>
+                        </ul>
+                        <p class="parada-vacia" th:if="${parada.bienes.isEmpty()}">Sin paquetes registrados en esta parada.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="panel map-panel" aria-labelledby="mapaTitulo">
+                <header class="panel-head">
+                    <div>
+                        <h2 id="mapaTitulo">Recorrido</h2>
+                        <p class="panel-subtitle">Las paradas en el orden de la ruta, unidas en el mapa.</p>
+                    </div>
+                    <a class="btn btn-secondary btn-sm"
+                       th:if="${dashboard.rutaActiva != null and dashboard.rutaActiva.idRuta != null}"
+                       th:href="@{/seguimiento/{id}(id=${dashboard.rutaActiva.idRuta})}" target="_blank" rel="noopener">
+                        Mapa completo
+                    </a>
+                </header>
+                <div class="map-frame">
+                    <div id="rutaMap" role="application" aria-label="Mapa del recorrido con las paradas de la ruta"></div>
+                    <div class="map-empty" th:if="${!dashboard.hayTrazado}">
+                        <div>
+                            <strong>La ruta todavía no tiene coordenadas</strong>
+                            <p>Cuando las paradas tengan ubicación, vas a ver el recorrido dibujado acá.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="map-legend" aria-label="Referencias del mapa">
+                    <span><i class="legend-dot actual" aria-hidden="true"></i> Parada actual</span>
+                    <span><i class="legend-dot completada" aria-hidden="true"></i> Completada</span>
+                    <span><i class="legend-dot pendiente" aria-hidden="true"></i> Pendiente</span>
+                </div>
+            </section>
+        </div>
+
+        <section class="panel historial-panel" aria-labelledby="historialTitulo">
+            <header class="panel-head">
+                <div>
+                    <h2 id="historialTitulo">Historial de rutas</h2>
+                    <p class="panel-subtitle">Tus rutas anteriores, de la más reciente a la más antigua.</p>
+                </div>
+                <span class="chip" th:if="${dashboard.historialTotalElementos > 0}"
+                      th:text="${dashboard.historialTotalElementos + ' ruta(s)'}">0 rutas</span>
+            </header>
+
+            <div class="panel-body" th:if="${dashboard.historial.isEmpty()}">
+                <div class="empty-state" style="padding: var(--gap-5) var(--gap-3);">
+                    <h3>Todavía no hay rutas en tu historial</h3>
+                    <p>Cuando finalices tu primera ruta, va a quedar registrada acá.</p>
+                </div>
+            </div>
+
+            <ul class="historial-list" th:if="${!dashboard.historial.isEmpty()}">
+                <li class="historial-item" th:each="ruta : ${dashboard.historial}">
+                    <time class="historial-date"
+                          th:if="${ruta.fechaProgramada != null}"
+                          th:datetime="${ruta.fechaProgramada}"
+                          th:text="${#temporals.format(ruta.fechaProgramada, 'dd/MM/yyyy')}">12/11/2026</time>
+                    <span class="historial-date" th:if="${ruta.fechaProgramada == null}">Sin fecha</span>
+                    <div class="historial-route">
+                        <strong th:text="${ruta.patente()}">AB123CD</strong>
+                        <span th:text="${' · ' + (ruta.paradas != null ? ruta.paradas.size() : 0) + ' parada(s)'}"> · 2 paradas</span>
+                    </div>
+                    <span class="chip"
+                          th:classappend="${ruta.estado == 'FINALIZADA' ? ' chip-success' : (ruta.estado == 'PROGRAMADA' ? ' chip-info' : ' chip-warning')}"
+                          th:text="${ruta.estadoEtiqueta()}">Finalizada</span>
+                    <a class="btn btn-secondary btn-sm" th:if="${ruta.idRuta != null}"
+                       th:href="@{/seguimiento/{id}(id=${ruta.idRuta})}" target="_blank" rel="noopener">Ver mapa</a>
+                </li>
+            </ul>
+
+            <nav class="pagination" th:if="${dashboard.historialTotalPaginas > 1}" aria-label="Paginación del historial">
+                <a class="btn btn-secondary btn-sm"
+                   th:if="${dashboard.historialTieneAnterior}"
+                   th:href="@{/chofer(historialPage=${dashboard.historialPagina - 1})}">Anterior</a>
+                <span class="pagination-info"
+                      th:text="${'Página ' + (dashboard.historialPagina + 1) + ' de ' + dashboard.historialTotalPaginas}">Página 1 de 2</span>
+                <a class="btn btn-secondary btn-sm"
+                   th:if="${dashboard.historialTieneSiguiente}"
+                   th:href="@{/chofer(historialPage=${dashboard.historialPagina + 1})}">Siguiente</a>
+            </nav>
+        </section>
+
+        <div class="modal" id="entregaModal" hidden role="dialog" aria-modal="true" aria-labelledby="entregaModalTitle">
+            <div class="modal-dialog">
+                <form id="entregaForm" method="post" th:action="@{/chofer}">
+                    <div class="modal-head">
+                        <div>
+                            <h2 id="entregaModalTitle">Confirmar entrega</h2>
+                            <p class="modal-subtitle" id="entregaResumen">Adjuntá una foto como comprobante.</p>
+                        </div>
+                        <button class="modal-close" type="button" data-close-entrega aria-label="Cerrar">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="photo-drop" for="fotoInput" id="photoDrop">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h1L6 2h4l1.5 2h1A1.5 1.5 0 0 1 14 5.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/>
+                                <circle cx="8" cy="8.75" r="2.5"/>
+                            </svg>
+                            <span><strong id="photoDropLabel">Tocá para sacar o elegir una foto</strong></span>
+                            <span class="photo-hint">JPG o PNG · se comprime automáticamente</span>
+                            <input id="fotoInput" type="file" accept="image/*" capture="environment">
+                        </label>
+                        <img id="photoPreview" class="photo-preview" alt="Vista previa de la foto de la entrega" hidden>
+                        <input type="hidden" name="fotoBase64" id="fotoBase64" value="">
+
+                        <div class="field">
+                            <label for="observacion">Observación (opcional)</label>
+                            <textarea id="observacion" name="observacion" rows="2" maxlength="300"
+                                      placeholder="Ej.: entregado en portería"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button class="btn btn-secondary" type="button" data-close-entrega>Cancelar</button>
+                        <button class="btn btn-primary" type="submit" id="entregaSubmit" disabled>Confirmar entrega</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </th:block>
+
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<th:block th:if="${dashboard.perfilEncontrado and dashboard.rutaActiva != null}">
+    <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+</th:block>
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/chofer/dashboard.js}" defer></script>
+<script th:inline="javascript">
+    window.CHOFER_GEOJSON = JSON.parse(/*[[${dashboard.geojson}]]*/ '{"type":"FeatureCollection","features":[]}');
+    window.CHOFER_HAY_TRAZADO = [[${dashboard.hayTrazado}]];
+</script>
+</body>
+</html>

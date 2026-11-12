@@ -219,4 +219,44 @@ class RutaServiceTest {
         assertThat(resultado.getContent()).extracting(RutaDTO::getIdRuta)
                 .containsExactly(ruta.getIdRuta());
     }
+
+    @Test
+    @DisplayName("findByChofer devuelve el historial paginado del chofer")
+    void historialPaginadoPorChofer() {
+        UUID idChofer = UUID.randomUUID();
+        Chofer chofer = new Chofer(idChofer, "Chofer Historial", true);
+        Pageable pageable = PageRequest.of(0, 8);
+        Ruta ruta = new Ruta(new Camion("HIS123", 10.0, 3.0, 1000.0, true));
+        ruta.setIdRuta(UUID.randomUUID());
+        ruta.setEstado(EstadoRuta.FINALIZADA);
+
+        when(repoChoferes.findById(idChofer)).thenReturn(Optional.of(chofer));
+        when(repoRutas.findByCamionAsignadoChoferIdChofer(idChofer, pageable))
+                .thenReturn(new PageImpl<>(List.of(ruta), pageable, 1));
+
+        Page<RutaDTO> resultado = rutaService.findByChofer(idChofer, pageable);
+
+        verify(repoRutas).findByCamionAsignadoChoferIdChofer(idChofer, pageable);
+        assertThat(resultado.getContent()).extracting(RutaDTO::getIdRuta)
+                .containsExactly(ruta.getIdRuta());
+    }
+
+    @Test
+    @DisplayName("findActiva prioriza la ruta en curso sobre la programada")
+    void rutaActivaPriorizaEnCurso() {
+        UUID idChofer = UUID.randomUUID();
+        Chofer chofer = new Chofer(idChofer, "Chofer Activo", true);
+        Ruta enCurso = new Ruta(new Camion("CUR123", 10.0, 3.0, 1000.0, true));
+        enCurso.setIdRuta(UUID.randomUUID());
+        enCurso.setEstado(EstadoRuta.EN_CURSO);
+
+        when(repoChoferes.findById(idChofer)).thenReturn(Optional.of(chofer));
+        when(repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(idChofer, EstadoRuta.EN_CURSO))
+                .thenReturn(Optional.of(enCurso));
+
+        Optional<RutaDTO> activa = rutaService.findActiva(idChofer);
+
+        assertThat(activa).isPresent();
+        assertThat(activa.get().getIdRuta()).isEqualTo(enCurso.getIdRuta());
+    }
 }

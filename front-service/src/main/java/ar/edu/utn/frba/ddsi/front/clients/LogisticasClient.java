@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.front.clients;
 
 import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.ChoferDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -77,7 +78,7 @@ public class LogisticasClient {
     public List<CamionDTO> obtenerCamiones() {
         try {
             PageResponse<CamionDTO> page = restClient.get()
-                    .uri(baseUrl + "/camiones")
+                    .uri(baseUrl + "/camiones?page=0&size=200")
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<CamionDTO>>() {});
             return page != null && page.getContent() != null ? page.getContent() : List.of();
@@ -87,17 +88,85 @@ public class LogisticasClient {
         }
     }
 
-    /** Rutas generadas. El listado es global; filtrar por paradas[].direccion.idEntidad en el front. */
+    /** Rutas generadas. El listado es global; filtrar por chofer o paradas[].direccion.idEntidad en el front. */
     public List<LogisticaDTOs.Ruta> obtenerRutas() {
         try {
-            LogisticaDTOs.Rutas rutas = restClient.get()
+            PageResponse<LogisticaDTOs.Ruta> page = restClient.get()
                     .uri(baseUrl + "/rutas")
                     .retrieve()
-                    .body(LogisticaDTOs.Rutas.class);
-            return rutas == null || rutas.getRutas() == null ? List.of() : rutas.getRutas();
+                    .body(new ParameterizedTypeReference<PageResponse<LogisticaDTOs.Ruta>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
         } catch (Exception e) {
             log.error("Error al obtener rutas desde {}: {}", baseUrl, e.getMessage());
             return List.of();
+        }
+    }
+
+    /** Choferes de la flota. Devuelve lista vacía si el servicio no responde. */
+    public List<ChoferDTO> obtenerChoferes() {
+        try {
+            PageResponse<ChoferDTO> page = restClient.get()
+                    .uri(baseUrl + "/choferes?page=0&size=200")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<ChoferDTO>>() {});
+            return page != null && page.getContent() != null ? page.getContent() : List.of();
+        } catch (Exception e) {
+            log.error("Error al obtener choferes desde {}: {}", baseUrl, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Ruta activa (en curso o programada) del chofer; null si no tiene. */
+    public LogisticaDTOs.Ruta obtenerRutaActivaDelChofer(UUID idChofer) {
+        try {
+            var response = restClient.get()
+                    .uri(baseUrl + "/rutas/chofer/{id}/activa", idChofer)
+                    .retrieve()
+                    .toEntity(LogisticaDTOs.Ruta.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Error al obtener la ruta activa del chofer {}: {}", idChofer, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Historial paginado de rutas del chofer. Devuelve una página vacía si falla. */
+    public PageResponse<LogisticaDTOs.Ruta> obtenerHistorialDelChofer(UUID idChofer, int page, int size) {
+        try {
+            PageResponse<LogisticaDTOs.Ruta> resultado = restClient.get()
+                    .uri(baseUrl + "/rutas/chofer/{id}?page={page}&size={size}", idChofer, page, size)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<LogisticaDTOs.Ruta>>() {});
+            return resultado != null ? resultado : new PageResponse<>();
+        } catch (Exception e) {
+            log.error("Error al obtener el historial del chofer {}: {}", idChofer, e.getMessage());
+            return new PageResponse<>();
+        }
+    }
+
+    /** El chofer informa el inicio de su ruta programada. */
+    public void iniciarRuta(UUID idChofer) {
+        try {
+            restClient.patch()
+                    .uri(baseUrl + "/rutas/chofer/{id}/iniciar", idChofer)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al iniciar la ruta del chofer {}: {}", idChofer, e.getMessage());
+            throw e;
+        }
+    }
+
+    /** El chofer finaliza su ruta activa; las entregas no confirmadas vuelven a depósito. */
+    public void terminarRuta(UUID idChofer) {
+        try {
+            restClient.patch()
+                    .uri(baseUrl + "/rutas/chofer/{id}/terminar", idChofer)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Error al terminar la ruta del chofer {}: {}", idChofer, e.getMessage());
+            throw e;
         }
     }
 

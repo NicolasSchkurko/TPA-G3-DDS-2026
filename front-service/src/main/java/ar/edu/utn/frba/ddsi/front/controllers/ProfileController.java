@@ -110,22 +110,8 @@ public class ProfileController {
         return authentication == null ? "Mi perfil" : authentication.getName();
     }
 
-    @GetMapping("/chofer")
-    public String chofer(Authentication authentication, Model model) {
-        return perfil(authentication, model, "Espacio chofer", "CHOFER",
-                "Desde acá vas a poder consultar tus rutas y actualizar el estado de tus entregas.");
-    }
-
     @GetMapping("/sin-acceso")
     public String sinAcceso() {
         return "sin-acceso";
-    }
-
-    private String perfil(Authentication authentication, Model model, String titulo, String rol, String descripcion) {
-        model.addAttribute("titulo", titulo);
-        model.addAttribute("rol", rol);
-        model.addAttribute("descripcion", descripcion);
-        model.addAttribute("usuario", authentication.getName());
-        return "perfil";
     }
 }

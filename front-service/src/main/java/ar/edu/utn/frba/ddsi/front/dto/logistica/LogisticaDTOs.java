@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,8 @@ public final class LogisticaDTOs {
         private String ciudad;
         private String provincia;
         private String pais;
+        private Double latitud;
+        private Double longitud;
 
         public String etiqueta() {
             String calle = calleUno != null ? calleUno : "";
@@ -103,7 +106,7 @@ public final class LogisticaDTOs {
     public static class Ruta {
         private UUID idRuta;
         private Camion camionAsignado;
-        private String fechaProgramada;
+        private LocalDate fechaProgramada;
         private String estado;
         private String urlSeguimiento;
         private List<Parada> paradas = List.of();
@@ -119,6 +122,16 @@ public final class LogisticaDTOs {
 
         public String patente() {
             return camionAsignado != null && camionAsignado.getPatente() != null ? camionAsignado.getPatente() : "Sin asignar";
+        }
+
+        public String estadoEtiqueta() {
+            if (estado == null) return "Sin estado";
+            return switch (estado.toUpperCase()) {
+                case "PROGRAMADA" -> "Programada";
+                case "EN_CURSO" -> "En curso";
+                case "FINALIZADA" -> "Finalizada";
+                default -> estado;
+            };
         }
     }
 

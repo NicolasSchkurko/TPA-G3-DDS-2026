@@ -17,6 +17,7 @@ import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioChoferes;
 import ar.edu.utn.frba.ddsi.logisticas.models.repositories.RepositorioRutas;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,23 @@ public class RutaService {
     Ruta ruta = repoRutas.findById(idRuta)
             .orElseThrow(() -> new RecursoNoEncontradoException("Ruta no encontrado"));
     return new RutaDTO().aplicar(ruta);
+  }
+
+  /** Historial paginado de las rutas asignadas a un chofer. */
+  public Page<RutaDTO> findByChofer(UUID idChofer, Pageable pageable) {
+    repoChoferes.findById(idChofer)
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+    return repoRutas.findByCamionAsignadoChoferIdChofer(idChofer, pageable)
+            .map(ruta -> new RutaDTO().aplicar(ruta));
+  }
+
+  /** Ruta que el chofer tiene en curso o programada, si existe. */
+  public Optional<RutaDTO> findActiva(UUID idChofer) {
+    repoChoferes.findById(idChofer)
+            .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+    return repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(idChofer, EstadoRuta.EN_CURSO)
+            .or(() -> repoRutas.findFirstByCamionAsignadoChoferIdChoferAndEstado(idChofer, EstadoRuta.PROGRAMADA))
+            .map(ruta -> new RutaDTO().aplicar(ruta));
   }
 
   @Transactional

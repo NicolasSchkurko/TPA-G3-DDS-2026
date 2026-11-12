@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,22 @@ public class RutaController {
   @GetMapping("/{id}")
   public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
     return ResponseEntity.ok(rutaService.findById(id));
+  }
+
+  @Operation(summary = "Listar el historial paginado de rutas de un chofer")
+  @GetMapping("/chofer/{idChofer}")
+  public ResponseEntity<Page<RutaDTO>> obtenerPorChofer(
+          @PathVariable UUID idChofer,
+          @ParameterObject @PageableDefault(size = 8, sort = "fechaProgramada", direction = Sort.Direction.DESC) Pageable pageable) {
+    return ResponseEntity.ok(rutaService.findByChofer(idChofer, pageable));
+  }
+
+  @Operation(summary = "Obtener la ruta activa de un chofer (en curso o programada)")
+  @GetMapping("/chofer/{idChofer}/activa")
+  public ResponseEntity<RutaDTO> obtenerActiva(@PathVariable UUID idChofer) {
+    return rutaService.findActiva(idChofer)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.noContent().build());
   }
 
   @Operation(summary = "El chofer informa el inicio de su ruta",
