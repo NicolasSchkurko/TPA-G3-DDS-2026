@@ -3,6 +3,8 @@
    Dashboard map-first, panel desplegable, vistas de entidad.
    ========================================================= */
 
+[hidden] { display: none !important; }
+
 /* ---------- Layout general de página ---------- */
 .page {
     width: 100%;

@@ -185,9 +185,19 @@
                             <label for="plazoEnDias">Período</label>
                             <select id="plazoEnDias" name="plazoEnDias">
                                 <option value="7">Semanal (7 días)</option>
+                                <option value="15">Quincenal (15 días)</option>
                                 <option value="30" selected>Mensual (30 días)</option>
+                                <option value="60">Bimestral (60 días)</option>
+                                <option value="90">Trimestral (90 días)</option>
+                                <option value="180">Semestral (180 días)</option>
+                                <option value="365">Anual (365 días)</option>
+                                <option value="custom">Otro (escribir días)</option>
                             </select>
-                            <span class="hint">Solo para necesidades recurrentes.</span>
+                            <input type="number" id="plazoCustom" min="1" step="1"
+                                   placeholder="Cantidad de días" hidden
+                                   aria-label="Cantidad de días del período"
+                                   style="margin-top: var(--gap-2);">
+                            <span class="hint">Solo para necesidades recurrentes. Indica cada cuánto se renueva la necesidad.</span>
                         </div>
                     </div>
 
