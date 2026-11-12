@@ -310,6 +310,7 @@ services:
       KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:8080/
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
       SEGUIMIENTO_TOKEN_SECRET: ${SEGUIMIENTO_TOKEN_SECRET:-donatrack-seguimiento-local}
+      KEYCLOAK_VERIFICATION_ENABLED: "true"
       SPRING_THYMELEAF_CACHE: "true"
     mem_limit: 512m
     depends_on:

@@ -18,7 +18,7 @@ public class Mensaje {
     @Column(name = "asunto", nullable = false)
     private String asunto;
     @Getter
-    @Column(name = "cuerpo", nullable = false)
+    @Column(name = "cuerpo", nullable = false, columnDefinition = "TEXT")
     private String cuerpo;
 
     /** Opcional: link estructurado a un mapa/adjunto; no va pegado en el cuerpo. */

@@ -38,6 +38,8 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico", "/favicon.svg").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso", "/terminos",
                         "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso", "/terminos",
+                            "/verificar", "/seguimiento/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
                 .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")
