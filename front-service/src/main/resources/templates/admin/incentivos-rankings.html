@@ -219,10 +219,12 @@
             <strong id="deletePeriodLabel"></strong>.</p>
 
         <form method="post" id="rankDeleteForm" action="#">
-            <div class="modal-actions">
-                <button class="btn-secondary" type="button" onclick="closeModal('rankDeleteModal')">Cancelar</button>
-                <button class="btn-danger" type="submit">Sí, eliminar snapshot</button>
-            </div>
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="periodo" id="deletePeriodInput">
+        <div class="modal-actions">
+            <button class="btn-secondary" type="button" onclick="closeModal('rankDeleteModal')">Cancelar</button>
+            <button class="btn-danger" type="submit">Sí, eliminar snapshot</button>
+        </div>
         </form>
     </div>
 </div>
@@ -266,6 +268,7 @@
     /* ---------- Eliminar ranking ---------- */
     function openDeleteModal(btn) {
         document.getElementById('deletePeriodLabel').textContent = btn.dataset.periodo;
+        document.getElementById('deletePeriodInput').value = btn.dataset.periodo;
         document.getElementById('rankDeleteForm').setAttribute('action', btn.dataset.deleteAction);
         document.getElementById('rankDeleteModal').hidden = false;
     }
