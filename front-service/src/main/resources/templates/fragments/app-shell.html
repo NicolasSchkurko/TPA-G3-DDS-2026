@@ -147,6 +147,22 @@
             </div>
         </div>
     </header>
+    <div th:if="${emailSinVerificar}" class="banner banner-warning" role="status"
+         style="margin: var(--gap-3) var(--gap-4) 0;">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+        </svg>
+        <div>
+            <strong>Tu correo todavía no está verificado.</strong><br>
+            <span th:if="${verificacionMensaje}" th:text="${verificacionMensaje}">Mensaje</span>
+            <span th:unless="${verificacionMensaje}">
+                Abrí el link que te enviamos para vincular tu perfil. Si ya lo verificaste, cerrá sesión y volvé a ingresar.
+            </span>
+            <form th:action="@{/verificar/reenviar}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm">Reenviar correo</button>
+            </form>
+        </div>
+    </div>
 </th:block>
 
 <!--
