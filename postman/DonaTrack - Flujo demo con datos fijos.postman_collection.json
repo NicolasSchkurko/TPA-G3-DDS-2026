@@ -56,7 +56,7 @@
                      },
                      {
                          "key":  "donanteEmail",
-                         "value":  "donante.donatrack@example.com"
+                         "value":  "donante.n8n.demo@example.com"
                      },
                      {
                          "key":  "entidadId",
@@ -68,7 +68,7 @@
                      }
                  ],
     "info":  {
-                 "description":  "Flujo de prueba reutilizable. Admin, donante, entidad y necesidad se buscan por identificadores estables y solo se crean si faltan. Requiere servicios arriba. El correo fijo del donante es donante.donatrack@example.com; para verlo en el front, registra una cuenta con ese correo y rol DONANTE para vincular el perfil existente. Ejecuta en Runner de arriba hacia abajo.",
+                 "description":  "Flujo de prueba reutilizable. Admin, donante, entidad y necesidad se buscan por identificadores estables y solo se crean si faltan. Requiere servicios arriba. La cuenta fija de prueba para Postman y la web es usuario donante-n8n-demo y correo donante.n8n.demo@example.com. Registra esta cuenta en el front con rol DONANTE antes de ejecutar el Runner de arriba hacia abajo.",
                  "name":  "DonaTrack - Flujo demo con datos fijos",
                  "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
                  "_postman_id":  "f4f79f36-df0a-46c0-94ea-f6fdc718c792"
@@ -205,7 +205,7 @@
                                                     {
                                                         "script":  {
                                                                        "exec":  [
-                                                                                    "const page=pm.response.json(); const items=page.content||page; const email=\u0027donante.donatrack@example.com\u0027; const found=items.find(x=\u003e(x.mediosDeContacto||[]).some(m=\u003e(m.valor||\u0027\u0027).toLowerCase()===email)); if(found) pm.collectionVariables.set(\u0027donanteId\u0027,found.id); else pm.collectionVariables.unset(\u0027donanteId\u0027); pm.collectionVariables.set(\u0027donanteEmail\u0027,email); pm.test(\u0027consulta donantes\u0027,()=\u003epm.response.to.have.status(200));"
+                                                                                    "const page=pm.response.json(); const items=page.content||page; const email=\u0027donante.n8n.demo@example.com\u0027; const found=items.find(x=\u003e(x.mediosDeContacto||[]).some(m=\u003e(m.valor||\u0027\u0027).toLowerCase()===email)); if(found) pm.collectionVariables.set(\u0027donanteId\u0027,found.id); else pm.collectionVariables.unset(\u0027donanteId\u0027); pm.collectionVariables.set(\u0027donanteEmail\u0027,email); pm.test(\u0027consulta donantes\u0027,()=\u003epm.response.to.have.status(200));"
                                                                                 ],
                                                                        "type":  "text/javascript"
                                                                    },
@@ -216,7 +216,7 @@
                                   {
                                       "request":  {
                                                       "body":  {
-                                                                   "raw":  "{\"tipoPersona\":\"HUMANA\",\"nombre\":\"Sofia\",\"apellido\":\"Donante Demo\",\"edad\":28,\"numeroDeDocumento\":90000002,\"genero\":\"OTRO\",\"direccion\":{\"calleUno\":\"Av. Corrientes\",\"altura\":1234,\"piso\":1,\"ciudad\":\"CABA\",\"provincia\":\"Buenos Aires\",\"pais\":\"Argentina\"},\"mediosDeContacto\":[{\"tipo\":\"EMAIL\",\"valor\":\"donante.donatrack@example.com\"}]}",
+                                                                   "raw":  "{\"tipoPersona\":\"HUMANA\",\"nombre\":\"Sofia\",\"apellido\":\"Donante N8n Demo\",\"edad\":28,\"numeroDeDocumento\":90000003,\"genero\":\"OTRO\",\"direccion\":{\"calleUno\":\"Av. Corrientes\",\"altura\":1234,\"piso\":1,\"ciudad\":\"CABA\",\"provincia\":\"Buenos Aires\",\"pais\":\"Argentina\"},\"mediosDeContacto\":[{\"tipo\":\"EMAIL\",\"valor\":\"donante.n8n.demo@example.com\"}]}",
                                                                    "options":  {
                                                                                    "raw":  {
                                                                                                "language":  "json"
@@ -859,7 +859,7 @@
                                                                        "exec":  [
                                                                                     "pm.test(\u0027consulta las rutas\u0027, function () { pm.response.to.have.status(200); });",
                                                                                     "const respuesta = pm.response.json();",
-                                                                                    "const rutas = respuesta.rutas || [];",
+                                                                                    "const rutas = Array.isArray(respuesta) ? respuesta : (respuesta.content || respuesta.rutas || []);",
                                                                                     "const idDonacion = pm.collectionVariables.get(\u0027donacionId\u0027);",
                                                                                     "const ruta = rutas.find(r =\u003e (r.paradas || []).some(p =\u003e ((p.items || {}).idsDonaciones || []).includes(idDonacion)));",
                                                                                     "pm.test(\u0027encuentra la ruta de esta donaci?n\u0027, function () { pm.expect(ruta, \u0027ruta para \u0027 + idDonacion).to.exist; });",
