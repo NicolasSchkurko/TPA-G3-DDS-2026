@@ -73,16 +73,17 @@ public class CategoriaService {
     }
 
     /**
-     * Crea una categoría y abre un hueco en su posición. Sin posición queda al final. Una
-     * posición ocupada da 409 y una fuera de rango da 400.
+     * Crea una categoría y abre un hueco en su posición. Sin posición explícita queda al final;
+     * una posición fuera de rango es inválida.
      */
     @Transactional
     public CategoriaDTO agregarCategoria(UUID idAdmin, CategoriaDTO dto) {
         List<Mision> misiones = repoMisiones.conseguirMisiones(dto.getMisiones());
 
+        Integer posicionMaxima = gestorSecuencia.posicionMaxima(repoCategorias);
         Integer posicion = dto.getPosicionSecuencia();
-        if (posicion != null && repoCategorias.existsByPosicionSecuencia(posicion)) {
-            throw new ConflictoException("Ya hay una categoría en la posición " + posicion + ".");
+        if (posicion == null) {
+            posicion = (posicionMaxima == null ? 0 : posicionMaxima) + 1;
         }
 
         Categoria categoria = new Categoria(
@@ -94,8 +95,8 @@ public class CategoriaService {
 
         gestorSecuencia.desplazarParaCrear(
                 repoCategorias,
-                categoria.getPosicionSecuencia(),
-                gestorSecuencia.posicionMaxima(repoCategorias));
+                posicion,
+                posicionMaxima);
         Categoria categoriaCreada = repoCategorias.save(categoria);
 
         return CategoriaDTO.desdeEntidad(categoriaCreada);

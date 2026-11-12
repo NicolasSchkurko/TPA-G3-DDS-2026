@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -112,11 +113,25 @@ public class IncentivosClient {
     /** Misiones para la pantalla de administración. */
     public List<IncentivosAdminDTOs.Mision> obtenerMisiones() {
         try {
+            int pageSize = 100;
             PageResponse<IncentivosAdminDTOs.Mision> page = restClient.get()
-                    .uri(baseUrl + "/api/misiones?page=0&size=100")
+                    .uri(baseUrl + "/api/misiones?page=0&size={size}", pageSize)
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Mision>>() {});
-            return page != null && page.getContent() != null ? page.getContent() : List.of();
+            if (page == null) {
+                return List.of();
+            }
+            List<IncentivosAdminDTOs.Mision> misiones = new ArrayList<>(page.getContent());
+            for (int numeroPagina = 1; numeroPagina < page.getTotalPages(); numeroPagina++) {
+                PageResponse<IncentivosAdminDTOs.Mision> siguiente = restClient.get()
+                        .uri(baseUrl + "/api/misiones?page={page}&size={size}", numeroPagina, pageSize)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Mision>>() {});
+                if (siguiente != null) {
+                    misiones.addAll(siguiente.getContent());
+                }
+            }
+            return misiones;
         } catch (Exception e) {
             log.error("Error al obtener misiones desde {}: {}", baseUrl, e.getMessage());
             return List.of();
@@ -137,15 +152,59 @@ public class IncentivosClient {
     /** Categorías para la pantalla de administración. */
     public List<IncentivosAdminDTOs.Categoria> obtenerCategorias() {
         try {
+            int pageSize = 100;
             PageResponse<IncentivosAdminDTOs.Categoria> page = restClient.get()
-                    .uri(baseUrl + "/api/categorias?page=0&size=100")
+                    .uri(baseUrl + "/api/categorias?page=0&size={size}", pageSize)
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Categoria>>() {});
-            return page != null && page.getContent() != null ? page.getContent() : List.of();
+            if (page == null) {
+                return List.of();
+            }
+            List<IncentivosAdminDTOs.Categoria> categorias = new ArrayList<>(page.getContent());
+            for (int numeroPagina = 1; numeroPagina < page.getTotalPages(); numeroPagina++) {
+                PageResponse<IncentivosAdminDTOs.Categoria> siguiente = restClient.get()
+                        .uri(baseUrl + "/api/categorias?page={page}&size={size}", numeroPagina, pageSize)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.Categoria>>() {});
+                if (siguiente != null) {
+                    categorias.addAll(siguiente.getContent());
+                }
+            }
+            return categorias;
         } catch (Exception e) {
             log.error("Error al obtener categorías desde {}: {}", baseUrl, e.getMessage());
             return List.of();
         }
+    }
+
+    public void crearCategoria(IncentivosAdminDTOs.Categoria categoria, UUID idAdmin) {
+        restClient.post()
+                .uri(baseUrl + "/api/categorias/admin")
+                .header("Admin-Id", idAdmin.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(categoria)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void actualizarCategoria(UUID idCategoria,
+                                    IncentivosAdminDTOs.Categoria categoria,
+                                    UUID idAdmin) {
+        restClient.put()
+                .uri(baseUrl + "/api/categorias/admin/{id}", idCategoria)
+                .header("Admin-Id", idAdmin.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(categoria)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void eliminarCategoria(UUID idCategoria, UUID idAdmin) {
+        restClient.delete()
+                .uri(baseUrl + "/api/categorias/admin/{id}", idCategoria)
+                .header("Admin-Id", idAdmin.toString())
+                .retrieve()
+                .toBodilessEntity();
     }
 
     /** Historial de rankings mensuales. */

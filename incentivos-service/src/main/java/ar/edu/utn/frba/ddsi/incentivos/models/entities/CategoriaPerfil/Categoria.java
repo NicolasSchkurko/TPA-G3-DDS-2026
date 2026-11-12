@@ -154,7 +154,7 @@ public class Categoria {
         }
 
         List<CategoriaMision> nuevaSecuencia = cambios.getCategoriaMisiones();
-        if (nuevaSecuencia == null || nuevaSecuencia.isEmpty()) {
+        if (nuevaSecuencia == null) {
             return;
         }
 

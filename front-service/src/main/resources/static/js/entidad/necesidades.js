@@ -35,7 +35,9 @@
     }
 
     [filterText, filterTipo, filterEstado].forEach(function (el) {
-        if (el) el.addEventListener("input", aplicarFiltros);
+        if (!el) return;
+        el.addEventListener("input", aplicarFiltros);
+        el.addEventListener("change", aplicarFiltros);
     });
 
     if (clearFilters) clearFilters.addEventListener("click", function () {
@@ -44,6 +46,8 @@
         if (filterEstado) filterEstado.value = "activa";
         aplicarFiltros();
     });
+
+    aplicarFiltros();
 
     /* ---------- Datalists del catálogo ---------- */
     const categorias = Object.keys(CATALOGO);
@@ -82,6 +86,8 @@
     const submitBtn = document.getElementById("necesidadSubmit");
     const tipoSelect = document.getElementById("tipoNecesidad");
     const plazoField = document.getElementById("plazoField");
+    const plazoSelect = document.getElementById("plazoEnDias");
+    const plazoCustom = document.getElementById("plazoCustom");
     const cantidadInput = document.getElementById("cantidadObjetivo");
     const cantidadError = document.getElementById("cantidadError");
     const formError = document.getElementById("formError");
@@ -89,7 +95,50 @@
 
     function actualizarPlazoVisible() {
         if (!plazoField || !tipoSelect) return;
-        plazoField.hidden = tipoSelect.value === "EXTRAORDINARIA";
+        const esExtraordinaria = tipoSelect.value === "EXTRAORDINARIA";
+        plazoField.hidden = esExtraordinaria;
+        if (plazoSelect) {
+            plazoSelect.disabled = esExtraordinaria;
+            if (esExtraordinaria) {
+                plazoSelect.value = "";
+                if (plazoCustom) { plazoCustom.hidden = true; plazoCustom.disabled = true; plazoCustom.value = ""; }
+            } else {
+                if (!plazoSelect.value) plazoSelect.value = "30";
+                actualizarCustomVisible();
+            }
+        }
+    }
+    function esPeriodoPreset(valor) {
+        return ["7","15","30","60","90","180","365"].indexOf(valor) !== -1;
+    }
+    function actualizarCustomVisible() {
+        if (!plazoSelect || !plazoCustom) return;
+        const val = plazoSelect.value;
+        const esCustom = val !== "" && !esPeriodoPreset(val);
+        // también mostrar si el select está en "custom"
+        const mostrar = (val === "custom") || esCustom;
+        plazoCustom.hidden = !mostrar;
+        plazoCustom.disabled = !mostrar || plazoSelect.disabled;
+        if (val === "custom") {
+            sincronizarCustomOption();
+            plazoCustom.focus();
+        }
+    }
+    function sincronizarCustomOption() {
+        if (!plazoSelect || !plazoCustom) return;
+        const valor = parseInt(plazoCustom.value, 10);
+        if (!valor || valor <= 0) return;
+        const valStr = String(valor);
+        let opt = Array.from(plazoSelect.options).find(function (o) { return o.value === valStr; });
+        if (!opt) {
+            opt = document.createElement("option");
+            opt.value = valStr;
+            opt.textContent = "Personalizado (" + valStr + " días)";
+            const customOpt = plazoSelect.querySelector('option[value="custom"]');
+            if (customOpt) plazoSelect.insertBefore(opt, customOpt);
+            else plazoSelect.appendChild(opt);
+        }
+        plazoSelect.value = valStr;
     }
 
     function abrirModal(modoEdicion) {
@@ -113,6 +162,9 @@
         modalTitle.textContent = "Nueva necesidad";
         submitBtn.textContent = "Guardar necesidad";
         form.reset();
+        if (tipoSelect) tipoSelect.value = "RECURRENTE";
+        if (plazoSelect) plazoSelect.value = "30";
+        if (plazoCustom) { plazoCustom.value = ""; plazoCustom.hidden = true; }
         actualizarPlazoVisible();
         repoblarSubcategorias();
         abrirModal(false);
@@ -130,8 +182,26 @@
         if (cantidadInput) cantidadInput.value = data.cantidad || "";
         const unidad = document.getElementById("unidadDeMedida");
         if (unidad) unidad.value = data.unidad || "UNIDADES";
-        const plazo = document.getElementById("plazoEnDias");
-        if (plazo) plazo.value = String(data.plazo) === "7" ? "7" : "30";
+        if (plazoSelect) {
+            const plazoValor = data.plazo ? String(data.plazo) : "30";
+            const presets = ["7","15","30","60","90","180","365"];
+            const esPreset = presets.indexOf(plazoValor) !== -1;
+            if (!esPreset && data.plazo) {
+                // período personalizado: mostrar el input
+                if (plazoCustom) plazoCustom.value = plazoValor;
+                plazoSelect.value = "custom";
+            } else {
+                if (plazoCustom) plazoCustom.value = "";
+                const existe = Array.from(plazoSelect.options).some(function (opt) { return opt.value === plazoValor; });
+                if (!existe && data.plazo) {
+                    const opt = document.createElement("option");
+                    opt.value = plazoValor;
+                    opt.textContent = "Cada " + plazoValor + " días";
+                    plazoSelect.appendChild(opt);
+                }
+                plazoSelect.value = (data.tipo === "EXTRAORDINARIA") ? "" : plazoValor;
+            }
+        }
         actualizarPlazoVisible();
         repoblarSubcategorias();
         abrirModal(true);
@@ -146,6 +216,8 @@
     });
 
     if (tipoSelect) tipoSelect.addEventListener("change", actualizarPlazoVisible);
+    if (plazoSelect) plazoSelect.addEventListener("change", actualizarCustomVisible);
+    if (plazoCustom) plazoCustom.addEventListener("input", sincronizarCustomOption);
 
     // ?nueva=1 abre el modal (CTA del dashboard)
     if (new URLSearchParams(window.location.search).get("nueva") === "1") {
@@ -163,6 +235,23 @@
                 return;
             }
             if (cantidadError) cantidadError.hidden = true;
+
+            // Si eligió "Otro", valida y sincroniza el período personalizado
+            if (plazoSelect && plazoSelect.value === "custom") {
+                const dias = parseInt(plazoCustom ? plazoCustom.value : "", 10);
+                if (!dias || dias <= 0) {
+                    event.preventDefault();
+                    if (formError) {
+                        formError.hidden = false;
+                        formError.textContent = "Ingresá una cantidad de días válida para el período.";
+                    }
+                    if (plazoCustom) plazoCustom.focus();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Guardar necesidad";
+                    return;
+                }
+                sincronizarCustomOption();
+            }
 
             const categoria = (inputCategoria.value || "").trim();
             const subcategoria = (inputSubcategoria.value || "").trim();

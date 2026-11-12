@@ -16,18 +16,28 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Pantallas de administración de incentivos.
  *
- * <p>Etapa 2: lecturas reales contra incentivos-service. Las escrituras
- * (POST/PUT/DELETE con el header Admin-Id) se agregan en la etapa 3.</p>
+ * <p>Las operaciones administrativas se delegan a incentivos-service con el identificador
+ * del administrador autenticado.</p>
  */
 @Controller
 public class IncentivosAdminController {
@@ -46,6 +56,52 @@ public class IncentivosAdminController {
         model.addAttribute("misiones", incentivosClient.obtenerMisiones());
         model.addAttribute("categorias", incentivosClient.obtenerCategorias());
         return "admin/incentivos-misiones";
+    }
+
+    @PostMapping("/admin/incentivos/categorias")
+    public String crearCategoria(@AuthenticationPrincipal OidcUser usuario,
+                                 @RequestParam String nombre,
+                                 @RequestParam(required = false) Integer posicionSecuencia,
+                                 @RequestParam(required = false) List<UUID> misiones,
+                                 RedirectAttributes redirectAttributes) {
+        IncentivosAdminDTOs.Categoria categoria = nuevaCategoria(nombre, posicionSecuencia, misiones);
+        try {
+            incentivosClient.crearCategoria(categoria, idAdmin(usuario));
+            notificar(redirectAttributes, "success", "La categoría se creó correctamente.");
+        } catch (RestClientResponseException e) {
+            notificarError(redirectAttributes, e);
+        }
+        return "redirect:/admin/incentivos";
+    }
+
+    @PostMapping("/admin/incentivos/categorias/{id}")
+    public String actualizarCategoria(@PathVariable UUID id,
+                                      @AuthenticationPrincipal OidcUser usuario,
+                                      @RequestParam String nombre,
+                                      @RequestParam(required = false) Integer posicionSecuencia,
+                                      @RequestParam(required = false) List<UUID> misiones,
+                                      RedirectAttributes redirectAttributes) {
+        IncentivosAdminDTOs.Categoria categoria = nuevaCategoria(nombre, posicionSecuencia, misiones);
+        try {
+            incentivosClient.actualizarCategoria(id, categoria, idAdmin(usuario));
+            notificar(redirectAttributes, "success", "La categoría se actualizó correctamente.");
+        } catch (RestClientResponseException e) {
+            notificarError(redirectAttributes, e);
+        }
+        return "redirect:/admin/incentivos";
+    }
+
+    @PostMapping("/admin/incentivos/categorias/{id}/eliminar")
+    public String eliminarCategoria(@PathVariable UUID id,
+                                    @AuthenticationPrincipal OidcUser usuario,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            incentivosClient.eliminarCategoria(id, idAdmin(usuario));
+            notificar(redirectAttributes, "success", "La categoría se eliminó correctamente.");
+        } catch (RestClientResponseException e) {
+            notificarError(redirectAttributes, e, "eliminar");
+        }
+        return "redirect:/admin/incentivos";
     }
 
     @PostMapping("/admin/incentivos/misiones/{id}")
@@ -122,5 +178,40 @@ public class IncentivosAdminController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
         model.addAttribute("rol", esAdministrador ? "Administrador" : "Usuario");
+    }
+
+    private static IncentivosAdminDTOs.Categoria nuevaCategoria(String nombre,
+                                                                Integer posicionSecuencia,
+                                                                List<UUID> misiones) {
+        IncentivosAdminDTOs.Categoria categoria = new IncentivosAdminDTOs.Categoria();
+        categoria.setNombre(nombre.trim());
+        categoria.setPosicionSecuencia(posicionSecuencia);
+        categoria.setMisiones(misiones == null ? List.of() : misiones);
+        return categoria;
+    }
+
+    private static UUID idAdmin(OidcUser usuario) {
+        if (usuario == null || usuario.getSubject() == null || usuario.getSubject().isBlank()) {
+            throw new IllegalStateException("No se pudo identificar al administrador autenticado.");
+        }
+        return UUID.fromString(usuario.getSubject());
+    }
+
+    private static void notificarError(RedirectAttributes attributes, RestClientResponseException error) {
+        notificarError(attributes, error, "guardar");
+    }
+
+    private static void notificarError(RedirectAttributes attributes,
+                                       RestClientResponseException error,
+                                       String accion) {
+        String detalle = error.getResponseBodyAsString();
+        notificar(attributes, "error", detalle == null || detalle.isBlank()
+                ? "No se pudo " + accion + " la categoría (" + error.getStatusCode() + ")."
+                : "No se pudo " + accion + " la categoría: " + detalle);
+    }
+
+    private static void notificar(RedirectAttributes attributes, String tipo, String mensaje) {
+        attributes.addFlashAttribute("toastTipo", tipo);
+        attributes.addFlashAttribute("toastMensaje", mensaje);
     }
 }

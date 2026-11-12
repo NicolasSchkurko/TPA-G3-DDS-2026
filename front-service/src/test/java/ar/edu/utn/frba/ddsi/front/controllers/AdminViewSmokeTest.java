@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
 import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
 import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -52,9 +55,23 @@ class AdminViewSmokeTest {
 
     @Test
     void adminViewsRenderWithoutBrokenTemplates() throws Exception {
+        UUID idMision = UUID.randomUUID();
+        IncentivosAdminDTOs.Mision mision = new IncentivosAdminDTOs.Mision();
+        mision.setIdMision(idMision);
+        mision.setNombreMision("Primera misión");
+        mision.setDescripcion("Descripción");
+
+        IncentivosAdminDTOs.Categoria categoria = new IncentivosAdminDTOs.Categoria();
+        categoria.setIdCategoria(UUID.randomUUID());
+        categoria.setNombre("Principiantes");
+        categoria.setPosicionSecuencia(1);
+        categoria.setMisiones(List.of(idMision));
+
         when(donacionesClient.obtenerDonantes()).thenReturn(List.of());
         when(donacionesClient.obtenerEntidades()).thenReturn(List.of());
         when(donacionesClient.obtenerTodasLasDonaciones()).thenReturn(List.of());
+        when(incentivosClient.obtenerMisiones()).thenReturn(List.of(mision));
+        when(incentivosClient.obtenerCategorias()).thenReturn(List.of(categoria));
         when(logisticasClient.obtenerCamiones()).thenReturn(List.of());
         when(logisticasClient.obtenerRutas()).thenReturn(List.of());
         when(logisticasClient.obtenerEntregasNoRecibidas()).thenReturn(null);
@@ -68,10 +85,21 @@ class AdminViewSmokeTest {
                 "/admin/donantes/nuevo", "/admin/entidades/nuevo", "/admin/camiones",
                 "/admin/camiones/nuevo", "/admin/choferes", "/admin/choferes/nuevo",
                 "/admin/rutas", "/admin/entregas-no-recibidas",
-                "/admin/donaciones?vista=vencidas", "/admin/donantes/importar/" + java.util.UUID.randomUUID())) {
+                "/admin/donaciones?vista=vencidas", "/admin/donantes/importar/" + java.util.UUID.randomUUID(),
+                "/admin/incentivos")) {
             mockMvc.perform(get(path).session(sessionAdmin()))
                     .andExpect(status().isOk());
         }
+
+        String incentivesPage = mockMvc.perform(get("/admin/incentivos").session(sessionAdmin()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(incentivesPage).containsPattern(
+                "(?s)<form method=\"post\" id=\"deleteForm\" action=\"#\">\\s*"
+                        + "<input type=\"hidden\" name=\"_csrf\" value=\"[^\"]+\"");
+        assertThat(incentivesPage).contains("src=\"/js/core/toast.js\"");
     }
 
     private static MockHttpSession sessionAdmin() {

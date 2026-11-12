@@ -137,7 +137,7 @@
         <div class="card-head">
             <div>
                 <h2 class="section-title">Categorías</h2>
-                <p class="section-subtitle">Ordenan el programa de incentivos. La posición se reacomoda sola al borrar.</p>
+                <p class="section-subtitle">Ordenan el programa de incentivos. Podés cambiar la posición y las misiones asignadas.</p>
             </div>
             <div class="page-header-actions">
                 <span class="badge badge-muted"
@@ -170,7 +170,8 @@
                             <button class="btn-sm btn-green" type="button"
                                     th:attr="data-edit-action=@{/admin/incentivos/categorias/{id}(id=${c.idCategoria})},
                                              data-nombre=${c.nombre},
-                                             data-pos=${c.posicionSecuencia}"
+                                             data-pos=${c.posicionSecuencia},
+                                             data-misiones=${#strings.listJoin(c.misiones, ',')}"
                                     onclick="openCategoriaModal(this)">Editar</button>
 
                             <button class="btn-sm btn-outline-danger" type="button"
@@ -333,8 +334,29 @@
 
                 <div class="field">
                     <label for="f-cat-pos">Posición en la secuencia</label>
-                    <input id="f-cat-pos" name="posicionSecuencia" type="number" min="1" placeholder="Ej.: 3">
-                    <span class="hint">Opcional: sin posición queda al final.</span>
+                    <input id="f-cat-pos" name="posicionSecuencia" type="number" min="1"
+                           th:attr="max=${categorias != null and !#lists.isEmpty(categorias) ? #lists.size(categorias) : 1}"
+                           placeholder="Ej.: 3">
+                    <span class="hint"
+                          th:text="|Opcional: elegí de 1 a ${categorias != null ? #lists.size(categorias) : 0}; vacío la agrega al final.|">
+                        Opcional: elegí una posición o dejala vacía para agregarla al final.
+                    </span>
+                </div>
+
+                <div class="field">
+                    <span class="form-label">Misiones asignadas</span>
+                    <div class="mission-options" th:if="${!#lists.isEmpty(misiones)}">
+                        <label class="mission-option" th:each="m : ${misiones}">
+                            <input type="checkbox" name="misiones" th:value="${m.idMision}">
+                            <span>
+                                <strong th:text="${m.nombreMision}">Nombre de misión</strong>
+                                <span class="period-key" th:text="${m.descripcion}">Descripción</span>
+                            </span>
+                        </label>
+                    </div>
+                    <span class="hint" th:if="${#lists.isEmpty(misiones)}">
+                        No hay misiones disponibles para asignar.
+                    </span>
                 </div>
 
                 <div class="form-actions">
@@ -352,6 +374,7 @@
         <h3>¿Dar de baja?</h3>
         <p id="deleteModalText">Esta acción no se puede deshacer.</p>
         <form method="post" id="deleteForm" action="#">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <div class="modal-actions">
                 <button class="btn-secondary" type="button" onclick="closeModal('deleteModal')">Cancelar</button>
                 <button class="btn-danger" type="submit">Sí, dar de baja</button>
@@ -368,6 +391,7 @@
     /* Acciones de alta renderizadas por Thymeleaf (respetan el context path). */
     const MISION_CREATE_ACTION = document.getElementById('misionForm').getAttribute('action');
     const CATEGORIA_CREATE_ACTION = document.getElementById('categoriaForm').getAttribute('action');
+    let ordenMisionesCategoria = [];
 
     /* ---------- Genérico ---------- */
     function closeModal(id) { document.getElementById(id).hidden = true; }
@@ -467,19 +491,47 @@
     function openCategoriaModal(btn) {
         const form = document.getElementById('categoriaForm');
         const title = document.getElementById('categoriaModalTitle');
+        form.querySelectorAll('[data-mision-submit]').forEach(input => input.remove());
 
         if (btn) {
             title.textContent = 'Editar categoría';
             form.setAttribute('action', btn.dataset.editAction);
+            form.reset();
             set('f-cat-nombre', btn.dataset.nombre);
             set('f-cat-pos', btn.dataset.pos);
+            ordenMisionesCategoria = (btn.dataset.misiones || '').split(',').filter(Boolean);
+            const misionesAsignadas = new Set(ordenMisionesCategoria);
+            form.querySelectorAll('input[name="misiones"]').forEach(input => {
+                input.checked = misionesAsignadas.has(input.value);
+            });
         } else {
             title.textContent = 'Nueva categoría';
             form.setAttribute('action', CATEGORIA_CREATE_ACTION);
             form.reset();
+            ordenMisionesCategoria = [];
         }
         document.getElementById('categoriaModal').hidden = false;
     }
+
+    document.getElementById('categoriaForm').addEventListener('submit', event => {
+        const form = event.currentTarget;
+        const seleccionadas = [...form.querySelectorAll('input[name="misiones"]:checked')]
+            .map(input => input.value);
+        const ordenadas = [
+            ...ordenMisionesCategoria.filter(id => seleccionadas.includes(id)),
+            ...seleccionadas.filter(id => !ordenMisionesCategoria.includes(id))
+        ];
+
+        form.querySelectorAll('input[name="misiones"]').forEach(input => input.disabled = true);
+        ordenadas.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'misiones';
+            input.value = id;
+            input.dataset.misionSubmit = '';
+            form.appendChild(input);
+        });
+    });
 
     function openDeleteCategoriaModal(btn) {
         document.getElementById('deleteModalText').innerHTML =
@@ -494,5 +546,6 @@
     toggleConstancia();
 </script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
+<script th:src="@{/js/core/toast.js}" defer></script>
 </body>
 </html>
