@@ -12,6 +12,40 @@
     },
     {
       "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "donanteId",
+      "value": ""
+    },
+    {
+      "key": "donanteNombre",
+      "value": ""
+    },
+    {
+      "key": "entidadId",
+      "value": ""
+    },
+    {
+      "key": "necesidadId",
+      "value": ""
+    },
+    {
+      "key": "donacionId",
+      "value": ""
+    },
+    {
+      "key": "posicionPropuesta",
+      "value": "1",
+      "description": "Default 1; el paso 'Ver resultados de matchmaking pendientes' lo recalcula buscando la propuesta real de la entidad del flujo."
+    }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "description": "Puerto real de donaciones-service"
+    },
+    {
+      "key": "adminId",
       "value": "123e4567-e89b-12d3-a456-426614174000",
       "description": "UUID de Keycloak del admin (o uno de prueba); ya no se usa como credencial."
     },
@@ -140,7 +174,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"razonSocial\": \"{{$randomCompanyName}}\",\n  \"rubro\": \"Comedor comunitario\",\n  \"tipoJuridico\": \"ONG\",\n  \"cuit\": \"30-{{$randomInt}}-{{$randomInt}}\",\n  \"telefono\": \"{{$randomPhoneNumber}}\",\n  \"direccion\": {\n    \"calleUno\": \"{{$randomStreetName}}\",\n    \"altura\": 789,\n    \"piso\": 1,\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  }\n}"
+              "raw": "{\n  \"razonSocial\": \"{{$randomCompanyName}}\",\n  \"rubro\": \"Comedor comunitario\",\n  \"tipoJuridico\": \"ONG\",\n  \"cuit\": \"30-{{$randomInt}}-{{$randomInt}}\",\n  \"telefono\": \"{{$randomPhoneNumber}}\",\n  \"direccion\": {\n    \"calleUno\": \"Av. Corrientes\",\n    \"altura\": 1234,\n    \"piso\": 1,\n    \"ciudad\": \"CABA\",\n    \"provincia\": \"Buenos Aires\",\n    \"pais\": \"Argentina\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/entidades",

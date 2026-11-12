@@ -1,0 +1,11 @@
+$kind: http-request
+description: Consultar el progreso del perfil asociado al UUID del donante. La misión debe sumar el impacto de la donación entregada.
+url: http://localhost:8082/api/perfiles/{{donanteId}}/mision
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('consulta la misión del donante', function () { pm.response.to.have.status(200); });
+      if (pm.response.code === 200) console.log('Progreso de misión:', pm.response.json().progresoActual, '/', pm.response.json().progresoObjetivo);
+    language: text/javascript
+order: 17000

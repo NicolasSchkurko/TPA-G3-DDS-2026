@@ -1,6 +1,5 @@
 package ar.edu.utn.frba.ddsi.logisticas.dto.entrega;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.ItemEntrega.ItemEntrega;
 import java.util.List;
 import java.util.UUID;
 

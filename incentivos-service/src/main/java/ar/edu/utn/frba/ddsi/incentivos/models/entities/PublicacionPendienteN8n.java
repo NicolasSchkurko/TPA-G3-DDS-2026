@@ -40,6 +40,9 @@ public class PublicacionPendienteN8n {
     @Column(nullable = false)
     private UUID idUsuario;
 
+    // Nullable para que las filas pendientes anteriores a la integracion sigan migrando.
+    private UUID idInsignia;
+
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
 
@@ -62,12 +65,15 @@ public class PublicacionPendienteN8n {
         this.mensaje = publicacion.getMensaje();
         this.nombreUsuario = publicacion.getNomUsuario();
         this.idUsuario = publicacion.getIdUsuario();
+        this.idInsignia = publicacion.getIdInsignia();
         this.fechaCreacion = ahora;
         this.proximoIntento = ahora;
     }
 
     public PerfilPublicacionDTO comoDto() {
         return new PerfilPublicacionDTO(prompt, mensaje, nombreUsuario, idUsuario);
+        return new PerfilPublicacionDTO(prompt, mensaje, redSocial, nombreUsuario, idUsuario,
+                idInsignia);
     }
 
     public void reclamarHasta(LocalDateTime vencimiento) {

@@ -68,24 +68,6 @@ services:
       timeout: 5s
       retries: 12
 
-  # n8n local para procesar los webhooks de notificaciones e incentivos.
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: tpa-n8n
-    ports:
-      - "5678:5678"
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5678/
-      WEBHOOK_URL: http://localhost:5678/
-      N8N_SECURE_COOKIE: "false"
-      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
-      TZ: America/Argentina/Buenos_Aires
-    volumes:
-      - n8n-data:/home/node/.n8n
-
   mongodb:
     image: mongo:7
     container_name: tpa-mongodb

@@ -1,0 +1,18 @@
+$kind: http-request
+description: La logística registra la recepción con comprobante. El evento publicado actualiza donaciones e incentivos de forma asíncrona.
+url: http://localhost:8086/api/entregas/{{donacionId}}/estado
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "estado": "ENTREGADA",
+      "fotoUrl": "https://example.com/comprobante-demo.jpg"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('logística confirma la entrega', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 15000

@@ -1,0 +1,24 @@
+$kind: http-request
+description: Crea un camión disponible y lo asigna al chofer del paso anterior.
+url: http://localhost:8086/api/camiones
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "idChofer": "{{choferId}}",
+      "patente": "PM{{$timestamp}}",
+      "capacidadVolumen": 1000,
+      "altura": 4,
+      "capacidadCarga": 1000,
+      "disponible": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea un camión', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) pm.collectionVariables.set('camionPatente', pm.response.json().patente);
+    language: text/javascript
+order: 11000

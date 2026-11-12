@@ -1,0 +1,21 @@
+$kind: http-request
+description: Crea un chofer disponible para asignarlo a la ruta de la donación. Ejecutar después de los pasos 01-09 de Flujo completo.
+url: http://localhost:8086/api/choferes
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nombre": "Chofer Postman",
+      "disponible": true,
+      "activo": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea un chofer', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) pm.collectionVariables.set('choferId', pm.response.json().idChofer);
+    language: text/javascript
+order: 10000

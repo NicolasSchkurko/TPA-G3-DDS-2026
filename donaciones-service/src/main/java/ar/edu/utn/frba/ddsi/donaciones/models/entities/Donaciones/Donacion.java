@@ -59,6 +59,7 @@ public class Donacion {
     private List<Bien> bienes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "estado", columnDefinition = "varchar(32)")
     private Estado estado;
 
     // Catálogo compartido (buscar-o-crear vía RepositorioDeSubcategoriasDeBienes), sin cascade.

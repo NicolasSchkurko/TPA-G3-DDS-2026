@@ -1,4 +1,4 @@
-$kind: http-request
+﻿$kind: http-request
 name: 03 - Crear entidad beneficiaria
 description: "registrarEntidad() no busca por cuit, siempre crea una fila nueva: antes el cuit estaba fijo en '20-12345678-9', por lo que a simple vista cada corrida 'parecia' la misma entidad. Ahora es random para que cada corrida se vea claramente distinta. OJO: igual que en 'Crear donante', hay que mandar 'piso' siempre porque Direccion.piso es un int primitivo y el unboxing de un piso null tira NPE (500)."
 url: "{{baseUrl}}/api/entidades"
@@ -15,8 +15,8 @@ body:
       "cuit": "30-{{$randomInt}}-{{$randomInt}}",
       "telefono": "{{$randomPhoneNumber}}",
       "direccion": {
-        "calleUno": "{{$randomStreetName}}",
-        "altura": 789,
+        "calleUno": "Av. Corrientes",
+        "altura": 1234,
         "piso": 1,
         "ciudad": "CABA",
         "provincia": "Buenos Aires",
@@ -30,3 +30,4 @@ scripts:
       if (pm.response.code === 201) { pm.collectionVariables.set('entidadId', pm.response.json().id); }
     language: text/javascript
 order: 16000
+

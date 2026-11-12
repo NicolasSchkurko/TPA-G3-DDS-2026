@@ -1,0 +1,758 @@
+{
+    "name":  "aihorde con loop (reintenta hasta que generations tenga un objeto)",
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "notificaciones",
+                                         "responseMode":  "lastNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       -1568,
+                                       544
+                                   ],
+                      "id":  "ab31ab3c-473f-4b91-930f-241e5f1d3abc",
+                      "name":  "Webhook1",
+                      "webhookId":  "084e46fa-a70e-4d94-98ea-af9c9836ff45"
+                  },
+                  {
+                      "parameters":  {
+                                         "rules":  {
+                                                       "values":  [
+                                                                      {
+                                                                          "conditions":  {
+                                                                                             "options":  {
+                                                                                                             "caseSensitive":  true,
+                                                                                                             "leftValue":  "",
+                                                                                                             "typeValidation":  "strict",
+                                                                                                             "version":  3
+                                                                                                         },
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "id":  "36c73e44-dc9c-4a82-9e3a-b26ce4222799",
+                                                                                                                    "leftValue":  "={{ $json.body.canal }}",
+                                                                                                                    "rightValue":  "email",
+                                                                                                                    "operator":  {
+                                                                                                                                     "type":  "string",
+                                                                                                                                     "operation":  "equals",
+                                                                                                                                     "name":  "filter.operator.equals"
+                                                                                                                                 }
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "combinator":  "and"
+                                                                                         }
+                                                                      },
+                                                                      {
+                                                                          "conditions":  {
+                                                                                             "options":  {
+                                                                                                             "caseSensitive":  true,
+                                                                                                             "leftValue":  "",
+                                                                                                             "typeValidation":  "strict",
+                                                                                                             "version":  3
+                                                                                                         },
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "id":  "80528682-d340-464f-b5e2-a6e02c3a40e4",
+                                                                                                                    "leftValue":  "={{ $json.body.canal }}",
+                                                                                                                    "rightValue":  "whatsapp",
+                                                                                                                    "operator":  {
+                                                                                                                                     "type":  "string",
+                                                                                                                                     "operation":  "equals",
+                                                                                                                                     "name":  "filter.operator.equals"
+                                                                                                                                 }
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "combinator":  "and"
+                                                                                         }
+                                                                      },
+                                                                      {
+                                                                          "conditions":  {
+                                                                                             "options":  {
+                                                                                                             "caseSensitive":  true,
+                                                                                                             "leftValue":  "",
+                                                                                                             "typeValidation":  "strict",
+                                                                                                             "version":  3
+                                                                                                         },
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "id":  "2c88e565-f6c9-45d4-a102-c536e87e5bc1",
+                                                                                                                    "leftValue":  "={{ $json.body.canal }}",
+                                                                                                                    "rightValue":  "telefono",
+                                                                                                                    "operator":  {
+                                                                                                                                     "type":  "string",
+                                                                                                                                     "operation":  "equals",
+                                                                                                                                     "name":  "filter.operator.equals"
+                                                                                                                                 }
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "combinator":  "and"
+                                                                                         }
+                                                                      }
+                                                                  ]
+                                                   },
+                                         "looseTypeValidation":  "={{ false }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.switch",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       -880,
+                                       528
+                                   ],
+                      "id":  "f045ccbe-6c9e-4ada-9a67-9cd60cf01015",
+                      "name":  "Switch1"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  " https://api.textbee.dev/api/v1/gateway/send-sms",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "x-api-key",
+                                                                                         "value":  "REEMPLAZAR_CON_API_KEY_DE_TEXTBEE"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={\n  \"deviceId\": \"6a96d40dccb6c727097409b2\",\n  \"recipients\": [\"{{ $json.body.direccionContacto }}\"],\n  \"message\": \"{{ $json.body.mensaje.cuerpo }}\"\n}\n\n",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -544,
+                                       720
+                                   ],
+                      "id":  "450ad104-d652-4b49-b673-a42d4c9940aa",
+                      "name":  "HTTP Request3"
+                  },
+                  {
+                      "parameters":  {
+                                         "authentication":  "webhook",
+                                         "content":  "=skibidi",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.discord",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -544,
+                                       528
+                                   ],
+                      "id":  "f4d9659f-1cfe-4804-ad35-8acdfdb06b8e",
+                      "name":  "Discord1",
+                      "webhookId":  "bffff24b-1ec6-4c72-87ae-606792a6119c",
+                      "credentials":  {
+                                          "discordWebhookApi":  {
+                                                                    "id":  "UVJQ2cfUEEMrJB6P",
+                                                                    "name":  "Discord Webhook account"
+                                                                }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "=https://aihorde.net/api/v2/generate/status/{{ $json.id }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "apikey",
+                                                                                         "value":  "REEMPLAZAR_CON_API_KEY_DE_AI_HORDE"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -848,
+                                       320
+                                   ],
+                      "id":  "5906e4b0-bed8-48d4-91f6-df58ef033626",
+                      "name":  "HTTP Request5"
+                  },
+                  {
+                      "parameters":  {
+                                         "resource":  "mail",
+                                         "fromEmail":  "mmercedesotero05@gmail.com",
+                                         "toEmail":  "merotero@frba.utn.edu.ar",
+                                         "subject":  "Prueba n8n",
+                                         "contentValue":  "Hola, esto es una prueba desde n8n usando SendGrid.",
+                                         "additionalFields":  {
+
+                                                              }
+                                     },
+                      "type":  "n8n-nodes-base.sendGrid",
+                      "typeVersion":  1,
+                      "position":  [
+                                       -544,
+                                       352
+                                   ],
+                      "id":  "18664c17-f552-4e7b-89ad-d23cf4949d86",
+                      "name":  "Send an email",
+                      "credentials":  {
+                                          "sendGridApi":  {
+                                                              "id":  "u0SKoHn1pNEOUUFa",
+                                                              "name":  "SendGrid account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "=https://aihorde.net/api/v2/generate/status/{{ $(\u0027HTTP Request1\u0027).item.json.id }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -528,
+                                       64
+                                   ],
+                      "id":  "b7f80f93-586e-43b1-a741-2e995d4c743f",
+                      "name":  "Check Status"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  2
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "done-check",
+                                                                                   "leftValue":  "={{ ($json.generations || []).length }}",
+                                                                                   "rightValue":  0,
+                                                                                   "operator":  {
+                                                                                                    "type":  "number",
+                                                                                                    "operation":  "gt"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       -256,
+                                       64
+                                   ],
+                      "id":  "a8c9be25-2043-4608-bc8e-de5dc1be5830",
+                      "name":  "If Is Done"
+                  },
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "incentivos",
+                                         "options":  {
+
+                                                     },
+                                         "responseMode":  "responseNode"
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       -1648,
+                                       64
+                                   ],
+                      "id":  "ca73c5b4-ab34-484f-8d0e-a02509534a59",
+                      "name":  "Webhook2",
+                      "webhookId":  "b85bdd4a-7346-4186-8455-f246da6ed059"
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "id":  "414ff228-5991-4447-999a-5667e9691cf0",
+                                                                                     "name":  "prompt",
+                                                                                     "value":  "={{ $json.body.prompt }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "9c43f3ae-8eb4-4f5a-9f4c-edd374721dcd",
+                                                                                     "name":  "mensaje",
+                                                                                     "value":  "={{ $json.body.mensaje }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "c9a7b30e-53bd-431d-a62e-3c0d8f4fd26f",
+                                                                                     "name":  "redSocial",
+                                                                                     "value":  "={{ $json.body.redSocial }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "7176e7aa-ed82-4ffe-9f85-0180a8ddf3cc",
+                                                                                     "name":  "nomUsuario",
+                                                                                     "value":  "={{ $json.body.nomUsuario }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "4a98e0be-f588-4b01-b4f8-13d070de2e2b",
+                                                                                     "name":  "idUsuario",
+                                                                                     "value":  "={{ $json.body.idUsuario }}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       -1344,
+                                       64
+                                   ],
+                      "id":  "d4c1f868-b766-4652-b874-d7deae1f66cd",
+                      "name":  "Edit Fields"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://aihorde.net/api/v2/generate/async",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "apikey",
+                                                                                         "value":  "REEMPLAZAR_CON_API_KEY_DE_AI_HORDE"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={\n  \"prompt\": \"{{ $json.prompt }}\"\n}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -1056,
+                                       64
+                                   ],
+                      "id":  "2d01f4ae-4c04-444d-bc56-25e42515866f",
+                      "name":  "HTTP Request1"
+                  },
+                  {
+                      "parameters":  {
+                                         "amount":  10
+                                     },
+                      "type":  "n8n-nodes-base.wait",
+                      "typeVersion":  1.1,
+                      "position":  [
+                                       -784,
+                                       64
+                                   ],
+                      "id":  "37d8c90d-5b85-42e4-b582-d4b33bead767",
+                      "name":  "Wait1",
+                      "webhookId":  "3c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
+                  },
+                  {
+                      "parameters":  {
+                                         "authentication":  "webhook",
+                                         "content":  "=ESTE ES UN EMAIL\n\nASUNTO\n{{ $json.body.mensaje.asunto }}\n\nCUERPO\n{{ $json.body.mensaje.cuerpo }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.discord",
+                      "typeVersion":  2,
+                      "position":  [
+                                       336,
+                                       448
+                                   ],
+                      "id":  "3070390d-3ecd-4f7f-b48c-979c1c0d929d",
+                      "name":  "Discord2",
+                      "webhookId":  "bffff24b-1ec6-4c72-87ae-606792a6119c",
+                      "credentials":  {
+                                          "discordWebhookApi":  {
+                                                                    "id":  "UVJQ2cfUEEMrJB6P",
+                                                                    "name":  "Discord Webhook account"
+                                                                }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "id":  "46b0b1c8-a448-436b-bdee-5cfbfb92fd98",
+                                                                                     "name":  "urlImagen",
+                                                                                     "value":  "={{ $json.generations[0].img }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "3da2ceee-d5f2-4e14-907e-28c0896f2414",
+                                                                                     "name":  "mensaje",
+                                                                                     "value":  "={{ $(\u0027Edit Fields\u0027).item.json.mensaje }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "ff400b50-4631-4642-9a2d-8d099bb72d07",
+                                                                                     "name":  "redSocial",
+                                                                                     "value":  "={{ $(\u0027Edit Fields\u0027).item.json.redSocial }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "67a81df7-4434-4eaa-ad2f-321f6b1ae276",
+                                                                                     "name":  "nomUsuario",
+                                                                                     "value":  "={{ $(\u0027Edit Fields\u0027).item.json.nomUsuario }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "id":  "8b23e935-20a3-4db7-a4e7-ce532a0b1c90",
+                                                                                     "name":  "idUsuario",
+                                                                                     "value":  "={{ $(\u0027Edit Fields\u0027).item.json.idUsuario }}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       192,
+                                       -32
+                                   ],
+                      "id":  "c3c17904-4b80-4fea-889f-97d71a95ade3",
+                      "name":  "Edit Fields5"
+                  },
+                  {
+                      "parameters":  {
+                                         "rules":  {
+                                                       "values":  [
+                                                                      {
+                                                                          "conditions":  {
+                                                                                             "options":  {
+                                                                                                             "caseSensitive":  true,
+                                                                                                             "leftValue":  "",
+                                                                                                             "typeValidation":  "strict",
+                                                                                                             "version":  3
+                                                                                                         },
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "leftValue":  "={{ $json.redSocial }}",
+                                                                                                                    "rightValue":  "gmail",
+                                                                                                                    "operator":  {
+                                                                                                                                     "type":  "string",
+                                                                                                                                     "operation":  "equals"
+                                                                                                                                 },
+                                                                                                                    "id":  "86384d5d-799c-4736-be3e-c85c038e7a45"
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "combinator":  "and"
+                                                                                         }
+                                                                      },
+                                                                      {
+                                                                          "conditions":  {
+                                                                                             "options":  {
+                                                                                                             "caseSensitive":  true,
+                                                                                                             "leftValue":  "",
+                                                                                                             "typeValidation":  "strict",
+                                                                                                             "version":  3
+                                                                                                         },
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "id":  "ca8c6aee-8e6a-4fc1-827e-01b821be2bff",
+                                                                                                                    "leftValue":  "={{ $json.redSocial }}",
+                                                                                                                    "rightValue":  "discord",
+                                                                                                                    "operator":  {
+                                                                                                                                     "type":  "string",
+                                                                                                                                     "operation":  "equals"
+                                                                                                                                 }
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "combinator":  "and"
+                                                                                         }
+                                                                      }
+                                                                  ]
+                                                   },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.switch",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       464,
+                                       -112
+                                   ],
+                      "id":  "b676b5de-bd73-45b7-be55-4dac3446c3ef",
+                      "name":  "Switch2"
+                  },
+                  {
+                      "parameters":  {
+                                         "authentication":  "webhook",
+                                         "content":  "=### Ã°Å¸Å¸Â¦ Imagen generada\n\u003e {{ $json.mensaje }}\n\n**Ã°Å¸â€œÂ± Red Social de Destino:** {{ $json.redSocial }}\n**Ã°Å¸Ââ€¦ Usuario:** Ã¢Å“Â¨ {{ $json.nomUsuario }}\n**Ã°Å¸â€ â€ ID de Donatrack:** `{{ $json.idUsuario }}`",
+                                         "options":  {
+
+                                                     },
+                                         "embeds":  {
+                                                        "values":  [
+                                                                       {
+                                                                           "title":  "Ã°Å¸Â¤â€“ Imagen generada por la IA",
+                                                                           "image":  "={{ $json.urlImagen }}"
+                                                                       }
+                                                                   ]
+                                                    }
+                                     },
+                      "type":  "n8n-nodes-base.discord",
+                      "typeVersion":  2,
+                      "position":  [
+                                       736,
+                                       -64
+                                   ],
+                      "id":  "16ace21b-83c4-42ae-b675-b4794947d6f4",
+                      "name":  "Discord3",
+                      "webhookId":  "bffff24b-1ec6-4c72-87ae-606792a6119c",
+                      "credentials":  {
+                                          "discordWebhookApi":  {
+                                                                    "id":  "UVJQ2cfUEEMrJB6P",
+                                                                    "name":  "Discord Webhook account"
+                                                                }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { \"urlImagen\": $json.urlImagen } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.4,
+                      "position":  [
+                                       1600,
+                                       300
+                                   ],
+                      "id":  "f2b0d19a-3634-4c09-b243-486535aab001",
+                      "name":  "Devolver URL de imagen"
+                  }
+              ],
+    "pinData":  {
+
+                },
+    "connections":  {
+                        "Webhook1":  {
+                                         "main":  [
+                                                      [
+                                                          {
+                                                              "node":  "Switch1",
+                                                              "type":  "main",
+                                                              "index":  0
+                                                          }
+                                                      ]
+                                                  ]
+                                     },
+                        "Switch1":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Discord1",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ],
+                                                     [
+                                                         {
+                                                             "node":  "Discord1",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ],
+                                                     [
+                                                         {
+                                                             "node":  "Discord1",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "HTTP Request5":  {
+                                              "main":  [
+                                                           [
+
+                                                           ]
+                                                       ]
+                                          },
+                        "Check Status":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "If Is Done",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "If Is Done":  {
+                                           "main":  [
+                                                        [
+                                                            {
+                                                                "node":  "Edit Fields5",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "node":  "Wait1",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ]
+                                                    ]
+                                       },
+                        "Webhook2":  {
+                                         "main":  [
+                                                      [
+                                                          {
+                                                              "node":  "Edit Fields",
+                                                              "type":  "main",
+                                                              "index":  0
+                                                          }
+                                                      ]
+                                                  ]
+                                     },
+                        "Edit Fields":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "HTTP Request1",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "HTTP Request1":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Wait1",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "Wait1":  {
+                                      "main":  [
+                                                   [
+                                                       {
+                                                           "node":  "Check Status",
+                                                           "type":  "main",
+                                                           "index":  0
+                                                       }
+                                                   ]
+                                               ]
+                                  },
+                        "Edit Fields5":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Devolver URL de imagen",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Switch2":  {
+                                        "main":  [
+                                                     [
+
+                                                     ],
+                                                     [
+                                                         {
+                                                             "node":  "Discord3",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Devolver URL de imagen":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Switch2",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   }
+                    },
+    "active":  true,
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "binaryMode":  "separate"
+                 },
+    "versionId":  "bb8a50b8-2238-4235-b861-724ba3d659c4",
+    "meta":  {
+                 "templateCredsSetupCompleted":  true,
+                 "instanceId":  "2be022811a025afce68d168ef183673fbd691fc2d449ab8d83a8f6d676c04108"
+             },
+    "nodeGroups":  [
+
+                   ],
+    "id":  "idHcoMAX1ai4Q8SR",
+    "tags":  [
+
+             ]
+}

@@ -1,0 +1,17 @@
+$kind: http-request
+description: Simula la respuesta del proveedor de ruteo: asigna la donación creada en el paso 05 al camión de prueba. La ruta se guarda con el chofer asociado.
+url: http://localhost:8086/api/PlanificacionRutas/callback
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "{{camionPatente}}": ["{{donacionId}}"]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('crea y asigna la ruta', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 12000
