@@ -26,6 +26,7 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -384,13 +385,48 @@ public class HomeController {
                 : Collections.emptyList();
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
         List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
+        List<DonacionDTO> galeriaEntregas = crearGaleriaEntregas(destacadas, donaciones);
         model.addAttribute("esDonante", esDonante);
         model.addAttribute("destacadas", destacadas);
+        model.addAttribute("galeriaEntregas", galeriaEntregas);
         model.addAttribute("destacadasMapa", enriquecerDestacadasConUbicacion(destacadas, entidades));
         model.addAttribute("entregadasMapa",
                 enriquecerEntregadasConUbicacion(destacadas, donaciones, entidades));
         model.addAttribute("entidades", esDonante ? entidades : Collections.emptyList());
         return "landing";
+    }
+
+    private List<DonacionDTO> crearGaleriaEntregas(
+            List<DonacionDestacadaDTO> destacadas,
+            List<DonacionDTO> donaciones) {
+        Map<UUID, DonacionDTO> entregasConFoto = new LinkedHashMap<>();
+        if (donaciones != null) {
+            donaciones.stream()
+                    .filter(this::esEntregaConFoto)
+                    .forEach(donacion -> entregasConFoto.put(donacion.getId(), donacion));
+        }
+
+        if (destacadas != null) {
+            destacadas.stream()
+                    .filter(destacada -> destacada.idDonacion() != null)
+                    .filter(destacada -> !entregasConFoto.containsKey(destacada.idDonacion()))
+                    .map(destacada -> donacionesClient.obtenerDonacionPorId(destacada.idDonacion()))
+                    .filter(this::esEntregaConFoto)
+                    .forEach(donacion -> entregasConFoto.put(donacion.getId(), donacion));
+        }
+
+        return entregasConFoto.values().stream()
+                .sorted(Comparator.comparing(
+                        DonacionDTO::getFechaEntrega,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private boolean esEntregaConFoto(DonacionDTO donacion) {
+        return donacion != null
+                && donacion.getId() != null
+                && "ENTREGADO".equalsIgnoreCase(donacion.getEstado())
+                && donacion.imagenPrincipal() != null;
     }
 
     private List<DonacionDestacadaMapaDTO> enriquecerDestacadasConUbicacion(

@@ -50,6 +50,7 @@ class FrontApplicationTest {
 
     private static final UUID DONATION_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
     private static final UUID MAP_ONLY_DONATION_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174002");
+    private static final UUID FEATURED_DONATION_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174003");
 
     @Autowired
     private MockMvc mockMvc;
@@ -160,10 +161,31 @@ class FrontApplicationTest {
                         org.hamcrest.Matchers.containsString("class=\"map-only-donations\" hidden")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "data-id=\"" + MAP_ONLY_DONATION_ID + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Donaciones entregadas")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "src=\"https://example.com/arroz-entregado.jpg\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Foto de la donación Arroz")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Entregada</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "href=\"/donaciones/" + MAP_ONLY_DONATION_ID + "\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("Donaciones entregadas"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("galeria-title"))));
+                        org.hamcrest.Matchers.containsString("Foto de la donación Camisas"))));
+    }
+
+    @Test
+    void landingLoadsFeaturedDonationImageWhenMissingFromDonationList() throws Exception {
+        when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
+                new DonacionDestacadaDTO(
+                        FEATURED_DONATION_ID, LocalDateTime.of(2026, 5, 1, 10, 0),
+                        1, "ALIMENTOS", "Fideos", "Comedor Los Piletones")));
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "src=\"https://example.com/featured-entrega.jpg\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Foto de la donación Fideos")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "href=\"/donaciones/" + FEATURED_DONATION_ID + "\"")));
     }
 
     @Test
@@ -187,6 +209,15 @@ class FrontApplicationTest {
             return new DonacionesClient(restClient, "http://localhost") {
                 @Override
                 public DonacionDTO obtenerDonacionPorId(UUID id) {
+                    if (FEATURED_DONATION_ID.equals(id)) {
+                        DonacionDTO donacion = new DonacionDTO();
+                        donacion.setId(id);
+                        donacion.setEstado("ENTREGADO");
+                        donacion.setEntidadBeneficiaria("Comedor Los Piletones");
+                        donacion.setSubcategoriaName("Fideos");
+                        donacion.setImagenes(List.of("https://example.com/featured-entrega.jpg"));
+                        return donacion;
+                    }
                     if (!DONATION_ID.equals(id)) {
                         return null;
                     }
@@ -209,7 +240,13 @@ class FrontApplicationTest {
                     entregada.setEntidadBeneficiaria("Comedor Los Piletones");
                     entregada.setSubcategoriaName("Arroz");
                     entregada.setCategoriaBienName("ALIMENTOS");
-                    return List.of(entregada);
+                    entregada.setImagenes(List.of("https://example.com/arroz-entregado.jpg"));
+                    DonacionDTO pendiente = new DonacionDTO();
+                    pendiente.setId(UUID.randomUUID());
+                    pendiente.setEstado("EN_DEPOSITO");
+                    pendiente.setSubcategoriaName("Camisas");
+                    pendiente.setImagenes(List.of("https://example.com/camisas.jpg"));
+                    return List.of(entregada, pendiente);
                 }
 
                 @Override
