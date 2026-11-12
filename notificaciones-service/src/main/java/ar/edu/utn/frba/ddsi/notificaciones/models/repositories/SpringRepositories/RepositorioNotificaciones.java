@@ -33,6 +33,17 @@ public interface RepositorioNotificaciones extends JpaRepository<Notificacion, U
     @EntityGraph(attributePaths = "mensaje")
     Page<Notificacion> buscar(@Param("estado") EstadoNotificacion estado, Pageable pageable);
 
+    @Query(value = "select n from Notificacion n where "
+            + "lower(n.direccionDeContacto) = lower(:destinatario) "
+            + "and (:estado is null or n.estado = :estado)",
+            countQuery = "select count(n) from Notificacion n where "
+            + "lower(n.direccionDeContacto) = lower(:destinatario) "
+            + "and (:estado is null or n.estado = :estado)")
+    @EntityGraph(attributePaths = "mensaje")
+    Page<Notificacion> buscarPorDestinatario(@Param("destinatario") String destinatario,
+                                             @Param("estado") EstadoNotificacion estado,
+                                             Pageable pageable);
+
     @Override
     @EntityGraph(attributePaths = "mensaje")
     Page<Notificacion> findAll(Pageable pageable);

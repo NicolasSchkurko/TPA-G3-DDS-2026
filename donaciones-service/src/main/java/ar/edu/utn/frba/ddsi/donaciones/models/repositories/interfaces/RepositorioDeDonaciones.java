@@ -64,6 +64,13 @@ public interface RepositorioDeDonaciones extends JpaRepository<Donacion, UUID> {
         Long getCantidad();
     }
 
+    List<Donacion> findByDonante_Id(UUID donanteId);
+
+    default List<Donacion> buscarPorDonante(UUID donanteId) {
+        if (donanteId == null) return List.of();
+        return findByDonante_Id(donanteId);
+    }
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Donacion d SET d.donante = null WHERE d.donante.id = :donanteId")
     void desvincularDonante(@Param("donanteId") UUID donanteId);

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento en vivo — DDSI</title>
+    <meta name="description" content="Mapa en tiempo real de las entregas activas asignadas a tu entidad beneficiaria.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/entidad.css}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+<div th:replace="~{fragments/demo-banner :: demoBanner}"></div>
+
+<main class="seguimiento-layout" id="contenido">
+
+    <section class="map-wrap" aria-label="Mapa de entregas activas">
+        <div id="map" role="application" aria-label="Mapa interactivo con los camiones asignados a tu entidad"></div>
+        <div class="map-overlay map-overlay-tl">
+            <span class="chip chip-live">En vivo</span>
+            <span class="chip chip-demo" th:if="${ubicacionSimulada}">Ubicación simulada</span>
+        </div>
+        <div class="map-overlay map-overlay-bl">
+            <div class="map-legend-card" aria-label="Referencias del mapa">
+                <span class="legend">
+                    <span><i class="legend-dot" aria-hidden="true"></i> Mi entidad</span>
+                    <span><i class="legend-dot transit" aria-hidden="true"></i> Camión en camino</span>
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <aside class="seguimiento-side" aria-label="Camiones asignados">
+        <header style="display:flex; align-items:center; justify-content:space-between; gap: var(--gap-2);">
+            <h1 style="font-size: 18px; margin: 0;">Entregas activas</h1>
+            <button class="btn btn-secondary btn-sm" id="refreshSeguimiento" type="button">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 8A6 6 0 1 1 8 2c2.2 0 4.1 1.2 5.2 3M14 2v3h-3"/>
+                </svg>
+                Actualizar
+            </button>
+        </header>
+
+        <div th:if="${#lists.isEmpty(camiones)}" class="empty-state" style="padding: var(--gap-4) 0;">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+                <path d="M1 3h9v8H1zM10 6h3l2 2v3h-5M4 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm9 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+            </svg>
+            <h3>Sin camiones en ruta</h3>
+            <p>Cuando haya entregas activas hacia tu entidad, vas a ver acá los camiones con su última actualización.</p>
+        </div>
+
+        <article class="camion-item" th:each="camion : ${camiones}">
+            <div class="camion-item-head">
+                <span class="camion-patente" th:text="${camion.patente}">AB123CD</span>
+                <span class="chip chip-warning" th:text="${camion.estadoRuta == 'EN_CURSO' ? 'En ruta' : camion.estadoRuta}">En ruta</span>
+            </div>
+            <p style="margin: 0; font-size: 12.5px; color: var(--muted);">
+                <span th:if="${camion.donaciones != null and !camion.donaciones.isEmpty()}">
+                    <span th:text="${camion.donaciones.size()}">2</span> entrega(s) ·
+                </span>
+                ETA aprox.: <strong th:text="${camion.etaMinutos != null ? camion.etaMinutos + ' min' : 'sin datos'}">14 min</strong>
+            </p>
+            <p style="margin: 0; font-size: 11.5px; color: var(--muted-2);">
+                Última actualización: <time class="last-update" th:attr="datetime=${camion.ultimaActualizacion}, data-since=${camion.ultimaActualizacion}" th:text="${camion.ultimaActualizacion}">2026-06-12T10:30</time>
+            </p>
+            <a class="btn btn-ghost btn-sm" style="align-self: flex-start; padding: 0 var(--gap-2);" th:if="${camion.donaciones != null and !camion.donaciones.isEmpty()}"
+               th:href="@{/entidad/donaciones/{id}(id=${camion.donaciones.get(0)})}">Ver donación →</a>
+        </article>
+
+        <div class="seguimiento-foot">
+            <span id="lastRefresh" role="status">Actualizado recién</span>
+            <span>Polling cada 12 s</span>
+        </div>
+    </aside>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+<script th:src="@{/js/entidad/map.js}" defer></script>
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/core/polling.js}" defer></script>
+<script th:src="@{/js/entidad/seguimiento.js}" defer></script>
+<script th:inline="javascript">
+    window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
+    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 12000}]];
+</script>
+</body>
+</html>

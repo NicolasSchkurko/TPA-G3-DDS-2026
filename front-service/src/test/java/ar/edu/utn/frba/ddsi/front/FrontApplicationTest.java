@@ -5,7 +5,7 @@ import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.config.ProfileRedirectHandler;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
-import ar.edu.utn.frba.ddsi.front.dto.DireccionBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DireccionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -208,7 +208,7 @@ class FrontApplicationTest {
 
                 @Override
                 public List<EntidadBeneficiariaDTO> obtenerEntidades() {
-                    DireccionBeneficiariaDTO direccion = new DireccionBeneficiariaDTO();
+                    DireccionDTO direccion = new DireccionDTO();
                     direccion.setLatitud(-34.6538);
                     direccion.setLongitud(-58.4478);
                     direccion.setCiudad("Villa Soldati");

@@ -243,6 +243,8 @@ class ConsumidorNotificacionesTest {
                 EstadoNotificacion estado, Pageable pageable) { return Page.empty(pageable); }
         @Override public Page<Notificacion> buscar(
                 EstadoNotificacion estado, Pageable pageable) { return Page.empty(pageable); }
+        @Override public Page<Notificacion> buscarPorDestinatario(
+                String destinatario, EstadoNotificacion estado, Pageable pageable) { return Page.empty(pageable); }
     }
 
     @BeforeEach

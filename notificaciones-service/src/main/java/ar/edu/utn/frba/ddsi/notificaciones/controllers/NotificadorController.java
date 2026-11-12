@@ -105,7 +105,10 @@ public class NotificadorController {
             @ParameterObject @ModelAttribute NotificacionFiltroRequest filtros,
             @PageableDefault(page = 0, size = 10, sort = "fechaCreacion",
                     direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(notificadorService.listar(filtros.estado(), pageable));
+        String destinatario = filtros.destinatario();
+        return ResponseEntity.ok(destinatario == null || destinatario.isBlank()
+                ? notificadorService.listar(filtros.estado(), pageable)
+                : notificadorService.listarPorDestinatario(destinatario, filtros.estado(), pageable));
     }
 
     @Operation(summary = "Ver notificacion por id")
@@ -116,4 +119,5 @@ public class NotificadorController {
                 .map(d -> ResponseEntity.ok(notificacionMapper.notificacionDTO(d)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 }

@@ -67,3 +67,4 @@ build/
 /CONFIG-MYSQL.md
 /CONFIG-RABBITMQ.md
 /opencode.json
+front-service/data/

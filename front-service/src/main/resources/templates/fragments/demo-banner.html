@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!-- Banner visible cuando la página está mostrando datos de demostración -->
+<div th:fragment="demoBanner" th:if="${demo}" class="banner banner-demo" role="status"
+     style="margin: var(--gap-3) var(--gap-4) 0;">
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+    </svg>
+    <div>
+        <strong>Estás viendo datos de demostración.</strong><br>
+        <span th:if="${vinculado}">No pudimos cargar los datos de tu entidad. Intentá recargar o revisá la conexión.</span>
+        <span th:unless="${vinculado}">Vinculá tu cuenta con tu entidad (misma cuenta con la que te registraste) para ver la información real.</span>
+        <a th:href="@{/entidad/vincular}">Vincular mi entidad</a>
+    </div>
+</div>
+
+</body>
+</html>

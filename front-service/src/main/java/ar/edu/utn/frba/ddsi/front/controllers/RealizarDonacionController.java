@@ -105,11 +105,29 @@ public class RealizarDonacionController {
     }
 
     private Optional<PersonaDonanteDTO> obtenerPerfilDonante(Authentication authentication, Model model) {
+        boolean esDonante = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_DONANTE".equals(authority.getAuthority()));
+        if (!esDonante) {
+            model.addAttribute("error", "Tu cuenta no tiene el rol de donante.");
+            model.addAttribute("mostrarRegistro", true);
+            return Optional.empty();
+        }
+
         String correo = obtenerCorreo(authentication);
         if (correo == null || correo.isBlank()) {
             model.addAttribute("error", "No encontramos un perfil de donante asociado al correo de tu cuenta.");
             model.addAttribute("mostrarRegistro", true);
             return Optional.empty();
+        }
+
+        // En cuentas con varios roles, resolvemos primero la identidad vinculada al correo
+        // y cargamos el perfil por su ID. La búsqueda por medios de contacto queda como respaldo.
+        var identidad = donacionesClient.buscarIdentidadPorEmail(correo);
+        if (identidad != null && identidad.getDonanteId() != null) {
+            PersonaDonanteDTO perfil = donacionesClient.obtenerDonantePorId(identidad.getDonanteId());
+            if (perfil != null) {
+                return Optional.of(perfil);
+            }
         }
 
         List<PersonaDonanteDTO> donantes = donacionesClient.buscarDonantesPorCorreo(correo);

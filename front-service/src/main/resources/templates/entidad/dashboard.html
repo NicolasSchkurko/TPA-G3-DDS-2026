@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad — DDSI' : 'Mi entidad — DDSI'}">Mi entidad — DDSI</title>
+    <meta name="description" content="Seguimiento en vivo de las donaciones asignadas a tu entidad: necesidades, entregas activas y confirmación de recepción.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/entidad.css}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="entidad-main" id="entidadMain">
+
+    <!-- ============ Panel desplegable (izquierda) ============ -->
+    <aside class="panel-entidad is-open" id="panelEntidad" aria-label="Vistazo rápido de mi entidad">
+
+        <button class="panel-handle" id="panelHandle" type="button"
+                aria-expanded="true" aria-controls="panelBody">
+            Vistazo rápido
+        </button>
+
+        <header class="panel-head">
+            <div>
+                <span class="panel-eyebrow">Entidad beneficiaria</span>
+                <h1 class="panel-title" th:text="${entidad.razonSocial}">Comedor Los Piletones</h1>
+                <p class="panel-meta">
+                    <span th:text="${entidad.rubro != null ? entidad.rubro : 'Sin rubro'}">Asistencia social</span>
+                    <span th:if="${entidad.cuit != null}">· CUIT <span th:text="${entidad.cuit}">30-12345678-9</span></span>
+                </p>
+                <p class="panel-meta" th:if="${entidad.direccion != null}">
+                    <span th:text="${entidad.direccion.etiqueta()}">Av. Perito Moreno 2400</span>
+                    <span th:if="${entidad.direccion.ciudad != null}"> · <span th:text="${entidad.direccion.ciudad}">Villa Soldati</span></span>
+                </p>
+                <span class="chip" style="margin-top: 8px;"
+                      th:classappend="${entidad.activa == null or entidad.activa ? ' chip-success' : ' chip-danger'}"
+                      th:text="${entidad.activa == null or entidad.activa ? 'Activa' : 'Dada de baja'}">Activa</span>
+            </div>
+            <button class="icon-toggle" id="panelCollapse" type="button" aria-label="Contraer panel" aria-expanded="true" aria-controls="panelBody">
+                <svg viewBox="0 0 16 16" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 3 5 8l5 5"/>
+                </svg>
+            </button>
+        </header>
+
+        <div class="panel-summary" id="panelSummary" aria-label="Resumen de mi entidad">
+            <div class="summary-stats">
+                <span class="summary-stat"><strong th:text="${totalDonaciones}">12</strong>donaciones</span>
+                <span class="summary-stat"><strong th:text="${necesidadesActivas}">3</strong>necesidades activas</span>
+                <span class="summary-stat"><strong th:text="${enCamino}">1</strong>en camino</span>
+                <span class="summary-stat"><strong th:text="${notifNoLeidas != null ? notifNoLeidas : 0}">0</strong>avisos sin leer</span>
+            </div>
+
+            <div class="summary-next" th:if="${proximaEntrega != null}">
+                <span class="summary-label">Próxima entrega</span>
+                <a class="summary-next-link" th:if="${proximaEntrega.idDonacion != null}"
+                   th:href="@{/entidad/donaciones/{id}(id=${proximaEntrega.idDonacion})}">
+                    <span class="summary-next-main">
+                        <strong th:text="${proximaEntrega.cantidad + ' ' + (proximaEntrega.unidadDeMedida != null ? proximaEntrega.unidadDeMedida : 'unidades')}">1.600 KG</strong>
+                        <span class="chip" th:classappend="${proximaEntrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
+                              th:text="${proximaEntrega.estado == 'EN_CAMINO' ? 'En camino' : 'Pendiente'}">En camino</span>
+                    </span>
+                    <span class="summary-next-zona" th:text="${proximaEntrega.zona != null ? proximaEntrega.zona : ''}">Villa Soldati</span>
+                </a>
+                <a class="summary-next-link" th:unless="${proximaEntrega.idDonacion != null}" th:href="@{/entidad/seguimiento}">
+                    <span class="summary-next-main">
+                        <strong th:text="${proximaEntrega.cantidad + ' ' + (proximaEntrega.unidadDeMedida != null ? proximaEntrega.unidadDeMedida : 'unidades')}">1.600 KG</strong>
+                        <span class="chip" th:classappend="${proximaEntrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
+                              th:text="${proximaEntrega.estado == 'EN_CAMINO' ? 'En camino' : 'Pendiente'}">En camino</span>
+                    </span>
+                    <span class="summary-next-zona" th:text="${proximaEntrega.zona != null ? proximaEntrega.zona : ''}">Villa Soldati</span>
+                </a>
+            </div>
+            <p class="summary-next summary-next-empty" th:unless="${proximaEntrega != null}">
+                Sin entregas activas. <a th:href="@{/entidad/seguimiento}">Ver en el mapa</a>
+            </p>
+
+            <div class="summary-needs" th:if="${!#lists.isEmpty(necesidadesTop)}">
+                <span class="summary-label">Mis necesidades</span>
+                <article class="summary-need" th:each="n : ${necesidadesTop}">
+                    <div class="summary-need-head">
+                        <span class="summary-need-title" th:text="${n.nombreSubcategoria}">Alimentos</span>
+                        <span class="summary-need-amount">
+                            <span th:text="${n.bienesRecibidos()}">10</span>/<span th:text="${n.cantidadObjetivo}">100</span>
+                        </span>
+                    </div>
+                    <div class="progress progress-xs" role="progressbar"
+                         th:attr="aria-valuenow=${n.progreso()}, aria-valuemin=0, aria-valuemax=100"
+                         aria-label="Progreso de la necesidad">
+                        <div class="progress-bar" th:classappend="${n.progreso() >= 100 ? ' is-complete' : ''}"
+                             th:style="'width:' + ${n.progreso()} + '%'"></div>
+                    </div>
+                </article>
+            </div>
+
+            <div class="summary-actions" aria-label="Acciones rápidas">
+                <a class="btn btn-secondary btn-sm" th:href="@{/entidad/notificaciones}">Avisos</a>
+                <a class="btn btn-secondary btn-sm" th:href="@{/entidad/donaciones}">Donaciones</a>
+                <a class="btn btn-primary btn-sm" th:href="@{/entidad/necesidades(nueva=1)}">Nueva necesidad</a>
+            </div>
+
+            <button class="btn btn-ghost summary-more" id="panelExpand" type="button">
+                Ver detalle
+                <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="panel-body" id="panelBody">
+
+            <div th:if="${demo}" class="banner banner-demo" role="status">
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                </svg>
+                <div><strong>Estás viendo datos de demostración.</strong><br>
+                    <span th:if="${vinculado}">No pudimos cargar los datos de tu entidad.</span>
+                    <span th:unless="${vinculado}">Vinculá tu cuenta para ver información real.</span>
+                    <a th:href="@{/entidad/vincular}">Vincular mi entidad</a>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-grid" aria-label="Resumen numérico">
+                <div class="kpi">
+                    <span class="kpi-num" th:text="${necesidadesActivas}">3</span>
+                    <span class="kpi-label">Necesidades activas</span>
+                </div>
+                <div class="kpi">
+                    <span class="kpi-num" th:text="${enCamino}">1</span>
+                    <span class="kpi-label">En camino</span>
+                </div>
+                <div class="kpi">
+                    <span class="kpi-num" th:text="${confirmadas}">0</span>
+                    <span class="kpi-label">Entregadas</span>
+                </div>
+            </div>
+
+            <!-- Vista rápida: necesidades -->
+            <section aria-labelledby="panel-necesidades-title">
+                <h2 class="panel-section-title" id="panel-necesidades-title">
+                    Mis necesidades
+                    <a th:href="@{/entidad/necesidades}">Ver todas →</a>
+                </h2>
+
+                <div th:if="${#lists.isEmpty(necesidadesDestacadas)}" class="empty-state" style="padding: var(--gap-4) 0;">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M2 5.5 8 2l6 3.5v6L8 15l-6-3.5zM8 2v13M2 5.5 8 9l6-3.5"/>
+                    </svg>
+                    <h3>Todavía no tenés necesidades</h3>
+                    <p>Registrá qué necesita tu entidad y empezá a recibir donaciones.</p>
+                    <a class="btn btn-primary" th:href="@{/entidad/necesidades(nueva=1)}">Registrar necesidad</a>
+                </div>
+
+                <article class="need-item" th:each="n : ${necesidadesDestacadas}">
+                    <div class="need-item-head">
+                        <span class="need-item-title" th:text="${n.nombreSubcategoria}">Alimentos no perecederos</span>
+                        <span class="need-item-amount">
+                            <span th:text="${n.bienesRecibidos()}">165</span> / <span th:text="${n.cantidadObjetivo}">240</span>
+                        </span>
+                    </div>
+                    <div class="progress" role="progressbar"
+                         th:attr="aria-valuenow=${n.progreso()}, aria-valuemin=0, aria-valuemax=100"
+                         aria-label="Progreso de la necesidad">
+                        <div class="progress-bar" th:classappend="${n.progreso() >= 100 ? ' is-complete' : ''}"
+                             th:style="'width:' + ${n.progreso()} + '%'"></div>
+                    </div>
+                    <div class="need-item-meta">
+                        <span th:text="${n.nombreCategoria}">Alimentos</span>
+                        <span th:text="${n.tipoNecesidad == 'EXTRAORDINARIA' ? 'Única vez' : 'Recurrente'}">Recurrente</span>
+                    </div>
+                </article>
+            </section>
+
+            <!-- Vista rápida: entregas activas -->
+            <section aria-labelledby="panel-entregas-title">
+                <h2 class="panel-section-title" id="panel-entregas-title">
+                    Entregas activas
+                    <a th:href="@{/entidad/seguimiento}">Ver en el mapa →</a>
+                </h2>
+
+                <div th:if="${#lists.isEmpty(entregasActivas)}" class="empty-state" style="padding: var(--gap-4) 0;">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M1 3h9v8H1zM10 6h3l2 2v3h-5M4 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm9 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                    </svg>
+                    <h3>Sin entregas activas</h3>
+                    <p>Cuando una donación esté en camino hacia tu entidad va a aparecer acá y en el mapa.</p>
+                </div>
+
+                <a class="delivery-item" th:each="entrega : ${entregasActivas}"
+                   style="text-decoration: none; color: inherit;"
+                   th:href="@{/entidad/donaciones/{id}(id=${entrega.idDonacion})}">
+                    <span class="delivery-icon" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.56l1.48 1.85a1.5 1.5 0 0 1 .33.94v3.15a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H6a2 2 0 1 1-4 0H1.5A1.5 1.5 0 0 1 0 10.5z"/></svg>
+                    </span>
+                    <span>
+                        <h3 th:text="${entrega.cantidad + ' ' + (entrega.unidadDeMedida != null ? entrega.unidadDeMedida : 'unidades')}">1.600 KG</h3>
+                        <p>
+                            <span class="chip" th:classappend="${entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
+                                  th:text="${entrega.estado == 'EN_CAMINO' ? 'En camino' : 'Pendiente'}">En camino</span>
+                            <span th:text="${entrega.zona != null ? entrega.zona : ''}">Villa Soldati</span>
+                        </p>
+                    </span>
+                </a>
+            </section>
+
+        </div>
+
+        <div class="panel-actions">
+            <a class="btn btn-secondary" th:href="@{/entidad/donaciones}">Mis donaciones</a>
+            <a class="btn btn-primary" th:href="@{/entidad/necesidades(nueva=1)}">Nueva necesidad</a>
+        </div>
+    </aside>
+
+    <!-- ============ Mapa de entregas activas ============ -->
+    <section class="map-wrap" aria-label="Mapa con las entregas activas de tu entidad">
+        <div id="map" role="application"
+             aria-label="Mapa interactivo. Muestra tu entidad y los camiones con entregas asignadas."></div>
+
+        <div class="map-overlay map-overlay-tl">
+            <span class="chip chip-live">En vivo</span>
+            <span class="chip chip-demo" th:if="${ubicacionSimulada}">Ubicación simulada</span>
+        </div>
+
+        <div class="map-overlay map-overlay-bl">
+            <div class="map-legend-card" aria-label="Referencias del mapa">
+                <span class="legend">
+                    <span><i class="legend-dot" aria-hidden="true"></i> Mi entidad</span>
+                    <span><i class="legend-dot transit" aria-hidden="true"></i> Camión en camino</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="map-overlay map-overlay-tl" style="top: auto; bottom: 84px; left: var(--gap-3);">
+            <div id="mapError" class="banner banner-error" role="alert" hidden
+                 style="max-width: 320px; background: rgba(255,255,255,.97);">
+                <div>No pudimos actualizar el seguimiento. <button type="button" id="mapRetry" class="btn btn-ghost btn-sm" style="min-height: 36px;">Reintentar</button></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+<script th:src="@{/js/entidad/map.js}" defer></script>
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/core/polling.js}" defer></script>
+<script th:src="@{/js/entidad/dashboard.js}" defer></script>
+<script th:inline="javascript">
+    window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
+    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 12000}]];
+</script>
+</body>
+</html>

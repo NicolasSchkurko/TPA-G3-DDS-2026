@@ -96,6 +96,11 @@ public class DonacionService {
   }
 
   @Transactional(readOnly = true)
+  public List<DonacionDTO> obtenerDeDonante(UUID donanteId) {
+    return repositorioDonaciones.buscarPorDonante(donanteId).stream()
+            .map(DonacionDTO::from).collect(Collectors.toList());
+  }
+
   public Page<DonacionDTO> obtenerTodas(Pageable pageable) {
     return repositorioDonaciones.obtenerTodos(pageable).map(DonacionDTO::from);
   }

@@ -29,6 +29,17 @@ public interface RepositorioDeDonantes extends JpaRepository<Donante, UUID> {
       + ")")
   List<Donante> buscarPorNombreActivo(@Param("nombre") String nombre);
 
+  @Query("""
+      SELECT DISTINCT d FROM Donante d
+      JOIN d.persona p
+      JOIN p.mediosDeContacto mc
+      JOIN mc.listaMediosDeContacto m
+      WHERE TYPE(m) = Mail
+        AND LOWER(TREAT(m AS Mail).direccionMail) = LOWER(:email)
+        AND d.activo = true
+      """)
+  List<Donante> buscarPorEmailContacto(@Param("email") String email);
+
   Page<Donante> findByActivoTrue(Pageable pageable);
 
   /**

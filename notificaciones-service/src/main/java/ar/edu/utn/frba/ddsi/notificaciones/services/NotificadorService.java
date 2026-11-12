@@ -94,6 +94,14 @@ public class NotificadorService {
                 .map(notificacionMapper::notificacionDTO);
     }
 
+    @Transactional(readOnly = true)
+    public Page<NotificacionDTO> listarPorDestinatario(String destinatario,
+                                                       EstadoNotificacion estado,
+                                                       Pageable pageable) {
+        return repositorioNotificaciones.buscarPorDestinatario(destinatario, estado, pageable)
+                .map(notificacionMapper::notificacionDTO);
+    }
+
     public Optional<Notificacion> obtenerPorId(UUID id) {
         return repositorioNotificaciones.findById(id);
     }
@@ -141,4 +149,5 @@ public class NotificadorService {
         return repositorioNotificaciones.marcarFallidaSiEnviando(
                 id, claimId, EstadoNotificacion.FALLIDA, EstadoNotificacion.ENVIANDO) > 0;
     }
+
 }
