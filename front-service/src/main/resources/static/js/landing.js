@@ -131,8 +131,8 @@
     let activeId = null;
 
     /* ----------------------------- Utilidades ----------------------------- */
-    function featuredDonations() {
-        return Array.from(document.querySelectorAll(".donation-card")).flatMap((card) => {
+    function mapOnlyAndFeaturedDonations() {
+        return Array.from(document.querySelectorAll(".map-donation-data")).flatMap((card) => {
             if (!card.dataset.latitude || !card.dataset.longitude) {
                 return [];
             }
@@ -158,7 +158,7 @@
     }
 
     function mapDonations() {
-        return DONATIONS.concat(featuredDonations());
+        return DONATIONS.concat(mapOnlyAndFeaturedDonations());
     }
 
     const byId = (id) => mapDonations().find((d) => d.id === id);

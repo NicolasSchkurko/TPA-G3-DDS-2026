@@ -120,12 +120,16 @@
                 </div>
 
                 <div class="donation-list" id="donationList">
-                    <a class="donation-card" th:each="donacion : ${destacadasMapa}"
+                    <a class="donation-card map-donation-data" th:each="donacion : ${destacadasMapa}"
                        th:href="@{/donaciones/{id}(id=${donacion.idDonacion})}"
                        th:attr="data-id=${donacion.idDonacion},
                                 data-latitude=${donacion.latitud},
                                 data-longitude=${donacion.longitud},
-                                data-area=${donacion.ubicacion ?: ''}">
+                                data-area=${donacion.ubicacion ?: ''},
+                                data-title=${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
+                                    ? donacion.subCategoria
+                                    : (donacion.categoria ?: 'Donación')},
+                                data-organization=${donacion.entidadBeneficiaria ?: 'Entidad beneficiaria'}">
                         <span class="card-icon" aria-hidden="true">
                             <svg class="icon"><use href="#i-gift"></use></svg>
                         </span>
@@ -154,9 +158,21 @@
                         <p class="panel-noscript">Activá JavaScript para ver el mapa interactivo.</p>
                     </noscript>
                 </div>
+                <div class="map-only-donations" hidden aria-hidden="true">
+                    <span class="map-donation-data" th:each="donacion : ${entregadasMapa}"
+                          th:attr="data-id=${donacion.idDonacion},
+                                   data-latitude=${donacion.latitud},
+                                   data-longitude=${donacion.longitud},
+                                   data-area=${donacion.ubicacion ?: ''},
+                                   data-title=${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
+                                       ? donacion.subCategoria
+                                       : (donacion.categoria ?: 'Donación')},
+                                   data-organization=${donacion.entidadBeneficiaria ?: 'Entidad beneficiaria'},
+                                   data-url=@{/donaciones/{id}(id=${donacion.idDonacion})}"></span>
+                </div>
             </section>
 
-            <p class="sidebar-note">Destacadas ubicadas en la entidad receptora · Otros puntos ilustrativos</p>
+            <p class="sidebar-note">Destacadas en la barra lateral · Entregadas también visibles en el mapa</p>
         </aside>
 
         <section class="map-pane" aria-label="Mapa de donaciones">
@@ -168,7 +184,7 @@
                 <span><i class="legend-dot urgent" aria-hidden="true"></i> Urgente</span>
             </div>
 
-            <p class="map-caption">Donaciones destacadas: ubicación de la entidad receptora · Otros puntos: ejemplo</p>
+            <p class="map-caption">Destacadas y entregadas: ubicación de la entidad receptora · Otros puntos: ejemplo</p>
         </section>
     </main>
 
@@ -225,7 +241,7 @@
     </div>
 
     <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
-    <script src="/js/landing.js?v=3" th:src="@{/js/landing.js(v=3)}"></script>
+    <script src="/js/landing.js?v=4" th:src="@{/js/landing.js(v=4)}"></script>
     <script src="/js/nav-menu.js" th:src="@{/js/nav-menu.js}"></script>
     <script th:src="@{/js/entity-search.js}"></script>
 </body>

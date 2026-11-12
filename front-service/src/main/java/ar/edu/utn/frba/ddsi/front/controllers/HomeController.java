@@ -6,6 +6,7 @@ import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.dto.DireccionBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaDTO;
 import ar.edu.utn.frba.ddsi.front.dto.DonacionDestacadaMapaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DonacionDTO;
 import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,11 +20,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
-import java.util.LinkedHashMap;
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -194,9 +198,12 @@ public class HomeController {
                 && !esAdmin(authentication);
         List<DonacionDestacadaDTO> destacadas = incentivosClient.obtenerDonacionesDestacadas();
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
+        List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
         model.addAttribute("esDonante", esDonante);
         model.addAttribute("destacadas", destacadas);
         model.addAttribute("destacadasMapa", enriquecerDestacadasConUbicacion(destacadas, entidades));
+        model.addAttribute("entregadasMapa",
+                enriquecerEntregadasConUbicacion(destacadas, donaciones, entidades));
         model.addAttribute("entidades", esDonante ? entidades : Collections.emptyList());
         return "landing";
     }
@@ -204,34 +211,79 @@ public class HomeController {
     private List<DonacionDestacadaMapaDTO> enriquecerDestacadasConUbicacion(
             List<DonacionDestacadaDTO> destacadas,
             List<EntidadBeneficiariaDTO> entidades) {
-        Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = entidades.stream()
+        Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = indexarEntidades(entidades);
+
+        return destacadas.stream()
+                .map(donacion -> crearDonacionMapa(
+                        donacion.idDonacion(),
+                        donacion.fechaEntrega(),
+                        donacion.cantidadBienes(),
+                        donacion.categoria(),
+                        donacion.subCategoria(),
+                        donacion.entidadBeneficiaria(),
+                        entidadesPorNombre))
+                .toList();
+    }
+
+    private List<DonacionDestacadaMapaDTO> enriquecerEntregadasConUbicacion(
+            List<DonacionDestacadaDTO> destacadas,
+            List<DonacionDTO> donaciones,
+            List<EntidadBeneficiariaDTO> entidades) {
+        Set<String> idsDestacados = destacadas.stream()
+                .filter(donacion -> donacion.idDonacion() != null)
+                .map(donacion -> donacion.idDonacion().toString())
+                .collect(Collectors.toSet());
+        Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = indexarEntidades(entidades);
+
+        return donaciones.stream()
+                .filter(donacion -> "ENTREGADO".equalsIgnoreCase(donacion.getEstado()))
+                .filter(donacion -> donacion.getId() != null
+                        && !idsDestacados.contains(donacion.getId().toString()))
+                .map(donacion -> crearDonacionMapa(
+                        donacion.getId(),
+                        donacion.getFechaEntrega() != null
+                                ? donacion.getFechaEntrega().atStartOfDay()
+                                : null,
+                        donacion.getCantidadTotalBienes(),
+                        donacion.getCategoriaBienName(),
+                        donacion.getSubcategoriaName(),
+                        donacion.getEntidadBeneficiaria(),
+                        entidadesPorNombre))
+                .toList();
+    }
+
+    private Map<String, EntidadBeneficiariaDTO> indexarEntidades(List<EntidadBeneficiariaDTO> entidades) {
+        return entidades.stream()
                 .filter(entidad -> entidad.getRazonSocial() != null)
                 .collect(Collectors.toMap(
                         entidad -> entidad.getRazonSocial().trim().toLowerCase(Locale.ROOT),
                         Function.identity(),
                         (primera, ignorada) -> primera,
                         LinkedHashMap::new));
+    }
 
-        return destacadas.stream()
-                .map(donacion -> {
-                    EntidadBeneficiariaDTO entidad = donacion.entidadBeneficiaria() == null
-                            ? null
-                            : entidadesPorNombre.get(
-                                    donacion.entidadBeneficiaria().trim().toLowerCase(Locale.ROOT));
-                    DireccionBeneficiariaDTO direccion = entidad != null ? entidad.getDireccion() : null;
-                    String ubicacion = direccion == null ? null : nombreUbicacion(direccion);
-                    return new DonacionDestacadaMapaDTO(
-                            donacion.idDonacion(),
-                            donacion.fechaEntrega(),
-                            donacion.cantidadBienes(),
-                            donacion.categoria(),
-                            donacion.subCategoria(),
-                            donacion.entidadBeneficiaria(),
-                            direccion != null ? direccion.getLatitud() : null,
-                            direccion != null ? direccion.getLongitud() : null,
-                            ubicacion);
-                })
-                .toList();
+    private DonacionDestacadaMapaDTO crearDonacionMapa(
+            UUID id,
+            LocalDateTime fechaEntrega,
+            Integer cantidad,
+            String categoria,
+            String subcategoria,
+            String nombreEntidad,
+            Map<String, EntidadBeneficiariaDTO> entidadesPorNombre) {
+        EntidadBeneficiariaDTO entidad = nombreEntidad == null
+                ? null
+                : entidadesPorNombre.get(nombreEntidad.trim().toLowerCase(Locale.ROOT));
+        DireccionBeneficiariaDTO direccion = entidad != null ? entidad.getDireccion() : null;
+        return new DonacionDestacadaMapaDTO(
+                id,
+                fechaEntrega,
+                cantidad,
+                categoria,
+                subcategoria,
+                nombreEntidad,
+                direccion != null ? direccion.getLatitud() : null,
+                direccion != null ? direccion.getLongitud() : null,
+                direccion != null ? nombreUbicacion(direccion) : null);
     }
 
     private String nombreUbicacion(DireccionBeneficiariaDTO direccion) {

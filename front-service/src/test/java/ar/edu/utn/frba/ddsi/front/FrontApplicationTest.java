@@ -49,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class FrontApplicationTest {
 
     private static final UUID DONATION_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    private static final UUID MAP_ONLY_DONATION_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174002");
 
     @Autowired
     private MockMvc mockMvc;
@@ -145,8 +146,11 @@ class FrontApplicationTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("data-latitude=\"-34.6538\"")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("data-longitude=\"-58.4478\"")));
-
+                        org.hamcrest.Matchers.containsString("data-longitude=\"-58.4478\"")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("class=\"map-only-donations\" hidden")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-id=\"" + MAP_ONLY_DONATION_ID + "\"")));
     }
 
     @Test
@@ -180,7 +184,13 @@ class FrontApplicationTest {
 
                 @Override
                 public java.util.List<DonacionDTO> obtenerTodasLasDonaciones() {
-                    return Collections.emptyList();
+                    DonacionDTO entregada = new DonacionDTO();
+                    entregada.setId(MAP_ONLY_DONATION_ID);
+                    entregada.setEstado("ENTREGADO");
+                    entregada.setEntidadBeneficiaria("Comedor Los Piletones");
+                    entregada.setSubcategoriaName("Arroz");
+                    entregada.setCategoriaBienName("ALIMENTOS");
+                    return List.of(entregada);
                 }
 
                 @Override
