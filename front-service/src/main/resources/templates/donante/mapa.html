@@ -144,6 +144,11 @@
                 <p class="incentives-unavailable" th:if="${!incentivosDisponibles}">
                     No pudimos cargar tus datos de incentivos en este momento.
                 </p>
+                <section class="incentive-section" aria-labelledby="categoryTitle"
+                         th:if="${categoriaPublica != null and !#strings.isEmpty(categoriaPublica)}">
+                    <h3 id="categoryTitle">Categoría actual</h3>
+                    <p class="mission-name" th:text="${categoriaPublica}">Nombre de la categoría</p>
+                </section>
                 <section class="incentive-section" aria-labelledby="missionTitle"
                          th:if="${misionDonante != null and !misionDonante.isEmpty()}">
                     <div class="incentive-section-title">

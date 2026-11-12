@@ -86,10 +86,18 @@ class AdminViewSmokeTest {
                 "/admin/camiones/nuevo", "/admin/choferes", "/admin/choferes/nuevo",
                 "/admin/rutas", "/admin/entregas-no-recibidas",
                 "/admin/donaciones?vista=vencidas", "/admin/donantes/importar/" + java.util.UUID.randomUUID(),
-                "/admin/incentivos")) {
+                "/admin/incentivos", "/admin/incentivos/rankings")) {
             mockMvc.perform(get(path).session(sessionAdmin()))
                     .andExpect(status().isOk());
         }
+
+        String rankingsPage = mockMvc.perform(get("/admin/incentivos/rankings").session(sessionAdmin()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(rankingsPage).contains("max=\"" + java.time.YearMonth.now() + "\"");
+        assertThat(rankingsPage).contains("snapshot parcial");
 
         String incentivesPage = mockMvc.perform(get("/admin/incentivos")
                         .session(sessionAdmin())

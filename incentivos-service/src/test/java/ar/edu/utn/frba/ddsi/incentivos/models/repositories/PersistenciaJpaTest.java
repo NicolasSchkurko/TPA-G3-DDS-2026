@@ -42,7 +42,6 @@ import ar.edu.utn.frba.ddsi.incentivos.dto.Persona.ImpactoDonacionDTO;
 import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -441,14 +440,45 @@ class PersistenciaJpaTest {
     }
 
     @Test
+    void puestoActualUsaElSnapshotDelMesEnCursoCuandoEstaPublicado() {
+        YearMonth mesActual = YearMonth.now();
+        UUID idDonante = UUID.randomUUID();
+
+        RankingMensual rankingAnterior = new RankingMensual(mesActual.minusMonths(1));
+        rankingAnterior.agregarPosicion(new Ranking(
+                rankingAnterior, idDonante, "Donante", 2, 1L));
+        repositorioRankings.saveAndFlush(rankingAnterior);
+
+        RankingMensual rankingActual = new RankingMensual(mesActual);
+        rankingActual.agregarPosicion(new Ranking(
+                rankingActual, idDonante, "Donante", 1, 3L));
+        repositorioRankings.saveAndFlush(rankingActual);
+
+        RankingMensual rankingFuturo = new RankingMensual(mesActual.plusMonths(1));
+        rankingFuturo.agregarPosicion(new Ranking(
+                rankingFuturo, idDonante, "Donante", 1, 10L));
+        repositorioRankings.saveAndFlush(rankingFuturo);
+        entityManager.flush();
+        entityManager.clear();
+
+        Ranking puesto = repositorioRankings.obtenerPosicionActualDeUsuario(idDonante);
+
+        assertThat(puesto.getPuesto()).isEqualTo(1);
+        assertThat(puesto.getMisionesCumplidas()).isEqualTo(3L);
+    }
+
+    @Test
     void calcularRankingMensualProyectaFilasYPagina() {
         LocalDateTime ahora = LocalDateTime.now();
         for (String nombre : List.of("Ana", "Beto", "Caro")) {
-            Perfil perfil = new Perfil(UUID.randomUUID(), nombre);
-            Insignia insignia = new Insignia("Medalla " + nombre, "Descripcion");
-            entityManager.persist(insignia);
-            perfil.getInsigniasObtenidas().add(new InsigniaObtenida(perfil, insignia));
+            UUID idUsuario = UUID.randomUUID();
+            Perfil perfil = new Perfil(idUsuario, nombre);
             entityManager.persist(perfil);
+            ImpactoDonacion donacion = new ImpactoDonacion(
+                    UUID.randomUUID(), idUsuario, "Entidad", 1, ahora,
+                    "Ropa", "Abrigos", "ENTREGADA");
+            donacion.registrarSiCompletoMision(true);
+            entityManager.persist(donacion);
         }
         entityManager.flush();
         entityManager.clear();
@@ -471,6 +501,40 @@ class PersistenciaJpaTest {
                 .extracting(RankingFilaDTO::nombreUsuario)
                 .containsExactly("Caro");
         assertThat(segunda.hasNext()).isFalse();
+    }
+
+    @Test
+    void calcularRankingMensualUsaInsigniaComoEvidenciaDeMisionCompletada() {
+        LocalDateTime ahora = LocalDateTime.now();
+        UUID idDonante = UUID.randomUUID();
+        Perfil perfil = new Perfil(idDonante, "donante.n8n.demo@example.com");
+        Insignia insignia = new Insignia("Primera misión", "Misión completada");
+        entityManager.persist(insignia);
+        perfil.getInsigniasObtenidas().add(new InsigniaObtenida(perfil, insignia));
+        entityManager.persist(perfil);
+
+        for (int i = 0; i < 4; i++) {
+            ImpactoDonacion donacion = new ImpactoDonacion(
+                    UUID.randomUUID(), idDonante, "Entidad", 1,
+                    ahora.minusHours(i), "Ropa", "Abrigos", "ENTREGADA");
+            entityManager.persist(donacion);
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        RankingService service = new RankingService(repositorioRankings, repositorioPerfiles);
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                service, "entityManager", entityManager);
+        RankingMesDTO ranking = service.crearRankingMensual(UUID.randomUUID(), YearMonth.now());
+
+        assertThat(ranking.getRanking().getContent())
+                .singleElement()
+                .satisfies(posicion -> {
+                    assertThat(posicion.getNombreUsuario())
+                            .isEqualTo("donante.n8n.demo@example.com");
+                    assertThat(posicion.getPuesto()).isEqualTo(1);
+                    assertThat(posicion.getMisionesCumplidas()).isEqualTo(1L);
+                });
     }
 
     @Test
@@ -626,19 +690,17 @@ class PersistenciaJpaTest {
     }
 
     @Test
-    void generarRankingPersisteTodasLasPosicionesPorPaginas() throws Exception {
+    void generarRankingPersisteTodasLasPosicionesPorPaginas() {
         LocalDateTime fecha = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
-
-        Field fechaObtencion = InsigniaObtenida.class.getDeclaredField("fechaObtencion");
-        fechaObtencion.setAccessible(true);
         for (int i = 0; i < 501; i++) {
-            Perfil perfil = new Perfil(UUID.randomUUID(), "Donante " + i);
-            Insignia insignia = new Insignia("Medalla " + i, "desc");
-            entityManager.persist(insignia);
-            InsigniaObtenida obtenida = new InsigniaObtenida(perfil, insignia);
-            fechaObtencion.set(obtenida, fecha);
-            perfil.getInsigniasObtenidas().add(obtenida);
+            UUID idUsuario = UUID.randomUUID();
+            Perfil perfil = new Perfil(idUsuario, "Donante " + i);
             entityManager.persist(perfil);
+            ImpactoDonacion donacion = new ImpactoDonacion(
+                    UUID.randomUUID(), idUsuario, "Entidad", 1, fecha,
+                    "Ropa", "Abrigos", "ENTREGADA");
+            donacion.registrarSiCompletoMision(true);
+            entityManager.persist(donacion);
         }
         entityManager.flush();
         entityManager.clear();

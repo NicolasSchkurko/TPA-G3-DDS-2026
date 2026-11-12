@@ -25,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Consulta y generación del ranking de colaboradores. Es un snapshot por mes, no un cálculo
- * en vivo: una vez publicado no se toca. Se puntúa por insignias del mes, no por monto.
+ * en vivo: una vez publicado no se toca. Se puntúa por misiones completadas en el mes,
+ * sin importar la categoría.
  */
 @Service
 public class RankingService {
@@ -134,7 +135,7 @@ public class RankingService {
      * período va acá para que el scheduler también lo respete.
      */
     private RankingMesDTO generarYGuardar(YearMonth periodo) {
-        verificarPeriodoCerrado(periodo);
+        verificarPeriodoValido(periodo);
 
         if (repoRankings.findByPeriodo(periodo).isPresent()) {
             throw new ConflictoException("Ya existe un ranking para el período: " + periodo);
@@ -145,27 +146,24 @@ public class RankingService {
         return convertirRankingMesADTO(rankingCreado);
     }
 
-    /**
-     * Rechaza un período que todavía no cerró: un ranking del mes en curso o futuro rompería
-     * las consultas del "actual". Solo se publica un mes cerrado.
-     */
-    private void verificarPeriodoCerrado(YearMonth periodo) {
+    /** Rechaza períodos futuros; el mes en curso puede publicarse como snapshot parcial. */
+    private void verificarPeriodoValido(YearMonth periodo) {
         YearMonth enCurso = YearMonth.now();
 
-        if (!periodo.isBefore(enCurso)) {
+        if (periodo.isAfter(enCurso)) {
             throw new IllegalArgumentException(
-                    "No se puede generar el ranking de " + periodo + " porque ese mes todavía no "
-                            + "terminó. Solo se publica un mes ya cerrado.");
+                    "No se puede generar el ranking de " + periodo
+                            + " porque todavía no comenzó.");
         }
     }
 
     /**
-     * El ranking más reciente publicado. No recalcula nada y solo cuenta períodos cerrados.
+     * El ranking más reciente publicado, incluido un snapshot parcial del mes en curso.
      */
     @Transactional(readOnly = true)
     public RankingMesDTO obtenerRankingActual(Pageable pageable) {
         RankingMensual rank = repoRankings
-                .findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth.now())
+                .findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth.now())
                 .orElseThrow(InexistenteException::new);
 
         return convertirRankingMesADTO(
@@ -203,7 +201,7 @@ public class RankingService {
     }
 
     /**
-     * Arma el ranking de un mes ya cerrado por páginas: proyecta solo donante y total, crea
+     * Arma el ranking del período por páginas: proyecta solo donante y total, crea
      * las posiciones de cada página y limpia el contexto de persistencia antes de la
      * siguiente, para no retener todo el ranking en memoria.
      */

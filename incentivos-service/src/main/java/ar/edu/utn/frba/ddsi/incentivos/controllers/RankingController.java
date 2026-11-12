@@ -46,11 +46,16 @@ public class RankingController {
     // ========== CREAR ==========
     @Operation(
             summary = "Crear ranking para un período específico",
-            description = "Genera un nuevo ranking mensual a partir de los datos históricos de donaciones de ese período. Devuelve la primera página de posiciones. Es una operación de administración: el front valida el rol ADMIN y el backend está detrás de la ACL."
+            description = "Genera un ranking mensual según la cantidad de misiones completadas en ese período, "
+                    + "sin importar la categoría. "
+                    + "Se permite el mes actual como snapshot parcial, que no se recalcula automáticamente. "
+                    + "Devuelve la primera página de posiciones. Es una operación de administración: "
+                    + "el front valida el rol ADMIN y el backend está detrás de la ACL."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ranking creado con éxito"),
-            @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período"),
+            @ApiResponse(responseCode = "400", description = "Período futuro o inválido"),
+            @ApiResponse(responseCode = "409", description = "Ya existe un ranking para ese período"),
             @ApiResponse(responseCode = "403", description = "No autorizado")
     })
     @PostMapping

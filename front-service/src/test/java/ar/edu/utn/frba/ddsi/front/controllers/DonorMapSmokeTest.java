@@ -53,13 +53,19 @@ class DonorMapSmokeTest {
         when(donacionesClient.obtenerEntidades()).thenReturn(List.of(entidad()));
         when(donacionesClient.obtenerDonacionesDeDonante(idDonante)).thenReturn(List.of(donacion()));
         when(seguimientoService.construirDonante(any())).thenReturn(seguimiento());
+        when(incentivosClient.obtenerPerfilPublico(idDonante.toString()))
+                .thenReturn(Map.of("nombreCategoria", "Colaborador solidario"));
 
         mockMvc.perform(get("/donante/mapa").session(sessionDonante()))
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
                         .string(org.hamcrest.Matchers.containsString("DONANTE_SEGUIMIENTO")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Comedor Los Piletones")));
+                        .string(org.hamcrest.Matchers.containsString("Comedor Los Piletones")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Categoría actual")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Colaborador solidario")));
     }
 
     private static EntidadBeneficiariaDTO entidad() {

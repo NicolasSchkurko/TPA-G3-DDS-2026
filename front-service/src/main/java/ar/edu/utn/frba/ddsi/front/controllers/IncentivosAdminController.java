@@ -196,6 +196,7 @@ public class IncentivosAdminController {
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining(","));
 
+        model.addAttribute("periodoActual", YearMonth.now().toString());
         model.addAttribute("rankings", rankings);
         model.addAttribute("seleccionado", seleccionado);
         model.addAttribute("vigente", vigente);
@@ -253,7 +254,7 @@ public class IncentivosAdminController {
     private static void informarErrorCreacionRanking(RedirectAttributes redirect) {
         redirect.addFlashAttribute("toastTipo", "error");
         redirect.addFlashAttribute("toastMensaje",
-                "No se pudo generar el ranking. Verificá que el período esté cerrado y que no exista ya.");
+                "No se pudo generar el ranking. Verificá que el período no sea futuro y que no exista ya.");
     }
 
     private static void informarErrorEliminacionRanking(RedirectAttributes redirect) {

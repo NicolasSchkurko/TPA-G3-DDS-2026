@@ -355,11 +355,6 @@ public class ProfileController {
 
     private void cargarIncentivos(UUID idDonante, Model model) {
         cargarIncentivosDonante(idDonante, model);
-        if (idDonante != null) {
-            Map<String, Object> publico = incentivosClient.obtenerPerfilPublico(idDonante.toString());
-            model.addAttribute("perfilPublicoIncentivos", publico);
-            model.addAttribute("categoriaPublica", publico.get("nombreCategoria"));
-        }
     }
 
     private void cargarIncentivosDonante(UUID idDonante, Model model) {
@@ -367,8 +362,10 @@ public class ProfileController {
             model.addAttribute("incentivosDisponibles", false);
             model.addAttribute("insignias", List.of());
             model.addAttribute("rankingTop3", List.of());
+            model.addAttribute("categoriaPublica", null);
             return;
         }
+        Map<String, Object> publico = incentivosClient.obtenerPerfilPublico(idDonante.toString());
         Map<String, Object> mision = incentivosClient.obtenerMision(idDonante.toString());
         int progreso = numero(mision.get("progresoActual"));
         int objetivo = numero(mision.get("progresoObjetivo"));
@@ -380,6 +377,8 @@ public class ProfileController {
                     .map(posicion -> (Map<String, Object>) posicion).limit(3).toList()
                 : List.of();
 
+        model.addAttribute("perfilPublicoIncentivos", publico);
+        model.addAttribute("categoriaPublica", publico.get("nombreCategoria"));
         model.addAttribute("misionDonante", mision);
         model.addAttribute("progresoMision", progreso);
         model.addAttribute("objetivoMision", objetivo);

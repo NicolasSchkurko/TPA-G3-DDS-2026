@@ -48,7 +48,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DisplayName("RankingService")
 class RankingServiceTest {
         @Nested
-        @DisplayName("Punto 32: no se publica el ranking de un período sin cerrar")
+        @DisplayName("se rechazan períodos futuros y se permiten snapshots del mes en curso")
         class Periodo {
 
 
@@ -67,8 +67,8 @@ class RankingServiceTest {
         }
 
         @Nested
-        @DisplayName("el efecto observable: el período no publica nada")
-        class RechazaLoQueNoEstaCerrado {
+        @DisplayName("el período es válido")
+        class PeriodosValidos {
 
             @Test
             @DisplayName("un mes futuro es un 400")
@@ -79,19 +79,24 @@ class RankingServiceTest {
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining(futuro.toString());
 
-                verify(repoRankings, never()).save(any());
+                verify(repoRankings, never()).saveAndFlush(any());
             }
 
             @Test
-            @DisplayName("el mes en curso es un 400: todavía no cerró y siempre sale vacío")
-            void elMesEnCursoEsUnError() {
+            @DisplayName("se puede publicar el mes en curso como snapshot parcial")
+            void elMesEnCursoSePuedeGenerar() {
                 YearMonth enCurso = YearMonth.now();
+                when(repoRankings.findByPeriodo(enCurso)).thenReturn(Optional.empty());
+                when(repoRankings.saveAndFlush(any())).thenAnswer(invoc -> invoc.getArgument(0));
+                when(repoPerfiles.calcularRankingMensual(any(), any(), any()))
+                        .thenReturn(new PageImpl<>(List.of()));
+                when(repoRankings.paginaPosiciones(any(), any()))
+                        .thenReturn(new PageImpl<>(List.of()));
 
-                assertThatThrownBy(() -> service.crearRankingMensual(ADMIN, enCurso))
-                        .as("es el caso que se rompía solo, sin que nadie hiciera nada raro")
-                        .isInstanceOf(IllegalArgumentException.class);
+                RankingMesDTO resultado = service.crearRankingMensual(ADMIN, enCurso);
 
-                verify(repoRankings, never()).save(any());
+                assertThat(resultado.getPeriodo()).isEqualTo(enCurso);
+                verify(repoRankings).saveAndFlush(any());
             }
 
             @Test
@@ -160,22 +165,39 @@ class RankingServiceTest {
         }
 
         @Nested
-        @DisplayName("el ranking actual ignora los períodos sin cerrar, estén o no")
-        class ElActualIgnoraLoQueNoEstaCerrado {
+        @DisplayName("el ranking actual incluye el snapshot del mes en curso cuando existe")
+        class ElActualIncluyeElMesEnCurso {
 
             @Test
-            @DisplayName("'el actual' se busca con el filtro por período, no con el más alto existente")
+            @DisplayName("'el actual' incluye el período actual y no toma períodos futuros")
             void elActualSeBuscaConFiltro() {
                 var rankingCerrado = mock(
                         ar.edu.utn.frba.ddsi.incentivos.models.entities.Ranking.RankingMensual.class);
-                when(repoRankings.findFirstByPeriodoLessThanOrderByPeriodoDesc(any()))
+                when(repoRankings.findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(any()))
                         .thenReturn(Optional.of(rankingCerrado));
                 when(repoRankings.paginaPosiciones(any(), any()))
                         .thenReturn(new PageImpl<>(List.of()));
 
                 assertThat(service.obtenerRankingActual(PageRequest.of(0, 10))).isNotNull();
 
-                verify(repoRankings).findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth.now());
+                verify(repoRankings).findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth.now());
+            }
+
+            @Test
+            @DisplayName("el puesto de un donante usa el ranking del mes actual publicado")
+            void elPuestoDelDonanteUsaElSnapshotActual() {
+                UUID idDonante = UUID.randomUUID();
+                UUID idRanking = UUID.randomUUID();
+                RankingMensual rankingActual = mock(RankingMensual.class);
+                Ranking puesto = mock(Ranking.class);
+                when(rankingActual.getIdRanking()).thenReturn(idRanking);
+                when(repoRankings.findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth.now()))
+                        .thenReturn(Optional.of(rankingActual));
+                when(repoRankings.findPosicionEnRanking(idRanking, idDonante))
+                        .thenReturn(Optional.of(puesto));
+                when(repoRankings.obtenerPosicionActualDeUsuario(idDonante)).thenCallRealMethod();
+
+                assertThat(repoRankings.obtenerPosicionActualDeUsuario(idDonante)).isSameAs(puesto);
             }
 
             @Test

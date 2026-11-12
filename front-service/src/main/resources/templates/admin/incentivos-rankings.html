@@ -189,14 +189,14 @@
 <div class="modal-overlay" id="generateModal" hidden>
     <div class="modal-box">
         <h3>Generar ranking mensual</h3>
-        <p>Seleccioná un período cerrado para calcular y publicar el snapshot del ranking.</p>
+        <p>Seleccioná un período para calcular y publicar el snapshot del ranking.</p>
 
         <form method="post" id="generateForm" th:action="@{/admin/incentivos/rankings}"
               th:attr="data-existentes=${periodosExistentes}">
             <div class="field">
                 <label for="periodInput">Período (AAAA-MM)</label>
-                <input type="month" id="periodInput" name="periodo" required>
-                <span class="hint">Solo se pueden cerrar meses ya completados.</span>
+                <input type="month" id="periodInput" name="periodo" th:attr="max=${periodoActual}" required>
+                <span class="hint">Podés generar hasta el mes actual. Ese ranking será un snapshot parcial y no se recalcula automáticamente.</span>
             </div>
 
             <div id="periodError" class="alert-error" hidden>
@@ -245,9 +245,7 @@
     /* ---------- Generar ranking ---------- */
     function openGenerateModal() {
         const input = document.getElementById('periodInput');
-        const now = new Date();
-        now.setMonth(now.getMonth() - 1);           /* solo meses cerrados */
-        input.max = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        input.value = input.max;
 
         document.getElementById('periodError').hidden = true;
         document.getElementById('generateModal').hidden = false;
