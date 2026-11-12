@@ -32,6 +32,43 @@
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
+    <!-- Accesos rápidos -->
+    <section class="admin-section">
+        <h2>Accesos rápidos</h2>
+        <div class="admin-tile-grid">
+            <a th:href="@{/admin/donaciones}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-box-seam"></i></span>
+                <span class="admin-tile-copy"><strong>Donaciones</strong><span>Gestioná donaciones y matchmaking.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            <a th:href="@{/admin/entidades}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-buildings"></i></span>
+                <span class="admin-tile-copy"><strong>Entidades</strong><span>Entidades y necesidades.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            <a th:href="@{/admin/donantes}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-people"></i></span>
+                <span class="admin-tile-copy"><strong>Donantes</strong><span>Alta, edición, importación CSV.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            <a th:href="@{/admin/camiones}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-truck"></i></span>
+                <span class="admin-tile-copy"><strong>Camiones</strong><span>Flota y disponibilidad.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            <a th:href="@{/admin/rutas}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-signpost-2"></i></span>
+                <span class="admin-tile-copy"><strong>Rutas</strong><span>Listado y seguimiento.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            <a th:href="@{/admin/entregas-no-recibidas}" class="admin-tile">
+                <span class="admin-tile-icon"><i class="bi bi-x-octagon"></i></span>
+                <span class="admin-tile-copy"><strong>Entregas no recibidas</strong><span>Revisión y reingreso.</span></span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+
     <!-- Tarjetas reales -->
     <section class="admin-cards" aria-label="Resumen">
         <div class="admin-card">
@@ -93,18 +130,6 @@
         </div>
     </section>
 
-    <!-- Donaciones por estado -->
-    <section class="admin-section">
-        <h2>Donaciones por estado</h2>
-        <div class="admin-chips">
-            <span class="admin-chip" th:each="e : ${resumen.donacionesPorEstado}">
-                <span th:text="${T(ar.edu.utn.frba.ddsi.front.dto.DonacionDTO).etiquetaDeEstado(e.key)}">estado</span>
-                <strong th:text="${e.value}">0</strong>
-            </span>
-            <span th:if="${#maps.isEmpty(resumen.donacionesPorEstado)}" class="text-muted">Sin datos.</span>
-        </div>
-    </section>
-
     <!-- Requiere atención -->
     <section class="admin-section admin-attention" aria-label="Requiere atención">
         <h2>Requiere atención</h2>
@@ -158,42 +183,6 @@
         </div>
     </section>
 
-    <!-- Accesos rápidos -->
-    <section class="admin-section">
-        <h2>Accesos rápidos</h2>
-        <div class="admin-tile-grid">
-            <a th:href="@{/admin/donaciones}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-box-seam"></i></span>
-                <span class="admin-tile-copy"><strong>Donaciones</strong><span>Gestioná donaciones y matchmaking.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-            <a th:href="@{/admin/entidades}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-buildings"></i></span>
-                <span class="admin-tile-copy"><strong>Entidades</strong><span>Entidades y necesidades.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-            <a th:href="@{/admin/donantes}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-people"></i></span>
-                <span class="admin-tile-copy"><strong>Donantes</strong><span>Alta, edición, importación CSV.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-            <a th:href="@{/admin/camiones}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-truck"></i></span>
-                <span class="admin-tile-copy"><strong>Camiones</strong><span>Flota y disponibilidad.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-            <a th:href="@{/admin/rutas}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-signpost-2"></i></span>
-                <span class="admin-tile-copy"><strong>Rutas</strong><span>Listado y seguimiento.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-            <a th:href="@{/admin/entregas-no-recibidas}" class="admin-tile">
-                <span class="admin-tile-icon"><i class="bi bi-x-octagon"></i></span>
-                <span class="admin-tile-copy"><strong>Entregas no recibidas</strong><span>Revisión y reingreso.</span></span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        </div>
-    </section>
 </main>
 
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>

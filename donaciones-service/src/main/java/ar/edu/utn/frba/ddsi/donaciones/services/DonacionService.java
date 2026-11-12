@@ -123,6 +123,20 @@ public class DonacionService {
     repositorioFormularios.guardar(formularioGenerado);
     List<Donacion> donacionesProcesadas = gestorFormulario.procesarFormulario(formularioGenerado);
 
+    List<String> imagenes = request.getImagenes() == null ? List.of()
+        : request.getImagenes().stream()
+            .filter(url -> url != null && !url.isBlank())
+            .map(String::trim)
+            .distinct()
+            .toList();
+    if (!imagenes.isEmpty()) {
+      donacionesProcesadas.forEach(donacion -> {
+        for (int i = 0; i < imagenes.size(); i++) {
+          donacion.agregarImagen(imagenes.get(i), i + 1);
+        }
+      });
+    }
+
     repositorioDonaciones.guardarDonaciones(donacionesProcesadas);
     repositorioDonantes.agregarFormularioADonante(donante.getId(), formularioGenerado);
 

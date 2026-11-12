@@ -73,12 +73,12 @@
                 </p>
             </span>
             <span style="display:flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                <span class="chip chip-info" th:text="${d.estado}">ASIGNADO</span>
+                <span class="chip chip-info" th:text="${d.etiquetaEstado()}">ASIGNADO</span>
                 <th:block th:with="entrega=${entregas != null ? entregas.get(d.id) : null}">
                     <span th:if="${entrega != null}"
                           class="chip"
                           th:classappend="${entrega.estado == 'ENTREGADA' ? ' chip-success' : (entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info')}"
-                          th:text="${entrega.estado == 'ENTREGADA' ? 'Entregada' : (entrega.estado == 'EN_CAMINO' ? 'En camino' : entrega.estado)}">En camino</span>
+                          th:text="${entrega.etiquetaEstado()}">En camino</span>
                     <span th:if="${entrega == null}" class="chip">Sin ítems logísticos</span>
                 </th:block>
             </span>

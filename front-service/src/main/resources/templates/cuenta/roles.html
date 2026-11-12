@@ -28,7 +28,7 @@
                         <p class="text-muted small mb-0">Conectá un perfil de Donante o Entidad beneficiaria a la cuenta
                             <strong th:text="${usuarioNombre}">usuario</strong>.</p>
                     </div>
-                    <a th:href="@{/}" class="btn btn-outline-secondary btn-sm flex-shrink-0">← Volver</a>
+                    <a th:href="@{/perfil}" class="btn btn-outline-secondary btn-sm flex-shrink-0" data-back="true">← Volver</a>
                 </div>
 
                 <div th:if="${error}" class="alert alert-danger d-flex align-items-center py-2" role="alert">

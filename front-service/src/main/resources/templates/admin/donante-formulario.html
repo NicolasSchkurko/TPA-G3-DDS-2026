@@ -16,11 +16,11 @@
 
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
-        <h1 th:text="${edicion ? 'Actualizar donante' : 'Registrar donante'}">Administración</h1>
-        <p class="admin-page-lead" th:text="${edicion ? 'Modificá los datos del donante, su domicilio, contactos y representantes.' : 'Cargá los datos del nuevo donante y sus datos de contacto.'}">Gestioná los datos del sistema.</p>
+        <p class="eyebrow" th:text="${modoPerfil == true ? 'Mi perfil' : 'Administración'}">Administración</p>
+        <h1 th:text="${modoPerfil == true ? 'Editar mi perfil' : (edicion ? 'Actualizar donante' : 'Registrar donante')}">Administración</h1>
+        <p class="admin-page-lead" th:text="${modoPerfil == true ? 'Actualizá tus datos personales, domicilio, contactos y representantes.' : (edicion ? 'Modificá los datos del donante, su domicilio, contactos y representantes.' : 'Cargá los datos del nuevo donante y sus datos de contacto.')}">Gestioná los datos del sistema.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" th:text="${edicion ? 'Volver a donantes' : 'Volver sin registrar'}">Volver</a>
+    <a class="btn btn-secondary" th:with="volver=${modoPerfil == true ? '/perfil' : (volverA != null ? volverA : '/admin/donantes')}" th:href="${volver}" data-back="true" th:text="${modoPerfil == true ? 'Volver a mi perfil' : (edicion ? 'Volver a donantes' : 'Volver sin registrar')}">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
@@ -294,7 +294,7 @@
         </section>
 
         <div class="acciones-formulario">
-            <a th:href="@{${volverA != null ? volverA : '/admin/donantes'}}" class="btn-cancelar-form">Cancelar</a>
+            <a th:with="volver=${modoPerfil == true ? '/perfil' : (volverA != null ? volverA : '/admin/donantes')}" th:href="${volver}" data-back="true" class="btn-cancelar-form">Cancelar</a>
             <button type="submit" class="btn-actualizar">
                 <i class="bi bi-check-lg"></i>
                 <span th:text="${edicion} ? 'Guardar cambios' : 'Registrar donante'">Registrar donante</span>

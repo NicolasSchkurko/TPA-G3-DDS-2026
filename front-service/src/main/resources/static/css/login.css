@@ -46,7 +46,7 @@
     overflow: hidden;
     color: var(--white);
     background:
-        linear-gradient(155deg, #155f2d 0%, #1b7838 55%, #2f8f4d 100%);
+        linear-gradient(155deg, #0f4a23 0%, #155f2d 55%, #1b7838 100%);
 }
 
 .login-visual::before,
@@ -78,21 +78,6 @@
     z-index: 1;
 }
 
-.login-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--gap-2);
-    margin: 0 0 var(--gap-5);
-    padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, .26);
-    border-radius: var(--radius-pill);
-    background: rgba(255, 255, 255, .10);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .10em;
-    text-transform: uppercase;
-}
-
 .login-visual h1 {
     margin: 0 0 var(--gap-4);
     max-width: 14ch;
@@ -104,7 +89,7 @@
 .login-visual p {
     margin: 0;
     max-width: 42ch;
-    color: rgba(255, 255, 255, .82);
+    color: #ffffff;
     font-size: 15px;
     line-height: 1.65;
 }
@@ -123,7 +108,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--gap-3);
-    color: rgba(255, 255, 255, .92);
+    color: #ffffff;
     font-size: 13.5px;
     line-height: 1.45;
 }
@@ -251,7 +236,7 @@
     padding-top: var(--gap-4);
     border-top: 1px solid var(--line);
     color: var(--muted-2);
-    font-size: 11.5px;
+    font-size: 12px;
     line-height: 1.45;
 }
 
@@ -336,7 +321,7 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, .78);
     color: var(--muted, #5f6b62);
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.25;
 }
 

@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.donaciones.dto.donaciones;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,6 +21,7 @@ public class DonacionResumenDTO {
   private String categoriaBienName;
   private LocalDate fechaEntrega;
   private Integer cantidadTotalBienes;
+  private List<String> imagenes = new ArrayList<>();
 
   public static DonacionResumenDTO from(Donacion donacion) {
     if (donacion == null) return null;
@@ -38,6 +41,7 @@ public class DonacionResumenDTO {
         ? donacion.getSubcategoria().getCategoria().getNombre() : "N/A");
     dto.setFechaEntrega(donacion.getFechaEntrega());
     dto.setCantidadTotalBienes(donacion.sumaCantidadBienes());
+    dto.setImagenes(donacion.urlsDeImagenes());
     return dto;
   }
 }

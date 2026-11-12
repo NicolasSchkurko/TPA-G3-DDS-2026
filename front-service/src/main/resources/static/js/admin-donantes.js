@@ -85,6 +85,7 @@
     const filasMapeo = document.getElementById('csvMappingRows');
     const mapeosInput = document.getElementById('csvMapeos');
     const cerrarMapeo = document.getElementById('csvMappingCerrar');
+    const botonSubirCsv = document.getElementById('botonSubirCsv');
     let encabezadosCsv = [];
 
     const CAMPOS_CSV = [
@@ -212,6 +213,15 @@
     if (cerrarMapeo) cerrarMapeo.addEventListener('click', function () {
         if (panelMapeo) panelMapeo.hidden = true;
     });
+    if (botonSubirCsv && formImportar) {
+        botonSubirCsv.addEventListener('click', function () {
+            if (typeof formImportar.requestSubmit === 'function') {
+                formImportar.requestSubmit();
+            } else {
+                formImportar.submit();
+            }
+        });
+    }
 
     // ------------------------------------------------------------------
     // Confirmación de borrado

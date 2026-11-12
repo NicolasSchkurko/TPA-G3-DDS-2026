@@ -74,6 +74,18 @@ public final class LogisticaDTOs {
                 default -> false;
             };
         }
+
+        public String etiquetaEstado() {
+            if (estado == null || estado.isBlank()) return "Sin estado";
+            return switch (estado.toUpperCase()) {
+                case "PENDIENTE" -> "Pendiente";
+                case "EN_CAMINO" -> "En camino";
+                case "ENTREGADA" -> "Entregada";
+                case "NO_RECIBIDA" -> "No recibida";
+                case "REINGRESADA" -> "Reingresada";
+                default -> estado;
+            };
+        }
     }
 
     @Getter @Setter @NoArgsConstructor

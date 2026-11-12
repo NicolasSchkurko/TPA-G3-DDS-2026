@@ -10,7 +10,7 @@
           content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y pendientes en la Ciudad de Buenos Aires.">
 
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
-    <link rel="stylesheet" href="/css/landing.css?v=4" th:href="@{/css/landing.css(v=4)}">
+    <link rel="stylesheet" href="/css/landing.css?v=5" th:href="@{/css/landing.css(v=5)}">
 </head>
 <body class="landing">
 
@@ -143,41 +143,7 @@
                 </div>
             </section>
 
-            <section class="sidebar-section landing-gallery" aria-labelledby="galeria-title">
-                <div class="section-head">
-                    <h2 id="galeria-title">Donaciones entregadas</h2>
-                    <span th:text="${galeriaEntregas != null ? #lists.size(galeriaEntregas) : 0}">0</span>
-                </div>
-                <div class="gallery-grid">
-                    <article class="gallery-card" th:each="entrega : ${galeriaEntregas}">
-                        <th:block th:if="${entrega.fotoComprobante != null and !#strings.isEmpty(entrega.fotoComprobante)}">
-                            <img class="gallery-photo"
-                                 th:src="${entrega.fotoComprobante}"
-                                 alt="Foto de entrega confirmada"
-                                 loading="lazy"
-                                 decoding="async">
-                        </th:block>
-                        <div class="gallery-photo gallery-photo--placeholder"
-                             th:unless="${entrega.fotoComprobante != null and !#strings.isEmpty(entrega.fotoComprobante)}"
-                             role="img"
-                             aria-label="Foto de entrega no disponible"></div>
-                        <div class="gallery-meta">
-                            <span th:text="${entrega.entidadDestino != null and entrega.entidadDestino.zona != null
-                                    ? entrega.entidadDestino.zona
-                                    : 'Entrega confirmada'}">Entrega confirmada</span>
-                            <span th:if="${entrega.cantidad != null}">
-                                · <span th:text="${entrega.cantidad}">1</span>
-                                <span th:text="${entrega.unidadDeMedida != null ? entrega.unidadDeMedida : 'unidades'}">unidades</span>
-                            </span>
-                        </div>
-                    </article>
-                </div>
-                <p class="panel-empty" th:if="${#lists.isEmpty(galeriaEntregas)}">
-                    Todavía no hay entregas con foto para mostrar.
-                </p>
-            </section>
-
-            <p class="sidebar-note">Destacadas en la barra lateral · Entregadas también visibles en el mapa</p>
+            <p class="sidebar-note">Donaciones destacadas de la red solidaria</p>
         </aside>
 
         <section class="map-pane" aria-label="Mapa de donaciones">

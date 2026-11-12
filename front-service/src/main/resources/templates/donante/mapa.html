@@ -24,8 +24,13 @@
                     <h2>Donaciones</h2>
                     <p class="text-muted small mb-0">Tu misión progresa cuando la donación figura como Entregada.</p>
                 </div>
-                <span class="history-count" id="historyCount"
-                      th:text="${#lists.size(historialDonaciones)}">0</span>
+                <div class="sidebar-heading-actions">
+                    <span class="history-count" id="historyCount"
+                          th:text="${#lists.size(historialDonaciones)}">0</span>
+                    <button class="sidebar-close" id="closeDonorInfo" type="button" aria-label="Cerrar donaciones">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
             </header>
 
             <a class="donate-cta" th:href="@{/realizar-donacion}">
@@ -85,7 +90,7 @@
                 <button class="history-card" type="button"
                         th:each="donacion : ${historialDonaciones}"
                         th:attr="data-id=${donacion.id},
-                                 data-name=${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'},
+                                 data-name=${(donacion.tituloVisible() ?: '') + ' ' + (donacion.descripcionVisible() ?: '')},
                                  data-category=${donacion.categoriaBienName ?: ''},
                                  data-subcategory=${donacion.subcategoriaName ?: ''},
                                  data-status=${donacion.estado ?: 'N/A'},
@@ -94,7 +99,7 @@
                     <span class="history-card-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
                     <span class="history-card-content">
                         <span class="history-card-title"
-                              th:text="${donacion.descripcion ?: donacion.subcategoriaName ?: 'Donación'}">Donación</span>
+                              th:text="${donacion.tituloVisible()}">Donación</span>
                         <span class="history-card-meta">
                             <span th:text="${donacion.entidadBeneficiaria ?: 'Destino pendiente'}">Entidad</span>
                             <span aria-hidden="true"> · </span>

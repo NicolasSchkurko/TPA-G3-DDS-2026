@@ -39,6 +39,12 @@ public class CamionService {
 
   public CamionDTO create(CamionDTO dto) {
     Camion nuevoCamion = dto.toDomain();
+    if (dto.getIdChofer() != null) {
+      Chofer chofer = repoChoferes.findById(dto.getIdChofer())
+              .filter(Chofer::isActivo)
+              .orElseThrow(() -> new RecursoNoEncontradoException("Chofer no encontrado"));
+      nuevoCamion.setChofer(chofer);
+    }
     repoCamiones.save(nuevoCamion);
     return new CamionDTO().aplicar(nuevoCamion);
   }

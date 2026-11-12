@@ -26,6 +26,8 @@ public class FormularioDonacionDTO {
     @Valid
     private List<BienDonacionDTO> bienes = new ArrayList<>(List.of(new BienDonacionDTO()));
 
+    private List<String> imagenes = new ArrayList<>();
+
     /**
      * Valida y normaliza lo que cargó el admin. Se usa en el panel de administración en vez de
      * {@code @Valid} porque ahí el formulario se repinta con los mensajes en castellano y con las

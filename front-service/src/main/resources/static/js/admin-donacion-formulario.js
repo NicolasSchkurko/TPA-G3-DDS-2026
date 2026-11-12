@@ -126,6 +126,97 @@
 
         renumerarBienes();
         aplicarTipoATodas();
+
+        const csrfMeta = document.querySelector('meta[name="_csrf"]');
+        const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+        let uploadsPendientes = 0;
+
+        function mostrarPreviewFoto(fila, url) {
+            const preview = fila.querySelector('.bien-foto-preview');
+            const img = preview ? preview.querySelector('img') : null;
+            if (!preview || !img) return;
+            if (url) {
+                img.src = url;
+                preview.hidden = false;
+            } else {
+                img.removeAttribute('src');
+                preview.hidden = true;
+            }
+        }
+
+        async function subirFoto(fila, archivo) {
+            const oculto = fila.querySelector('.bien-foto-url');
+            const error = fila.querySelector('.bien-foto-error');
+            const input = fila.querySelector('.bien-foto-input');
+            if (!oculto || !archivo) return;
+            if (error) error.hidden = true;
+            if (!archivo.type || !archivo.type.startsWith('image/')) {
+                if (error) { error.textContent = 'Elegí una imagen JPG, PNG o WEBP.'; error.hidden = false; }
+                if (input) input.value = '';
+                return;
+            }
+            if (archivo.size > 10 * 1024 * 1024) {
+                if (error) { error.textContent = 'La imagen supera el máximo de 10 MB.'; error.hidden = false; }
+                if (input) input.value = '';
+                return;
+            }
+            const datos = new FormData();
+            datos.append('file', archivo);
+            uploadsPendientes++;
+            try {
+                const headers = {};
+                if (csrfMeta && csrfHeaderMeta) headers[csrfHeaderMeta.content] = csrfMeta.content;
+                const respuesta = await fetch('/api/uploads/donacion', { method: 'POST', headers: headers, body: datos });
+                const cuerpo = await respuesta.json().catch(() => ({}));
+                if (!respuesta.ok) throw new Error(cuerpo.error || 'No se pudo subir la foto.');
+                oculto.value = cuerpo.url;
+                mostrarPreviewFoto(fila, cuerpo.url);
+            } catch (e) {
+                oculto.value = '';
+                mostrarPreviewFoto(fila, '');
+                if (input) input.value = '';
+                if (error) { error.textContent = e.message || 'No se pudo subir la foto.'; error.hidden = false; }
+            } finally {
+                uploadsPendientes--;
+            }
+        }
+
+        contenedorBienes.addEventListener('change', function (evento) {
+            if (evento.target.matches('.bien-foto-input')) {
+                subirFoto(evento.target.closest('.fila-bien'), evento.target.files && evento.target.files[0]);
+            }
+        });
+
+        contenedorBienes.addEventListener('click', function (evento) {
+            if (!evento.target.closest('.quitar-foto')) return;
+            const fila = evento.target.closest('.fila-bien');
+            fila.querySelector('.bien-foto-url').value = '';
+            fila.querySelector('.bien-foto-input').value = '';
+            mostrarPreviewFoto(fila, '');
+        });
+
+        const formulario = document.getElementById('formularioDonacion');
+        if (formulario) {
+            formulario.addEventListener('submit', function (evento) {
+                if (uploadsPendientes <= 0) return;
+                evento.preventDefault();
+                let error = document.getElementById('formUploadError');
+                if (!error) {
+                    error = document.createElement('div');
+                    error.id = 'formUploadError';
+                    error.className = 'alert alert-danger';
+                    error.setAttribute('role', 'alert');
+                    formulario.prepend(error);
+                }
+                error.textContent = 'Esperá a que terminen de subirse las fotos.';
+                error.hidden = false;
+            });
+        }
+
+        contenedorBienes.querySelectorAll('.fila-bien').forEach(function (fila) {
+            const oculto = fila.querySelector('.bien-foto-url');
+            if (oculto && oculto.value) mostrarPreviewFoto(fila, oculto.value);
+        });
     }
 
     // ==================================================================

@@ -290,6 +290,7 @@
     function initDonationHistory() {
         const layout = document.querySelector(".map-main");
         const sidebarToggle = document.getElementById("toggleDonorInfo");
+        const sidebarClose = document.getElementById("closeDonorInfo");
         const list = document.getElementById("historyList");
         const search = document.getElementById("historySearch");
         const status = document.getElementById("historyStatus");
@@ -396,6 +397,18 @@
                     ? "Mostrando donaciones asignadas, listas para entregar o en traslado."
                     : "";
             }
+        }
+
+        if (sidebarClose) {
+            sidebarClose.addEventListener("click", () => {
+                layout.classList.add("sidebar-collapsed");
+                sidebarToggle.setAttribute("aria-expanded", "false");
+                sidebarToggle.setAttribute("aria-label", "Mostrar donaciones");
+                sidebarToggle.querySelector("i").className = "bi bi-chevron-right";
+                const label = sidebarToggle.querySelector(".map-corner-toggle-label");
+                if (label) label.textContent = "Donaciones";
+                if (map) window.setTimeout(() => map.invalidateSize(), 220);
+            });
         }
 
         sidebarToggle.addEventListener("click", () => {

@@ -18,8 +18,7 @@
         <div id="map" role="application" aria-label="Mapa con las paradas y la ubicación del camión"></div>
 
         <div class="seguimiento-topbar">
-            <a class="seguimiento-back" th:href="@{/}"
-               onclick="if (history.length > 1) { history.back(); return false; }">
+            <a class="seguimiento-back" th:href="@{/}" data-back="true">
                 <span aria-hidden="true">←</span> Volver
             </a>
             <div class="seguimiento-title-card">

@@ -27,6 +27,7 @@ public class DonacionDTO {
   private String categoriaBienName;
   private LocalDate fechaEntrega;
   private Integer cantidadTotalBienes;
+  private List<String> imagenes = new ArrayList<>();
   // Cascada de validación (punto 22): cada BienResumenDTO de la lista se valida también.
   @Valid
   private List<BienResumenDTO> bienes;
@@ -54,6 +55,7 @@ public class DonacionDTO {
     dto.setCategoriaBienName(resumen.getCategoriaBienName());
     dto.setFechaEntrega(resumen.getFechaEntrega());
     dto.setCantidadTotalBienes(resumen.getCantidadTotalBienes());
+    dto.setImagenes(resumen.getImagenes() != null ? resumen.getImagenes() : new ArrayList<>());
 
     if (donacion.getBienes() != null) {
       dto.setBienes(donacion.getBienes().stream().map(BienResumenDTO::from).collect(Collectors.toList()));

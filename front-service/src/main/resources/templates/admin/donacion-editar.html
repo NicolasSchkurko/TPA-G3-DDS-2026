@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Actualizar donación — DonaTrack</title>
     <meta name="description" content="Actualización de una donación y cambio de su estado">
@@ -20,7 +22,7 @@
         <h1 th:text="'Actualizar donación'">Administración</h1>
         <p class="admin-page-lead" th:text="'Modificá los datos de la donación o su estado operativo.'">Gestioná los datos del sistema.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin/donaciones}" th:text="'Volver a donaciones'">Volver</a>
+    <a class="btn btn-secondary" th:href="@{/admin/donaciones}" data-back="true" th:text="'Volver a donaciones'">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
@@ -191,6 +193,20 @@
                                    th:field="*{bienes[__${iter.index}__].fechaVencimiento}">
                         </div>
 
+                        <div class="campo campo-foto">
+                            <label class="form-label">Foto del bien (opcional)</label>
+                            <input type="file" class="form-control bien-foto-input"
+                                   accept="image/jpeg,image/png,image/webp">
+                            <input type="hidden" class="bien-foto-url" data-campo="urlFoto"
+                                   th:field="*{bienes[__${iter.index}__].urlFoto}">
+                            <div class="bien-foto-preview mt-2" hidden>
+                                <img class="bien-foto-preview-img" alt="Vista previa de la foto del bien">
+                                <button type="button" class="btn btn-outline-danger btn-sm quitar-foto">Quitar foto</button>
+                            </div>
+                            <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB.</div>
+                            <div class="bien-foto-error text-danger small" hidden></div>
+                        </div>
+
                         <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
                             <i class="bi bi-trash3"></i>
                         </button>
@@ -204,7 +220,7 @@
         </section>
 
         <div class="acciones-formulario">
-            <a th:href="@{/admin/donaciones}" class="btn-cancelar-form">Cancelar</a>
+            <a th:href="@{/admin/donaciones}" data-back="true" class="btn-cancelar-form">Cancelar</a>
             <button type="submit" class="btn-actualizar">
                 <i class="bi bi-check-lg"></i>
                 Guardar cambios
@@ -321,6 +337,17 @@
         <div class="campo campo-vencimiento">
             <label class="form-label">Vence el <span class="obligatorio">*</span></label>
             <input type="date" class="form-control" data-campo="fechaVencimiento">
+        </div>
+        <div class="campo campo-foto">
+            <label class="form-label">Foto del bien (opcional)</label>
+            <input type="file" class="form-control bien-foto-input" accept="image/jpeg,image/png,image/webp">
+            <input type="hidden" class="bien-foto-url" data-campo="urlFoto">
+            <div class="bien-foto-preview mt-2" hidden>
+                <img class="bien-foto-preview-img" alt="Vista previa de la foto del bien">
+                <button type="button" class="btn btn-outline-danger btn-sm quitar-foto">Quitar foto</button>
+            </div>
+            <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB.</div>
+            <div class="bien-foto-error text-danger small" hidden></div>
         </div>
         <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
             <i class="bi bi-trash3"></i>

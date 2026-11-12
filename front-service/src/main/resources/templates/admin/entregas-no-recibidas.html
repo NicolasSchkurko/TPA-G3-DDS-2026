@@ -17,7 +17,7 @@
         <h1>Entregas no recibidas</h1>
         <p class="admin-page-lead">Ítems rechazados pendientes de revisión.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin}">Volver al panel</a>
+    <a class="btn btn-secondary" th:href="@{/admin}" data-back="true">Volver al panel</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
     <div class="card border-0 shadow-sm">
@@ -41,7 +41,7 @@
                         <td th:text="${e.idDonacion}">id</td>
                         <td th:text="${e.cantidad}">cant</td>
                         <td th:text="${e.unidadDeMedida}">unidad</td>
-                        <td th:text="${e.estado}">estado</td>
+                        <td th:text="${e.etiquetaEstado()}">estado</td>
                         <td>
                             <form th:action="@{/admin/entregas-no-recibidas/{id}/reingresar(id=${e.idDonacion})}" method="post">
                                 <button class="btn btn-sm btn-outline-primary" type="submit">Reingresar</button>

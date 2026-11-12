@@ -68,3 +68,6 @@ build/
 /CONFIG-RABBITMQ.md
 /opencode.json
 front-service/data/
+
+### Archivos subidos en desarrollo local ###
+uploads/

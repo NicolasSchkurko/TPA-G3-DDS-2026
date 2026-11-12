@@ -44,8 +44,8 @@ public class ProfileRedirectHandler implements AuthenticationSuccessHandler {
                 .map(a -> a.getAuthority())
                 .filter(a -> a != null && a.startsWith("ROLE_"))
                 .map(a -> a.substring("ROLE_".length()))
-                .filter(List.of("ENTIDAD", "DONANTE", "CHOFER", "ADMIN")::contains)
-                .sorted(java.util.Comparator.comparingInt(List.of("ENTIDAD", "DONANTE", "CHOFER", "ADMIN")::indexOf))
+                .filter(List.of("CHOFER", "ENTIDAD", "DONANTE", "ADMIN")::contains)
+                .sorted(java.util.Comparator.comparingInt(List.of("CHOFER", "ENTIDAD", "DONANTE", "ADMIN")::indexOf))
                 .collect(java.util.stream.Collectors.toList());
     }
 

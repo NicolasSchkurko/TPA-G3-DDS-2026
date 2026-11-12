@@ -16,11 +16,11 @@
 
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
-        <h1 th:text="${edicion ? 'Actualizar entidad' : 'Registrar entidad'}">Administración</h1>
-        <p class="admin-page-lead" th:text="${edicion ? 'Modificá los datos de la entidad, su contacto y su domicilio de entrega.' : 'Cargá los datos de la nueva entidad beneficiaria.'}">Gestioná los datos del sistema.</p>
+        <p class="eyebrow" th:text="${modoPerfil == true ? 'Mi perfil' : 'Administración'}">Administración</p>
+        <h1 th:text="${modoPerfil == true ? 'Editar mi entidad' : (edicion ? 'Actualizar entidad' : 'Registrar entidad')}">Administración</h1>
+        <p class="admin-page-lead" th:text="${modoPerfil == true ? 'Actualizá los datos, el contacto y el domicilio de entrega de tu entidad.' : (edicion ? 'Modificá los datos de la entidad, su contacto y su domicilio de entrega.' : 'Cargá los datos de la nueva entidad beneficiaria.')}">Gestioná los datos del sistema.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin/entidades}" th:text="'Volver a entidades'">Volver</a>
+    <a class="btn btn-secondary" th:href="${modoPerfil == true ? '/perfil' : '/admin/entidades'}" data-back="true" th:text="${modoPerfil == true ? 'Volver a mi perfil' : 'Volver a entidades'}">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
@@ -154,7 +154,7 @@
         </section>
 
         <div class="acciones-formulario">
-            <a th:href="@{/admin/entidades}" class="btn-cancelar-form">Cancelar</a>
+            <a th:href="${modoPerfil == true ? '/perfil' : '/admin/entidades'}" data-back="true" class="btn-cancelar-form">Cancelar</a>
             <button type="submit" class="btn-actualizar">
                 <i class="bi bi-check-lg"></i>
                 <span th:text="${edicion} ? 'Guardar cambios' : 'Registrar entidad'">Registrar entidad</span>

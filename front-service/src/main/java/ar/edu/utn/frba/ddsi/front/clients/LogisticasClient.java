@@ -133,6 +133,18 @@ public class LogisticasClient {
         }
     }
 
+    /** Actualiza los datos editables del chofer (nombre y disponibilidad). */
+    public ChoferDTO actualizarChofer(ChoferDTO chofer) {
+        if (chofer == null || chofer.getIdChofer() == null) {
+            throw new IllegalArgumentException("El chofer a actualizar necesita un identificador.");
+        }
+        return restClient.put()
+                .uri(baseUrl + "/choferes/{id}", chofer.getIdChofer())
+                .body(chofer)
+                .retrieve()
+                .body(ChoferDTO.class);
+    }
+
     /** Rutas activas (programadas o en curso) para mapas de donante y entidad. */
     public List<LogisticaDTOs.Ruta> obtenerRutasActivas() {
         try {

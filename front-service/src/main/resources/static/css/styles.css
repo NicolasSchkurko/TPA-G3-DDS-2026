@@ -127,3 +127,37 @@ a.card:hover {
     pointer-events: none;
     background: linear-gradient(180deg, rgba(244, 247, 244, .45), rgba(244, 247, 244, .7));
 }
+
+.leaflet-control-attribution { font-size: 11px; }
+
+.bien-foto-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bien-foto-preview-img {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    border: 1px solid var(--line, #e1e5e0);
+    border-radius: 8px;
+}
+
+.bien-foto-input::file-selector-button {
+    margin-right: 10px;
+    padding: 7px 12px;
+    border: 1px solid var(--brand-accent-soft, #d9ebe0);
+    border-radius: 6px;
+    background: var(--brand-accent-soft, #eaf4ee);
+    color: var(--brand-accent-dark, #145c2b);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fotos-donacion-preview { display: flex; flex-wrap: wrap; gap: 10px; }
+.foto-donacion { position: relative; width: 120px; margin: 0; }
+.foto-donacion img { width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--line-strong, #cdd4ce); border-radius: 8px; }
+.foto-donacion-quitar { display: block; width: 100%; margin-top: 4px; border: 0; background: transparent; color: #b91c1c; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }

@@ -560,11 +560,11 @@ public class EntidadViewController {
         items.add(new TimelineItem(
                 donacion.getFechaEntrega() != null ? donacion.getFechaEntrega().toString() : null,
                 "Estado actual de la donación",
-                "La donación figura como " + (donacion.getEstado() != null ? donacion.getEstado() : "sin estado") + "."));
+                "La donación figura como " + (donacion.getEstado() != null ? DonacionDTO.etiquetaDeEstado(donacion.getEstado()) : "sin estado") + "."));
         if (entrega != null) {
             items.add(new TimelineItem(
                     entrega.getFechaCambioEstado() != null ? entrega.getFechaCambioEstado().toString() : null,
-                    "Estado de logística: " + entrega.getEstado(),
+                    "Estado de logística: " + entrega.etiquetaEstado(),
                     "Cantidad: " + entrega.getCantidad() + " " + (entrega.getUnidadDeMedida() != null ? entrega.getUnidadDeMedida() : "")));
             if (entrega.getEventos() != null) {
                 for (LogisticaDTOs.EventoLogistica evento : entrega.getEventos()) {

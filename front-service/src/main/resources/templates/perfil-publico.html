@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title th:text="${nombrePerfil + ' — DonaTrack'}">Perfil público — DonaTrack</title>
+    <meta name="description" content="Perfil público de una persona o entidad de la red DonaTrack.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/perfil.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+<main class="profile-page" id="contenido" tabindex="-1">
+    <header class="profile-header">
+        <div>
+            <p class="eyebrow">Perfil público</p>
+            <h1 th:text="${tipoPerfil == 'ENTIDAD' ? 'Entidad beneficiaria' : 'Persona donante'}">Perfil público</h1>
+            <p>Solo mostramos la información que ayuda a conocer la actividad pública de este perfil.</p>
+        </div>
+        <a class="btn btn-secondary" th:href="@{/}">Volver al inicio</a>
+    </header>
+
+    <div class="profile-grid">
+        <section class="profile-card">
+            <div class="profile-hero">
+                <span class="profile-avatar" aria-hidden="true">
+                    <i th:class="${tipoPerfil == 'ENTIDAD' ? 'bi bi-building' : 'bi bi-person-fill'}"></i>
+                </span>
+                <div>
+                    <p class="eyebrow" th:text="${tipoPerfil == 'ENTIDAD' ? 'Entidad beneficiaria' : 'Donante'}">Donante</p>
+                    <h2 th:text="${nombrePerfil}">Nombre</h2>
+                    <p class="profile-meta">
+                        <span th:if="${tipoPersona != null}" th:text="${tipoPersona == 'JURIDICA' ? 'Persona jurídica' : 'Persona humana'}">Persona humana</span>
+                        <span th:if="${ciudad != null and !#strings.isEmpty(ciudad)}" th:text="${' · ' + ciudad}"> · CABA</span>
+                        <span th:if="${entidad != null and entidad.rubro != null and !#strings.isEmpty(entidad.rubro)}" th:text="${' · ' + entidad.rubro}"> · Comedor</span>
+                    </p>
+                </div>
+            </div>
+
+            <div th:if="${tipoPerfil == 'DONANTE'}" class="profile-section">
+                <h3>Actividad solidaria</h3>
+                <p class="profile-meta" th:if="${categoriaPublica != null and !#strings.isEmpty(categoriaPublica)}">
+                    Categoría: <strong th:text="${categoriaPublica}">Colaborador</strong>
+                </p>
+                <div th:if="${misionDonante != null and !#maps.isEmpty(misionDonante)}" class="profile-mission">
+                    <span class="profile-mission-name" th:text="${misionDonante['nombreMision']}">Misión actual</span>
+                    <p class="profile-meta" th:if="${misionDonante['descripcion'] != null}" th:text="${misionDonante['descripcion']}">Descripción</p>
+                    <div class="progress" role="progressbar"
+                         th:attr="aria-valuenow=${porcentajeMision}, aria-valuemin=0, aria-valuemax=100">
+                        <div class="progress-bar" th:style="'width:' + ${porcentajeMision} + '%'"></div>
+                    </div>
+                    <p class="profile-meta" th:text="${progresoMision + ' de ' + objetivoMision + ' completado(s)'}">0 de 0</p>
+                </div>
+                <p class="profile-meta" th:if="${misionDonante == null or #maps.isEmpty(misionDonante)}">
+                    Todavía no hay una misión pública para mostrar.
+                </p>
+            </div>
+
+            <div th:if="${tipoPerfil == 'DONANTE' and insignias != null and !#lists.isEmpty(insignias)}" class="profile-section">
+                <h3>Insignias</h3>
+                <div class="profile-badges">
+                    <div class="profile-badge" th:each="insignia : ${insignias}">
+                        <img class="profile-badge-image" th:if="${insignia['urlImagen'] != null}"
+                             th:src="${insignia['urlImagen']}" th:alt="${insignia['nombre']}">
+                        <span class="profile-badge-icon" th:unless="${insignia['urlImagen'] != null}">
+                            <i class="bi bi-award" aria-hidden="true"></i>
+                        </span>
+                        <span>
+                            <strong th:text="${insignia['nombre']}">Insignia</strong>
+                            <small th:if="${insignia['descripcion'] != null}" th:text="${insignia['descripcion']}">Descripción</small>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${tipoPerfil == 'ENTIDAD'}" class="profile-section">
+                <h3>Necesidades activas</h3>
+                <div th:if="${necesidadesPublicas != null and !#lists.isEmpty(necesidadesPublicas)}">
+                    <article class="profile-need" th:each="necesidad : ${necesidadesPublicas}">
+                        <strong th:text="${necesidad.nombreSubcategoria}">Arroz</strong>
+                        <span th:text="${(necesidad.nombreCategoria != null ? necesidad.nombreCategoria + ' · ' : '') + (necesidad.cantidadObjetivo != null ? necesidad.cantidadObjetivo : 0) + ' ' + (necesidad.unidadDeMedida != null ? necesidad.unidadDeMedida : 'unidades')}">Alimentos · 100 unidades</span>
+                    </article>
+                </div>
+                <p class="profile-meta" th:if="${necesidadesPublicas == null or #lists.isEmpty(necesidadesPublicas)}">
+                    La entidad no tiene necesidades activas en este momento.
+                </p>
+            </div>
+        </section>
+
+        <aside class="profile-side-card">
+            <h3>Sobre este perfil</h3>
+            <p class="profile-meta">Los datos de contacto y el domicilio exacto no se publican. Si querés colaborar, usá los canales oficiales de DonaTrack.</p>
+            <div class="profile-actions">
+                <a class="btn btn-primary" th:if="${tipoPerfil == 'ENTIDAD'}" th:href="@{/donaciones}">Ver donaciones</a>
+                <a class="btn btn-secondary" th:href="@{/}">Conocer DonaTrack</a>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

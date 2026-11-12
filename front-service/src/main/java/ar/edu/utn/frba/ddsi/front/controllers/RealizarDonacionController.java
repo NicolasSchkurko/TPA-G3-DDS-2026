@@ -126,9 +126,13 @@ public class RealizarDonacionController {
             return Optional.empty();
         }
 
-        // En cuentas con varios roles, resolvemos primero la identidad vinculada al correo
-        // y cargamos el perfil por su ID. La búsqueda por medios de contacto queda como respaldo.
-        var identidad = donacionesClient.buscarIdentidadPorEmail(correo);
+        // La identidad estable es el sub de Keycloak: funciona aunque el email del perfil
+        // sea distinto (por ejemplo, una cuenta chofer que además es donante).
+        String sub = obtenerSub(authentication);
+        var identidad = sub != null ? donacionesClient.buscarIdentidadPorSub(sub) : null;
+        if (identidad == null) {
+            identidad = donacionesClient.buscarIdentidadPorEmail(correo);
+        }
         if (identidad != null && identidad.getDonanteId() != null) {
             PersonaDonanteDTO perfil = donacionesClient.obtenerDonantePorId(identidad.getDonanteId());
             if (perfil != null) {
@@ -167,6 +171,14 @@ public class RealizarDonacionController {
     private static boolean tieneRolDonante(Authentication authentication) {
         return authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(autoridad -> "ROLE_DONANTE".equals(autoridad.getAuthority()));
+    }
+
+    private static String obtenerSub(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser oidcUser)) {
+            return null;
+        }
+        String sub = oidcUser.getSubject();
+        return sub == null || sub.isBlank() ? null : sub;
     }
 
     private static String obtenerCorreo(Authentication authentication) {

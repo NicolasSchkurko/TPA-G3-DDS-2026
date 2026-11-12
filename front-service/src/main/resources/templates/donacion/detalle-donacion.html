@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
     <link rel="stylesheet" th:href="@{/css/detalle-donacion.css}">
+    <link rel="stylesheet" th:href="@{/css/donaciones.css}">
 </head>
 <body class="app">
     <div th:replace="~{fragments/app-shell :: appHeader}"></div>
@@ -17,103 +18,93 @@
         <article class="static-card shadow-sm border-0 donation-detail-card">
             <div class="card-body p-4 p-md-5">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/donaciones}" aria-label="Volver a donaciones">
-                        <i class="bi bi-arrow-left" aria-hidden="true"></i>
-                        <span class="visually-hidden">Volver</span>
+                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/donaciones}" data-back="true" aria-label="Volver a donaciones">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver
                     </a>
-                    <time class="text-muted small" th:if="${donacion.fechaEntrega != null}"
-                          th:text="${#temporals.format(donacion.fechaEntrega, 'dd/MM/yyyy')}">04/07/26</time>
+                    <span class="text-muted small font-monospace" th:text="${#strings.substring(donacion.id.toString(), 0, 8)}">id</span>
                 </div>
 
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                    <h1 class="h2 fw-semibold mb-0"
-                        th:text="${donacion.descripcion != null and !#strings.isEmpty(donacion.descripcion) ? donacion.descripcion : 'Donación'}">
-                        Donación
-                    </h1>
-                    <span class="badge rounded-pill text-bg-secondary px-3 py-2"
-                          th:text="${donacion.estado != null ? #strings.replace(#strings.toLowerCase(donacion.estado), '_', ' ') : 'Sin estado'}">
-                        En preparación
-                    </span>
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                    <div>
+                        <h1 class="h2 fw-semibold mb-1"
+                            th:text="${donacion.tituloVisible()}">
+                            Donación
+                        </h1>
+                        <p class="text-muted mb-0" th:if="${!#strings.isEmpty(donacion.descripcionVisible())}"
+                           th:text="${donacion.descripcionVisible()}">Descripción</p>
+                    </div>
+                    <span class="badge rounded-pill px-3 py-2" th:classappend="${donacion.claseEstado()}"
+                          th:text="${donacion.etiquetaEstado()}">Estado</span>
                 </div>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <section class="donation-party border rounded p-3">
+                    <section class="donation-party">
                         <h2 class="small text-muted mb-2">Donante</h2>
                         <p class="h5 mb-0"
                            th:text="${donacion.donanteName != null and !#strings.isEmpty(donacion.donanteName) ? donacion.donanteName : 'No informado'}">
                             Donador
                         </p>
                     </section>
-                    <section class="donation-party border rounded p-3">
+                    <section class="donation-party">
                         <h2 class="small text-muted mb-2">Entidad</h2>
                         <p class="h5 mb-0"
                            th:text="${donacion.entidadBeneficiaria != null and !#strings.isEmpty(donacion.entidadBeneficiaria) ? donacion.entidadBeneficiaria : 'No asignada'}">
                             No asignada
                         </p>
                     </section>
+                    <section class="donation-party">
+                        <h2 class="small text-muted mb-2">Categoría / Subcategoría</h2>
+                        <p class="h5 mb-0"
+                           th:text="${(donacion.categoriaBienName != null ? donacion.categoriaBienName : '') + (donacion.subcategoriaName != null and !#strings.isEmpty(donacion.subcategoriaName) ? ' / ' + donacion.subcategoriaName : '')}">
+                            Categoría
+                        </p>
+                    </section>
+                    <section class="donation-party">
+                        <h2 class="small text-muted mb-2">Cantidad total</h2>
+                        <p class="h5 mb-0" th:text="${donacion.cantidadTotalBienes != null ? donacion.cantidadTotalBienes : 0}">0</p>
+                    </section>
                 </div>
 
-                <section aria-labelledby="productsTitle">
-                    <h2 id="productsTitle" class="h5 fw-semibold mb-3">Productos de la donación</h2>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="categoryFilters"
-                         aria-label="Filtrar productos por categoría">
-                        <button class="category-filter" type="button" data-category="all" aria-pressed="true">
-                            <span class="category-filter-dot" aria-hidden="true"></span>
-                            <span>Seleccionar todo</span>
-                        </button>
-                        <button class="category-filter" type="button"
-                                th:if="${donacion.categoriaBienName != null and !#strings.isEmpty(donacion.categoriaBienName)}"
-                                th:attr="data-category=${donacion.categoriaBienName}" aria-pressed="false">
-                            <span class="category-filter-dot" aria-hidden="true"></span>
-                            <span th:text="${donacion.categoriaBienName}">Categoría</span>
-                        </button>
-                    </div>
+                <div class="mb-4" th:if="${donacion.fechaEntrega != null}">
+                    <span class="text-muted small">Fecha de entrega: </span>
+                    <time th:text="${#temporals.format(donacion.fechaEntrega, 'dd/MM/yyyy')}">fecha</time>
+                </div>
 
-                    <div class="border rounded bg-white" id="donationProducts">
-                        <div class="donation-product-row"
-                             th:if="${donacion.subcategoriaName != null or donacion.descripcion != null}"
-                             th:attr="data-category=${donacion.categoriaBienName != null ? donacion.categoriaBienName : ''}">
-                            <span th:text="${donacion.subcategoriaName != null and !#strings.isEmpty(donacion.subcategoriaName) ? donacion.subcategoriaName : donacion.descripcion}">
-                                Producto donado
-                            </span>
+                <section th:if="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and !#lists.isEmpty(donacion.imagenesVisibles())}"
+                         aria-labelledby="fotosDonacionTitle" class="mb-4">
+                    <h2 id="fotosDonacionTitle" class="h5 fw-semibold mb-3">Fotos de la donación</h2>
+                    <div class="donacion-galeria">
+                        <a th:each="foto : ${donacion.imagenesVisibles()}" th:href="${foto}" target="_blank" rel="noopener">
+                            <img th:src="${foto}" alt="Foto de la donación" loading="lazy">
+                        </a>
+                    </div>
+                </section>
+
+                <section aria-labelledby="bienesTitle">
+                    <h2 id="bienesTitle" class="h5 fw-semibold mb-3">Bienes de la donación</h2>
+                    <div th:if="${#lists.isEmpty(donacion.bienes)}" class="text-muted p-3">
+                        Esta donación no tiene bienes detallados.
+                    </div>
+                    <div class="donation-products" th:if="${!#lists.isEmpty(donacion.bienes)}">
+                        <div class="donation-product-row" th:each="bien : ${donacion.bienes}">
+                            <div>
+                                <strong th:text="${bien.descripcion != null and !#strings.isEmpty(bien.descripcion) ? bien.descripcion : 'Bien sin descripción'}">Bien</strong>
+                                <div class="text-muted small">
+                                    <span th:text="${bien.categoria != null ? bien.categoria : ''}">Cat</span>
+                                    <span th:if="${bien.subcategoria != null and !#strings.isEmpty(bien.subcategoria)}" th:text="${' / ' + bien.subcategoria}"> / Sub</span>
+                                    <span th:text="${' · ' + (bien.usado != null and bien.usado ? 'Usado' : 'Nuevo')}"> · Nuevo</span>
+                                    <span th:if="${bien.fechaVencimiento != null}" th:text="${' · Vence: ' + #temporals.format(bien.fechaVencimiento, 'dd/MM/yyyy')}"> · Vence</span>
+                                </div>
+                            </div>
                             <span class="text-muted text-end"
-                                  th:text="${donacion.cantidadTotalBienes != null ? donacion.cantidadTotalBienes : 0}">0</span>
+                                  th:text="${(bien.cantidad != null ? bien.cantidad : 0) + ' ' + (bien.unidadDeMedida != null ? bien.unidadDeMedida.toLowerCase() : '')}">0</span>
                         </div>
-                        <p class="text-muted p-3 mb-0"
-                           th:if="${donacion.subcategoriaName == null and donacion.descripcion == null}">
-                            Esta donación no tiene productos detallados.
-                        </p>
-                        <p class="text-muted p-3 mb-0 d-none" id="emptyCategoryMessage">
-                            No hay productos en esta categoría.
-                        </p>
                     </div>
                 </section>
             </div>
         </article>
     </main>
 
-    <script>
-        const categoryFilters = document.getElementById("categoryFilters");
-        const productRows = Array.from(document.querySelectorAll(".donation-product-row"));
-        const emptyCategoryMessage = document.getElementById("emptyCategoryMessage");
-
-        categoryFilters.addEventListener("click", (event) => {
-            const button = event.target.closest("button[data-category]");
-            if (!button) return;
-
-            const category = button.dataset.category;
-            let visibleProducts = 0;
-            categoryFilters.querySelectorAll("button[data-category]").forEach((filter) => {
-                filter.setAttribute("aria-pressed", String(filter === button));
-            });
-            productRows.forEach((row) => {
-                const visible = category === "all" || row.dataset.category === category;
-                row.classList.toggle("d-none", !visible);
-                if (visible) visibleProducts++;
-            });
-            emptyCategoryMessage.classList.toggle("d-none", visibleProducts > 0);
-        });
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>

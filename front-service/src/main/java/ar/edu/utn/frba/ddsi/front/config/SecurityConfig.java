@@ -13,6 +13,7 @@ import ar.edu.utn.frba.ddsi.front.dto.IdentidadDTO;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
@@ -35,9 +36,10 @@ public class SecurityConfig {
     ) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico", "/favicon.svg").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**", "/webjars/**", "/favicon.ico", "/favicon.svg").permitAll()
                 .requestMatchers("/", "/landing", "/login", "/register", "/sin-acceso", "/terminos",
                         "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers(new RegexRequestMatcher("^/perfil/(donante|entidad)/[0-9a-fA-F-]{36}$", "GET")).permitAll()
                 .requestMatchers("/realizar-donacion").authenticated()
                 .requestMatchers("/notificaciones", "/notificaciones/**").authenticated()
                 .requestMatchers("/donaciones/donantes").hasRole("ADMIN")

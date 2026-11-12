@@ -39,3 +39,16 @@ Keycloak 26.8 requiere además incluir la audiencia del Admin API en el token. P
 > Keycloak importa el archivo solo cuando todavía no existe el realm `ddsi`. En un volumen existente, los cambios del JSON no se aplican al reiniciar. En ese caso, configurar `front-registration` en la consola del realm: habilitar autenticación de cliente y Service Accounts, asignar `manage-users` y `view-realm` desde Service account roles → `realm-management`, y agregar `kc-admin-api` como client scope predeterminado. `front-service` necesita `roles` entre sus client scopes predeterminados para que el ID token traiga los roles que usa el propio front.
 
 El formulario público permite registrarse como donante o entidad beneficiaria. La opción de administrador solo aparece para una sesión con `ROLE_ADMIN`; el front es quien exige ese rol y usa el `sub` de Keycloak como `id` del `Administrador`. El primer administrador es la cuenta `admin` del realm; a partir de ahí, un administrador autenticado puede crear otros desde el formulario o desde `POST /api/admins` enviando el `sub` de Keycloak en `id`. Las cuentas de chofer deben ser creadas por una persona administradora.
+
+## Theme DonaTrack
+
+El theme propio está en `docker/keycloak/themes/donatrack/` y se monta read-only en el contenedor:
+
+- `login/`: login, registro, recuperación, OTP y errores.
+- `account/`: account console.
+- `admin/`: branding del admin console.
+- `email/`: wrapper HTML de emails transaccionales.
+
+Keycloak 26 lo carga por los defaults `KC_SPI_THEME_DEFAULT_LOGIN`, `KC_SPI_THEME_DEFAULT_ACCOUNT`, `KC_SPI_THEME_DEFAULT_EMAIL` y `KC_SPI_THEME_DEFAULT_ADMIN` definidos en `docker-compose.yml`.
+
+En un volumen `keycloak-data` ya existente, el `loginTheme`/`displayName` del JSON no se reimporta. El tema por defecto se aplica al reiniciar Keycloak; si el realm tiene un theme explícito, hay que cambiarlo desde la consola de administración. No hace falta borrar el volumen.

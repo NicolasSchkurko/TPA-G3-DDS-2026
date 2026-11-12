@@ -27,12 +27,17 @@ services:
       # Issuer y URLs del navegador deben usar el host que abre la persona.
       KC_HOSTNAME: http://localhost:8180
       KC_HTTP_ENABLED: "true"
+      KC_SPI_THEME_DEFAULT_LOGIN: donatrack
+      KC_SPI_THEME_DEFAULT_ACCOUNT: donatrack
+      KC_SPI_THEME_DEFAULT_EMAIL: donatrack
+      KC_SPI_THEME_DEFAULT_ADMIN: donatrack
       KC_HEALTH_ENABLED: "true"
       # Techo de heap y de procesadores para que un login no se lleve puesto el host.
       JAVA_OPTS_APPEND: "-XX:MaxRAMPercentage=70 -XX:ActiveProcessorCount=2"
     volumes:
       - keycloak-data:/opt/keycloak/data
       - ./docker/keycloak/realm-ddsi.json:/opt/keycloak/data/import/realm-ddsi.json:ro
+      - ./docker/keycloak/themes:/opt/keycloak/themes:ro
     healthcheck:
       test: ["CMD-SHELL", "bash -c \"{ printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000\""]
       interval: 15s
@@ -311,12 +316,16 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
       SEGUIMIENTO_TOKEN_SECRET: ${SEGUIMIENTO_TOKEN_SECRET:-donatrack-seguimiento-local}
       SPRING_THYMELEAF_CACHE: "true"
+      APP_UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads-data:/app/uploads
     mem_limit: 512m
     depends_on:
       keycloak:
         condition: service_started
 
 volumes:
+  uploads-data:
   keycloak-data:
   mysql-data:
   rabbit-data:

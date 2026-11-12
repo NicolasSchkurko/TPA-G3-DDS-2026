@@ -20,7 +20,7 @@
         <h1 th:text="'Administrar donantes'">Administración</h1>
         <p class="admin-page-lead" th:text="'Buscá, actualizá, eliminá o importá los donantes registrados.'">Gestioná los datos del sistema.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin}" th:text="'Volver al panel'">Volver</a>
+    <a class="btn btn-secondary" th:href="@{/admin}" data-back="true" th:text="'Volver al panel'">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
@@ -81,9 +81,6 @@
                 <div id="archivoElegido" class="archivo-elegido" hidden>
                     <i class="bi bi-paperclip"></i>
                     <span id="nombreArchivo"></span>
-                    <button type="submit" class="btn-subir">
-                        <i class="bi bi-upload"></i> Subir
-                    </button>
                     <button type="button" id="cancelarCsv" class="btn-cancelar" aria-label="Cancelar">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -96,11 +93,16 @@
         <header>
             <div>
                 <h2 id="csvMappingTitle">Mapear columnas del CSV</h2>
-                <p>Detectamos los encabezados. Revisá el mapeo antes de subir el archivo; podés dejar campos sin importar.</p>
+                <p>Detectamos los encabezados. Revisá el mapeo antes de subir el archivo; podés dejar campos sin importar. Pasos: elegir archivo → mapear → subir.</p>
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="csvMappingCerrar">Cerrar</button>
         </header>
         <div class="csv-mapping-grid" id="csvMappingRows"></div>
+        <div class="csv-mapping-actions">
+            <button type="button" id="botonSubirCsv" class="btn-subir">
+                <i class="bi bi-upload"></i> Subir
+            </button>
+        </div>
     </section>
 
     <!-- ===== Tabla de donantes ===== -->

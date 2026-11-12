@@ -1,7 +1,7 @@
 {
   "realm": "ddsi",
   "enabled": true,
-  "displayName": "DDSI - Desarrollo local",
+  "displayName": "DonaTrack",
   "internationalizationEnabled": true,
   "supportedLocales": ["es", "en"],
   "defaultLocale": "es",

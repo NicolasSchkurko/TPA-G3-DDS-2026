@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Editar perfil de chofer — DonaTrack</title>
+    <meta name="description" content="Actualizá los datos de tu perfil de chofer en DonaTrack.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/perfil.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="profile-page" id="contenido" tabindex="-1">
+    <header class="profile-header">
+        <div>
+            <p class="eyebrow">Mi cuenta</p>
+            <h1>Editar perfil de chofer</h1>
+            <p>Actualizá los datos visibles de tu perfil operativo.</p>
+        </div>
+    </header>
+
+    <div th:if="${error}" class="profile-alert" role="alert">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span th:text="${error}">No se pudieron actualizar tus datos.</span>
+    </div>
+
+    <form class="profile-form-card" th:action="@{/perfil/chofer/editar}" method="post">
+        <div class="profile-form-grid">
+            <div class="profile-field">
+                <label for="nombre">Nombre</label>
+                <input id="nombre" name="nombre" type="text" maxlength="120" required
+                       th:value="${chofer.nombre}" autocomplete="name">
+            </div>
+            <div class="profile-field">
+                <label for="email">Email</label>
+                <input id="email" type="email" th:value="${chofer.email}" readonly disabled>
+                <small>El email se administra desde tu cuenta de acceso.</small>
+            </div>
+        </div>
+
+        <dl class="profile-facts">
+            <div>
+                <dt>Disponibilidad</dt>
+                <dd th:text="${chofer.disponible != null and chofer.disponible ? 'Disponible' : 'No disponible'}">Disponible</dd>
+            </div>
+            <div>
+                <dt>Estado</dt>
+                <dd th:text="${chofer.activo != null and !chofer.activo ? 'Inactivo' : 'Activo'}">Activo</dd>
+            </div>
+        </dl>
+
+        <div class="profile-form-actions">
+            <a class="btn btn-secondary" th:href="@{/perfil}" data-back="true">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar cambios
+            </button>
+        </div>
+    </form>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

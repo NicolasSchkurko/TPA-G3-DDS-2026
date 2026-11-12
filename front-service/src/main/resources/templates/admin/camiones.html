@@ -20,8 +20,10 @@
         <h1>Camiones</h1>
         <p class="admin-page-lead">Flota registrada y estado de disponibilidad.</p>
     </div>
-    <a class="btn btn-primary" th:href="@{/admin/camiones/nuevo}">Nuevo camión</a>
-    <a class="btn btn-secondary" th:href="@{/admin}">Volver al panel</a>
+    <div class="admin-head-actions">
+        <a class="btn btn-primary" th:href="@{/admin/camiones/nuevo}">Nuevo camión</a>
+        <a class="btn btn-secondary" th:href="@{/admin}" data-back="true">Volver al panel</a>
+    </div>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
     <div class="card border-0 shadow-sm">

@@ -20,6 +20,8 @@ public class FormularioRequestDTO {
   @Valid
   private List<BienResumenDTO> bienes;
 
+  private List<String> imagenes;
+
   // Obligatoria: es la fechaEntrega que va a incentivos (punto 30) y la que usan
   // SubAtendidos y NecesidadRecurrente para sus ventanas (punto 10).
   @NotNull(message = "El formulario requiere la fecha de realización")

@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,12 +25,48 @@ public class DonacionDTO {
     private String categoriaBienName;
     private LocalDate fechaEntrega;
     private Integer cantidadTotalBienes;
+    private List<String> imagenes = new ArrayList<>();
 
     /**
      * Bienes de la donación. GET /api/donaciones los devuelve embebidos, así que el panel de
      * detalle y el formulario de edición se arman sin un segundo request.
      */
     private List<BienDonacionDTO> bienes = new ArrayList<>();
+
+
+    public List<String> imagenesVisibles() {
+        LinkedHashSet<String> urls = new LinkedHashSet<>();
+        if (imagenes != null) {
+            imagenes.stream().filter(this::urlValida).forEach(urls::add);
+        }
+        if (bienes != null) {
+            bienes.stream().map(BienDonacionDTO::getUrlFoto).filter(this::urlValida).forEach(urls::add);
+        }
+        return new ArrayList<>(urls);
+    }
+
+    public String imagenPrincipal() {
+        return imagenesVisibles().stream().findFirst().orElse(null);
+    }
+
+    private boolean urlValida(String url) {
+        return url != null && !url.isBlank();
+    }
+
+    public String tituloVisible() {
+        if (subcategoriaName != null && !subcategoriaName.isBlank()) {
+            return subcategoriaName;
+        }
+        return descripcion != null && !descripcion.isBlank() ? descripcion : "Donación";
+    }
+
+    public String descripcionVisible() {
+        if (descripcion == null || descripcion.isBlank()) {
+            return "";
+        }
+        String limpia = descripcion.replaceFirst("(?i)^Segmento de donación:\\s*", "").trim();
+        return limpia.equalsIgnoreCase(subcategoriaName) ? "" : limpia;
+    }
 
     /** El backend escribe "No asignada" cuando la donación todavía no tiene entidad. */
     public boolean tieneEntidad() {

@@ -80,7 +80,8 @@ public class AdminController {
     public String nuevoCamion(Model model) {
         model.addAttribute("camion", new CamionDTO());
         model.addAttribute("edicion", false);
-        model.addAttribute("accion", "/admin/camiones/nuevo");
+        var choferes = logisticasClient.obtenerChoferes();
+        model.addAttribute("choferes", choferes != null ? choferes : List.of());
         return "admin/camion-formulario";
     }
 
@@ -109,7 +110,8 @@ public class AdminController {
         model.addAttribute("camion", camion);
         model.addAttribute("edicion", true);
         model.addAttribute("patente", patente);
-        model.addAttribute("accion", "/admin/camiones/" + patente + "/actualizar");
+        var choferes = logisticasClient.obtenerChoferes();
+        model.addAttribute("choferes", choferes != null ? choferes : List.of());
         return "admin/camion-formulario";
     }
 
@@ -213,8 +215,28 @@ public class AdminController {
     public String mostrarDonantes(@AuthenticationPrincipal OidcUser usuario, Model model) {
         agregarDatosDelAdmin(usuario, model);
         List<PersonaDonanteDTO> donantes = donacionesClient.obtenerDonantes();
+        donantes.forEach(this::completarContactoVisible);
         model.addAttribute("donantes", donantes);
         return "admin/donantes";
+    }
+
+    private void completarContactoVisible(PersonaDonanteDTO donante) {
+        if (donante.getMedioPredeterminado() != null) {
+            completarSegunTipo(donante, donante.getMedioPredeterminado());
+        }
+        if (donante.getMediosDeContacto() != null) {
+            donante.getMediosDeContacto().forEach(medio -> completarSegunTipo(donante, medio));
+        }
+    }
+
+    private void completarSegunTipo(PersonaDonanteDTO donante, MediosContactoDTO medio) {
+        if (medio == null || medio.getTipo() == null || medio.getValor() == null) return;
+        if ("EMAIL".equalsIgnoreCase(medio.getTipo()) && donante.getCorreoElectronico() == null) {
+            donante.setCorreoElectronico(medio.getValor());
+        } else if (("TELEFONO".equalsIgnoreCase(medio.getTipo()) || "WHATSAPP".equalsIgnoreCase(medio.getTipo()))
+                && donante.getTelefono() == null) {
+            donante.setTelefono(medio.getValor());
+        }
     }
 
     @PostMapping("/admin/donantes/importar")
@@ -404,6 +426,8 @@ public class AdminController {
     public String mostrarEntidades(@AuthenticationPrincipal OidcUser usuario, Model model) {
         agregarDatosDelAdmin(usuario, model);
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
+        entidades.forEach(entidad -> entidad.setNecesidades(
+                donacionesClient.obtenerNecesidadesDeEntidad(entidad.getId())));
         model.addAttribute("entidades", entidades);
         return "admin/entidades";
     }

@@ -159,14 +159,24 @@ class FrontApplicationTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("class=\"map-only-donations\" hidden")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "data-id=\"" + MAP_ONLY_DONATION_ID + "\"")));
+                        "data-id=\"" + MAP_ONLY_DONATION_ID + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Donaciones entregadas"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("galeria-title"))));
     }
 
     @Test
     void donationListIsPublic() throws Exception {
         mockMvc.perform(get("/donaciones"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Listado de donaciones")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Pedido de donaciones")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("donaciones-filters")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entregada")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString(">ENTREGADO<"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString(">EN_TRASLADO<"))));
     }
 
     @TestConfiguration
@@ -187,7 +197,7 @@ class FrontApplicationTest {
                     donacion.setCategoriaBienName("ROPA");
                     donacion.setSubcategoriaName("Camisas");
                     donacion.setCantidadTotalBienes(20);
-                    donacion.setEstado("EN_PREPARACION");
+                    donacion.setEstado("EN_DEPOSITO");
                     return donacion;
                 }
 

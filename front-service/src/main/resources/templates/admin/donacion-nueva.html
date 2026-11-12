@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Registrar donación — DonaTrack</title>
     <meta name="description" content="Alta de una donación a nombre de un donante registrado">
@@ -20,7 +22,7 @@
         <h1 th:text="'Registrar donación'">Administración</h1>
         <p class="admin-page-lead" th:text="'Elegí el donante que la entregó y cargá los bienes que trajo.'">Gestioná los datos del sistema.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin/donaciones}" th:text="'Volver a donaciones'">Volver</a>
+    <a class="btn btn-secondary" th:href="@{/admin/donaciones}" data-back="true" th:text="'Volver a donaciones'">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
 
@@ -197,6 +199,20 @@
                                th:field="*{bienes[__${iter.index}__].fechaVencimiento}">
                     </div>
 
+                    <div class="campo campo-foto">
+                        <label class="form-label">Foto del bien (opcional)</label>
+                        <input type="file" class="form-control bien-foto-input"
+                               accept="image/jpeg,image/png,image/webp">
+                        <input type="hidden" class="bien-foto-url" data-campo="urlFoto"
+                               th:field="*{bienes[__${iter.index}__].urlFoto}">
+                        <div class="bien-foto-preview mt-2" hidden>
+                            <img class="bien-foto-preview-img" alt="Vista previa de la foto del bien">
+                            <button type="button" class="btn btn-outline-danger btn-sm quitar-foto">Quitar foto</button>
+                        </div>
+                        <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB.</div>
+                        <div class="bien-foto-error text-danger small" hidden></div>
+                    </div>
+
                     <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
                         <i class="bi bi-trash3"></i>
                     </button>
@@ -208,8 +224,19 @@
             </button>
         </section>
 
+        <section class="form-seccion" aria-labelledby="fotosDonacionTitulo">
+            <h2 id="fotosDonacionTitulo"><i class="bi bi-images"></i> Fotos de la donación</h2>
+            <p class="form-ayuda">Podés subir varias fotos. Se muestran públicamente cuando la donación está entregada.</p>
+            <input id="fotosDonacion" class="form-control" type="file" multiple
+                   accept="image/jpeg,image/png,image/webp">
+            <div id="fotosDonacionPreview" class="fotos-donacion-preview mt-3"></div>
+            <div id="fotosDonacionHidden"></div>
+            <div id="fotosDonacionError" class="text-danger small mt-2" hidden></div>
+            <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB por imagen.</div>
+        </section>
+
         <div class="acciones-formulario">
-            <a th:href="@{/admin/donaciones}" class="btn-cancelar-form">Cancelar</a>
+            <a th:href="@{/admin/donaciones}" data-back="true" class="btn-cancelar-form">Cancelar</a>
             <button type="submit" class="btn-actualizar">
                 <i class="bi bi-check-lg"></i>
                 Registrar donación
@@ -265,6 +292,17 @@
             <label class="form-label">Vence el <span class="obligatorio">*</span></label>
             <input type="date" class="form-control" data-campo="fechaVencimiento">
         </div>
+        <div class="campo campo-foto">
+            <label class="form-label">Foto del bien (opcional)</label>
+            <input type="file" class="form-control bien-foto-input" accept="image/jpeg,image/png,image/webp">
+            <input type="hidden" class="bien-foto-url" data-campo="urlFoto">
+            <div class="bien-foto-preview mt-2" hidden>
+                <img class="bien-foto-preview-img" alt="Vista previa de la foto del bien">
+                <button type="button" class="btn btn-outline-danger btn-sm quitar-foto">Quitar foto</button>
+            </div>
+            <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB.</div>
+            <div class="bien-foto-error text-danger small" hidden></div>
+        </div>
         <button type="button" class="btn-quitar-fila" aria-label="Quitar este bien">
             <i class="bi bi-trash3"></i>
         </button>
@@ -273,6 +311,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../static/js/admin-donacion-formulario.js" th:src="@{/js/admin-donacion-formulario.js}"></script>
+<script th:src="@{/js/core/donacion-fotos.js}" defer></script>
 
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>

@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,14 +22,32 @@ import java.util.stream.Collectors;
 public class RolController {
 
     @PostMapping("/{rol}")
-    public String cambiar(@PathVariable String rol, HttpSession session, Authentication authentication, Model model) {
+    public String cambiar(@PathVariable String rol,
+                          @RequestParam(required = false) String next,
+                          HttpSession session, Authentication authentication, Model model) {
         String solicitado = rol.toUpperCase();
         if (!esRolSoportado(solicitado) || !tieneRol(authentication, solicitado)) {
             model.addAttribute("error", "No tenés el rol " + solicitado + " asignado. Contactá a una persona administradora.");
             return "sin-acceso";
         }
         session.setAttribute("rolActivo", solicitado);
-        return "redirect:" + destinoDe(solicitado);
+        String destino = sanitizarNext(next);
+        if (destino == null) {
+            destino = destinoDe(solicitado);
+        }
+        return "redirect:" + destino;
+    }
+
+    private static String sanitizarNext(String next) {
+        if (next == null) return null;
+        String valor = next.trim();
+        if (valor.isEmpty()) return null;
+        if (!valor.startsWith("/")) return null;
+        if (valor.startsWith("//")) return null;
+        if (valor.contains("//")) return null;
+        if (valor.contains("\\")) return null;
+        if (valor.contains(":")) return null;
+        return valor;
     }
 
     private static boolean esRolSoportado(String rol) {

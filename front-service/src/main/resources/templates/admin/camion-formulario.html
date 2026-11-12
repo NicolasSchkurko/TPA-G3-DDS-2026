@@ -16,12 +16,12 @@
         <p class="eyebrow">Administración</p>
         <h1 th:text="${edicion} ? 'Editar camión' : 'Nuevo camión'">Camión</h1>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin/camiones}">Volver</a>
+    <a class="btn btn-secondary" th:href="@{/admin/camiones}" data-back="true">Volver</a>
 </header>
 <main class="main-admin" id="contenido" tabindex="-1">
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-            <form th:action="@{${accion}}" th:object="${camion}" method="post" class="row g-3">
+            <form th:action="${edicion} ? @{/admin/camiones/{patente}/actualizar(patente=${patente})} : @{/admin/camiones/nuevo}" th:object="${camion}" method="post" class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Patente</label>
                     <input class="form-control" th:field="*{patente}" th:readonly="${edicion}" required>
@@ -37,6 +37,13 @@
                 <div class="col-md-4">
                     <label class="form-label">Capacidad de carga</label>
                     <input class="form-control" type="number" step="0.1" th:field="*{capacidadCarga}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Chofer</label>
+                    <select class="form-select" th:field="*{idChofer}">
+                        <option value="">Sin asignar</option>
+                        <option th:each="chofer : ${choferes}" th:value="${chofer.idChofer}" th:text="${chofer.nombre}">Chofer</option>
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Disponible</label>

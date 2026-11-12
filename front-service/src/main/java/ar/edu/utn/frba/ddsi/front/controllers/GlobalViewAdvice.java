@@ -22,8 +22,8 @@ import java.util.stream.Collectors;
 @ControllerAdvice(annotations = org.springframework.stereotype.Controller.class)
 public class GlobalViewAdvice {
 
-    /** Orden de presentación y de arranque (los roles de auto-registro primero; ADMIN al final). */
-    private static final List<String> ORDEN_ROLES = List.of("ENTIDAD", "DONANTE", "CHOFER", "ADMIN");
+    /** Orden de presentación y rol activo por defecto para cuentas con más de un rol. */
+    private static final List<String> ORDEN_ROLES = List.of("CHOFER", "ENTIDAD", "DONANTE", "ADMIN");
 
     private final EntidadContext entidadContext;
     private final NotificacionesUsuarioService notificacionesUsuarioService;

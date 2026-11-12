@@ -4,24 +4,145 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
-    <title th:text="${titulo} + ' — DonaTrack'">Mi espacio — DonaTrack</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <title>Mi perfil — DonaTrack</title>
+    <meta name="description" content="Tu perfil público y tus datos de cuenta en DonaTrack.">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <link rel="stylesheet" th:href="@{/css/perfil.css}">
 </head>
 <body class="app">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
-<main class="container my-5" id="contenido" tabindex="-1">
-    <section class="card border-0 shadow-sm">
-        <div class="card-body p-4 p-lg-5">
-            <span class="badge text-bg-primary mb-3" th:text="${rol}">ROL</span>
-            <h1 class="fw-bold" th:text="${titulo}">Mi espacio</h1>
-            <p class="text-muted" th:text="${descripcion}">Descripción del perfil.</p>
-            <p class="mb-0">Sesión iniciada como <strong th:text="${usuario}">usuario</strong>.</p>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="profile-page" id="contenido" tabindex="-1">
+    <header class="profile-header">
+        <div>
+            <p class="eyebrow">Mi cuenta</p>
+            <h1>Mi perfil</h1>
+            <p th:if="${tipoPerfil == 'DONANTE' or tipoPerfil == 'ENTIDAD'}">Así te ve la comunidad. Tus datos de contacto solo aparecen cuando editás tu perfil.</p>
+            <p th:if="${tipoPerfil == 'CHOFER' or tipoPerfil == 'ADMIN'}">Estos son los datos de tu cuenta. Los perfiles de chofer y administración no se publican.</p>
         </div>
-    </section>
+    </header>
+
+    <div th:if="${tipoPerfil == 'SIN_PERFIL'}" class="card profile-empty">
+        <h2>Tu cuenta todavía no tiene un perfil asociado</h2>
+        <p class="text-muted">Agregá un rol para crear tu perfil de donante o entidad.</p>
+        <a class="btn btn-primary" th:href="@{/cuenta/roles}">Agregar un rol</a>
+    </div>
+
+    <div th:if="${tipoPerfil != 'SIN_PERFIL'}" class="profile-grid">
+        <section class="profile-card" aria-labelledby="perfilDatos">
+            <div class="profile-hero">
+                <span class="profile-avatar" aria-hidden="true">
+                    <i th:class="${tipoPerfil == 'ENTIDAD' ? 'bi bi-building' : (tipoPerfil == 'CHOFER' ? 'bi bi-truck' : (tipoPerfil == 'ADMIN' ? 'bi bi-shield-check' : 'bi bi-person-fill'))}"></i>
+                </span>
+                <div>
+                    <p class="eyebrow" th:text="${tipoPerfil == 'ENTIDAD' ? 'Entidad beneficiaria' : (tipoPerfil == 'CHOFER' ? 'Chofer' : (tipoPerfil == 'ADMIN' ? 'Administración' : 'Donante'))}">Donante</p>
+                    <h2 id="perfilDatos" th:text="${nombrePerfil}">Nombre del perfil</h2>
+                    <p class="profile-meta">
+                        <span th:if="${tipoPersona != null}" th:text="${tipoPersona == 'JURIDICA' ? 'Persona jurídica' : 'Persona humana'}">Persona humana</span>
+                        <span th:if="${ciudad != null and !#strings.isEmpty(ciudad)}" th:text="${' · ' + ciudad}"> · CABA</span>
+                        <span th:if="${entidad != null and entidad.rubro != null and !#strings.isEmpty(entidad.rubro)}" th:text="${' · ' + entidad.rubro}"> · Comedor</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="profile-public-note" th:if="${tipoPerfil == 'DONANTE' or tipoPerfil == 'ENTIDAD'}">
+                <i class="bi bi-eye" aria-hidden="true"></i>
+                <span>Esta es la información visible en tu perfil público. El email, teléfono y domicilio se mantienen privados.</span>
+            </div>
+
+            <!-- Donante: misión e insignias -->
+            <div th:if="${tipoPerfil == 'DONANTE'}" class="profile-section">
+                <h3>Mi actividad solidaria</h3>
+                <div th:if="${misionDonante != null and !#maps.isEmpty(misionDonante)}" class="profile-mission">
+                    <span class="profile-mission-name" th:text="${misionDonante['nombreMision']}">Misión actual</span>
+                    <p class="profile-meta" th:if="${misionDonante['descripcion'] != null}" th:text="${misionDonante['descripcion']}">Descripción</p>
+                    <div class="progress" role="progressbar"
+                         th:attr="aria-valuenow=${porcentajeMision}, aria-valuemin=0, aria-valuemax=100">
+                        <div class="progress-bar" th:style="'width:' + ${porcentajeMision} + '%'"></div>
+                    </div>
+                    <p class="profile-meta" th:text="${progresoMision + ' de ' + objetivoMision + ' completado(s)'}">0 de 0</p>
+                </div>
+                <p class="profile-meta" th:if="${misionDonante == null or #maps.isEmpty(misionDonante)}">
+                    Todavía no tenés una misión activa.
+                </p>
+            </div>
+
+            <div th:if="${tipoPerfil == 'DONANTE' and insignias != null and !#lists.isEmpty(insignias)}" class="profile-section">
+                <h3>Insignias</h3>
+                <div class="profile-badges">
+                    <div class="profile-badge" th:each="insignia : ${insignias}">
+                        <img class="profile-badge-image" th:if="${insignia['urlImagen'] != null}"
+                             th:src="${insignia['urlImagen']}" th:alt="${insignia['nombre']}">
+                        <span class="profile-badge-icon" th:unless="${insignia['urlImagen'] != null}">
+                            <i class="bi bi-award" aria-hidden="true"></i>
+                        </span>
+                        <span>
+                            <strong th:text="${insignia['nombre']}">Insignia</strong>
+                            <small th:if="${insignia['descripcion'] != null}" th:text="${insignia['descripcion']}">Descripción</small>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Entidad: necesidades -->
+            <div th:if="${tipoPerfil == 'ENTIDAD'}" class="profile-section">
+                <h3>Necesidades activas</h3>
+                <div th:if="${necesidadesPublicas != null and !#lists.isEmpty(necesidadesPublicas)}" class="profile-needs">
+                    <article class="profile-need" th:each="necesidad : ${necesidadesPublicas}">
+                        <strong th:text="${necesidad.nombreSubcategoria}">Arroz</strong>
+                        <span th:text="${(necesidad.nombreCategoria != null ? necesidad.nombreCategoria + ' · ' : '') + (necesidad.cantidadObjetivo != null ? necesidad.cantidadObjetivo : 0) + ' ' + (necesidad.unidadDeMedida != null ? necesidad.unidadDeMedida : 'unidades')}">Alimentos · 100 unidades</span>
+                    </article>
+                </div>
+                <p class="profile-meta" th:if="${necesidadesPublicas == null or #lists.isEmpty(necesidadesPublicas)}">
+                    La entidad no tiene necesidades activas en este momento.
+                </p>
+            </div>
+
+            <!-- Chofer / admin: datos de cuenta -->
+            <div th:if="${tipoPerfil == 'CHOFER' or tipoPerfil == 'ADMIN'}" class="profile-section">
+                <h3>Datos de cuenta</h3>
+                <ul class="profile-side-list">
+                    <li><span>Usuario</span><strong th:text="${usuario}">usuario</strong></li>
+                    <li><span>Roles</span><strong th:text="${#strings.listJoin(rolesDisponiblesPerfil, ', ')}">CHOFER</strong></li>
+                    <li th:if="${chofer != null}"><span>Nombre</span><strong th:text="${chofer.nombre}">Chofer</strong></li>
+                    <li th:if="${chofer != null}"><span>Email</span><strong th:text="${chofer.email}">chofer@ddsi.local</strong></li>
+                    <li th:if="${chofer != null}"><span>Disponibilidad</span><strong th:text="${chofer.disponible != null and chofer.disponible ? 'Disponible' : 'No disponible'}">Disponible</strong></li>
+                    <li th:if="${admin != null and admin.email != null}"><span>Email</span><strong th:text="${admin.email}">admin@ddsi.local</strong></li>
+                </ul>
+            </div>
+        </section>
+
+        <aside class="profile-side-card" aria-labelledby="perfilAcciones">
+            <div class="profile-role-switcher" th:if="${rolesDisponiblesPerfil != null and #lists.size(rolesDisponiblesPerfil) > 1}">
+                <span class="profile-role-chip-label">Rol activo</span>
+                <form th:each="rol : ${rolesDisponiblesPerfil}" th:action="@{/rol/{r}(r=${rol})}" method="post" class="profile-role-chip-form">
+                    <input type="hidden" name="next" value="/perfil">
+                    <button type="submit" class="profile-role-chip" th:classappend="${rol == rolActivo ? ' is-active' : ''}" th:attr="aria-pressed=${rol == rolActivo}" th:text="${rol == 'DONANTE' ? 'Donante' : (rol == 'ENTIDAD' ? 'Entidad' : (rol == 'CHOFER' ? 'Chofer' : 'Administración'))}">Donante</button>
+                </form>
+            </div>
+            <h3 id="perfilAcciones">Acciones</h3>
+            <div class="profile-actions">
+                <a class="btn btn-primary" th:if="${puedeEditar}" th:href="@{/perfil/editar}">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i> Editar mis datos
+                </a>
+                <a class="btn btn-secondary" th:if="${urlPublica != null}" th:href="${urlPublica}" target="_blank" rel="noopener">
+                    <i class="bi bi-eye" aria-hidden="true"></i> Ver como público
+                </a>
+                <a class="btn btn-secondary" th:href="${cuentaSeguridadUrl}">
+                    <i class="bi bi-shield-lock" aria-hidden="true"></i> Cuenta y seguridad
+                </a>
+                <a class="btn btn-ghost" th:href="@{/}">Volver al inicio</a>
+            </div>
+
+            <div class="profile-section" th:if="${tipoPerfil == 'DONANTE' or tipoPerfil == 'ENTIDAD'}">
+                <h3>Privacidad</h3>
+                <p class="profile-meta">Tu perfil público no muestra datos de contacto. Solo vos podés ver y editar tu información completa.</p>
+            </div>
+        </aside>
+    </div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

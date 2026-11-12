@@ -49,14 +49,14 @@
                     </div>
                     <div>
                         <dt>Estado de la donación</dt>
-                        <dd><span class="chip chip-info" th:text="${donacion.estado}">ASIGNADO</span></dd>
+                        <dd><span class="chip chip-info" th:text="${donacion.etiquetaEstado()}">ASIGNADO</span></dd>
                     </div>
                     <div th:if="${entrega != null}">
                         <dt>Estado logístico</dt>
                         <dd>
                             <span class="chip"
                                   th:classappend="${entrega.estado == 'ENTREGADA' ? ' chip-success' : (entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info')}"
-                                  th:text="${entrega.estado}">EN_CAMINO</span>
+                                  th:text="${entrega.etiquetaEstado()}">EN_CAMINO</span>
                         </dd>
                     </div>
                 </dl>
@@ -85,7 +85,7 @@
                 <h2 id="confirmTitle">Recepción confirmada</h2>
                 <p style="color: var(--muted);">Ya confirmaste la recepción de esta donación. Gracias por avisarnos.</p>
                 <span class="chip chip-success" style="font-size: 13px;">Entrega registrada como recibida</span>
-                <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}">Volver a mis donaciones</a>
+                <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}" data-back="true">Volver a mis donaciones</a>
             </div>
 
             <div th:unless="${yaConfirmada}">
@@ -94,8 +94,8 @@
                 <div th:if="${!puedeConfirmar}">
                     <p style="color: var(--muted);">Esta entrega todavía no está en camino o ya fue procesada, así que no se puede confirmar ahora.</p>
                     <span class="chip chip-info"
-                          th:text="${entrega != null ? 'Estado actual: ' + entrega.estado : 'Sin ítems logísticos asociados'}">Estado actual: PENDIENTE</span>
-                    <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}">Volver a mis donaciones</a>
+                          th:text="${entrega != null ? 'Estado actual: ' + entrega.etiquetaEstado() : 'Sin ítems logísticos asociados'}">Estado actual: PENDIENTE</span>
+                    <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}" data-back="true">Volver a mis donaciones</a>
                 </div>
 
                 <div th:if="${puedeConfirmar}">
