@@ -38,7 +38,7 @@ public class KeycloakRegistrationClient {
                                       @Value("${keycloak.realm}") String realm,
                                       @Value("${keycloak.registration-client-id}") String clientId,
                                       @Value("${keycloak.registration-client-secret}") String clientSecret,
-                                      @Value("${keycloak.verification.enabled:false}") boolean verificacionHabilitada) {
+                                      @Value("${keycloak.verification.enabled:true}") boolean verificacionHabilitada) {
         this.restClient = builder.build();
         this.tokenUri = tokenUri;
         this.adminBaseUri = adminBaseUri;

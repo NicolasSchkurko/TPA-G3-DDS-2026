@@ -13,15 +13,15 @@ import org.springframework.stereotype.Component;
  * si la verificación de email está habilitada, si el correo de la cuenta está verificado.
  * Ningún otro lugar del código debería tomar esta decisión.</p>
  *
- * <p>Con {@code keycloak.verification.enabled=false} (opción C) alcanza con que el perfil
- * esté huérfano. Con {@code true} (opción B) además se exige que el email esté verificado.</p>
+ * <p>La verificación está habilitada por defecto; al desactivarla explícitamente alcanza con
+ * que el perfil esté huérfano.</p>
  */
 @Component
 public class PoliticaDeReclamo {
 
     private final boolean verificacionHabilitada;
 
-    public PoliticaDeReclamo(@Value("${keycloak.verification.enabled:false}") boolean verificacionHabilitada) {
+    public PoliticaDeReclamo(@Value("${keycloak.verification.enabled:true}") boolean verificacionHabilitada) {
         this.verificacionHabilitada = verificacionHabilitada;
     }
 

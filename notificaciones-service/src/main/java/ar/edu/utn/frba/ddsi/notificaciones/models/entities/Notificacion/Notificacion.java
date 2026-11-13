@@ -72,7 +72,7 @@ public class Notificacion implements Persistable<UUID> {
     private Integer intentos = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
+    @Column(name = "estado", nullable = false, columnDefinition = "varchar(16)")
     private EstadoNotificacion estado;
 
     @Column(name = "tipo_medio_contacto", nullable = false)

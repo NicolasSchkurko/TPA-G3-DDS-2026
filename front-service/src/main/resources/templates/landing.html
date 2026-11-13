@@ -143,43 +143,6 @@
                 </div>
             </section>
 
-            <section class="sidebar-section landing-gallery" aria-labelledby="galeria-title">
-                <div class="section-head">
-                    <h2 id="galeria-title">Donaciones entregadas</h2>
-                    <span th:text="${galeriaEntregas != null ? #lists.size(galeriaEntregas) : 0}">0</span>
-                </div>
-                <div class="gallery-grid">
-                    <article class="gallery-card" th:each="entrega : ${galeriaEntregas}">
-                        <a class="gallery-photo-link"
-                           th:href="@{/donaciones/{id}(id=${entrega.id})}"
-                           th:aria-label="|Ver donación ${entrega.tituloVisible()}|">
-                            <img class="gallery-photo"
-                                 th:src="${entrega.imagenPrincipal()}"
-                                 th:alt="|Foto de la donación ${entrega.tituloVisible()}|"
-                                 loading="lazy"
-                                 decoding="async">
-                        </a>
-                        <div class="gallery-meta">
-                            <span class="gallery-status" th:text="${entrega.etiquetaEstado()}">Entregada</span>
-                            <strong th:text="${entrega.tituloVisible()}">Donación entregada</strong>
-                            <span th:text="${entrega.entidadBeneficiaria != null
-                                    ? entrega.entidadBeneficiaria : 'Entrega confirmada'}">Entidad beneficiaria</span>
-                            <span th:if="${entrega.fechaEntrega != null}"
-                                  th:text="${#temporals.format(entrega.fechaEntrega, 'dd/MM/yyyy')}">Fecha</span>
-                            <span th:if="${entrega.cantidadTotalBienes != null}">
-                                · <span th:text="${entrega.cantidadTotalBienes}">1</span> bienes
-                            </span>
-                            <a class="gallery-detail-link"
-                               th:href="@{/donaciones/{id}(id=${entrega.id})}">Ver donación</a>
-                        </div>
-                    </article>
-                </div>
-                <p class="panel-empty" th:if="${#lists.isEmpty(galeriaEntregas)}">
-                    Todavía no hay entregas con foto para mostrar.
-                </p>
-            </section>
-
-            <p class="sidebar-note">Destacadas en la barra lateral · Entregadas también visibles en el mapa</p>
         </aside>
 
         <section class="map-pane" aria-label="Mapa de donaciones">

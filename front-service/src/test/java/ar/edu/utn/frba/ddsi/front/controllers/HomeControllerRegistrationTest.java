@@ -2,6 +2,8 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
+import ar.edu.utn.frba.ddsi.front.config.PoliticaDeReclamo;
+import ar.edu.utn.frba.ddsi.front.services.VerificacionEmailService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class HomeControllerRegistrationTest {
 
@@ -106,6 +111,36 @@ class HomeControllerRegistrationTest {
         assertEquals("register", controller.register(form, model));
 
         assertEquals("test-user-id", donacionesClient.datos.get("keycloakSub"));
+    }
+
+    @Test
+    void sendsVerificationEmailAfterCreatingDonorAccountWhenVerificationIsEnabled() {
+        DonacionesClient donacionesClient = new DonacionesClientStub();
+        KeycloakRegistrationClient keycloakClient = new KeycloakRegistrationClientStub();
+        PoliticaDeReclamo politica = new PoliticaDeReclamo(true);
+        VerificacionEmailService verificacion = mock(VerificacionEmailService.class);
+        when(verificacion.enviar("test-user-id", "donante@example.com")).thenReturn(true);
+        HomeController controller = new HomeController(
+                donacionesClient, null, keycloakClient, politica, verificacion);
+        ExtendedModelMap model = new ExtendedModelMap();
+        Map<String, String> form = Map.of(
+                "username", "nuevo-donante",
+                "password", "password-segura",
+                "tipoRegistro", "DONANTE",
+                "tipoPersona", "HUMANA",
+                "email", "donante@example.com",
+                "tipoContacto", "EMAIL",
+                "valorContacto", "donante@example.com",
+                "nombre", "Ana",
+                "apellido", "Ejemplo"
+        );
+
+        assertEquals("register", controller.register(form, model));
+
+        verify(verificacion).enviar("test-user-id", "donante@example.com");
+        assertEquals("Tu cuenta quedó creada. Te enviamos un correo a donante@example.com"
+                        + " para verificarla: abrí el link antes de ingresar.",
+                model.getAttribute("msg"));
     }
 
     @Test

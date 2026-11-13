@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.repositories.SpringRepositories;
 
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
+import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
@@ -8,6 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,5 +79,30 @@ class NotificacionPersistenciaTest {
         Notificacion recargada = repositorio.findById(guardada.getId()).orElseThrow();
 
         assertFalse(recargada.isNew(), "@PostLoad tiene que marcar la fila como existente");
+    }
+
+    @Test
+    void persisteElEstadoEnviando() {
+        Notificacion guardada = repositorio.saveAndFlush(
+                new Notificacion("ana@test.com", "email", new Mensaje("Asunto", "Cuerpo")));
+
+        guardada.marcarEnviando(LocalDateTime.now());
+        repositorio.saveAndFlush(guardada);
+        entityManager.clear();
+
+        assertEquals(EstadoNotificacion.ENVIANDO,
+                repositorio.findById(guardada.getId()).orElseThrow().getEstado());
+    }
+
+    @Test
+    void persisteUnCuerpoDeMensajeMayorA255Caracteres() {
+        String cuerpo = "https://donatrack.example/verificar?token=" + UUID.randomUUID()
+                + "\n" + "Instrucciones para verificar el correo. ".repeat(10);
+        Notificacion guardada = repositorio.saveAndFlush(
+                new Notificacion("ana@test.com", "email", new Mensaje("Verificación", cuerpo)));
+        entityManager.clear();
+
+        assertEquals(cuerpo, repositorio.findById(guardada.getId()).orElseThrow()
+                .getMensaje().getCuerpo());
     }
 }
