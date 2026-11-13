@@ -441,12 +441,14 @@ public class HomeController {
             Map<UUID, DonacionDTO> donacionesPorId) {
         Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = indexarEntidades(entidades);
 
-        // Las destacadas de incentivos son sólo la selección: la tarjeta y el estado
-        // salen de la donación real para no mostrar como "Entregada" algo que sigue en viaje.
+        // Incentivos selecciona por misión completada, pero el estado canónico es el de
+        // donaciones-service. Sólo publicamos como destacada una donación que ya está
+        // entregada; una completada que sigue en viaje no debe aparecer en el landing.
         return destacadas.stream()
                 .map(destacada -> destacada.idDonacion() == null
                         ? null : donacionesPorId.get(destacada.idDonacion()))
                 .filter(Objects::nonNull)
+                .filter(donacion -> "ENTREGADO".equalsIgnoreCase(donacion.getEstado()))
                 .map(donacion -> crearDonacionMapa(
                         donacion.getId(),
                         donacion.getFechaEntrega() != null

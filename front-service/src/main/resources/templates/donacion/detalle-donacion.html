@@ -93,7 +93,9 @@
                         <article class="donation-product-row" th:each="bien : ${donacion.bienes}">
                             <div class="donation-product-media">
                                 <img th:if="${bien.urlFoto != null and !#strings.isEmpty(bien.urlFoto)}"
-                                     th:src="${bien.urlFoto}" th:alt="${bien.descripcion}" loading="lazy">
+                                     th:src="${bien.urlFoto}" th:alt="${bien.descripcion}"
+                                     th:attr="onerror=|this.onerror=null;this.src='${imagenStock}'|"
+                                     loading="lazy">
                                 <svg th:unless="${bien.urlFoto != null and !#strings.isEmpty(bien.urlFoto)}"
                                      viewBox="0 0 16 16" fill="none" stroke="currentColor"
                                      stroke-width="1.1" aria-hidden="true">
@@ -129,7 +131,9 @@
                     <div class="donation-gallery">
                         <a th:each="foto : ${donacion.imagenesVisibles()}"
                            th:href="${foto}" target="_blank" rel="noopener noreferrer">
-                            <img th:src="${foto}" alt="Foto de la donación" loading="lazy">
+                            <img th:src="${foto}" alt="Foto de la donación"
+                                 th:attr="onerror=|this.onerror=null;this.src='${imagenStock}'|"
+                                 loading="lazy">
                         </a>
                     </div>
                 </section>

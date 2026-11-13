@@ -176,13 +176,13 @@ class FrontApplicationTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("Comedor Los Piletones")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("class=\"row-status transit\"")))
+                        org.hamcrest.Matchers.containsString("class=\"row-status delivered\"")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("aria-label=\"Estado: En camino\"")))
+                        org.hamcrest.Matchers.containsString("aria-label=\"Estado: Entregada\"")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("data-estado=\"transit\"")))
+                        org.hamcrest.Matchers.containsString("data-estado=\"delivered\"")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString(">En camino</span>")))
+                        org.hamcrest.Matchers.containsString(">Entregada</span>")))
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("data-latitude=\"-34.6538\"")))
                 .andExpect(content().string(
@@ -198,7 +198,7 @@ class FrontApplicationTest {
     }
 
     @Test
-    void landingOmitsFeaturedDonationThatIsNotInTheDonationList() throws Exception {
+    void landingOmitsFeaturedDonationThatIsNotDelivered() throws Exception {
         UUID missingId = UUID.randomUUID();
         when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
                 new DonacionDestacadaDTO(
@@ -273,7 +273,7 @@ class FrontApplicationTest {
                     pendiente.setImagenes(List.of("https://example.com/camisas.jpg"));
                     DonacionDTO destacada = new DonacionDTO();
                     destacada.setId(FEATURED_DONATION_ID);
-                    destacada.setEstado("EN_TRASLADO");
+                    destacada.setEstado("ENTREGADO");
                     destacada.setEntidadBeneficiaria("Comedor Los Piletones");
                     destacada.setCategoriaBienName("ALIMENTOS");
                     destacada.setSubcategoriaName("MERCEARIA");

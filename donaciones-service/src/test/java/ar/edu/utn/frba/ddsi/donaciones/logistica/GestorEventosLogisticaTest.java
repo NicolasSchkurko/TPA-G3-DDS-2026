@@ -260,6 +260,74 @@ public class GestorEventosLogisticaTest {
   }
 
   @Test
+  @DisplayName("Un INICIO_RUTA tardío no puede volver a EN_TRASLADO una donación ya entregada")
+  void manejarInicioRuta_tardioDespuesDeEntregaConfirmada_noRegresaEstado() {
+    UUID idDonacion = UUID.randomUUID();
+    Donacion donacion = new Donacion();
+    donacion.setId(idDonacion);
+    donacion.actualizarEstado(Estado.EN_TRASLADO, "En viaje");
+    donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
+
+    when(repositorioDonaciones.obtenerPorId(idDonacion)).thenReturn(Optional.of(donacion));
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(501L);
+    evento.setTipoEvento("INICIO_RUTA");
+    evento.setPayloadJson("{\"items\":[\"" + idDonacion + "\"],\"urlRuta\":\"http://ruta\"}");
+
+    gestor.procesarEvento(evento, Collections.emptyList());
+
+    assertEquals(Estado.ENTREGADO, donacion.getEstado(),
+        "un evento de inicio de ruta atrasado no debe pisar una entrega confirmada");
+    verify(repositorioDonaciones, never()).guardar(any());
+  }
+
+  @Test
+  @DisplayName("Un ENTREGA_FALLIDA tardío no revierte una donación ya entregada")
+  void manejarEntregaFallida_tardiaDespuesDeEntregado_noCambiaEstado() {
+    UUID idDonacion = UUID.randomUUID();
+    Donacion donacion = new Donacion();
+    donacion.setId(idDonacion);
+    donacion.actualizarEstado(Estado.EN_TRASLADO, "En viaje");
+    donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
+
+    when(repositorioDonaciones.obtenerPorId(idDonacion)).thenReturn(Optional.of(donacion));
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(502L);
+    evento.setTipoEvento("ENTREGA_FALLIDA");
+    evento.setReferenciaId(idDonacion.toString());
+    evento.setJustificacion("Evento atrasado");
+
+    gestor.procesarEvento(evento, Collections.emptyList());
+
+    assertEquals(Estado.ENTREGADO, donacion.getEstado());
+    verify(repositorioDonaciones, never()).guardar(any());
+  }
+
+  @Test
+  @DisplayName("Un REINGRESO_DEPOSITO tardío no revierte una donación ya entregada")
+  void manejarReingresoDeposito_tardioDespuesDeEntregado_noCambiaEstado() {
+    UUID idDonacion = UUID.randomUUID();
+    Donacion donacion = new Donacion();
+    donacion.setId(idDonacion);
+    donacion.actualizarEstado(Estado.EN_TRASLADO, "En viaje");
+    donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
+
+    when(repositorioDonaciones.obtenerPorId(idDonacion)).thenReturn(Optional.of(donacion));
+
+    EventoLogisticaDTO evento = new EventoLogisticaDTO();
+    evento.setId(503L);
+    evento.setTipoEvento("REINGRESO_DEPOSITO");
+    evento.setReferenciaId(idDonacion.toString());
+
+    gestor.procesarEvento(evento, Collections.emptyList());
+
+    assertEquals(Estado.ENTREGADO, donacion.getEstado());
+    verify(repositorioDonaciones, never()).guardar(any());
+  }
+
+  @Test
   @DisplayName("Punto 45: procesarEvento debe ser @Transactional")
   void procesarEventoEsTransactional() throws NoSuchMethodException {
     Method method = GestorEventosLogistica.class.getMethod(

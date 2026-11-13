@@ -132,6 +132,11 @@ public class GestorEventosLogistica {
       try {
         UUID idDonacion = UUID.fromString(idTexto);
         repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
+          if (!puedeIniciarRuta(donacion.getEstado())) {
+            log.warn("Ignorando INICIO_RUTA {} para la donación {}: estado actual {} ya no admite el traslado.",
+                evento.getId(), idDonacion, donacion.getEstado());
+            return;
+          }
           donacion.actualizarEstado(Estado.EN_TRASLADO, "Ruta iniciada por Logística");
           repositorioDonaciones.guardar(donacion);
           estrategiaViaje.ejecutar(new NotificacionViajeDatos(
@@ -141,14 +146,31 @@ public class GestorEventosLogistica {
           ));
         });
       } catch (Exception e) {
-        System.err.println("Error procesando item '" + idTexto + "' de la ruta " + evento.getId() + ": " + e.getMessage());
+        log.error("Error procesando item '{}' de la ruta {}: {}", idTexto, evento.getId(), e.getMessage());
       }
     }
+  }
+
+  /**
+   * Un INICIO_RUTA sólo puede mover una donación que todavía no llegó a un estado terminal.
+   * Los eventos de RabbitMQ no garantizan orden: un inicio de ruta publicado antes puede
+   * consumirse después de ENTREGA_CONFIRMADA y no debe volver a EN_TRASLADO una entrega.
+   */
+  private static boolean puedeIniciarRuta(Estado estado) {
+    return estado == Estado.EN_DEPOSITO
+        || estado == Estado.PENDIENTE_ASIGNACION
+        || estado == Estado.ASIGNADO
+        || estado == Estado.LISTA_PARA_ENTREGAR;
   }
 
   private void manejarEntregaConfirmada(EventoLogisticaDTO evento) {
     UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
+      if (donacion.getEstado() == Estado.ENTREGADO) {
+        log.info("Ignorando ENTREGA_CONFIRMADA {} duplicada para la donación {}: ya está ENTREGADO.",
+            evento.getId(), idDonacion);
+        return;
+      }
       donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada por la entidad");
       repositorioDonaciones.guardar(donacion);
 
@@ -209,6 +231,12 @@ public class GestorEventosLogistica {
   private void manejarEntregaFallida(EventoLogisticaDTO evento, List<MedioDeContacto> contactosAdministradores) {
     UUID idDonacion = UUID.fromString(evento.getReferenciaId());
     repositorioDonaciones.obtenerPorId(idDonacion).ifPresent(donacion -> {
+      Estado actual = donacion.getEstado();
+      if (actual == Estado.ENTREGADO || actual == Estado.ENTREGA_FALLIDA || actual == Estado.EN_DEPOSITO) {
+        log.warn("Ignorando ENTREGA_FALLIDA {} para la donación {}: estado actual {}.",
+            evento.getId(), idDonacion, actual);
+        return;
+      }
       String justificacion = evento.getJustificacion() != null ? evento.getJustificacion() : "Falla reportada en destino";
       donacion.actualizarEstado(Estado.ENTREGA_FALLIDA, justificacion);
       repositorioDonaciones.guardar(donacion);
@@ -238,6 +266,12 @@ public class GestorEventosLogistica {
 
     if (donacionOpt.isPresent()) {
       Donacion donacion = donacionOpt.get();
+      Estado actual = donacion.getEstado();
+      if (actual == Estado.ENTREGADO || actual == Estado.VENCIDO || actual == Estado.EN_DEPOSITO) {
+        log.warn("Ignorando REINGRESO_DEPOSITO {} para la donación {}: estado actual {}.",
+            evento.getId(), idDonacion, actual);
+        return;
+      }
       donacion.actualizarEstado(Estado.EN_DEPOSITO, "Reingresado a depósito tras revisión de entrega fallida");
       repositorioDonaciones.guardar(donacion);
     }

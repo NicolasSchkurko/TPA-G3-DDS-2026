@@ -64,7 +64,8 @@
                 <div class="donacion-card-media"
                      th:classappend="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null ? '' : ' donacion-card-media--empty'}">
                     <img th:if="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null}"
-                         th:src="${donacion.imagenPrincipal()}" alt="Foto de la donación">
+                         th:src="${donacion.imagenPrincipal()}" alt="Foto de la donación"
+                         onerror="this.onerror=null;this.src='/images/donaciones/ejemplo.png'">
                     <i th:unless="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null}"
                        class="bi bi-gift" aria-hidden="true"></i>
                 </div>
