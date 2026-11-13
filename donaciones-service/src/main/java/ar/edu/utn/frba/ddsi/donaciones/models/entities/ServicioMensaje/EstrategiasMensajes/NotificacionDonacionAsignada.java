@@ -8,6 +8,8 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.Se
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioNotificaciones.TipoEventoNotificacion;
 import org.springframework.stereotype.Component;
 
+import java.time.format.DateTimeFormatter;
+
 @Component
 public class NotificacionDonacionAsignada extends EstrategiaMensaje {
 
@@ -30,16 +32,17 @@ public class NotificacionDonacionAsignada extends EstrategiaMensaje {
         Mensaje mensaje = new Mensaje(
                 "Nueva donación asignada",
                 String.format(
-                        "Se asignó una donación a la entidad %s. Donación: %s. Cantidad total de bienes: %d. Fecha de entrega: %s.",
+                        "Una donación ya tiene entidad beneficiaria asignada.%n%n"
+                                + "Entidad: %s%n"
+                                + "Donación: %s%n"
+                                + "Cantidad de bienes: %d%n"
+                                + "Fecha de entrega: %s",
                         donacion.getEntidad().getPersonaJuridica().getRazonSocial(),
-                        valorOTexto(
-                                donacion.getDescripcion(),
-                                "sin descripción"
-                        ),
+                        valorOTexto(donacion.getDescripcion(), "sin descripción"),
                         donacion.sumaCantidadBienes(),
                         donacion.getFechaEntrega() != null
-                                ? donacion.getFechaEntrega().toString()
-                                : "sin fecha definida"
+                                ? donacion.getFechaEntrega().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                : "a confirmar"
                 ),
                 TipoDeMensaje.CAMBIO_ESTADO
         );
