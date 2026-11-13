@@ -26,7 +26,7 @@
 
     <header class="app-header" role="banner">
         <div class="app-header-inner">
-            <a class="brand" th:href="@{/}" aria-label="DonaTrack, ir al inicio">
+            <a class="brand" th:href="@{/}">
                 <span class="brand-mark" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round">
@@ -67,7 +67,7 @@
                 <a th:if="${rolesDisponibles != null and !#lists.isEmpty(rolesDisponibles)
                             and (!rolesDisponibles.contains('DONANTE') or !rolesDisponibles.contains('ENTIDAD'))}"
                    class="role-add" th:href="@{/cuenta/roles}"
-                   aria-label="Agregar un rol a tu cuenta">
+                   aria-label="Agregar rol">
                     <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                         <path d="M8 3.5a.5.5 0 0 1 .5.5v3.5H12a.5.5 0 0 1 0 1H8.5V12a.5.5 0 0 1-1 0V8.5H4a.5.5 0 0 1 0-1h3.5V4a.5.5 0 0 1 .5-.5z"/>
                     </svg>
@@ -172,7 +172,7 @@
     <footer class="app-footer">
         <div class="app-footer-inner">
             <div class="app-footer-brand">
-                <a class="app-footer-logo" th:href="@{/}" aria-label="DonaTrack, ir al inicio">
+                <a class="app-footer-logo" th:href="@{/}">
                     <span class="brand-mark" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                              stroke-linecap="round" stroke-linejoin="round">

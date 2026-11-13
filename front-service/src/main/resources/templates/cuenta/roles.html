@@ -41,8 +41,8 @@
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label fw-semibold small text-muted mb-1">Correo de la cuenta</label>
-                    <input type="email" class="form-control" th:value="${emailCuenta}" disabled readonly
+                    <label class="form-label fw-semibold small text-muted mb-1" for="emailCuenta">Correo de la cuenta</label>
+                    <input type="email" class="form-control" id="emailCuenta" th:value="${emailCuenta}" disabled readonly
                            aria-describedby="emailCuentaHelp">
                     <div class="form-text" id="emailCuentaHelp">El rol se vincula a este correo; no se crea una cuenta nueva.</div>
                 </div>

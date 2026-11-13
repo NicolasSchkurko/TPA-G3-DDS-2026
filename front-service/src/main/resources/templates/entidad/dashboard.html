@@ -60,14 +60,14 @@
                 Todavía no tenés necesidades registradas.
             </p>
             <p class="history-empty">
-                <a th:href="@{/entidad/necesidades}" style="color: var(--accent-dark); font-weight: 600;">Ver todas las necesidades →</a>
+                <a th:href="@{/entidad/necesidades}" style="color: var(--accent-dark); font-weight: 600; display: inline-flex; align-items: center; min-height: var(--hit);">Ver todas las necesidades →</a>
             </p>
         </section>
     </aside>
 
     <button class="map-corner-toggle map-corner-toggle-left" id="toggleNecesidades"
             type="button" aria-expanded="false" aria-controls="necesidadesPanel"
-            aria-label="Mostrar necesidades de la entidad">
+            aria-label="Mostrar necesidades de la entidad" title="Mostrar/ocultar necesidades">
         <i class="bi bi-chevron-right" aria-hidden="true"></i>
         <span class="map-corner-toggle-label">Necesidades</span>
     </button>
@@ -79,7 +79,7 @@
 
         <button class="map-corner-toggle map-corner-toggle-right" id="toggleEntidadData"
                 type="button" aria-expanded="false" aria-controls="entidadDataPanel"
-                aria-label="Abrir datos de la entidad">
+                aria-label="Abrir datos de la entidad" title="Abrir/cerrar datos de la entidad">
             <span class="map-corner-toggle-label">Datos</span>
             <i class="bi bi-chevron-left" aria-hidden="true"></i>
         </button>
@@ -139,8 +139,8 @@
                         <a th:if="${camiones != null and !#lists.isEmpty(camiones) and camiones[0].tokenSeguimiento != null}"
                            th:href="@{/seguimiento/{token}(token=${camiones[0].tokenSeguimiento})}"
                            target="_blank" rel="noopener"
-                           style="font-size: 12px; color: var(--accent-dark); margin-right: 10px;">Mapa completo</a>
-                        <a th:href="@{/entidad/seguimiento}" style="font-size: 12px; color: var(--accent-dark);">Ver en mapa →</a>
+                           style="font-size: 12px; color: var(--accent-dark); margin-right: 10px; display: inline-flex; align-items: center; min-height: var(--hit);">Mapa completo</a>
+                        <a th:href="@{/entidad/seguimiento}" style="font-size: 12px; color: var(--accent-dark); display: inline-flex; align-items: center; min-height: var(--hit);">Ver en mapa →</a>
                     </span>
                 </div>
                 <div th:if="${#lists.isEmpty(entregasActivas)}" class="incentives-empty">

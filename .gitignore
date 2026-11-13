@@ -71,3 +71,8 @@ front-service/data/
 
 ### Archivos subidos en desarrollo local ###
 uploads/
+
+### UI audit (dev-only) ###
+scripts/ui-audit/node_modules/
+scripts/ui-audit/playwright-report/
+scripts/ui-audit/test-results/

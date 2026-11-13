@@ -28,7 +28,7 @@ a,
 
 body.app {
     margin: 0;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     font-family: var(--font);
@@ -48,6 +48,7 @@ body.app > main {
     background: var(--ink);
     color: var(--white);
     padding: 12px 16px;
+    min-height: var(--hit);
     border-radius: var(--radius-sm);
     font-weight: 600;
 }
@@ -83,6 +84,7 @@ body.app > main {
     align-items: center;
     gap: var(--gap-2);
     min-height: var(--hit);
+    min-width: var(--hit);
     padding: 0 var(--gap-2);
     text-decoration: none;
     color: var(--ink);

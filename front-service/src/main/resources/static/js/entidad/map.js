@@ -13,9 +13,9 @@
         return L.divIcon({
             className: "",
             html: '<div class="map-marker map-marker-' + kind + (kind === "home" ? " marker-pulse" : "") + '">' + (kind === "home" ? HOME_SVG : TRUCK_SVG) + "</div>",
-            iconSize: [34, 34],
-            iconAnchor: [17, 17],
-            popupAnchor: [0, -20]
+            iconSize: [48, 48],
+            iconAnchor: [24, 24],
+            popupAnchor: [0, -24]
         });
     }
 

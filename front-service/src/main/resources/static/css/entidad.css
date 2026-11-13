@@ -578,6 +578,7 @@
     place-items: center;
     width: 34px;
     height: 34px;
+    margin: 7px;
     border-radius: 50%;
     border: 2px solid var(--white);
     box-shadow: var(--shadow-md);
@@ -653,7 +654,7 @@
     border: 1px solid var(--line-strong);
     border-radius: var(--radius);
     font: inherit;
-    min-width: 220px;
+    min-width: 0;
     flex: 1;
 }
 
@@ -781,6 +782,9 @@
 @media (max-width: 1024px) { .seguimiento-layout { grid-template-columns: minmax(0, 1fr) 320px; } }
 
 @media (max-width: 860px) {
+    .notif-item { grid-template-columns: 1fr; }
+    .notif-dot { display: none; }
+    .notif-actions { justify-content: flex-start; }
     .seguimiento-layout { display: block; height: auto; }
     .seguimiento-layout .map-wrap { height: 52dvh; min-height: 300px; }
 }
