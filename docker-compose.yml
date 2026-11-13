@@ -149,7 +149,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
       IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: incentivos-service,front-service,donaciones-service
-      N8N_URL: http://n8n:5678/webhook/notificaciones
+      # n8n compartido en la nube. Para usar el n8n local: N8N_NOTIFICACIONES_URL=http://n8n:5678/webhook/notificaciones en el .env de la raíz.
+      N8N_URL: ${N8N_NOTIFICACIONES_URL:-https://n8n.134.65.18.218.nip.io/webhook/notificaciones}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: tpa
@@ -179,7 +180,7 @@ services:
       #no lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
-      N8N_URL: http://n8n:5678/webhook/incentivos
+      N8N_URL: ${N8N_INCENTIVOS_URL:-https://n8n.134.65.18.218.nip.io/webhook/incentivos}
       DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-ddsi_app}
       DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
