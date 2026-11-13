@@ -21,6 +21,8 @@ public class NecesidadDTO {
     private Integer plazoEnDias;
     private UUID id;
     private Boolean activa;
+    /** Bienes ya entregados que cuentan para esta necesidad en su ventana vigente. */
+    private Integer cantidadRecibida;
 
     /**
      * Construye la Necesidad de dominio a partir del DTO.
@@ -75,7 +77,12 @@ public class NecesidadDTO {
         dto.setId(necesidad.getId());
         dto.setActiva(necesidad.isActiva());
         dto.setTipoNecesidad(necesidad instanceof NecesidadRecurrente ? "RECURRENTE" : "EXTRAORDINARIA");
-        if (necesidad instanceof NecesidadRecurrente recurrente) dto.setPlazoEnDias(recurrente.getPlazoEnDias());
+        if (necesidad instanceof NecesidadRecurrente recurrente) {
+            dto.setPlazoEnDias(recurrente.getPlazoEnDias());
+            dto.setCantidadRecibida(recurrente.cantidadRecibidaEnPeriodo());
+        } else {
+            dto.setCantidadRecibida(necesidad.cantidadRecibida());
+        }
 
         return dto;
     }

@@ -22,10 +22,13 @@ public class NecesidadDTO {
     private Integer plazoEnDias;
     private UUID id;
     private Boolean activa;
+    /** Cantidad ya entregada que calcula donaciones-service (ventana vigente si es recurrente). */
+    private Integer cantidadRecibida;
     private List<DonacionDTO> donaciones = new ArrayList<>();
 
     /** Bienes recibidos/asignados que cuentan para el progreso de la necesidad. */
     public int bienesRecibidos() {
+        if (cantidadRecibida != null) return cantidadRecibida;
         if (donaciones == null) return 0;
         return donaciones.stream()
                 .filter(d -> d != null && d.getCantidadTotalBienes() != null)

@@ -2,13 +2,17 @@ package ar.edu.utn.frba.ddsi.donaciones.necesidad;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.NecesidadDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -77,6 +81,21 @@ public class NecesidadTest {
             "Necesitamos ropa de invierno para niños",
             100, 10);
     assertFalse(necesidadRecurrente.estaSatisfecha());
+  }
+
+  @Test
+  @DisplayName("El DTO expone los bienes recibidos vigentes para la pantalla de necesidades")
+  void dtoExponeCantidadRecibidaVigente() {
+    NecesidadRecurrente necesidad = new NecesidadRecurrente(subcategoria, "Ropa", 10, 30);
+    Donacion donacion = mock(Donacion.class);
+    when(donacion.getEstado()).thenReturn(Estado.ENTREGADO);
+    when(donacion.getFechaEntrega()).thenReturn(LocalDate.now());
+    when(donacion.sumaCantidadBienes()).thenReturn(4);
+    necesidad.getDonaciones().add(donacion);
+
+    NecesidadDTO dto = NecesidadDTO.from(necesidad);
+
+    assertEquals(4, dto.getCantidadRecibida());
   }
 
   @Test
