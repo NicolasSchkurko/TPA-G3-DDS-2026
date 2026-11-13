@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,6 +67,7 @@ public final class IncentivosAdminDTOs {
         /** El backend lo serializa como "2026-10". */
         private String periodo;
         private List<RankingItem> ranking;
+        private Long participantes;
     }
 
     @Getter @Setter @NoArgsConstructor
@@ -74,5 +76,20 @@ public final class IncentivosAdminDTOs {
         private String nombreUsuario;
         private Integer puesto;
         private Long misionesCumplidas;
+    }
+
+    @Getter @Setter @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class RankingPage {
+        private List<RankingItem> content = new ArrayList<>();
+        private long totalElements;
+    }
+
+    @Getter @Setter @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class RankingDetalle {
+        private UUID idRanking;
+        private String periodo;
+        private RankingPage ranking;
     }
 }

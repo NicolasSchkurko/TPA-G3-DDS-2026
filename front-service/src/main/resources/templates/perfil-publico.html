@@ -19,7 +19,7 @@
             <h1 th:text="${tipoPerfil == 'ENTIDAD' ? 'Entidad beneficiaria' : 'Persona donante'}">Perfil público</h1>
             <p>Solo mostramos la información que ayuda a conocer la actividad pública de este perfil.</p>
         </div>
-        <a class="btn btn-secondary" th:href="@{/}">Volver al inicio</a>
+        <a class="btn btn-secondary" th:href="${homeUrl}">Volver al inicio</a>
     </header>
 
     <div class="profile-grid">
@@ -94,7 +94,7 @@
             <p class="profile-meta">Los datos de contacto y el domicilio exacto no se publican. Si querés colaborar, usá los canales oficiales de DonaTrack.</p>
             <div class="profile-actions">
                 <a class="btn btn-primary" th:if="${tipoPerfil == 'ENTIDAD'}" th:href="@{/donaciones}">Ver donaciones</a>
-                <a class="btn btn-secondary" th:href="@{/}">Conocer DonaTrack</a>
+                <a class="btn btn-secondary" th:href="${homeUrl}">Conocer DonaTrack</a>
             </div>
         </aside>
     </div>

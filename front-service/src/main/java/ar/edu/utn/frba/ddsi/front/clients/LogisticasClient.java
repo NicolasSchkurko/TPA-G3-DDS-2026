@@ -109,7 +109,7 @@ public class LogisticasClient {
     public List<LogisticaDTOs.Ruta> obtenerRutas() {
         try {
             PageResponse<LogisticaDTOs.Ruta> page = restClient.get()
-                    .uri(baseUrl + "/rutas")
+                    .uri(baseUrl + "/rutas?page=0&size=200")
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<LogisticaDTOs.Ruta>>() {});
             return page != null && page.getContent() != null ? page.getContent() : List.of();

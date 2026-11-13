@@ -922,6 +922,36 @@ body {
     margin-top: 16px;
 }
 
+.entity-marker {
+    border: none;
+    background: transparent;
+}
+
+.entity-marker-dot {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--accent, #1b7838);
+    border-radius: 50%;
+    background: var(--white, #fff);
+    color: var(--accent, #1b7838);
+    box-shadow: 0 2px 8px rgba(15, 18, 16, .2);
+    transition: transform .15s ease, background .15s ease, color .15s ease;
+}
+
+.entity-marker-dot svg {
+    width: 14px;
+    height: 14px;
+}
+
+.entity-marker:hover .entity-marker-dot,
+.entity-marker.is-active .entity-marker-dot {
+    transform: scale(1.12);
+    background: var(--accent, #1b7838);
+    color: var(--white, #fff);
+}
+
 .donante-truck {
     display: grid;
     place-items: center;

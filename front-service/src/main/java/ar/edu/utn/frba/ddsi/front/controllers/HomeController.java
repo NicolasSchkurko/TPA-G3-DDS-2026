@@ -32,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -385,11 +386,16 @@ public class HomeController {
                 : Collections.emptyList();
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
         List<DonacionDTO> donaciones = donacionesClient.obtenerTodasLasDonaciones();
+        if (donaciones == null) donaciones = Collections.emptyList();
+        Map<UUID, DonacionDTO> donacionesPorId = donaciones.stream()
+                .filter(donacion -> donacion.getId() != null)
+                .collect(Collectors.toMap(DonacionDTO::getId, donacion -> donacion, (a, b) -> a));
         List<DonacionDTO> galeriaEntregas = crearGaleriaEntregas(destacadas, donaciones);
         model.addAttribute("esDonante", esDonante);
         model.addAttribute("destacadas", destacadas);
         model.addAttribute("galeriaEntregas", galeriaEntregas);
-        model.addAttribute("destacadasMapa", enriquecerDestacadasConUbicacion(destacadas, entidades));
+        model.addAttribute("destacadasMapa",
+                enriquecerDestacadasConUbicacion(destacadas, entidades, donacionesPorId));
         model.addAttribute("entregadasMapa",
                 enriquecerEntregadasConUbicacion(destacadas, donaciones, entidades));
         model.addAttribute("entidades", esDonante ? entidades : Collections.emptyList());
@@ -431,17 +437,25 @@ public class HomeController {
 
     private List<DonacionDestacadaMapaDTO> enriquecerDestacadasConUbicacion(
             List<DonacionDestacadaDTO> destacadas,
-            List<EntidadBeneficiariaDTO> entidades) {
+            List<EntidadBeneficiariaDTO> entidades,
+            Map<UUID, DonacionDTO> donacionesPorId) {
         Map<String, EntidadBeneficiariaDTO> entidadesPorNombre = indexarEntidades(entidades);
 
+        // Las destacadas de incentivos son sólo la selección: la tarjeta y el estado
+        // salen de la donación real para no mostrar como "Entregada" algo que sigue en viaje.
         return destacadas.stream()
+                .map(destacada -> destacada.idDonacion() == null
+                        ? null : donacionesPorId.get(destacada.idDonacion()))
+                .filter(Objects::nonNull)
                 .map(donacion -> crearDonacionMapa(
-                        donacion.idDonacion(),
-                        donacion.fechaEntrega(),
-                        donacion.cantidadBienes(),
-                        donacion.categoria(),
-                        donacion.subCategoria(),
-                        donacion.entidadBeneficiaria(),
+                        donacion.getId(),
+                        donacion.getFechaEntrega() != null
+                                ? donacion.getFechaEntrega().atStartOfDay() : null,
+                        donacion.getCantidadTotalBienes(),
+                        donacion.getCategoriaBienName(),
+                        donacion.getSubcategoriaName(),
+                        donacion.getEntidadBeneficiaria(),
+                        donacion.getEstado(),
                         entidadesPorNombre))
                 .toList();
     }
@@ -469,6 +483,7 @@ public class HomeController {
                         donacion.getCategoriaBienName(),
                         donacion.getSubcategoriaName(),
                         donacion.getEntidadBeneficiaria(),
+                        donacion.getEstado(),
                         entidadesPorNombre))
                 .toList();
     }
@@ -490,6 +505,7 @@ public class HomeController {
             String categoria,
             String subcategoria,
             String nombreEntidad,
+            String estado,
             Map<String, EntidadBeneficiariaDTO> entidadesPorNombre) {
         EntidadBeneficiariaDTO entidad = nombreEntidad == null
                 ? null
@@ -502,6 +518,7 @@ public class HomeController {
                 categoria,
                 subcategoria,
                 nombreEntidad,
+                estado,
                 direccion != null ? direccion.getLatitud() : null,
                 direccion != null ? direccion.getLongitud() : null,
                 direccion != null ? nombreUbicacion(direccion) : null);

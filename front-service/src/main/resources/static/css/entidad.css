@@ -947,7 +947,7 @@
     text-transform: uppercase;
 }
 
-.notification-detail { max-width: 860px; padding: var(--gap-5); }
+.notification-detail { width: 100%; max-width: none; padding: var(--gap-5); }
 .notification-detail-back { display: inline-flex; margin-bottom: var(--gap-4); }
 .notification-detail-header {
     display: flex;

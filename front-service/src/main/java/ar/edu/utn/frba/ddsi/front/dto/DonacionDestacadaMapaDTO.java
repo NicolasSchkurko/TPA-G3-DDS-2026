@@ -11,7 +11,24 @@ public record DonacionDestacadaMapaDTO(
         String categoria,
         String subCategoria,
         String entidadBeneficiaria,
+        String estado,
         Double latitud,
         Double longitud,
         String ubicacion) {
+
+    /** Etiqueta del estado real de la donación en donaciones-service. */
+    public String estadoEtiqueta() {
+        return DonacionDTO.etiquetaDeEstado(estado);
+    }
+
+    /** Clase de estado para el chip y el marcador del landing. */
+    public String estadoMapa() {
+        if (estado == null || estado.isBlank()) return "pending";
+        return switch (estado.toUpperCase()) {
+            case "ENTREGADO" -> "delivered";
+            case "EN_TRASLADO" -> "transit";
+            case "EN_DEPOSITO" -> "depot";
+            default -> "pending";
+        };
+    }
 }

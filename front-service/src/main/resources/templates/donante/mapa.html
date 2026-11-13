@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
     <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
-    <link rel="stylesheet" th:href="@{/css/donante-mapa.css}">
+    <link rel="stylesheet" th:href="@{/css/donante-mapa.css(v=2)}">
 </head>
 <body class="beneficiary-map-page">
     <div th:replace="~{fragments/app-shell :: appHeader}"></div>
@@ -155,9 +155,9 @@
                         <h3 id="missionTitle">Misión actual</h3>
                         <span class="mission-percent" th:text="${porcentajeMision + '%'}">0%</span>
                     </div>
-                    <p class="mission-name" th:text="${misionDonante.nombreMision}">Nombre de la misión</p>
-                    <p class="mission-description" th:if="${misionDonante.descripcion}"
-                       th:text="${misionDonante.descripcion}">Descripción</p>
+                    <p class="mission-name" th:text="${misionDonante['nombreMision'] ?: 'Misión actual'}">Nombre de la misión</p>
+                    <p class="mission-description" th:if="${misionDonante['descripcion'] != null}"
+                       th:text="${misionDonante['descripcion']}">Descripción</p>
                     <div class="mission-progress" role="progressbar" aria-label="Progreso de la misión"
                          th:attr="aria-valuenow=${porcentajeMision}, aria-valuemin=0, aria-valuemax=100">
                         <span th:style="|width:${porcentajeMision}%|"></span>
@@ -173,14 +173,17 @@
                     <h3 id="badgesTitle">Insignias obtenidas</h3>
                     <div class="badge-list" th:if="${!#lists.isEmpty(insignias)}">
                         <article class="badge-item" th:each="insignia : ${insignias}">
-                            <img class="badge-image" th:if="${insignia.urlImagen}"
-                                 th:src="${insignia.urlImagen}" th:alt="${insignia.nombre}">
-                            <span class="badge-icon" th:unless="${insignia.urlImagen}">
+                            <img class="badge-image"
+                                 th:if="${insignia['urlImagen'] != null and !#strings.isEmpty(insignia['urlImagen'])}"
+                                 th:src="${insignia['urlImagen']}" th:alt="${insignia['nombre'] ?: 'Insignia'}">
+                            <span class="badge-icon"
+                                  th:unless="${insignia['urlImagen'] != null and !#strings.isEmpty(insignia['urlImagen'])}">
                                 <i class="bi bi-award" aria-hidden="true"></i>
                             </span>
                             <span class="badge-copy">
-                                <strong th:text="${insignia.nombre}">Insignia</strong>
-                                <small th:if="${insignia.descripcion}" th:text="${insignia.descripcion}">Descripción</small>
+                                <strong th:text="${insignia['nombre'] ?: 'Insignia'}">Insignia</strong>
+                                <small th:if="${insignia['descripcion'] != null}"
+                                       th:text="${insignia['descripcion']}">Descripción</small>
                             </span>
                         </article>
                     </div>
@@ -191,16 +194,18 @@
                         <h3 id="rankingTitle">Ranking del mes</h3>
                         <span class="ranking-period" th:if="${periodoRanking}" th:text="${periodoRanking}">Mes</span>
                     </div>
-                    <div class="my-ranking-position" th:if="${puestoRanking != null and !puestoRanking.isEmpty() and puestoRanking.puesto != null}">
-                        <span>Tu posición</span><strong th:text="${'#' + puestoRanking.puesto}">#0</strong>
+                    <div class="my-ranking-position"
+                         th:if="${puestoRanking != null and !puestoRanking.isEmpty() and puestoRanking['puesto'] != null}">
+                        <span>Tu posición</span><strong th:text="${'#' + puestoRanking['puesto']}">#0</strong>
                     </div>
-                    <p class="incentives-empty" th:if="${puestoRanking == null or puestoRanking.isEmpty() or puestoRanking.puesto == null}">
+                    <p class="incentives-empty"
+                       th:if="${puestoRanking == null or puestoRanking.isEmpty() or puestoRanking['puesto'] == null}">
                         Todavía no tenés una posición publicada.
                     </p>
                     <ol class="ranking-list" th:if="${!#lists.isEmpty(rankingTop3)}">
                         <li th:each="puesto : ${rankingTop3}">
-                            <span class="ranking-number" th:text="${puesto.puesto}">1</span>
-                            <span class="ranking-name" th:text="${puesto.nombreUsuario}">Colaborador</span>
+                            <span class="ranking-number" th:text="${puesto['puesto'] ?: '-'}">1</span>
+                            <span class="ranking-name" th:text="${puesto['nombreUsuario'] ?: 'Colaborador'}">Colaborador</span>
                         </li>
                     </ol>
                     <p class="incentives-empty" th:if="${#lists.isEmpty(rankingTop3)}">El top 3 mensual todavía no está disponible.</p>
@@ -286,7 +291,7 @@
     <script th:inline="javascript">
         window.DONANTE_SEGUIMIENTO = JSON.parse(/*[[${seguimientoDonanteJson}]]*/ '{}');
     </script>
-    <script th:src="@{/js/donante-mapa.js(v=2)}"></script>
+    <script th:src="@{/js/donante-mapa.js(v=3)}"></script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

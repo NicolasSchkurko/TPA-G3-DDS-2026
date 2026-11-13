@@ -53,6 +53,19 @@
     flex-shrink: 0;
 }
 
+/* La X de cierre de las alertas de Bootstrap queda centrada verticalmente,
+   incluso cuando el alert usa d-flex align-items-center. */
+.main-admin .alert-dismissible {
+    padding-right: 3rem;
+}
+
+.main-admin .alert-dismissible .btn-close {
+    top: 50%;
+    right: .75rem;
+    padding: .35rem;
+    transform: translateY(-50%);
+}
+
 /* ---------- Accesos del panel de administración ---------- */
 .admin-tile-grid {
     display: grid;
@@ -404,7 +417,7 @@
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(27, 120, 56, 0.3);
+    box-shadow: 0 2px 8px rgba(15, 18, 16, 0.14);
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
 }
@@ -412,7 +425,7 @@
 .btn-nuevo:hover,
 .btn-nuevo:focus {
     background-color: #155f2d;
-    box-shadow: 0 5px 14px rgba(27, 120, 56, 0.42);
+    box-shadow: 0 5px 14px rgba(15, 18, 16, 0.18);
     transform: translateY(-1px);
     color: var(--white);
 }
@@ -660,10 +673,12 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
 /* --- Botones de acción: Actualizar (verde) / Eliminar (rojo) --- */
+.btn-accion,
 .btn-actualizar,
 .btn-eliminar {
     display: inline-flex;
@@ -684,16 +699,30 @@
     transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
 }
 
+.btn-accion {
+    border: 1px solid var(--line-strong);
+    background-color: var(--white);
+    color: var(--ink-2);
+}
+
+.btn-accion:hover,
+.btn-accion:focus {
+    border-color: var(--accent);
+    background-color: var(--accent-soft);
+    color: var(--accent-dark);
+    transform: translateY(-1px);
+}
+
 .btn-actualizar {
     background-color: #1b7838;
     color: var(--white);
-    box-shadow: 0 2px 6px rgba(27, 120, 56, 0.28);
+    box-shadow: 0 2px 6px rgba(15, 18, 16, 0.12);
 }
 
 .btn-actualizar:hover,
 .btn-actualizar:focus {
     background-color: #155f2d;
-    box-shadow: 0 4px 12px rgba(27, 120, 56, 0.4);
+    box-shadow: 0 4px 12px rgba(15, 18, 16, 0.16);
     transform: translateY(-1px);
     color: var(--white);
 }
@@ -701,13 +730,13 @@
 .btn-eliminar {
     background-color: #c92a2a;
     color: var(--white);
-    box-shadow: 0 2px 6px rgba(201, 42, 42, 0.26);
+    box-shadow: 0 2px 6px rgba(15, 18, 16, 0.12);
 }
 
 .btn-eliminar:hover,
 .btn-eliminar:focus {
     background-color: #a51111;
-    box-shadow: 0 4px 12px rgba(201, 42, 42, 0.38);
+    box-shadow: 0 4px 12px rgba(15, 18, 16, 0.16);
     transform: translateY(-1px);
     color: var(--white);
 }
@@ -762,18 +791,23 @@
     transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
-.btn-desplegar:hover,
-.btn-desplegar:focus {
+.btn-desplegar:hover {
     background-color: #eef5f0;
     color: #1b7838;
 }
 
-.fila-entidad.fila-desplegada {
-    background-color: var(--map-bg);
+/* El click deja el botón enfocado: no debe conservar el color del hover. */
+.btn-desplegar:focus {
+    outline: none;
 }
 
-.fila-entidad.fila-desplegada .btn-desplegar {
-    color: #1b7838;
+.btn-desplegar:focus-visible {
+    outline: 2px solid #1b7838;
+    outline-offset: 2px;
+}
+
+.fila-entidad.fila-desplegada {
+    background-color: var(--map-bg);
 }
 
 .linea-meta {
@@ -1358,10 +1392,6 @@
 
 .fila-donacion.fila-desplegada {
     background-color: var(--map-bg);
-}
-
-.fila-donacion.fila-desplegada .btn-desplegar {
-    color: #1b7838;
 }
 
 .fila-donacion .col-donacion {
@@ -2124,6 +2154,25 @@
     margin-bottom: 24px;
 }
 
+/* En escritorio hay 8 tarjetas: las dos últimas ocupan el ancho libre de la
+   segunda fila en partes iguales, sin dejar un hueco a la derecha. */
+@media (min-width: 1100px) {
+    .admin-cards {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .admin-card:nth-last-child(2),
+    .admin-card:last-child {
+        grid-column: span 3;
+    }
+}
+
+@media (min-width: 700px) and (max-width: 1099px) {
+    .admin-cards {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 .admin-card {
     display: flex;
     align-items: center;
@@ -2187,7 +2236,8 @@
 }
 
 .admin-attention {
-    border-left: 4px solid #c2410c;
+    border-color: #f0ddd4;
+    background-color: #fffaf7;
 }
 
 .admin-attention-list {

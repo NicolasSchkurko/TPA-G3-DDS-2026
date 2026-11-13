@@ -55,6 +55,15 @@ class DonorMapSmokeTest {
         when(seguimientoService.construirDonante(any())).thenReturn(seguimiento());
         when(incentivosClient.obtenerPerfilPublico(idDonante.toString()))
                 .thenReturn(Map.of("nombreCategoria", "Colaborador solidario"));
+        when(incentivosClient.obtenerInsignias(idDonante.toString()))
+                .thenReturn(List.of(Map.of("nombre", "Primera insignia")));
+        when(incentivosClient.obtenerRankingActual()).thenReturn(Map.of(
+                "periodo", "2026-11",
+                "ranking", Map.of(
+                        "content", List.of(Map.of("puesto", 1, "nombreUsuario", "Ana")),
+                        "totalElements", 1)));
+        when(incentivosClient.obtenerPuestoRanking(idDonante.toString()))
+                .thenReturn(Map.of("puesto", 1));
 
         mockMvc.perform(get("/donante/mapa").session(sessionDonante()))
                 .andExpect(status().isOk())
@@ -65,7 +74,13 @@ class DonorMapSmokeTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
                         .string(org.hamcrest.Matchers.containsString("Categoría actual")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Colaborador solidario")));
+                        .string(org.hamcrest.Matchers.containsString("Colaborador solidario")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Primera insignia")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Ana")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("#1")));
     }
 
     private static EntidadBeneficiariaDTO entidad() {

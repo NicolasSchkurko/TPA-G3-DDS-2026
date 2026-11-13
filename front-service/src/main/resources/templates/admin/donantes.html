@@ -16,7 +16,6 @@
 
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
         <h1 th:text="'Administrar donantes'">Administración</h1>
         <p class="admin-page-lead" th:text="'Buscá, actualizá, eliminá o importá los donantes registrados.'">Gestioná los datos del sistema.</p>
     </div>
@@ -165,6 +164,12 @@
                 </div>
 
                 <div class="col-acciones">
+                    <a th:href="@{/perfil/donante/{id}(id=${donante.id})}"
+                       class="btn-accion" target="_blank" rel="noopener noreferrer"
+                       th:if="${donante.id != null}">
+                        <i class="bi bi-person-badge"></i> Perfil público
+                    </a>
+
                     <!-- Lleva al formulario completo: el modal anterior sólo editaba cinco campos y
                          no alcanzaba para domicilio, medios de contacto ni representantes. -->
                     <a th:href="@{'/admin/donantes/' + ${donante.id} + '/editar'}" class="btn-actualizar">

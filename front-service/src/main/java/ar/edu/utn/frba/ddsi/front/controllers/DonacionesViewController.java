@@ -14,11 +14,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/donaciones")
 public class DonacionesViewController {
+
+    /** Portadas de ejemplo para donaciones que todavía no tienen foto propia. */
+    private static final List<String> IMAGENES_STOCK = List.of(
+            "/images/donaciones/abrigo.jpg",
+            "/images/donaciones/alimentos.jpg",
+            "/images/donaciones/conservas.jpg",
+            "/images/donaciones/higiene.jpg",
+            "/images/donaciones/juguetes.jpg",
+            "/images/donaciones/leche.jpg",
+            "/images/donaciones/utiles.jpg"
+    );
 
     private final DonacionesClient donacionesClient;
 
@@ -105,6 +117,10 @@ public class DonacionesViewController {
             return "redirect:/donaciones";
         }
         model.addAttribute("donacion", donacion);
+        // Siempre disponible como fallback: si la imagen persistida existe pero el archivo
+        // no se puede cargar, el navegador cae a esta portada de stock.
+        model.addAttribute("imagenStock",
+                IMAGENES_STOCK.get(ThreadLocalRandom.current().nextInt(IMAGENES_STOCK.size())));
         return "donacion/detalle-donacion";
     }
 

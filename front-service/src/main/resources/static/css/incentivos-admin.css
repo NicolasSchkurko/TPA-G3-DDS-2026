@@ -1,268 +1,401 @@
-/* ==========================================================
-   incentivos-admin.css
-   Pantallas de admin: misiones, categorías y rankings.
-   La cabecera la aporta fragments/app-shell.
-   ========================================================== */
-
-:root {
-    --green-primary: #186b3b;
-    --green-hover: #12522d;
-    --green-sidebar: #e6f2ea;
-    --green-row-active: #eaf5ee;
-    --badge-vigente: #38d375;
-    --bg-main: #f4f6f5;
-    --card-bg: #ffffff;
-    --text-dark: #1e2923;
-    --text-muted: #5e6d64;
-    --border-color: #e0e6e2;
-    --gold: #d4a838;
-    --silver: #a6aeb5;
-    --bronze: #b87344;
-    --danger: #c0392b;
-    --danger-hover: #a53225;
-    --danger-soft: #fdecea;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 2px 10px rgba(0, 0, 0, .04);
+/* Incentivos: misiones y categorías. */
+.incentivos-page .main-admin {
+    padding-bottom: var(--gap-7);
 }
 
-* { box-sizing: border-box; }
+.incentivos-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #f5f8f5;
+}
 
-body {
-    font-family: var(--font, 'Public Sans', system-ui, -apple-system, sans-serif);
-    background-color: var(--bg-main);
-    color: var(--text-dark);
-    font-size: .95rem;
+.incentivos-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.incentivos-tab i {
+    font-size: 14px;
+}
+
+.incentivos-tab:hover {
+    color: var(--ink-2);
+}
+
+.incentivos-tab[aria-selected="true"] {
+    background: var(--white);
+    color: var(--accent-dark);
+    box-shadow: 0 2px 7px rgba(15, 18, 16, .1);
+}
+
+.incentivos-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.incentivos-tab-count {
+    display: inline-flex;
+    min-width: 21px;
+    height: 21px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #e8eee9;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+.incentivos-tab[aria-selected="true"] .incentivos-tab-count {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+.incentivos-panel {
+    margin-top: var(--gap-4);
+}
+
+.incentivos-panel[hidden] {
+    display: none !important;
+}
+
+.incentivos-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--gap-4);
+    margin-bottom: var(--gap-3);
+    flex-wrap: wrap;
+}
+
+.incentivos-panel-head h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+}
+
+.incentivos-panel-head p {
+    max-width: 62ch;
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
     line-height: 1.5;
 }
 
-/* Un `hidden` debe ganarle a cualquier `display` de las clases de abajo
-   (.field y .form-row son flex y si no, se siguen viendo). */
-[hidden] { display: none !important; }
-
-/* ---------- Contenido ---------- */
-.main-content { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
-
-.page-header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 20px; margin-bottom: 24px;
+.incentivos-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
-.page-header h1 { font-size: 1.7rem; font-weight: 700; }
-.subtitle { color: var(--text-muted); margin-top: 4px; }
-.page-header-actions { display: flex; align-items: center; gap: 12px; }
 
-/* ---------- Botones ---------- */
-.btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
-    border: 1px solid transparent; border-radius: var(--radius-sm);
-    padding: 10px 18px; font-size: .9rem; font-weight: 600;
-    cursor: pointer; text-decoration: none; display: inline-flex;
-    align-items: center; gap: 6px; transition: background-color .15s, color .15s;
+.incentivos-panel-actions .badge {
+    font-weight: 600;
+}
+
+.incentivos-tag {
+    display: inline-flex;
+    margin: 0 5px 4px 0;
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #f8faf8;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+
+.incentivos-number {
+    display: block;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.position-number {
+    display: inline-flex;
+    min-width: 25px;
+    height: 25px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.incentivos-panel .admin-list-card {
+    margin-top: 0;
+}
+
+/* Modales y formularios de incentivos */
+[hidden] {
+    display: none !important;
+}
+
+.incentivos-page .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--gap-4);
+    background: rgba(15, 25, 20, .55);
+}
+
+.incentivos-page .modal-box {
+    width: 100%;
+    max-width: 620px;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: var(--gap-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    box-shadow: 0 24px 60px rgba(15, 18, 16, .28);
+}
+
+.incentivos-page .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    margin-bottom: var(--gap-4);
+}
+
+.incentivos-page .modal-head h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.incentivos-page .modal-head p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.incentivos-page .modal-close {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.incentivos-page .modal-close:hover,
+.incentivos-page .modal-close:focus-visible {
+    color: var(--ink);
+}
+
+.incentivos-page .modal-actions,
+.incentivos-page .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: var(--gap-5);
+}
+
+.incentivos-page .form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-3);
+}
+
+.incentivos-page .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--gap-3);
+}
+
+.incentivos-page .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.incentivos-page .field label,
+.incentivos-page .form-label {
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.incentivos-page .req {
+    color: #c92a2a;
+}
+
+.incentivos-page .field input,
+.incentivos-page .field select,
+.incentivos-page .field textarea {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--ink);
     font-family: inherit;
+    font-size: 13.5px;
 }
-.btn-primary { background: var(--green-primary); color: #fff; }
-.btn-primary:hover { background: var(--green-hover); }
-.btn-secondary { background: var(--card-bg); color: var(--text-dark); border-color: var(--border-color); }
-.btn-secondary:hover { background: var(--bg-main); }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover { background: var(--danger-hover); }
-.btn-ghost { background: transparent; color: var(--green-primary); border-color: var(--border-color); }
-.btn-ghost:hover { background: var(--green-sidebar); }
 
-.btn-sm { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
-.btn-green { background: var(--green-primary); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
-.btn-green:hover { background: var(--green-hover); }
-.btn-outline-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: 6px; cursor: pointer; font-family: inherit; }
-.btn-outline-danger:hover { background: var(--danger-soft); }
+.incentivos-page .field textarea {
+    resize: vertical;
+}
 
-/* ---------- Cards ---------- */
-.card {
-    background: var(--card-bg); border-radius: var(--radius); padding: 24px;
-    box-shadow: var(--shadow); border: 1px solid var(--border-color);
+.incentivos-page .field input:focus,
+.incentivos-page .field select:focus,
+.incentivos-page .field textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
 }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
-.card-title { font-size: 1.05rem; font-weight: 600; }
 
-.section-block { margin-bottom: 32px; }
-.section-title { font-size: 1.25rem; font-weight: 700; }
-.section-subtitle { color: var(--text-muted); font-size: .88rem; }
+.incentivos-page .hint {
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+}
 
-/* ---------- Estado vacío ---------- */
-.empty-state { text-align: center; padding: 56px 24px; }
-.empty-illustration { font-size: 3rem; margin-bottom: 8px; }
-.empty-state h2 { font-size: 1.2rem; margin-bottom: 6px; }
-.empty-state p { color: var(--text-muted); margin-bottom: 20px; }
+.incentivos-page .form-subtitle {
+    padding-top: var(--gap-3);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
 
-/* ---------- Badges / chips ---------- */
-.badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
-.badge-muted { background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-color); }
-.badge-vigente {
-    background: var(--badge-vigente); color: #0f3d22; padding: 5px 12px; border-radius: 999px;
-    font-size: .75rem; font-weight: 700; white-space: nowrap;
+.incentivos-page .check-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
-.chip {
-    display: inline-block; background: var(--green-sidebar); color: var(--green-primary); border-radius: 6px;
-    padding: 3px 9px; font-size: .75rem; font-weight: 600; margin-right: 6px;
-}
-.chip-neutral { background: var(--bg-main); color: var(--text-muted); }
 
-/* ---------- Grilla de rankings ---------- */
-.rankings-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; align-items: start; }
+.incentivos-page .check-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
 
-/* ---------- Tablas ---------- */
-.history-table, .data-table, .positions-table {
-    width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 12px;
+.incentivos-page .check-field input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
 }
-.history-table th, .data-table th, .positions-table th {
-    background: var(--bg-main); padding: 12px; text-align: left;
-    font-size: .85rem; color: var(--text-dark); font-weight: 600;
-}
-.history-table td, .data-table td, .positions-table td {
-    padding: 14px 12px; font-size: .9rem;
-    border-top: 1px solid transparent; border-bottom: 1px solid var(--border-color);
-}
-.history-table tr.active-row td {
-    background-color: var(--green-row-active);
-    border-top: 1.5px solid var(--green-primary);
-    border-bottom: 1.5px solid var(--green-primary);
-}
-.history-table tr.active-row td:first-child {
-    border-left: 1.5px solid var(--green-primary);
-    border-top-left-radius: 8px; border-bottom-left-radius: 8px;
-}
-.history-table tr.active-row td:last-child {
-    border-right: 1.5px solid var(--green-primary);
-    border-top-right-radius: 8px; border-bottom-right-radius: 8px;
-}
-.period-label { font-weight: 600; }
-.period-key { display: block; font-size: .75rem; color: var(--text-muted); font-weight: 400; }
-.actions-cell { display: flex; gap: 8px; flex-wrap: wrap; }
-.cell-muted { color: var(--text-muted); }
-.text-center { text-align: center; }
 
-/* ---------- Paginación ---------- */
-.table-footer {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-top: 16px; padding-top: 14px;
-    border-top: 1px solid var(--border-color); font-size: .85rem; color: var(--text-muted);
+.incentivos-page .mission-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 2px;
 }
-.pagination-btns { display: flex; gap: 8px; }
-.btn-page {
-    background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px;
-    padding: 6px 14px; font-size: .8rem; cursor: pointer; color: var(--text-dark);
-}
-.btn-page:hover:not(:disabled) { border-color: var(--green-primary); color: var(--green-primary); }
-.btn-page:disabled { opacity: .45; cursor: not-allowed; }
 
-/* ---------- Detalle del ranking ---------- */
-.detail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.detail-header h2 { font-size: 1.05rem; font-weight: 600; }
+.incentivos-page .mission-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
 
-.podium-container {
-    display: flex; justify-content: center; align-items: flex-end;
-    gap: 12px; margin: 28px 0; padding-top: 10px;
+.incentivos-page .mission-option input {
+    margin-top: 3px;
+    accent-color: var(--accent);
 }
-.podium-spot { display: flex; flex-direction: column; align-items: center; width: 130px; }
-.spot-label { font-size: .75rem; color: var(--text-muted); font-weight: 600; }
 
-.avatar-wrapper { position: relative; width: 68px; height: 68px; border-radius: 50%; padding: 4px; margin: 8px 0 12px; }
-.avatar-wrapper.gold   { border: 3px solid var(--gold); background: #fdf6d8; }
-.avatar-wrapper.silver { border: 3px solid var(--silver); background: #eef1f4; }
-.avatar-wrapper.bronze { border: 3px solid var(--bronze); background: #f9ebe2; }
-.avatar-circle {
-    width: 100%; height: 100%; border-radius: 50%; background: var(--green-sidebar);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 1.3rem; color: var(--green-primary);
+.incentivos-page .mission-option span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
-.medal-badge {
-    position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
-    width: 24px; height: 24px; border-radius: 50%; color: #fff;
-    font-weight: 700; font-size: .75rem;
-    display: flex; align-items: center; justify-content: center;
-}
-.gold .medal-badge   { background: var(--gold); }
-.silver .medal-badge { background: var(--silver); }
-.bronze .medal-badge { background: var(--bronze); }
 
-.podium-user { font-size: .85rem; text-align: center; max-width: 120px; }
-.podium-pedestal {
-    width: 100%; background: linear-gradient(180deg, #e2e5e8 0%, #cfd4d8 100%);
-    border-top: 4px solid #eceff1;
-    display: flex; align-items: center; justify-content: center; margin-top: 8px;
+.incentivos-page .mission-option strong {
+    color: var(--ink);
+    font-size: 12.5px;
 }
-.pedestal-1 { height: 110px; }
-.pedestal-2 { height: 85px; }
-.pedestal-3 { height: 65px; }
-.pedestal-number { font-size: 1.5rem; font-weight: 700; color: #7b848a; }
 
-/* ---------- Formularios ---------- */
-.form-grid { display: flex; flex-direction: column; gap: 16px; }
-.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field label, .form-label { font-size: .82rem; font-weight: 600; }
-.req { color: var(--danger); }
-.field input, .field select, .field textarea {
-    width: 100%; padding: 9px 12px; font-size: .9rem; font-family: inherit;
-    border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-bg);
-    color: var(--text-dark);
+.incentivos-page .alert-error {
+    margin-top: var(--gap-3);
+    padding: 10px 12px;
+    border: 1px solid #f0c8c2;
+    border-radius: var(--radius);
+    background: #fdf1ef;
+    color: #8f2d20;
+    font-size: 12.5px;
+    font-weight: 600;
 }
-.field input:focus, .field select:focus, .field textarea:focus {
-    outline: none; border-color: var(--green-primary);
-    box-shadow: 0 0 0 3px var(--green-sidebar);
-}
-.field input:disabled, .field select:disabled { background: var(--bg-main); color: var(--text-muted); }
-.hint { font-size: .75rem; color: var(--text-muted); }
-.form-subtitle {
-    font-size: .8rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .04em; color: var(--text-muted);
-    padding-top: 8px; border-top: 1px solid var(--border-color);
-}
-.check-field { display: flex; flex-direction: column; gap: 4px; }
-.check-field label { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; }
-.check-field input { width: 16px; height: 16px; accent-color: var(--green-primary); }
-.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
-.mission-options {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;
-    max-height: 240px; overflow-y: auto; padding: 2px;
-}
-.mission-option {
-    display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
-    border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;
-}
-.mission-option input { margin-top: 4px; accent-color: var(--green-primary); }
-.mission-option > span { min-width: 0; }
-.mission-option .period-key { overflow-wrap: anywhere; }
 
-/* ---------- Modales ---------- */
-.modal-overlay {
-    position: fixed; inset: 0; background: rgba(15, 25, 20, .55);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px; z-index: 1300;
-}
-.modal-box {
-    background: var(--card-bg); border-radius: var(--radius); padding: 26px;
-    width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
-}
-.modal-box h3 { font-size: 1.1rem; margin-bottom: 6px; }
-.modal-box > p { color: var(--text-muted); font-size: .88rem; margin-bottom: 18px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+@media (max-width: 700px) {
+    .incentivos-tabs {
+        display: flex;
+        width: 100%;
+    }
 
-/* ---------- Alertas ---------- */
-.alert-error {
-    background: var(--danger-soft); color: var(--danger);
-    border: 1px solid #f3c9c4; border-radius: 6px;
-    padding: 10px 14px; font-size: .85rem; font-weight: 600; margin-top: 14px;
-}
-.muted { color: var(--text-muted); font-size: .85rem; }
+    .incentivos-tab {
+        flex: 1;
+        justify-content: center;
+        padding: 0 10px;
+    }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 1080px) { .rankings-grid { grid-template-columns: 1fr; } }
-@media (max-width: 760px) {
-    .page-header { flex-direction: column; }
-    .podium-spot { width: 96px; }
-    .avatar-wrapper { width: 54px; height: 54px; }
-    .pedestal-1 { height: 90px; }
-    .pedestal-2 { height: 70px; }
-    .pedestal-3 { height: 54px; }
-    .data-table, .history-table, .positions-table { font-size: .85rem; }
+    .incentivos-panel-head {
+        flex-direction: column;
+    }
+
+    .incentivos-panel-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .incentivos-page .modal-box {
+        padding: var(--gap-4);
+    }
+}
+
+/* Las acciones de misiones tienen que quedar en una sola línea, como en categorías. */
+.incentivos-page .misiones-actions {
+    flex-wrap: nowrap;
+}
+
+.incentivos-page .misiones-actions .btn-actualizar,
+.incentivos-page .misiones-actions .btn-eliminar {
+    white-space: nowrap;
 }

@@ -16,7 +16,6 @@
 
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
         <h1 th:text="'Administrar entidades'">Administración</h1>
         <p class="admin-page-lead" th:text="'Buscá, actualizá o eliminá entidades beneficiarias y consultá sus necesidades.'">Gestioná los datos del sistema.</p>
     </div>
@@ -144,6 +143,12 @@
                     </div>
 
                     <div class="col-acciones">
+                        <a th:href="@{/perfil/entidad/{id}(id=${entidad.id})}"
+                           class="btn-accion" target="_blank" rel="noopener noreferrer"
+                           th:if="${entidad.id != null}">
+                            <i class="bi bi-building"></i> Perfil público
+                        </a>
+
                         <a th:href="@{'/admin/entidades/' + ${entidad.id} + '/editar'}" class="btn-actualizar">
                             <i class="bi bi-pencil-square"></i> Actualizar
                         </a>

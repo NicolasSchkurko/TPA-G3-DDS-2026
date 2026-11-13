@@ -3,7 +3,13 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
 import ar.edu.utn.frba.ddsi.front.clients.IncentivosClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.ChoferDTO;
+import ar.edu.utn.frba.ddsi.front.dto.DireccionDTO;
+import ar.edu.utn.frba.ddsi.front.dto.EntidadBeneficiariaDTO;
+import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.front.dto.incentivos.IncentivosAdminDTOs;
+import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
 import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import org.junit.jupiter.api.Test;
@@ -22,6 +28,8 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -124,6 +132,88 @@ class AdminViewSmokeTest {
      * la necesidad dice "Frazadas" y la donación queda en depósito para siempre, sin error visible.
      * Si alguien vuelve a poner un <input type="text"> acá, este test tiene que fallar.
      */
+    @Test
+    void adminDonorAndEntityListsLinkToPublicProfiles() throws Exception {
+        UUID idDonante = UUID.randomUUID();
+        UUID idEntidad = UUID.randomUUID();
+        PersonaDonanteDTO donante = new PersonaDonanteDTO();
+        donante.setId(idDonante);
+        donante.setNombre("Ana");
+        donante.setApellido("Demo");
+        donante.setTipoPersona("HUMANA");
+        EntidadBeneficiariaDTO entidad = new EntidadBeneficiariaDTO();
+        entidad.setId(idEntidad);
+        entidad.setRazonSocial("Comedor Demo");
+        entidad.setActiva(true);
+        DireccionDTO direccion = new DireccionDTO();
+        direccion.setCalleUno("Av. Perito Moreno");
+        direccion.setAltura(2400);
+        direccion.setCiudad("Villa Soldati");
+        entidad.setDireccion(direccion);
+
+        when(donacionesClient.obtenerDonantes()).thenReturn(List.of(donante));
+        when(donacionesClient.obtenerEntidades()).thenReturn(List.of(entidad));
+        when(donacionesClient.obtenerNecesidadesDeEntidad(idEntidad)).thenReturn(List.of());
+
+        assertThat(mockMvc.perform(get("/admin/donantes").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("/perfil/donante/" + idDonante);
+        assertThat(mockMvc.perform(get("/admin/entidades").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("/perfil/entidad/" + idEntidad);
+    }
+
+    @Test
+    void adminLogisticsListsRenderWithData() throws Exception {
+        CamionDTO camion = new CamionDTO("AA123BB", 10.0, 2.0, 800.0, true);
+        ChoferDTO chofer = new ChoferDTO("Ana Chofer", true);
+        chofer.setIdChofer(UUID.randomUUID());
+        chofer.setEmail("ana@ddsi.local");
+        chofer.setActivo(true);
+
+        LogisticaDTOs.Ruta ruta = new LogisticaDTOs.Ruta();
+        ruta.setIdRuta(UUID.randomUUID());
+        LogisticaDTOs.Camion camionRuta = new LogisticaDTOs.Camion();
+        camionRuta.setPatente("AB123CD");
+        ruta.setCamionAsignado(camionRuta);
+        ruta.setEstado("EN_CURSO");
+        ruta.setFechaProgramada(LocalDate.of(2026, 11, 13));
+        ruta.setParadas(List.of());
+
+        LogisticaDTOs.Bien bien = new LogisticaDTOs.Bien();
+        bien.setIdDonacion(UUID.randomUUID());
+        bien.setCantidad(3);
+        bien.setUnidadDeMedida("UNIDADES");
+        bien.setEstado("NO_RECIBIDA");
+        bien.setFechaCambioEstado(LocalDateTime.of(2026, 11, 13, 10, 0));
+        LogisticaDTOs.DireccionLogistica destino = new LogisticaDTOs.DireccionLogistica();
+        destino.setCalleUno("Av. Perito Moreno");
+        destino.setAltura(2400);
+        destino.setCiudad("Villa Soldati");
+        bien.setEntidadDestino(destino);
+        LogisticaDTOs.Bienes bienes = new LogisticaDTOs.Bienes();
+        bienes.setBienes(List.of(bien));
+
+        when(logisticasClient.obtenerCamiones()).thenReturn(List.of(camion));
+        when(logisticasClient.obtenerChoferes()).thenReturn(List.of(chofer));
+        when(logisticasClient.obtenerRutas()).thenReturn(List.of(ruta));
+        when(seguimientoTokenService.generar(ruta.getIdRuta())).thenReturn("token-opaco");
+        when(logisticasClient.obtenerEntregasNoRecibidas()).thenReturn(bienes);
+
+        assertThat(mockMvc.perform(get("/admin/camiones").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("AA123BB").contains("Disponible");
+        assertThat(mockMvc.perform(get("/admin/choferes").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("Ana Chofer").contains("ana@ddsi.local");
+        assertThat(mockMvc.perform(get("/admin/rutas").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("AB123CD").contains("/seguimiento/token-opaco").contains("13/11/2026");
+        assertThat(mockMvc.perform(get("/admin/entregas-no-recibidas").session(sessionAdmin()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .contains("Av. Perito Moreno 2400").contains("Reingresar");
+    }
+
     @Test
     void donationFormsOfferCatalogSelectsInsteadOfFreeText() throws Exception {
         when(donacionesClient.obtenerDonantes()).thenReturn(List.of());

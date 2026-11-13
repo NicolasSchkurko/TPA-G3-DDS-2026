@@ -237,10 +237,60 @@ public class IncentivosClient {
                     .uri(baseUrl + "/api/rankings?page=0&size=100")
                     .retrieve()
                     .body(new ParameterizedTypeReference<PageResponse<IncentivosAdminDTOs.RankingMes>>() {});
-            return page != null && page.getContent() != null ? page.getContent() : List.of();
+            List<IncentivosAdminDTOs.RankingMes> rankings =
+                    page != null && page.getContent() != null ? page.getContent() : List.of();
+            for (IncentivosAdminDTOs.RankingMes ranking : rankings) {
+                if (ranking.getParticipantes() == null) {
+                    ranking.setParticipantes(contarParticipantes(ranking.getIdRanking()));
+                }
+            }
+            return rankings;
         } catch (Exception e) {
             log.error("Error al obtener rankings desde {}: {}", baseUrl, e.getMessage());
             return List.of();
+        }
+    }
+
+    /** Fallback para una versión anterior del historial que no exponía participantes. */
+    private long contarParticipantes(UUID idRanking) {
+        if (idRanking == null) return 0L;
+        try {
+            IncentivosAdminDTOs.RankingDetalle detalle = restClient.get()
+                    .uri(baseUrl + "/api/rankings/{id}/top?limite=1", idRanking)
+                    .retrieve()
+                    .body(IncentivosAdminDTOs.RankingDetalle.class);
+            return detalle != null && detalle.getRanking() != null
+                    ? detalle.getRanking().getTotalElements() : 0L;
+        } catch (Exception e) {
+            log.warn("No se pudo contar participantes del ranking {}: {}", idRanking, e.getMessage());
+            return 0L;
+        }
+    }
+
+    /** Detalle de un snapshot con sus posiciones (top 100), o null si el servicio falla. */
+    public IncentivosAdminDTOs.RankingMes obtenerRanking(UUID idRanking) {
+        try {
+            IncentivosAdminDTOs.RankingDetalle detalle = restClient.get()
+                    .uri(baseUrl + "/api/rankings/{id}/top?limite=100", idRanking)
+                    .retrieve()
+                    .body(IncentivosAdminDTOs.RankingDetalle.class);
+            if (detalle == null) return null;
+
+            IncentivosAdminDTOs.RankingMes mes = new IncentivosAdminDTOs.RankingMes();
+            mes.setIdRanking(detalle.getIdRanking());
+            mes.setPeriodo(detalle.getPeriodo());
+            if (detalle.getRanking() != null) {
+                mes.setRanking(detalle.getRanking().getContent() != null
+                        ? detalle.getRanking().getContent() : List.of());
+                mes.setParticipantes(detalle.getRanking().getTotalElements());
+            } else {
+                mes.setRanking(List.of());
+                mes.setParticipantes(0L);
+            }
+            return mes;
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el detalle del ranking {}: {}", idRanking, e.getMessage());
+            return null;
         }
     }
 

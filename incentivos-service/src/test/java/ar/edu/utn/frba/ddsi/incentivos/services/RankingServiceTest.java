@@ -395,11 +395,13 @@ class RankingServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
             when(repoRankings.findAllByOrderByPeriodoDesc(pageable))
                     .thenReturn(new PageImpl<>(List.of(ranking), pageable, 1));
+            when(repoRankings.contarPosiciones(ranking)).thenReturn(4L);
 
             Page<RankingResumenDTO> resultado = service.obtenerHistorialRankings(pageable);
 
             assertThat(resultado.getTotalElements()).isEqualTo(1);
             assertThat(resultado.getContent().get(0).periodo()).isEqualTo(YearMonth.of(2026, 3));
+            assertThat(resultado.getContent().get(0).participantes()).isEqualTo(4L);
             verify(ranking, never()).getPosiciones();
         }
 

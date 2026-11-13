@@ -11,7 +11,8 @@
     const STATUS = {
         delivered: { label: "Entregada", color: "#1b7838" },
         transit: { label: "En camino", color: "#6b7280" },
-        pending: { label: "Pendiente", color: "#b45309" }
+        pending: { label: "Pendiente", color: "#b45309" },
+        depot: { label: "En depósito", color: "#0f1210" }
     };
 
     const DEPOT = {
@@ -48,7 +49,8 @@
                 org: card.dataset.organization
                     || card.querySelector(".card-meta > span")?.textContent.trim() || "Entidad beneficiaria",
                 area: card.dataset.area || "",
-                status: "delivered",
+                status: card.dataset.estado || "delivered",
+                estadoEtiqueta: card.dataset.estadoLabel || null,
                 icon: "gift",
                 coords: [lat, lng],
                 url: card.getAttribute("href") || card.dataset.url || null
@@ -290,7 +292,7 @@
                  alt="Imagen de ejemplo de una donación">
             <span class="popup-eyebrow" style="color:${statusColor(donation.status)}">
                 <i class="legend-dot ${donation.status}" aria-hidden="true"></i>
-                ${statusLabel(donation.status)}
+                ${escapeHtml(donation.estadoEtiqueta || statusLabel(donation.status))}
             </span>
             <div class="popup-title">${escapeHtml(donation.title)}</div>
             <div class="popup-meta">${escapeHtml(donation.org)} · ${escapeHtml(donation.area)}</div>

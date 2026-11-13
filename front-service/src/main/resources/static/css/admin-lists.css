@@ -1,0 +1,128 @@
+/* Listas simples del admin: camiones, choferes, rutas y entregas no recibidas. */
+.admin-lists-page .main-admin {
+    padding-bottom: var(--gap-7);
+}
+
+.admin-list-card {
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--white);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
+}
+
+.admin-list-table {
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--line);
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 13.5px;
+}
+
+.admin-list-table thead th {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--map-bg);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-list-table tbody td {
+    padding: 13px 18px;
+    border-color: var(--line);
+    color: var(--ink-2);
+    vertical-align: middle;
+}
+
+.admin-list-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-list-table tbody tr:hover td {
+    background: #fbfcfb;
+}
+
+.admin-list-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.admin-list-avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 15px;
+}
+
+.admin-list-primary {
+    display: block;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-list-secondary {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-list-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-list-actions .btn-accion,
+.admin-list-actions .btn-actualizar,
+.admin-list-actions .btn-eliminar {
+    height: 34px;
+    padding: 0 13px;
+    font-size: 12.5px;
+}
+
+.admin-list-card .fila-vacia {
+    padding: 48px 20px;
+}
+
+.admin-list-card .fila-vacia p {
+    margin: 0;
+    font-size: 13.5px;
+}
+
+.admin-list-card .fila-vacia .btn {
+    margin-top: 4px;
+}
+
+.admin-list-no-results[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 700px) {
+    .admin-list-table {
+        min-width: 680px;
+    }
+
+    .admin-list-actions {
+        justify-content: flex-start;
+    }
+}

@@ -62,6 +62,71 @@ class IncentivosClientTest {
     }
 
     @Test
+    @DisplayName("el historial toma los participantes del backend")
+    void historialTomaParticipantesDelBackend() {
+        String idRanking = "123e4567-e89b-12d3-a456-426614174111";
+        server.expect(requestTo(BASE_URL + "/api/rankings?page=0&size=100"))
+                .andRespond(withSuccess("""
+                        {"content":[{"idRanking":"%s","periodo":"2026-11","participantes":4}],
+                         "totalPages":1,"totalElements":1}
+                        """.formatted(idRanking), MediaType.APPLICATION_JSON));
+
+        List<IncentivosAdminDTOs.RankingMes> rankings = client.obtenerRankings();
+
+        assertThat(rankings).singleElement().satisfies(ranking -> {
+            assertThat(ranking.getIdRanking().toString()).isEqualTo(idRanking);
+            assertThat(ranking.getParticipantes()).isEqualTo(4L);
+        });
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("si el historial viejo no trae participantes, los cuenta por el podio")
+    void historialViejoCuentaParticipantesPorPodio() {
+        String idRanking = "123e4567-e89b-12d3-a456-426614174112";
+        server.expect(requestTo(BASE_URL + "/api/rankings?page=0&size=100"))
+                .andRespond(withSuccess("""
+                        {"content":[{"idRanking":"%s","periodo":"2026-11"}],
+                         "totalPages":1,"totalElements":1}
+                        """.formatted(idRanking), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/api/rankings/" + idRanking + "/top?limite=1"))
+                .andRespond(withSuccess("""
+                        {"idRanking":"%s","periodo":"2026-11",
+                         "ranking":{"content":[],"totalElements":3}}
+                        """.formatted(idRanking), MediaType.APPLICATION_JSON));
+
+        List<IncentivosAdminDTOs.RankingMes> rankings = client.obtenerRankings();
+
+        assertThat(rankings).singleElement()
+                .extracting(IncentivosAdminDTOs.RankingMes::getParticipantes)
+                .isEqualTo(3L);
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("el detalle carga las posiciones desde /top")
+    void detalleCargaPosicionesDesdeTop() {
+        UUID idRanking = UUID.fromString("123e4567-e89b-12d3-a456-426614174113");
+        server.expect(requestTo(BASE_URL + "/api/rankings/" + idRanking + "/top?limite=100"))
+                .andRespond(withSuccess("""
+                        {"idRanking":"%s","periodo":"2026-11",
+                         "ranking":{"content":[{"nombreUsuario":"Ana","puesto":1,"misionesCumplidas":3}],
+                                    "totalElements":1}}
+                        """.formatted(idRanking), MediaType.APPLICATION_JSON));
+
+        IncentivosAdminDTOs.RankingMes detalle = client.obtenerRanking(idRanking);
+
+        assertThat(detalle).isNotNull();
+        assertThat(detalle.getParticipantes()).isEqualTo(1L);
+        assertThat(detalle.getRanking()).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.getNombreUsuario()).isEqualTo("Ana");
+                    assertThat(item.getMisionesCumplidas()).isEqualTo(3L);
+                });
+        server.verify();
+    }
+
+    @Test
     @DisplayName("si incentivos falla, devuelve lista vacía")
     void unaCaidaDevuelveListaVacia() {
         server.expect(requestTo(BASE_URL + "/api/donaciones/destacadas"))

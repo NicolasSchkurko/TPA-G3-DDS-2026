@@ -36,6 +36,10 @@ public interface RepositorioRankings extends JpaRepository<RankingMensual, UUID>
     @Query("SELECT p FROM Ranking p WHERE p.rankingMensual.idRanking = :idRanking ORDER BY p.puesto ASC")
     Page<Ranking> paginaPosiciones(@Param("idRanking") UUID idRanking, Pageable pageable);
 
+    /** Cantidad de participantes de un snapshot, sin hidratar la colección de posiciones. */
+    @Query("SELECT COUNT(p) FROM Ranking p WHERE p.rankingMensual = :ranking")
+    long contarPosiciones(@Param("ranking") RankingMensual ranking);
+
     default Ranking obtenerPosicionActualDeUsuario(UUID idUsuario) {
         RankingMensual rank = findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth.now())
             .orElseThrow(InexistenteException::new);

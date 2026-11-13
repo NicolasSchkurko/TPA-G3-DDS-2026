@@ -180,7 +180,8 @@ public class RankingService {
     public Page<RankingResumenDTO> obtenerHistorialRankings(Pageable pageable) {
         return repoRankings.findAllByOrderByPeriodoDesc(pageable)
                 .map(ranking -> new RankingResumenDTO(
-                        ranking.getIdRanking(), ranking.getPeriodo()));
+                        ranking.getIdRanking(), ranking.getPeriodo(),
+                        repoRankings.contarPosiciones(ranking)));
     }
 
     private RankingMesDTO convertirRankingMesADTO(RankingMensual ranking) {

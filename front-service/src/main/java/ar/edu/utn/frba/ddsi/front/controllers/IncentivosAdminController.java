@@ -187,6 +187,16 @@ public class IncentivosAdminController {
                 .filter(r -> Objects.equals(r.getPeriodo(), periodo))
                 .findFirst()
                 .orElse(null);
+        if (seleccionado != null) {
+            IncentivosAdminDTOs.RankingMes detalle =
+                    incentivosClient.obtenerRanking(seleccionado.getIdRanking());
+            if (detalle != null) {
+                if (detalle.getPeriodo() == null) {
+                    detalle.setPeriodo(seleccionado.getPeriodo());
+                }
+                seleccionado = detalle;
+            }
+        }
 
         boolean vigente = seleccionado != null
                 && YearMonth.now().toString().equals(seleccionado.getPeriodo());

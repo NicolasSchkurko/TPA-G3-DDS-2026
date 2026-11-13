@@ -371,11 +371,8 @@ public class ProfileController {
         int objetivo = numero(mision.get("progresoObjetivo"));
         int porcentaje = objetivo > 0 ? Math.min(100, Math.max(0, progreso * 100 / objetivo)) : 0;
         Map<String, Object> rankingMensual = incentivosClient.obtenerRankingActual();
-        Object posiciones = rankingMensual.get("ranking");
-        List<Map<String, Object>> top3 = posiciones instanceof List<?> lista
-                ? lista.stream().filter(Map.class::isInstance)
-                    .map(posicion -> (Map<String, Object>) posicion).limit(3).toList()
-                : List.of();
+        List<Map<String, Object>> top3 = primerasPosiciones(rankingMensual, 3);
+        List<Map<String, Object>> insignias = incentivosClient.obtenerInsignias(idDonante.toString());
 
         model.addAttribute("perfilPublicoIncentivos", publico);
         model.addAttribute("categoriaPublica", publico.get("nombreCategoria"));
@@ -383,11 +380,28 @@ public class ProfileController {
         model.addAttribute("progresoMision", progreso);
         model.addAttribute("objetivoMision", objetivo);
         model.addAttribute("porcentajeMision", porcentaje);
-        model.addAttribute("insignias", incentivosClient.obtenerInsignias(idDonante.toString()));
+        model.addAttribute("insignias", insignias);
         model.addAttribute("puestoRanking", incentivosClient.obtenerPuestoRanking(idDonante.toString()));
         model.addAttribute("rankingTop3", top3);
         model.addAttribute("periodoRanking", rankingMensual.get("periodo"));
-        model.addAttribute("incentivosDisponibles", !mision.isEmpty() || !rankingMensual.isEmpty());
+        model.addAttribute("incentivosDisponibles",
+                !publico.isEmpty() || !mision.isEmpty() || !insignias.isEmpty() || !rankingMensual.isEmpty());
+    }
+
+    /**
+     * El endpoint /api/rankings/actual devuelve un RankingMesDTO con una página en "ranking";
+     * también toleramos la forma antigua que traía una lista directa.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> primerasPosiciones(Map<String, Object> ranking, int limite) {
+        Object pagina = ranking.get("ranking");
+        Object contenido = pagina instanceof Map<?, ?> page ? page.get("content") : pagina;
+        if (!(contenido instanceof List<?> lista)) return List.of();
+        return lista.stream()
+                .filter(Map.class::isInstance)
+                .map(posicion -> (Map<String, Object>) posicion)
+                .limit(limite)
+                .toList();
     }
 
     private String cuentaSeguridadUrl() {

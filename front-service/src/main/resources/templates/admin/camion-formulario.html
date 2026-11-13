@@ -13,7 +13,6 @@
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
         <h1 th:text="${edicion} ? 'Editar camión' : 'Nuevo camión'">Camión</h1>
     </div>
     <a class="btn btn-secondary" th:href="@{/admin/camiones}" data-back="true">Volver</a>

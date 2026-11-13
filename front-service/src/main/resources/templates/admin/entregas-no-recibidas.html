@@ -5,56 +5,124 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <title>Entregas no recibidas — DonaTrack</title>
+    <meta name="description" content="Entregas rechazadas pendientes de revisión y reingreso">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/admin-lists.css(v=1)}">
 </head>
-<body class="app">
+
+<body class="app admin-lists-page">
 <div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
 <header class="admin-page-head">
     <div>
-        <p class="eyebrow">Administración</p>
         <h1>Entregas no recibidas</h1>
-        <p class="admin-page-lead">Ítems rechazados pendientes de revisión.</p>
+        <p class="admin-page-lead">Ítems rechazados por la entidad, listos para revisar y reingresar a depósito.</p>
     </div>
-    <a class="btn btn-secondary" th:href="@{/admin}" data-back="true">Volver al panel</a>
+    <a class="btn btn-secondary" th:href="@{/admin}" data-back="true">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al panel
+    </a>
 </header>
+
 <main class="main-admin" id="contenido" tabindex="-1">
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                    <tr>
-                        <th>Donación</th>
-                        <th>Cantidad</th>
-                        <th>Unidad</th>
-                        <th>Estado</th>
-                        <th>Acción</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:if="${#lists.isEmpty(entregas)}">
-                        <td colspan="5" class="text-center py-4 text-muted">No hay entregas no recibidas.</td>
-                    </tr>
-                    <tr th:each="e : ${entregas}">
-                        <td th:text="${e.idDonacion}">id</td>
-                        <td th:text="${e.cantidad}">cant</td>
-                        <td th:text="${e.unidadDeMedida}">unidad</td>
-                        <td th:text="${e.etiquetaEstado()}">estado</td>
-                        <td>
-                            <form th:action="@{/admin/entregas-no-recibidas/{id}/reingresar(id=${e.idDonacion})}" method="post">
-                                <button class="btn btn-sm btn-outline-primary" type="submit">Reingresar</button>
+    <div th:if="${exito}" class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+        <span th:text="${exito}">Entrega reingresada.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+        <span th:text="${error}">No se pudo reingresar la entrega.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+
+    <div class="barra-herramientas">
+        <div class="buscador">
+            <i class="bi bi-search buscador-icono" aria-hidden="true"></i>
+            <input type="search" id="buscadorEntregas" class="buscador-input"
+                   placeholder="Buscar por donación o destino..." autocomplete="off"
+                   aria-label="Buscar entregas no recibidas" data-admin-search>
+            <button type="button" class="buscador-limpiar" data-admin-search-clear
+                    aria-label="Limpiar búsqueda" hidden>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="admin-list-card">
+        <div class="table-responsive" th:if="${!#lists.isEmpty(entregas)}">
+            <table class="table admin-list-table align-middle mb-0">
+                <thead>
+                <tr>
+                    <th scope="col">Donación</th>
+                    <th scope="col">Destino</th>
+                    <th scope="col">Cantidad</th>
+                    <th scope="col">Rechazada</th>
+                    <th scope="col" class="text-end">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="e : ${entregas}" data-admin-row
+                    th:attr="data-search=${(e.idDonacion != null ? e.idDonacion.toString() : '') + ' '
+                        + (e.entidadDestino != null ? e.entidadDestino.etiqueta() + ' ' + e.entidadDestino.zona() : '')}">
+                    <td>
+                        <span class="admin-list-primary"
+                              th:text="${e.idDonacion != null ? 'Donación ' + #strings.substring(e.idDonacion.toString(), 0, 8) : 'Donación sin id'}">
+                            Donación
+                        </span>
+                        <span class="admin-list-secondary">Ítem de entrega rechazado</span>
+                    </td>
+                    <td>
+                        <span class="admin-list-primary"
+                              th:text="${e.entidadDestino != null ? e.entidadDestino.etiqueta() : 'Sin destino'}">
+                            Destino
+                        </span>
+                        <span class="admin-list-secondary"
+                              th:if="${e.entidadDestino != null}"
+                              th:text="${e.entidadDestino.zona()}">CABA</span>
+                    </td>
+                    <td th:text="${(e.cantidad != null ? e.cantidad : 0) + ' '
+                            + (e.unidadDeMedida != null ? e.unidadDeMedida.toLowerCase() : 'unidades')}">0 unidades</td>
+                    <td th:text="${e.fechaCambioEstado != null
+                            ? #temporals.format(e.fechaCambioEstado, 'dd/MM/yyyy HH:mm') : 'Sin fecha'}">13/11/2026 10:00</td>
+                    <td>
+                        <div class="admin-list-actions">
+                            <form th:if="${e.idDonacion != null}"
+                                  th:action="@{/admin/entregas-no-recibidas/{id}/reingresar(id=${e.idDonacion})}"
+                                  method="post"
+                                  th:attr="data-confirm=${'¿Reingresar esta entrega a depósito?'}">
+                                <button class="btn-actualizar" type="submit">
+                                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reingresar
+                                </button>
                             </form>
-                            <a th:href="@{/admin/donaciones/{id}/editar(id=${e.idDonacion})}" class="btn btn-sm btn-link">Detalle</a>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+                            <a th:if="${e.idDonacion != null}"
+                               class="btn-accion"
+                               th:href="@{/admin/donaciones/{id}/editar(id=${e.idDonacion})}">
+                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Ver donación
+                            </a>
+                            <span th:if="${e.idDonacion == null}" class="admin-list-secondary">Sin acciones disponibles</span>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="fila-vacia" th:if="${#lists.isEmpty(entregas)}">
+            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+            <p>No hay entregas no recibidas. Cuando una entidad rechace una entrega, va a aparecer acá para revisarla.</p>
+        </div>
+
+        <div class="fila-vacia admin-list-no-results" data-admin-no-results hidden th:if="${!#lists.isEmpty(entregas)}">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <p>No encontramos entregas con esa búsqueda.</p>
         </div>
     </div>
 </main>
+
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/admin-lists.js(v=1)}"></script>
 </body>
 </html>

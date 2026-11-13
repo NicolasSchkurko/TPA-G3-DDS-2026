@@ -337,10 +337,16 @@ public class AdminController {
     @GetMapping("/admin/rutas")
     public String mostrarRutas(Model model) {
         List<LogisticaDTOs.Ruta> rutas = logisticasClient.obtenerRutas();
+        if (rutas == null) rutas = List.of();
         // Genera token opaco por ruta para el link público de seguimiento.
         for (LogisticaDTOs.Ruta r : rutas) {
-            if (r.getIdRuta() != null) {
+            if (r.getIdRuta() == null) continue;
+            try {
                 r.setTokenSeguimiento(seguimientoTokenService.generar(r.getIdRuta()));
+            } catch (Exception e) {
+                log.warn("No se pudo generar el token de seguimiento para la ruta {}: {}",
+                        r.getIdRuta(), e.getMessage());
+                r.setTokenSeguimiento(null);
             }
         }
         model.addAttribute("rutas", rutas);

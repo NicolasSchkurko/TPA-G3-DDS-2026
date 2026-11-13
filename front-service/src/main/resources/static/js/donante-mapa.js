@@ -10,6 +10,7 @@
     let depotMarker = null;
 
     const TRUCK_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.56l1.48 1.85a1.5 1.5 0 0 1 .33.94v3.15a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H6a2 2 0 1 1-4 0H1.5A1.5 1.5 0 0 1 0 10.5z"/></svg>';
+    const ENTITY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.7-9.5-9.2C1.2 8.6 3.4 5 7 5c2.2 0 3.8 1.2 5 3 1.2-1.8 2.8-3 5-3 3.6 0 5.8 3.6 4.5 6.8C19.5 16.3 12 21 12 21z"/></svg>';
 
     function initMap() {
         if (!window.DDSIMap || !window.DDSIMap.isAvailable()) return;
@@ -59,7 +60,8 @@
         const content = [
             `<strong>${escapeHtml(name)}</strong>`,
             rubro ? `<div>${escapeHtml(rubro)}</div>` : "",
-            address ? `<div>${escapeHtml(address)}</div>` : ""
+            address ? `<div>${escapeHtml(address)}</div>` : "",
+            id ? `<a class="popup-link" href="/perfil/entidad/${encodeURIComponent(id)}">Ver perfil público →</a>` : ""
         ].join("");
 
         let marker = markersByEntityId.get(id);
@@ -67,12 +69,17 @@
             marker.setLatLng([latitud, longitud]);
             marker.setPopupContent(content);
         } else {
-            marker = window.L.circleMarker([latitud, longitud], {
-                radius: 9,
-                color: "#155f2d",
-                weight: 2,
-                fillColor: "#eef5f0",
-                fillOpacity: 1
+            const icon = window.L.divIcon({
+                className: "entity-marker",
+                html: `<span class="entity-marker-dot">${ENTITY_SVG}</span>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 17],
+                popupAnchor: [0, -18]
+            });
+            marker = window.L.marker([latitud, longitud], {
+                icon: icon,
+                title: name,
+                riseOnHover: true
             }).addTo(map);
             marker.bindPopup(content);
             marker.bindTooltip(name, { direction: "top", offset: [0, -8] });

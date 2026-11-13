@@ -149,12 +149,21 @@ class FrontApplicationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("No asignada")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Camisas")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ROPA")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("src=\"/images/donaciones/")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/css/detalle-donacion.css")));
     }
 
     @Test
+    void donationDetailFallsBackToStockWhenPersistedImageFails() throws Exception {
+        mockMvc.perform(get("/donaciones/{id}", FEATURED_DONATION_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("onerror=")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/images/donaciones/")));
+    }
+
+    @Test
     void landingRendersFeaturedDonations() throws Exception {
-        UUID featuredId = UUID.randomUUID();
+        UUID featuredId = FEATURED_DONATION_ID;
         when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
                 new DonacionDestacadaDTO(
                         featuredId, LocalDateTime.of(2026, 5, 1, 10, 0),
@@ -167,9 +176,13 @@ class FrontApplicationTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("Comedor Los Piletones")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("class=\"row-status\" aria-label=\"Estado: entregada\"")))
+                        org.hamcrest.Matchers.containsString("class=\"row-status transit\"")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString(">Entregada</span>")))
+                        org.hamcrest.Matchers.containsString("aria-label=\"Estado: En camino\"")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("data-estado=\"transit\"")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(">En camino</span>")))
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("data-latitude=\"-34.6538\"")))
                 .andExpect(content().string(
@@ -185,17 +198,19 @@ class FrontApplicationTest {
     }
 
     @Test
-    void landingShowsFeaturedDonationEvenWhenItIsNotInTheDonationList() throws Exception {
+    void landingOmitsFeaturedDonationThatIsNotInTheDonationList() throws Exception {
+        UUID missingId = UUID.randomUUID();
         when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
                 new DonacionDestacadaDTO(
-                        FEATURED_DONATION_ID, LocalDateTime.of(2026, 5, 1, 10, 0),
+                        missingId, LocalDateTime.of(2026, 5, 1, 10, 0),
                         1, "ALIMENTOS", "Fideos", "Comedor Los Piletones")));
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Fideos")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Fideos"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "href=\"/donaciones/" + FEATURED_DONATION_ID + "\"")));
+                        "Todavía no hay donaciones destacadas")));
     }
 
     @Test
@@ -256,7 +271,15 @@ class FrontApplicationTest {
                     pendiente.setEstado("EN_DEPOSITO");
                     pendiente.setSubcategoriaName("Camisas");
                     pendiente.setImagenes(List.of("https://example.com/camisas.jpg"));
-                    return List.of(entregada, pendiente);
+                    DonacionDTO destacada = new DonacionDTO();
+                    destacada.setId(FEATURED_DONATION_ID);
+                    destacada.setEstado("EN_TRASLADO");
+                    destacada.setEntidadBeneficiaria("Comedor Los Piletones");
+                    destacada.setCategoriaBienName("ALIMENTOS");
+                    destacada.setSubcategoriaName("MERCEARIA");
+                    destacada.setCantidadTotalBienes(12);
+                    destacada.setFechaEntrega(java.time.LocalDate.of(2026, 5, 1));
+                    return List.of(destacada, entregada, pendiente);
                 }
 
                 @Override

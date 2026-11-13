@@ -332,6 +332,14 @@ body.landing .header-register {
     color: var(--status-urgent);
 }
 
+.row-status.depot .status-dot {
+    background: var(--ink);
+}
+
+.row-status.depot {
+    color: var(--ink-2);
+}
+
 .panel-noscript {
     margin: 8px 0 0;
     color: var(--muted-2);
