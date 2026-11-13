@@ -504,6 +504,39 @@ class PersistenciaJpaTest {
     }
 
     @Test
+    void calcularRankingMensualIncluyeActivosSinMisionesCompletadas() {
+        LocalDateTime ahora = LocalDateTime.now();
+        UUID idConMision = UUID.randomUUID();
+        Perfil conMision = new Perfil(idConMision, "Con misión");
+        entityManager.persist(conMision);
+        ImpactoDonacion donacion = new ImpactoDonacion(
+                UUID.randomUUID(), idConMision, "Entidad", 1, ahora,
+                "Ropa", "Abrigos", "ENTREGADA");
+        donacion.registrarSiCompletoMision(true);
+        entityManager.persist(donacion);
+
+        Perfil sinMisiones = new Perfil(UUID.randomUUID(), "Sin misiones");
+        entityManager.persist(sinMisiones);
+
+        Perfil dadoDeBaja = new Perfil(UUID.randomUUID(), "Dado de baja");
+        dadoDeBaja.darDeBaja();
+        entityManager.persist(dadoDeBaja);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Slice<RankingFilaDTO> filas = repositorioPerfiles.calcularRankingMensual(
+                ahora.minusDays(1), ahora.plusDays(1), PageRequest.of(0, 10));
+
+        assertThat(filas.getContent())
+                .extracting(RankingFilaDTO::nombreUsuario)
+                .containsExactly("Con misión", "Sin misiones");
+        assertThat(filas.getContent())
+                .extracting(RankingFilaDTO::totalMisiones)
+                .containsExactly(1L, 0L);
+    }
+
+    @Test
     void calcularRankingMensualUsaInsigniaComoEvidenciaDeMisionCompletada() {
         LocalDateTime ahora = LocalDateTime.now();
         UUID idDonante = UUID.randomUUID();

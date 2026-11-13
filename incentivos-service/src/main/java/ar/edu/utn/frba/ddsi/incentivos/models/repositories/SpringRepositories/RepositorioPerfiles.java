@@ -128,7 +128,9 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
      * Ranking del período: cuenta las misiones completadas durante el mes, sin depender de la
      * categoría ni del total de donaciones. Las insignias del mes cubren finalizaciones cuyo
      * evento no haya quedado marcado en la donación; se toma el mayor de ambos conteos para no
-     * duplicar misiones que sí tengan evento. El corte de filas lo aplica el {@link Pageable}.
+     * duplicar misiones que sí tengan evento. Incluye a todos los perfiles activos, aunque no
+     * hayan completado misiones en el período: esos donantes quedan con 0 y comparten puesto.
+     * El corte de filas lo aplica el {@link Pageable}.
      *
      * @param inicio primer instante del mes, inclusive
      * @param fin   primer instante del mes siguiente, exclusive
@@ -148,12 +150,7 @@ public interface RepositorioPerfiles extends JpaRepository<Perfil, UUID> {
             + "WHERE io.perfil = p AND io.fechaObtencion >= :inicio AND io.fechaObtencion < :fin) "
             + "END) "
             + "FROM Perfil p "
-            + "WHERE p.activo = true AND ("
-            + "(SELECT COUNT(d) FROM ImpactoDonacion d "
-            + "WHERE d.idUsuario = p.idUsuario AND d.completMision = true "
-            + "AND d.fechaEntrega >= :inicio AND d.fechaEntrega < :fin) > 0 OR "
-            + "(SELECT COUNT(io) FROM InsigniaObtenida io "
-            + "WHERE io.perfil = p AND io.fechaObtencion >= :inicio AND io.fechaObtencion < :fin) > 0) "
+            + "WHERE p.activo = true "
             + "ORDER BY CASE WHEN "
             + "(SELECT COUNT(d) FROM ImpactoDonacion d "
             + "WHERE d.idUsuario = p.idUsuario AND d.completMision = true "
