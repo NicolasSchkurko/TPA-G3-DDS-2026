@@ -1,12 +1,14 @@
 package ar.edu.utn.frba.ddsi.notificaciones.controllers;
 
 import ar.edu.utn.frba.ddsi.notificaciones.controllers.request.NotificacionFiltroRequest;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.LecturasNotificacionRequest;
 import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.NotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.SolicitudAceptadaDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.dto.Notificaciones.SolicitudNotificacionDTO;
 import ar.edu.utn.frba.ddsi.notificaciones.mappers.NotificacionMapper;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.MedioDeEnvioFactory;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
+import ar.edu.utn.frba.ddsi.notificaciones.services.LecturasNotificacionesService;
 import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,10 +29,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,13 +48,16 @@ public class NotificadorController {
     private final NotificadorService notificadorService;
     private final NotificacionMapper notificacionMapper;
     private final MedioDeEnvioFactory medioDeEnvioFactory;
+    private final LecturasNotificacionesService lecturasNotificacionesService;
 
     public NotificadorController(NotificadorService notificadorService,
                                  NotificacionMapper notificacionMapper,
-                                 MedioDeEnvioFactory medioDeEnvioFactory) {
+                                 MedioDeEnvioFactory medioDeEnvioFactory,
+                                 LecturasNotificacionesService lecturasNotificacionesService) {
         this.notificadorService = notificadorService;
         this.notificacionMapper = notificacionMapper;
         this.medioDeEnvioFactory = medioDeEnvioFactory;
+        this.lecturasNotificacionesService = lecturasNotificacionesService;
     }
 
     @Operation(
@@ -118,6 +125,19 @@ public class NotificadorController {
         return notificacion
                 .map(d -> ResponseEntity.ok(notificacionMapper.notificacionDTO(d)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Listar los IDs de notificaciones leídas por un usuario")
+    @GetMapping("/lecturas")
+    public List<UUID> listarLeidas(@RequestParam String usuarioId) {
+        return lecturasNotificacionesService.listarLeidas(usuarioId);
+    }
+
+    @Operation(summary = "Marcar notificaciones como leídas para un usuario")
+    @PostMapping("/lecturas")
+    public ResponseEntity<Void> marcarLeidas(@Valid @RequestBody LecturasNotificacionRequest request) {
+        lecturasNotificacionesService.marcarLeidas(request.usuarioId(), request.notificacionIds());
+        return ResponseEntity.noContent().build();
     }
 
 }

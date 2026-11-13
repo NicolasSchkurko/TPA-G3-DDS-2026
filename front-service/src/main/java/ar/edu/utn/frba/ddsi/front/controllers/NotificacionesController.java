@@ -3,7 +3,6 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesUsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -33,11 +32,10 @@ public class NotificacionesController {
 
     @GetMapping
     public String notificaciones(@RequestParam(value = "filtro", defaultValue = "todas") String filtro,
-                                 Authentication authentication, HttpServletRequest request,
-                                 HttpSession session, Model model) {
+                                 Authentication authentication, HttpServletRequest request, Model model) {
         String filtroNormalizado = "noLeidas".equalsIgnoreCase(filtro) ? "noLeidas" : "todas";
         List<NotificacionesDerivadasService.Notificacion> sistema =
-                notificacionesUsuarioService.notificaciones(request, authentication, session);
+                notificacionesUsuarioService.notificaciones(request, authentication);
         long sinLeer = sistema.stream().filter(n -> !n.leida()).count();
         List<NotificacionesDerivadasService.Notificacion> visibles = "noLeidas".equals(filtroNormalizado)
                 ? sistema.stream().filter(n -> !n.leida()).toList()
@@ -52,15 +50,14 @@ public class NotificacionesController {
     @GetMapping("/{id}")
     public String detalle(@PathVariable String id,
                           @RequestParam(value = "filtro", defaultValue = "todas") String filtro,
-                          Authentication authentication, HttpServletRequest request,
-                          HttpSession session, Model model) {
+                          Authentication authentication, HttpServletRequest request, Model model) {
         NotificacionesDerivadasService.Notificacion notificacion =
-                notificacionesUsuarioService.notificaciones(request, authentication, session).stream()
+                notificacionesUsuarioService.notificaciones(request, authentication).stream()
                         .filter(n -> n.id().equals(id))
                         .findFirst()
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        notificacionesUsuarioService.marcarLeida(request, session, id);
+        notificacionesUsuarioService.marcarLeida(request, authentication, id);
         model.addAttribute("notificacion", new NotificacionesDerivadasService.Notificacion(
                 notificacion.id(), notificacion.tipo(), notificacion.titulo(), notificacion.detalle(),
                 notificacion.fecha(), notificacion.idDonacion(), true, notificacion.origen(), notificacion.meta()));
@@ -69,15 +66,15 @@ public class NotificacionesController {
     }
 
     @PostMapping("/todas-leidas")
-    public String todasLeidas(Authentication authentication, HttpServletRequest request, HttpSession session) {
-        notificacionesUsuarioService.marcarTodasLeidas(request, authentication, session);
+    public String todasLeidas(Authentication authentication, HttpServletRequest request) {
+        notificacionesUsuarioService.marcarTodasLeidas(request, authentication);
         return "redirect:/notificaciones";
     }
 
     @PostMapping("/{id}/leida")
-    public String leida(@PathVariable String id, HttpServletRequest request, HttpSession session,
+    public String leida(@PathVariable String id, Authentication authentication, HttpServletRequest request,
                         @RequestParam(value = "filtro", defaultValue = "todas") String filtro) {
-        notificacionesUsuarioService.marcarLeida(request, session, id);
+        notificacionesUsuarioService.marcarLeida(request, authentication, id);
         String filtroNormalizado = "noLeidas".equalsIgnoreCase(filtro) ? "noLeidas" : "todas";
         return "redirect:/notificaciones" + ("noLeidas".equals(filtroNormalizado) ? "?filtro=noLeidas" : "");
     }

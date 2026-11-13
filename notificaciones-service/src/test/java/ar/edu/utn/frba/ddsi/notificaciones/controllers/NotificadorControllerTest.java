@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.EstadoNotificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import ar.edu.utn.frba.ddsi.notificaciones.services.NotificadorService;
+import ar.edu.utn.frba.ddsi.notificaciones.services.LecturasNotificacionesService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,6 +90,9 @@ class NotificadorControllerTest {
 
     @MockBean
     private NotificacionMapper notificacionMapper;
+
+    @MockBean
+    private LecturasNotificacionesService lecturasNotificacionesService;
 
     @Test
     void unBodyCompletoSeAceptaCon202YSeProcesa() throws Exception {
@@ -303,6 +307,27 @@ class NotificadorControllerTest {
                 .andExpect(jsonPath("$.id").value(id.toString()));
 
         verify(notificadorService).obtenerPorId(id);
+    }
+
+    @Test
+    void obtieneYMarcaLasLecturasPorUsuario() throws Exception {
+        UUID usuarioId = UUID.randomUUID();
+        UUID notificacionId = UUID.randomUUID();
+        when(lecturasNotificacionesService.listarLeidas(usuarioId.toString()))
+                .thenReturn(List.of(notificacionId));
+
+        mockMvc.perform(get("/api/notificaciones/lecturas").param("usuarioId", usuarioId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(notificacionId.toString()));
+
+        mockMvc.perform(post("/api/notificaciones/lecturas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"usuarioId":"%s","notificacionIds":["%s"]}
+                                """.formatted(usuarioId, notificacionId)))
+                .andExpect(status().isNoContent());
+
+        verify(lecturasNotificacionesService).marcarLeidas(usuarioId.toString(), java.util.Set.of(notificacionId));
     }
 
     @Test

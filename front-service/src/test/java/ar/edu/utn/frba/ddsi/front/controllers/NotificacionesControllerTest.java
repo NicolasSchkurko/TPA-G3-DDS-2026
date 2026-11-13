@@ -4,7 +4,6 @@ import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesUsuarioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,28 +28,26 @@ class NotificacionesControllerTest {
                 "svc-123", "servicio", "Título", "Detalle", "12 jun 2026, 10:30",
                 null, false, "sistema", "Correo · ENVIADA");
         var request = new MockHttpServletRequest();
-        var session = new MockHttpSession();
         var model = new ExtendedModelMap();
-        when(service.notificaciones(request, null, session)).thenReturn(List.of(unread));
+        when(service.notificaciones(request, null)).thenReturn(List.of(unread));
 
-        String view = controller.detalle("svc-123", "noLeidas", null, request, session, model);
+        String view = controller.detalle("svc-123", "noLeidas", null, request, model);
 
         assertEquals("detalle-notificacion", view);
         assertTrue(((NotificacionesDerivadasService.Notificacion) model.get("notificacion")).leida());
         assertEquals("noLeidas", model.get("filtro"));
-        verify(service).marcarLeida(request, session, "svc-123");
+        verify(service).marcarLeida(request, null, "svc-123");
     }
 
     @Test
     void detalleDoesNotMarkNotificationsThatDoNotBelongToTheUser() {
         var request = new MockHttpServletRequest();
-        var session = new MockHttpSession();
-        when(service.notificaciones(request, null, session)).thenReturn(List.of());
+        when(service.notificaciones(request, null)).thenReturn(List.of());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> controller.detalle("svc-unknown", "todas", null, request, session, new ExtendedModelMap()));
+                () -> controller.detalle("svc-unknown", "todas", null, request, new ExtendedModelMap()));
 
         assertEquals(404, exception.getStatusCode().value());
-        verify(service, never()).marcarLeida(request, session, "svc-unknown");
+        verify(service, never()).marcarLeida(request, null, "svc-unknown");
     }
 }

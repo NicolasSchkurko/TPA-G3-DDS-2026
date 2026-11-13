@@ -8,17 +8,17 @@ import ar.edu.utn.frba.ddsi.front.dto.MediosContactoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.NotificacionServicioDTO;
 import ar.edu.utn.frba.ddsi.front.dto.PersonaDonanteDTO;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Bandeja genérica de notificaciones del sistema para cualquier rol.
@@ -33,12 +34,11 @@ import java.util.Set;
  * <p>Busca los avisos enviados por notificaciones-service a todos los medios de contacto
  * asociados al usuario: el correo de la cuenta, los medios del perfil de donante
  * (email, teléfono, WhatsApp) y los datos de contacto del perfil de entidad.
- * El estado leído/no leído se guarda en la sesión HTTP (no persistente).
+ * El estado leído/no leído se persiste por usuario en notificaciones-service.
  */
 @Service
 public class NotificacionesUsuarioService {
 
-    private static final String SESSION_LEIDAS = "notifUsuarioLeidas";
     private static final String REQUEST_CACHE = "notifUsuario.notificaciones";
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", new Locale("es", "AR"));
 
@@ -56,8 +56,7 @@ public class NotificacionesUsuarioService {
 
     /** Notificaciones del sistema de todos los medios de contacto del usuario, más recientes primero. */
     public List<NotificacionesDerivadasService.Notificacion> notificaciones(HttpServletRequest request,
-                                                                            Authentication authentication,
-                                                                            HttpSession session) {
+                                                                            Authentication authentication) {
         Object cached = request.getAttribute(REQUEST_CACHE);
         if (cached instanceof List<?> lista) {
             @SuppressWarnings("unchecked")
@@ -66,40 +65,45 @@ public class NotificacionesUsuarioService {
             return cast;
         }
 
-        List<NotificacionesDerivadasService.Notificacion> resultado = construir(authentication, session);
+        List<NotificacionesDerivadasService.Notificacion> resultado = construir(authentication);
         request.setAttribute(REQUEST_CACHE, resultado);
         return resultado;
     }
 
     /** Cantidad de avisos sin leer. */
-    public long sinLeer(HttpServletRequest request, Authentication authentication, HttpSession session) {
-        return NotificacionesDerivadasService.sinLeer(notificaciones(request, authentication, session));
+    public long sinLeer(HttpServletRequest request, Authentication authentication) {
+        return NotificacionesDerivadasService.sinLeer(notificaciones(request, authentication));
     }
 
-    /** Marca todos los avisos visibles como leídos en la sesión. */
-    public void marcarTodasLeidas(HttpServletRequest request, Authentication authentication, HttpSession session) {
-        Set<String> leidas = leidasEnSesion(session);
-        for (NotificacionesDerivadasService.Notificacion notificacion : notificaciones(request, authentication, session)) {
-            leidas.add(notificacion.id());
-        }
-        session.setAttribute(SESSION_LEIDAS, leidas);
+    /** Marca todos los avisos visibles como leídos de forma persistente. */
+    public void marcarTodasLeidas(HttpServletRequest request, Authentication authentication) {
+        String usuarioId = usuarioId(authentication);
+        Set<String> ids = idsServicio(notificaciones(request, authentication));
+        notificacionesServicioClient.marcarLeidas(usuarioId, ids);
         request.removeAttribute(REQUEST_CACHE);
     }
 
-    /** Marca un aviso puntual como leído en la sesión. */
-    public void marcarLeida(HttpServletRequest request, HttpSession session, String id) {
+    /** Marca un aviso puntual como leído de forma persistente. */
+    public void marcarLeida(HttpServletRequest request, Authentication authentication, String id) {
         if (id == null || id.isBlank()) return;
-        Set<String> leidas = leidasEnSesion(session);
-        leidas.add(id.trim());
-        session.setAttribute(SESSION_LEIDAS, leidas);
+        String idNormalizado = id.trim();
+        boolean perteneceAlUsuario = notificaciones(request, authentication).stream()
+                .anyMatch(notificacion -> notificacion.id().equals(idNormalizado));
+        if (!perteneceAlUsuario) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        notificacionesServicioClient.marcarLeidas(usuarioId(authentication),
+                Set.of(idNormalizado.substring("svc-".length())));
         request.removeAttribute(REQUEST_CACHE);
     }
 
-    private List<NotificacionesDerivadasService.Notificacion> construir(Authentication authentication, HttpSession session) {
+    private List<NotificacionesDerivadasService.Notificacion> construir(Authentication authentication) {
         Set<String> destinatarios = destinatarios(authentication);
         if (destinatarios.isEmpty()) return List.of();
 
-        Set<String> leidas = leidasEnSesion(session);
+        Set<String> leidas = notificacionesServicioClient.listarLeidas(usuarioId(authentication)).stream()
+                .map(id -> "svc-" + id)
+                .collect(Collectors.toSet());
         Map<String, NotificacionServicioDTO> unicas = new LinkedHashMap<>();
         for (String destinatario : destinatarios) {
             for (NotificacionServicioDTO dto : notificacionesServicioClient.listarPorDestinatario(destinatario, 20)) {
@@ -132,6 +136,14 @@ public class NotificacionesUsuarioService {
                         Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .map(Ordenada::notificacion)
                 .toList();
+    }
+
+    private static Set<String> idsServicio(List<NotificacionesDerivadasService.Notificacion> notificaciones) {
+        return notificaciones.stream()
+                .map(NotificacionesDerivadasService.Notificacion::id)
+                .filter(id -> id.startsWith("svc-"))
+                .map(id -> id.substring("svc-".length()))
+                .collect(Collectors.toSet());
     }
 
     /** Todos los destinatarios conocidos del usuario: correo de cuenta + medios de donante y entidad. */
@@ -216,21 +228,6 @@ public class NotificacionesUsuarioService {
         }
     }
 
-    private Set<String> leidasEnSesion(HttpSession session) {
-        if (session == null) return new HashSet<>();
-        Object value = session.getAttribute(SESSION_LEIDAS);
-        if (value instanceof Set<?> set) {
-            Set<String> leidas = new HashSet<>();
-            for (Object item : set) {
-                if (item instanceof String s) leidas.add(s);
-            }
-            return leidas;
-        }
-        Set<String> leidas = new HashSet<>();
-        session.setAttribute(SESSION_LEIDAS, leidas);
-        return leidas;
-    }
-
     private static String emailDe(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof OidcUser oidcUser) {
             String email = oidcUser.getEmail();
@@ -239,6 +236,17 @@ public class NotificacionesUsuarioService {
             }
         }
         return null;
+    }
+
+    private static String usuarioId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof OidcUser oidcUser
+                && oidcUser.getSubject() != null && !oidcUser.getSubject().isBlank()) {
+            return oidcUser.getSubject().trim();
+        }
+        if (authentication != null && authentication.getName() != null && !authentication.getName().isBlank()) {
+            return "authentication:" + authentication.getName().trim().toLowerCase(Locale.ROOT);
+        }
+        throw new IllegalStateException("No se pudo identificar al usuario autenticado para persistir lecturas");
     }
 
     private record Ordenada(LocalDateTime fecha, NotificacionesDerivadasService.Notificacion notificacion) {}

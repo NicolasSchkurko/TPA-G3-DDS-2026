@@ -83,7 +83,7 @@ public class GlobalViewAdvice {
         if (usarBandejaEntidad(session, authentication, request)) {
             return NotificacionesDerivadasService.sinLeer(entidadContext.notificaciones(request, authentication, session));
         }
-        return notificacionesUsuarioService.sinLeer(request, authentication, session);
+        return notificacionesUsuarioService.sinLeer(request, authentication);
     }
 
     private static boolean usarBandejaEntidad(HttpSession session, Authentication authentication, HttpServletRequest request) {
