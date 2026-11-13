@@ -261,6 +261,16 @@ public class DonacionService {
       // the same identifier value was already associated with the session"). Donacion.bienes
       // cascadea PERSIST/MERGE, así que el insert sale solo al guardar la donación.
       existente.setBienes(resolverBienes(dto.getBienes()));
+
+      // La subcategoría DE LA DONACIÓN es la que lee el asignador (Necesidad.esCompatibleCon mira
+      // donacion.getSubcategoria(), no la de los bienes), así que tiene que recalcularse con la
+      // misma regla con la que se fijó en el alta: la del primer bien del grupo
+      // (ver SegmentadorDonaciones.crearDonacion). Sin esto, corregir la subcategoría de un bien
+      // dejaba la donación apuntando a la vieja y el asignador seguía buscando por la anterior:
+      // la pantalla mostraba el dato nuevo y el matchmaking usaba el viejo.
+      existente.getBienes().stream().findFirst()
+              .map(Bien::getSubcategoria)
+              .ifPresent(existente::setSubcategoria);
     }
 
     return DonacionDTO.from(repositorioDonaciones.actualizar(existente.getId(), existente).get());
@@ -367,8 +377,12 @@ public class DonacionService {
   }
 
 
+  // obtenerSubcategoriaExistente y no obtenerOCrearSubcategoria: una donación no da de alta
+  // catálogo. Si la subcategoría no existe es un error de carga y tiene que fallar acá, con el
+  // detalle de las opciones válidas, en vez de inventar una subcategoría huérfana que ninguna
+  // necesidad va a matchear (ver GestorCatalogo).
   private Bien resolverBien(BienResumenDTO dto) {
-    SubcategoriaBien subcategoria = gestorCatalogo.obtenerOCrearSubcategoria(dto.getCategoria(), dto.getSubcategoria());
+    SubcategoriaBien subcategoria = gestorCatalogo.obtenerSubcategoriaExistente(dto.getCategoria(), dto.getSubcategoria());
     return dto.toDomain(subcategoria);
   }
 

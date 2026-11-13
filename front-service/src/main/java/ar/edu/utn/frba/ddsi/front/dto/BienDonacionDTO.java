@@ -16,10 +16,12 @@ import java.util.List;
  * que sirve tanto para mandar (POST /api/donaciones/formulario, PUT /api/donaciones/{id}) como
  * para leer los bienes que ya tiene una donación.
  *
- * <p>categoria y subcategoria no son obligatorias para el backend (si faltan usa "General"), pero
- * la subcategoría es la que decide todo lo que viene después: el segmentador agrupa por ella y el
- * matchmaking sólo propone necesidades de esa misma subcategoría. El formulario del donante no las
- * pide; el del admin sí, justamente para que la donación pueda matchear con alguna necesidad.
+ * <p>categoria y subcategoria son obligatorias y tienen que existir en el catálogo: la
+ * subcategoría decide todo lo que viene después, porque el segmentador agrupa por ella y el
+ * matchmaking sólo propone necesidades de esa misma subcategoría (comparando el nombre con
+ * equals()). El backend las valida contra el catálogo y rechaza las que no existan
+ * (GestorCatalogo.obtenerSubcategoriaExistente), así que acá no hay valores por defecto: un bien
+ * sin subcategoría elegida es un error del formulario, no algo a completar por nosotros.
  */
 @Getter
 @Setter
@@ -142,13 +144,16 @@ public class BienDonacionDTO {
             }
         }
 
-        // "General" es el default del backend; se escribe explícito para que el admin vea en el
-        // listado la misma subcategoría con la que el matchmaking va a trabajar.
+        // Antes esto completaba "General" (el viejo default del backend). Ya no: el backend sólo
+        // acepta subcategorías que existan en el catálogo (ver
+        // GestorCatalogo.obtenerSubcategoriaExistente) y "General" casi nunca es una de ellas, así
+        // que el default convertía un "me olvidé de elegir" en un 400 que no decía qué fila fue.
         if (vacio(categoria)) {
-            categoria = "General";
+            throw new IllegalArgumentException("Elegí la categoría del bien " + numeroDeFila + ".");
         }
         if (vacio(subcategoria)) {
-            subcategoria = "General";
+            throw new IllegalArgumentException("Elegí la subcategoría del bien " + numeroDeFila
+                    + ": es la que decide con qué necesidades puede matchear la donación.");
         }
         if (vacio(descripcion)) {
             descripcion = subcategoria;

@@ -688,6 +688,7 @@ public class AdminController {
         agregarDatosDelAdmin(usuario, model);
         model.addAttribute("formulario", EdicionDonacionDTO.desde(donacion));
         model.addAttribute("donacion", donacion);
+        prepararCatalogoDeBienes(model);
         return "admin/donacion-editar";
     }
 
@@ -712,6 +713,7 @@ public class AdminController {
             agregarDatosDelAdmin(usuario, model);
             model.addAttribute("formulario", formulario);
             model.addAttribute("donacion", donacion);
+            prepararCatalogoDeBienes(model);
             model.addAttribute("error", mensajeDeError(e, "No se pudo actualizar la donación"));
             return "admin/donacion-editar";
         }
@@ -819,6 +821,32 @@ public class AdminController {
         }
         model.addAttribute("formulario", formulario);
         model.addAttribute("donantes", donacionesClient.obtenerDonantes());
+        prepararCatalogoDeBienes(model);
+    }
+
+    /**
+     * Catálogo de categorías y subcategorías para los selects de bienes.
+     *
+     * Va tal cual viene del backend, sin catálogo de respaldo escrito a mano (a diferencia de
+     * /entidad/necesidades, donde el alta sí puede crear subcategorías nuevas). Acá el backend
+     * rechaza toda subcategoría que no exista —ver GestorCatalogo.obtenerSubcategoriaExistente—
+     * así que ofrecer opciones inventadas sería ofrecer opciones que el alta va a rechazar. Si el
+     * catálogo viene vacío el formulario lo dice y manda a cargar una necesidad primero.
+     */
+    private void prepararCatalogoDeBienes(Model model) {
+        Map<String, List<String>> catalogo = donacionesClient.obtenerCatalogoCategorias();
+        if (catalogo == null) {
+            catalogo = Map.of();
+        }
+        model.addAttribute("catalogo", catalogo);
+        // Lista plana de subcategorías: el select de subcategoría se renderiza con todas para que
+        // th:field pueda marcar como selected la que ya tenía el bien (una opción que no está en
+        // el DOM no se puede seleccionar). El filtrado por categoría lo hace el JS en el navegador.
+        model.addAttribute("subcategorias", catalogo.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList());
     }
 
     /** Avisa cuándo el formulario se partió en varias donaciones, para que no sorprenda. */

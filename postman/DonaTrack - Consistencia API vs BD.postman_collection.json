@@ -1,0 +1,827 @@
+{
+  "info": {
+    "name": "DonaTrack - Consistencia API vs BD",
+    "description": "Trae donantes, entidades beneficiarias y donaciones de donaciones-service y verifica que lo que devuelve la API sea consistente con lo que hay en MySQL.\n\n## Por que la API devuelve MENOS filas que la base\n\nNo es un bug: `donante` y `entidad_beneficiaria` tienen borrado logico (columnas `activo`/`activa` + `fecha_baja`), y los endpoints de listado exponen solo los activos. `donacion` no tiene borrado logico, asi que ahi los numeros dan igual. Las tres primeras requests dejan asentado esto como un test explicito.\n\n## Como correrla\n\n1. Levantar el stack: `docker compose up -d`.\n2. Sacar los numeros de la base (un solo comando, ver `postman/consistencia-api-vs-bd.sql`):\n\n   docker compose exec -T mysql mysql -uroot -proot --table < postman/consistencia-api-vs-bd.sql\n\n   En PowerShell el redirect `<` no existe, hay que pipear:\n\n   Get-Content postman/consistencia-api-vs-bd.sql -Raw | docker compose exec -T mysql mysql -uroot -proot --table\n\n3. Copiar esos tres numeros a las variables de coleccion `sqlDonantesActivos`, `sqlEntidadesActivas` y `sqlDonaciones`.\n4. Correr la coleccion con el Collection Runner, en orden.\n\nSi se dejan vacias esas tres variables la coleccion igual corre: los chequeos contra SQL se saltean y quedan solo los chequeos internos de la API (integridad referencial, coherencia de tipos, sumas de bienes). Esos no necesitan la base.\n\n## Si todo responde 403\n\nLos servicios solo aceptan trafico de IPs internas (`SecurityConfig` + `IpAddressMatcher`). Pegando desde Windows al puerto publicado, Docker reescribe el origen como la gateway del bridge, no como 127.0.0.1. El docker-compose ya tiene la variable `POSTMAN_HOST_IP` para esto, pero su default (172.19.0.1) no siempre coincide con la red real. Verificar con:\n\n   docker network inspect tpa-g3-dds-2026_default --format \"{{range .IPAM.Config}}{{.Gateway}}{{end}}\"\n\ny poner ese valor en `POSTMAN_HOST_IP` en el `.env` de la raiz, despues `docker compose up -d donaciones-service`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "description": "donaciones-service. Aca viven donantes, entidades y donaciones."
+    },
+    {
+      "key": "size",
+      "value": "500",
+      "description": "Los listados son Page de Spring con size=10 por defecto. Se pide un size grande para traer todo de una y poder comparar totales."
+    },
+    {
+      "key": "sqlDonantesActivos",
+      "value": "",
+      "description": "SELECT COUNT(*) FROM donante WHERE activo=1. Vacio = se saltea el chequeo."
+    },
+    {
+      "key": "sqlEntidadesActivas",
+      "value": "",
+      "description": "SELECT COUNT(*) FROM entidad_beneficiaria WHERE activa=1. Vacio = se saltea."
+    },
+    {
+      "key": "sqlDonaciones",
+      "value": "",
+      "description": "SELECT COUNT(*) FROM donacion. Vacio = se saltea."
+    },
+    { "key": "apiDonantesTotal", "value": "" },
+    { "key": "apiEntidadesTotal", "value": "" },
+    { "key": "apiDonacionesTotal", "value": "" },
+    { "key": "nombresDonantes", "value": "[]" },
+    { "key": "razonesSocialesEntidades", "value": "[]" },
+    { "key": "donanteId", "value": "" },
+    { "key": "entidadId", "value": "" },
+    { "key": "donacionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Donantes",
+      "item": [
+        {
+          "name": "Listar donantes (todos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Es un Page de Spring', function () {",
+                  "    pm.expect(body, 'body').to.have.property('content');",
+                  "    pm.expect(body.content, 'content').to.be.an('array');",
+                  "    pm.expect(body, 'body').to.have.property('totalElements');",
+                  "});",
+                  "",
+                  "const donantes = body.content;",
+                  "",
+                  "// Si esto falla hay que subir la variable 'size': estariamos comparando",
+                  "// contra una pagina parcial y los totales no querrian decir nada.",
+                  "pm.test('La pagina trajo TODOS los donantes (size alcanza)', function () {",
+                  "    pm.expect(donantes.length, 'elementos en la pagina').to.eql(body.totalElements);",
+                  "});",
+                  "",
+                  "// El motivo por el que la API devuelve menos filas que SELECT COUNT(*) FROM donante.",
+                  "pm.test('Solo expone donantes activos (borrado logico)', function () {",
+                  "    const noActivos = donantes.filter(function (d) { return d.activo !== true; })",
+                  "                              .map(function (d) { return d.id; });",
+                  "    pm.expect(noActivos, 'ids con activo != true').to.eql([]);",
+                  "});",
+                  "",
+                  "pm.test('No hay ids repetidos', function () {",
+                  "    const ids = donantes.map(function (d) { return d.id; });",
+                  "    pm.expect(new Set(ids).size, 'ids unicos').to.eql(ids.length);",
+                  "});",
+                  "",
+                  "// HUMANA y JURIDICA comparten el DTO, asi que los campos de la otra variante",
+                  "// vienen en null. Si se cruzan, algo se mapeo mal al leer de la base.",
+                  "pm.test('Coherencia HUMANA / JURIDICA', function () {",
+                  "    const problemas = [];",
+                  "    donantes.forEach(function (d) {",
+                  "        const quien = d.id;",
+                  "        if (d.tipoPersona === 'HUMANA') {",
+                  "            if (!d.nombre) { problemas.push(quien + ': HUMANA sin nombre'); }",
+                  "            if (!d.apellido) { problemas.push(quien + ': HUMANA sin apellido'); }",
+                  "            if (d.numeroDeDocumento === null || d.numeroDeDocumento === undefined) { problemas.push(quien + ': HUMANA sin documento'); }",
+                  "            if (d.cuit) { problemas.push(quien + ': HUMANA con cuit (' + d.cuit + ')'); }",
+                  "            if (d.razonSocial) { problemas.push(quien + ': HUMANA con razonSocial'); }",
+                  "        } else if (d.tipoPersona === 'JURIDICA') {",
+                  "            if (!d.razonSocial) { problemas.push(quien + ': JURIDICA sin razonSocial'); }",
+                  "            if (!d.cuit) { problemas.push(quien + ': JURIDICA sin cuit'); }",
+                  "            if (d.numeroDeDocumento) { problemas.push(quien + ': JURIDICA con numeroDeDocumento'); }",
+                  "        } else {",
+                  "            problemas.push(quien + ': tipoPersona inesperado (' + d.tipoPersona + ')');",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas, 'incoherencias').to.eql([]);",
+                  "});",
+                  "",
+                  "pm.test('El medio predeterminado figura entre los medios de contacto', function () {",
+                  "    const problemas = [];",
+                  "    donantes.forEach(function (d) {",
+                  "        if (!d.medioPredeterminado) { return; }",
+                  "        const medios = d.mediosDeContacto || [];",
+                  "        const esta = medios.some(function (m) {",
+                  "            return m.tipo === d.medioPredeterminado.tipo && m.valor === d.medioPredeterminado.valor;",
+                  "        });",
+                  "        if (!esta) {",
+                  "            problemas.push(d.id + ': predeterminado ' + d.medioPredeterminado.tipo + '/' + d.medioPredeterminado.valor + ' no esta en mediosDeContacto');",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas, 'medios predeterminados huerfanos').to.eql([]);",
+                  "});",
+                  "",
+                  "// Se guardan los nombres como los arma el backend para DonacionDTO.donanteName,",
+                  "// que es un string y no un id: es la unica forma de cruzar donaciones con donantes.",
+                  "const nombres = donantes.map(function (d) {",
+                  "    return d.tipoPersona === 'JURIDICA' ? (d.razonSocial || '')",
+                  "                                        : ((d.nombre || '') + ' ' + (d.apellido || '')).trim();",
+                  "});",
+                  "pm.collectionVariables.set('nombresDonantes', JSON.stringify(nombres));",
+                  "pm.collectionVariables.set('apiDonantesTotal', String(body.totalElements));",
+                  "if (donantes.length > 0) { pm.collectionVariables.set('donanteId', donantes[0].id); }",
+                  "",
+                  "const esperado = (pm.collectionVariables.get('sqlDonantesActivos') || '').toString().trim();",
+                  "if (esperado === '') {",
+                  "    console.log('[donantes] API=' + body.totalElements + '. Sin sqlDonantesActivos cargado, no se compara contra la base.');",
+                  "} else {",
+                  "    pm.test('Coincide con la base: ' + esperado + ' donantes activos', function () {",
+                  "        pm.expect(body.totalElements, 'totalElements').to.eql(Number(esperado));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/personas?page=0&size={{size}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "personas"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "{{size}}" }
+              ]
+            },
+            "description": "GET /api/personas. El path dice 'personas' por legado: el controller es DonanteController y esta marcado en el codigo como algo a renombrar a /donantes."
+          }
+        },
+        {
+          "name": "Detalle de un donante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const d = pm.response.json();",
+                  "",
+                  "pm.test('El detalle devuelve el id pedido', function () {",
+                  "    pm.expect(d.id).to.eql(pm.collectionVariables.get('donanteId'));",
+                  "});",
+                  "",
+                  "pm.test('El detalle esta activo', function () {",
+                  "    pm.expect(d.activo, 'activo').to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Tiene direccion con ciudad, provincia y pais', function () {",
+                  "    pm.expect(d.direccion, 'direccion').to.be.an('object');",
+                  "    pm.expect(d.direccion.ciudad, 'ciudad').to.be.a('string').and.not.empty;",
+                  "    pm.expect(d.direccion.provincia, 'provincia').to.be.a('string').and.not.empty;",
+                  "    pm.expect(d.direccion.pais, 'pais').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/personas/{{donanteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "personas", "{{donanteId}}"]
+            },
+            "description": "Usa el donanteId que guardo el listado. Verifica que el detalle coincida con lo que vino en la lista."
+          }
+        },
+        {
+          "name": "Medios de contacto del donante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const medios = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve una lista', function () {",
+                  "    pm.expect(medios).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Cada medio tiene tipo y valor', function () {",
+                  "    const problemas = [];",
+                  "    medios.forEach(function (m, i) {",
+                  "        if (!m.tipo) { problemas.push('medio ' + i + ' sin tipo'); }",
+                  "        if (!m.valor) { problemas.push('medio ' + i + ' sin valor'); }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/personas/{{donanteId}}/medios-contacto",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "personas", "{{donanteId}}", "medios-contacto"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Entidades beneficiarias",
+      "item": [
+        {
+          "name": "Listar entidades (todas)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Es un Page de Spring', function () {",
+                  "    pm.expect(body.content, 'content').to.be.an('array');",
+                  "    pm.expect(body, 'body').to.have.property('totalElements');",
+                  "});",
+                  "",
+                  "const entidades = body.content;",
+                  "",
+                  "pm.test('La pagina trajo TODAS las entidades (size alcanza)', function () {",
+                  "    pm.expect(entidades.length, 'elementos en la pagina').to.eql(body.totalElements);",
+                  "});",
+                  "",
+                  "pm.test('Solo expone entidades activas (borrado logico)', function () {",
+                  "    const noActivas = entidades.filter(function (e) { return e.activa !== true; })",
+                  "                               .map(function (e) { return e.id; });",
+                  "    pm.expect(noActivas, 'ids con activa != true').to.eql([]);",
+                  "});",
+                  "",
+                  "pm.test('No hay ids repetidos', function () {",
+                  "    const ids = entidades.map(function (e) { return e.id; });",
+                  "    pm.expect(new Set(ids).size, 'ids unicos').to.eql(ids.length);",
+                  "});",
+                  "",
+                  "pm.test('No hay cuit repetido', function () {",
+                  "    const cuits = entidades.map(function (e) { return e.cuit; }).filter(Boolean);",
+                  "    pm.expect(new Set(cuits).size, 'cuits unicos').to.eql(cuits.length);",
+                  "});",
+                  "",
+                  "// razonSocial si es obligatoria: es el dato con el que DonacionDTO referencia",
+                  "// a la entidad (campo `entidadBeneficiaria`), asi que sin ella la referencia",
+                  "// cruzada de la carpeta 03 no puede resolver.",
+                  "pm.test('Toda entidad tiene razonSocial', function () {",
+                  "    const problemas = entidades",
+                  "        .filter(function (e) { return !e.razonSocial; })",
+                  "        .map(function (e) { return e.id + ': sin razonSocial'; });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "// El cuit NO se testea como obligatorio a proposito. Hay entidades cargadas sin",
+                  "// cuit (ej. 'Merendero La Esperanza') y la base las tiene igual de vacias que la",
+                  "// API, o sea que no es una inconsistencia API vs BD sino un dato incompleto.",
+                  "// Se avisa por consola para que quede registrado sin romper la corrida.",
+                  "const sinCuit = entidades.filter(function (e) { return !e.cuit; });",
+                  "if (sinCuit.length) {",
+                  "    console.warn('[dato incompleto] ' + sinCuit.length + ' entidad(es) activas sin cuit: ' +",
+                  "        sinCuit.map(function (e) { return e.razonSocial || e.id; }).join(', '));",
+                  "}",
+                  "",
+                  "// El DTO expone el mail dos veces (email y correoElectronico). Si difieren,",
+                  "// hay dos fuentes de verdad para el mismo dato.",
+                  "pm.test('email y correoElectronico no se contradicen', function () {",
+                  "    const problemas = [];",
+                  "    entidades.forEach(function (e) {",
+                  "        if (e.email && e.correoElectronico && e.email !== e.correoElectronico) {",
+                  "            problemas.push(e.id + ': email=' + e.email + ' vs correoElectronico=' + e.correoElectronico);",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('razonesSocialesEntidades', JSON.stringify(entidades.map(function (e) { return e.razonSocial; })));",
+                  "pm.collectionVariables.set('apiEntidadesTotal', String(body.totalElements));",
+                  "if (entidades.length > 0) { pm.collectionVariables.set('entidadId', entidades[0].id); }",
+                  "",
+                  "const esperado = (pm.collectionVariables.get('sqlEntidadesActivas') || '').toString().trim();",
+                  "if (esperado === '') {",
+                  "    console.log('[entidades] API=' + body.totalElements + '. Sin sqlEntidadesActivas cargado, no se compara contra la base.');",
+                  "} else {",
+                  "    pm.test('Coincide con la base: ' + esperado + ' entidades activas', function () {",
+                  "        pm.expect(body.totalElements, 'totalElements').to.eql(Number(esperado));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades?page=0&size={{size}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entidades"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "{{size}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Necesidades de la entidad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const necesidades = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve una lista', function () {",
+                  "    pm.expect(necesidades).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Lo recibido nunca deberia superar lo pedido ni ser negativo: si pasa,",
+                  "// los conteos de Necesidad.cantidadRecibida() quedaron desalineados.",
+                  "pm.test('Las cantidades son coherentes (0 <= recibido <= pedido)', function () {",
+                  "    const problemas = [];",
+                  "    necesidades.forEach(function (n) {",
+                  "        const pedido = n.cantidadPedida != null ? n.cantidadPedida : n.cantidad;",
+                  "        const recibido = n.cantidadRecibida;",
+                  "        if (pedido != null && pedido < 0) { problemas.push(JSON.stringify(n) + ': pedido negativo'); }",
+                  "        if (recibido != null && recibido < 0) { problemas.push(JSON.stringify(n) + ': recibido negativo'); }",
+                  "        if (pedido != null && recibido != null && recibido > pedido) {",
+                  "            problemas.push(JSON.stringify(n) + ': recibido (' + recibido + ') > pedido (' + pedido + ')');",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "console.log('[necesidades] entidad ' + pm.collectionVariables.get('entidadId') + ' -> ' + necesidades.length + ' necesidad(es)');",
+                  "console.log(JSON.stringify(necesidades, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}/necesidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entidades", "{{entidadId}}", "necesidades"]
+            }
+          }
+        },
+        {
+          "name": "Donaciones asignadas a la entidad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const donaciones = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve una lista', function () {",
+                  "    pm.expect(donaciones).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Una donacion que figura como asignada a esta entidad no puede estar todavia",
+                  "// en deposito ni pendiente de asignacion.",
+                  "pm.test('Ninguna asignada quedo en un estado previo a la asignacion', function () {",
+                  "    const previos = ['EN_DEPOSITO', 'PENDIENTE_ASIGNACION'];",
+                  "    const raras = donaciones.filter(function (d) { return previos.indexOf(d.estado) !== -1; })",
+                  "                            .map(function (d) { return (d.id || '?') + ' -> ' + d.estado; });",
+                  "    pm.expect(raras, 'asignadas en estado previo').to.eql([]);",
+                  "});",
+                  "",
+                  "console.log('[donaciones de la entidad] ' + donaciones.length + ' donacion(es)');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entidades/{{entidadId}}/donaciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entidades", "{{entidadId}}", "donaciones"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Donaciones",
+      "item": [
+        {
+          "name": "Listar donaciones (todas)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Es un Page de Spring', function () {",
+                  "    pm.expect(body.content, 'content').to.be.an('array');",
+                  "    pm.expect(body, 'body').to.have.property('totalElements');",
+                  "});",
+                  "",
+                  "const donaciones = body.content;",
+                  "",
+                  "pm.test('La pagina trajo TODAS las donaciones (size alcanza)', function () {",
+                  "    pm.expect(donaciones.length, 'elementos en la pagina').to.eql(body.totalElements);",
+                  "});",
+                  "",
+                  "pm.test('No hay ids repetidos', function () {",
+                  "    const ids = donaciones.map(function (d) { return d.id; });",
+                  "    pm.expect(new Set(ids).size, 'ids unicos').to.eql(ids.length);",
+                  "});",
+                  "",
+                  "// Los 8 valores del enum Estado. Ojo: la columna donacion.estado es un ENUM nativo",
+                  "// de MySQL, asi que si el enum Java crece y la columna no, aparece un valor truncado.",
+                  "const ESTADOS = ['EN_DEPOSITO', 'PENDIENTE_ASIGNACION', 'ASIGNADO', 'LISTA_PARA_ENTREGAR',",
+                  "                 'EN_TRASLADO', 'ENTREGADO', 'ENTREGA_FALLIDA', 'VENCIDO'];",
+                  "pm.test('Todos los estados son valores validos del enum', function () {",
+                  "    const invalidos = donaciones.filter(function (d) { return ESTADOS.indexOf(d.estado) === -1; })",
+                  "                                .map(function (d) { return d.id + ' -> ' + d.estado; });",
+                  "    pm.expect(invalidos, 'estados fuera del enum').to.eql([]);",
+                  "});",
+                  "",
+                  "// Chequeo de integridad fuerte: el total que publica el DTO tiene que ser",
+                  "// exactamente la suma de los bienes que trae adentro.",
+                  "pm.test('cantidadTotalBienes == suma de bienes.cantidad', function () {",
+                  "    const problemas = [];",
+                  "    donaciones.forEach(function (d) {",
+                  "        const bienes = d.bienes || [];",
+                  "        const suma = bienes.reduce(function (acc, b) { return acc + (b.cantidad || 0); }, 0);",
+                  "        if (d.cantidadTotalBienes !== suma) {",
+                  "            problemas.push(d.id + ': cantidadTotalBienes=' + d.cantidadTotalBienes + ' pero la suma de bienes da ' + suma);",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "pm.test('Toda donacion tiene al menos un bien', function () {",
+                  "    const vacias = donaciones.filter(function (d) { return !d.bienes || d.bienes.length === 0; })",
+                  "                             .map(function (d) { return d.id; });",
+                  "    pm.expect(vacias, 'donaciones sin bienes').to.eql([]);",
+                  "});",
+                  "",
+                  "// PERECEDERO lleva fechaVencimiento; CON_ESTADO lleva el flag usado.",
+                  "pm.test('Coherencia PERECEDERO / CON_ESTADO en los bienes', function () {",
+                  "    const problemas = [];",
+                  "    donaciones.forEach(function (d) {",
+                  "        (d.bienes || []).forEach(function (b) {",
+                  "            if (b.tipoBien === 'PERECEDERO') {",
+                  "                if (!b.fechaVencimiento) { problemas.push(d.id + ' / ' + b.descripcion + ': PERECEDERO sin fechaVencimiento'); }",
+                  "            } else if (b.tipoBien === 'CON_ESTADO') {",
+                  "                if (b.usado === null || b.usado === undefined) { problemas.push(d.id + ' / ' + b.descripcion + ': CON_ESTADO sin flag usado'); }",
+                  "            } else {",
+                  "                problemas.push(d.id + ' / ' + b.descripcion + ': tipoBien inesperado (' + b.tipoBien + ')');",
+                  "            }",
+                  "            if (b.cantidad == null || b.cantidad <= 0) {",
+                  "                problemas.push(d.id + ' / ' + b.descripcion + ': cantidad no positiva (' + b.cantidad + ')');",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "// La segmentacion parte el formulario en una donacion por subcategoria, asi que",
+                  "// todos los bienes de una donacion deben compartir la subcategoria del encabezado.",
+                  "pm.test('Los bienes coinciden con la subcategoria de la donacion', function () {",
+                  "    const problemas = [];",
+                  "    donaciones.forEach(function (d) {",
+                  "        (d.bienes || []).forEach(function (b) {",
+                  "            if (d.subcategoriaName && b.subcategoria && b.subcategoria !== d.subcategoriaName) {",
+                  "                problemas.push(d.id + ': donacion es \"' + d.subcategoriaName + '\" pero el bien es \"' + b.subcategoria + '\"');",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "// Integridad referencial. El DTO expone donanteName/entidadBeneficiaria como",
+                  "// strings y no como ids, asi que el cruce se hace por nombre.",
+                  "const nombresDonantes = JSON.parse(pm.collectionVariables.get('nombresDonantes') || '[]');",
+                  "if (nombresDonantes.length === 0) {",
+                  "    console.log('[donaciones] Correr primero \"Listar donantes\" para poder cruzar donanteName.');",
+                  "} else {",
+                  "    pm.test('Todo donanteName existe en el listado de donantes', function () {",
+                  "        const huerfanas = donaciones.filter(function (d) {",
+                  "            return d.donanteName && nombresDonantes.indexOf(d.donanteName) === -1;",
+                  "        }).map(function (d) { return d.id + ' -> \"' + d.donanteName + '\"'; });",
+                  "        pm.expect(huerfanas, 'donaciones con donante que no esta en la lista').to.eql([]);",
+                  "    });",
+                  "}",
+                  "",
+                  "const razones = JSON.parse(pm.collectionVariables.get('razonesSocialesEntidades') || '[]');",
+                  "const SIN_ENTIDAD = 'No asignada';",
+                  "if (razones.length === 0) {",
+                  "    console.log('[donaciones] Correr primero \"Listar entidades\" para poder cruzar entidadBeneficiaria.');",
+                  "} else {",
+                  "    pm.test('Toda entidadBeneficiaria existe en el listado de entidades', function () {",
+                  "        const huerfanas = donaciones.filter(function (d) {",
+                  "            return d.entidadBeneficiaria && d.entidadBeneficiaria !== SIN_ENTIDAD",
+                  "                && razones.indexOf(d.entidadBeneficiaria) === -1;",
+                  "        }).map(function (d) { return d.id + ' -> \"' + d.entidadBeneficiaria + '\"'; });",
+                  "        pm.expect(huerfanas, 'donaciones con entidad que no esta en la lista').to.eql([]);",
+                  "    });",
+                  "}",
+                  "",
+                  "// Una donacion ya asignada o en camino tiene que tener entidad.",
+                  "pm.test('Las donaciones asignadas o posteriores tienen entidad', function () {",
+                  "    const requierenEntidad = ['ASIGNADO', 'LISTA_PARA_ENTREGAR', 'EN_TRASLADO', 'ENTREGADO'];",
+                  "    const problemas = donaciones.filter(function (d) {",
+                  "        return requierenEntidad.indexOf(d.estado) !== -1",
+                  "            && (!d.entidadBeneficiaria || d.entidadBeneficiaria === SIN_ENTIDAD);",
+                  "    }).map(function (d) { return d.id + ' esta ' + d.estado + ' sin entidad'; });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "// Y al revés: si todavia esta en deposito, nadie deberia haberla reclamado.",
+                  "pm.test('Las donaciones en deposito no tienen entidad', function () {",
+                  "    const problemas = donaciones.filter(function (d) {",
+                  "        return d.estado === 'EN_DEPOSITO' && d.entidadBeneficiaria && d.entidadBeneficiaria !== SIN_ENTIDAD;",
+                  "    }).map(function (d) { return d.id + ' esta EN_DEPOSITO pero figura con entidad ' + d.entidadBeneficiaria; });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('apiDonacionesTotal', String(body.totalElements));",
+                  "if (donaciones.length > 0) { pm.collectionVariables.set('donacionId', donaciones[0].id); }",
+                  "",
+                  "// Reparto por estado, para comparar de un vistazo con el GROUP BY del .sql.",
+                  "const porEstado = {};",
+                  "donaciones.forEach(function (d) { porEstado[d.estado] = (porEstado[d.estado] || 0) + 1; });",
+                  "console.log('[donaciones] reparto por estado: ' + JSON.stringify(porEstado));",
+                  "",
+                  "const esperado = (pm.collectionVariables.get('sqlDonaciones') || '').toString().trim();",
+                  "if (esperado === '') {",
+                  "    console.log('[donaciones] API=' + body.totalElements + '. Sin sqlDonaciones cargado, no se compara contra la base.');",
+                  "} else {",
+                  "    // donacion NO tiene borrado logico, asi que aca los numeros tienen que dar igual.",
+                  "    pm.test('Coincide con la base: ' + esperado + ' donaciones', function () {",
+                  "        pm.expect(body.totalElements, 'totalElements').to.eql(Number(esperado));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones?page=0&size={{size}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "donaciones"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "{{size}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalle de una donacion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const d = pm.response.json();",
+                  "",
+                  "pm.test('El detalle devuelve el id pedido', function () {",
+                  "    pm.expect(d.id).to.eql(pm.collectionVariables.get('donacionId'));",
+                  "});",
+                  "",
+                  "pm.test('El detalle tambien cierra cantidadTotalBienes', function () {",
+                  "    const suma = (d.bienes || []).reduce(function (acc, b) { return acc + (b.cantidad || 0); }, 0);",
+                  "    pm.expect(d.cantidadTotalBienes, 'cantidadTotalBienes').to.eql(suma);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones/{{donacionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "donaciones", "{{donacionId}}"]
+            }
+          }
+        },
+        {
+          "name": "Donaciones de un donante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const donaciones = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve una lista', function () {",
+                  "    pm.expect(donaciones).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Filtrar por donante tiene que devolver solo donaciones de ese donante.",
+                  "pm.test('Todas pertenecen al donante consultado', function () {",
+                  "    const nombres = new Set(donaciones.map(function (d) { return d.donanteName; }));",
+                  "    pm.expect(nombres.size, 'donantes distintos en la respuesta').to.be.at.most(1);",
+                  "});",
+                  "",
+                  "console.log('[donaciones del donante] ' + donaciones.length + ' donacion(es)');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones/donante/{{donanteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "donaciones", "donante", "{{donanteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Pendientes de asignacion (matchmaking)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "const body = pm.response.json();",
+                  "const resultados = body.content || [];",
+                  "",
+                  "pm.test('Es un Page de Spring', function () {",
+                  "    pm.expect(body).to.have.property('content');",
+                  "});",
+                  "",
+                  "// Un resultado de matchmaking existe solo para donaciones que el asignador",
+                  "// ya analizo y dejo pendientes de asignacion.",
+                  "pm.test('Cada resultado corresponde a una donacion PENDIENTE_ASIGNACION', function () {",
+                  "    const problemas = [];",
+                  "    resultados.forEach(function (r) {",
+                  "        const d = r.donacion || {};",
+                  "        if (d.estado && d.estado !== 'PENDIENTE_ASIGNACION') {",
+                  "            problemas.push((d.id || '?') + ' tiene resultado pero esta ' + d.estado);",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "// posicionPropuesta es 1-based y no deberia repetirse dentro de un resultado.",
+                  "pm.test('Las posiciones de las propuestas son 1-based y sin repetir', function () {",
+                  "    const problemas = [];",
+                  "    resultados.forEach(function (r) {",
+                  "        const propuestas = r.propuestas || [];",
+                  "        const posiciones = propuestas.map(function (p) { return p.posicion; }).filter(function (p) { return p != null; });",
+                  "        posiciones.forEach(function (p) {",
+                  "            if (p < 1) { problemas.push('posicion ' + p + ' menor a 1'); }",
+                  "        });",
+                  "        if (new Set(posiciones).size !== posiciones.length) {",
+                  "            problemas.push('posiciones repetidas en ' + JSON.stringify(posiciones));",
+                  "        }",
+                  "    });",
+                  "    pm.expect(problemas).to.eql([]);",
+                  "});",
+                  "",
+                  "console.log('[pendientes] ' + resultados.length + ' resultado(s) de matchmaking.');",
+                  "if (resultados.length === 0) {",
+                  "    console.log('  Vacio es normal si nadie ejecuto el asignador, o si ninguna entidad tiene una necesidad de la subcategoria de las donaciones en deposito.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones/pendientes?page=0&size={{size}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "donaciones", "pendientes"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "{{size}}" }
+              ]
+            },
+            "description": "Solo lectura: NO dispara el asignador, nada mas muestra los resultados ya guardados."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Resumen de consistencia",
+      "item": [
+        {
+          "name": "Comparar API vs base",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Esta request no aporta datos nuevos: solo cierra el informe con lo que",
+                  "// juntaron las anteriores. Se le pega a un endpoint liviano para tener un 200.",
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "",
+                  "function leer(clave) {",
+                  "    const v = (pm.collectionVariables.get(clave) || '').toString().trim();",
+                  "    return v === '' ? null : Number(v);",
+                  "}",
+                  "",
+                  "const filas = [",
+                  "    { que: 'Donantes',  api: leer('apiDonantesTotal'),   sql: leer('sqlDonantesActivos'),  nota: 'solo activos (borrado logico)' },",
+                  "    { que: 'Entidades', api: leer('apiEntidadesTotal'),  sql: leer('sqlEntidadesActivas'), nota: 'solo activas (borrado logico)' },",
+                  "    { que: 'Donaciones', api: leer('apiDonacionesTotal'), sql: leer('sqlDonaciones'),       nota: 'sin borrado logico: deben dar igual' }",
+                  "];",
+                  "",
+                  "console.log('');",
+                  "console.log('=========== CONSISTENCIA API vs BASE ===========');",
+                  "filas.forEach(function (f) {",
+                  "    const sql = f.sql === null ? '(sin cargar)' : f.sql;",
+                  "    let veredicto;",
+                  "    if (f.api === null) { veredicto = 'FALTA correr el listado'; }",
+                  "    else if (f.sql === null) { veredicto = 'sin comparar'; }",
+                  "    else { veredicto = (f.api === f.sql) ? 'OK' : 'DIFIERE'; }",
+                  "    console.log(('  ' + f.que).padEnd(14) + 'API=' + String(f.api).padEnd(6) + 'BD=' + String(sql).padEnd(14) + veredicto);",
+                  "    console.log('                ' + f.nota);",
+                  "});",
+                  "console.log('===============================================');",
+                  "console.log('');",
+                  "",
+                  "// Que el runner falle si algo quedo sin correr.",
+                  "pm.test('Se corrieron los tres listados', function () {",
+                  "    const faltan = filas.filter(function (f) { return f.api === null; }).map(function (f) { return f.que; });",
+                  "    pm.expect(faltan, 'listados sin correr').to.eql([]);",
+                  "});",
+                  "",
+                  "filas.forEach(function (f) {",
+                  "    if (f.api !== null && f.sql !== null) {",
+                  "        pm.test(f.que + ': API (' + f.api + ') == base (' + f.sql + ')', function () {",
+                  "            pm.expect(f.api).to.eql(f.sql);",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/donaciones?page=0&size=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "donaciones"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "1" }
+              ]
+            },
+            "description": "Imprime el cuadro comparativo en la consola del runner y falla si algun total no coincide con la base."
+          }
+        }
+      ]
+    }
+  ]
+}
