@@ -11,6 +11,12 @@
  *  - Dentro de cada fila, "estado (nuevo/usado)" y "fecha de vencimiento" son excluyentes: el
  *    backend elige la subclase del bien por tipoBien e ignora el campo del otro tipo, así que el
  *    que no corresponde se esconde y se deshabilita para que el navegador no lo mande.
+ *  - Categoría y subcategoría son selects encadenados contra el catálogo real (window.CATALOGO,
+ *    que viene de /api/categorias). Antes eran inputs de texto libre y eso era un pozo: el
+ *    asignador empareja donaciones con necesidades por NOMBRE de subcategoría, así que escribir
+ *    "Frazada" donde la necesidad decía "Frazadas" dejaba la donación sin match posible, sin un
+ *    solo mensaje de error. El backend ahora también rechaza las subcategorías que no existen
+ *    (GestorCatalogo.obtenerSubcategoriaExistente); esto es la mitad que evita llegar a eso.
  *  - Selector de donante: filtra en vivo y, cuando no hay coincidencias, ofrece registrarlo o ir
  *    a administrar donantes (el caso "no reconozco al donador").
  */
@@ -81,6 +87,68 @@
         contenedorBienes.querySelectorAll('.fila-bien').forEach(aplicarTipoDeBien);
     }
 
+    // ------------------------------------------------------------------
+    // Categoría -> subcategoría
+    // ------------------------------------------------------------------
+    const CATALOGO = (window.CATALOGO && typeof window.CATALOGO === 'object') ? window.CATALOGO : {};
+    const CATEGORIAS = Object.keys(CATALOGO);
+
+    /** Subcategorías de una categoría, tolerando diferencias de caso y espacios al comparar. */
+    function subcategoriasDe(nombreCategoria) {
+        const buscada = (nombreCategoria || '').trim().toLowerCase();
+        if (!buscada) {
+            return [];
+        }
+        const clave = CATEGORIAS.find(function (c) { return c.trim().toLowerCase() === buscada; });
+        return clave && Array.isArray(CATALOGO[clave]) ? CATALOGO[clave] : [];
+    }
+
+    /**
+     * Repuebla el select de subcategoría de una fila según su categoría.
+     *
+     * El select llega del servidor con TODAS las subcategorías del catálogo (así th:field puede
+     * marcar la que el bien ya tenía); acá se recorta a las de la categoría elegida. El valor
+     * actual se conserva sólo si sigue perteneciendo a esa categoría: si no, se limpia a propósito,
+     * porque un par categoría/subcategoría que no existe lo rechaza el backend y es mejor que el
+     * admin lo vea vacío ahora que descubra el error al guardar.
+     */
+    function repoblarSubcategorias(fila) {
+        const selectorCategoria = fila.querySelector('.selector-categoria-bien');
+        const selectorSubcategoria = fila.querySelector('.selector-subcategoria-bien');
+        if (!selectorCategoria || !selectorSubcategoria) {
+            return;
+        }
+
+        const elegida = selectorSubcategoria.value;
+        const opciones = subcategoriasDe(selectorCategoria.value);
+
+        selectorSubcategoria.innerHTML = '';
+
+        const vacia = document.createElement('option');
+        vacia.value = '';
+        if (!selectorCategoria.value) {
+            vacia.textContent = 'Elegí primero la categoría...';
+        } else if (opciones.length === 0) {
+            vacia.textContent = 'Esta categoría no tiene subcategorías';
+        } else {
+            vacia.textContent = 'Elegí una subcategoría...';
+        }
+        selectorSubcategoria.appendChild(vacia);
+
+        opciones.forEach(function (sub) {
+            const option = document.createElement('option');
+            option.value = sub;
+            option.textContent = sub;
+            selectorSubcategoria.appendChild(option);
+        });
+
+        selectorSubcategoria.value = opciones.indexOf(elegida) !== -1 ? elegida : '';
+    }
+
+    function repoblarSubcategoriasDeTodas() {
+        contenedorBienes.querySelectorAll('.fila-bien').forEach(repoblarSubcategorias);
+    }
+
     if (contenedorBienes) {
 
         if (moldeBien && botonAgregarBien) {
@@ -89,6 +157,9 @@
                 contenedorBienes.appendChild(fila);
                 renumerarBienes();
                 aplicarTipoDeBien(fila);
+                // El molde trae el select de subcategoría vacío (sin categoría elegida todavía):
+                // esto le deja el placeholder que corresponde.
+                repoblarSubcategorias(fila);
 
                 const primerCampo = fila.querySelector('input[data-campo="descripcion"]');
                 if (primerCampo) {
@@ -115,17 +186,20 @@
         });
 
         contenedorBienes.addEventListener('change', function (evento) {
-            if (!evento.target.classList.contains('selector-tipo-bien')) {
+            const fila = evento.target.closest('.fila-bien');
+            if (!fila) {
                 return;
             }
-            const fila = evento.target.closest('.fila-bien');
-            if (fila) {
+            if (evento.target.classList.contains('selector-tipo-bien')) {
                 aplicarTipoDeBien(fila);
+            } else if (evento.target.classList.contains('selector-categoria-bien')) {
+                repoblarSubcategorias(fila);
             }
         });
 
         renumerarBienes();
         aplicarTipoATodas();
+        repoblarSubcategoriasDeTodas();
 
         const csrfMeta = document.querySelector('meta[name="_csrf"]');
         const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');

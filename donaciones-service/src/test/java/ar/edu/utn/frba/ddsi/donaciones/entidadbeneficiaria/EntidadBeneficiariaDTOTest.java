@@ -1,4 +1,10 @@
-package ar.edu.utn.frba.ddsi.donaciones.entidadbeneficiaria;
+// El paquete tiene que coincidir EXACTAMENTE con el directorio (entidadBeneficiaria, con B
+// mayúscula), igual que el EntidadBeneficiariaServiceTest de al lado. Antes decía
+// "entidadbeneficiaria" todo en minúscula: en Windows compilaba igual porque el filesystem no
+// distingue mayúsculas y el .class terminaba en el directorio con B mayúscula, pero Surefire
+// deduce el nombre de la clase del directorio y el JVM rechazaba cargarla
+// ("wrong name"), lo que hacía fallar TODO el módulo sin correr un solo test en Linux/CI.
+package ar.edu.utn.frba.ddsi.donaciones.entidadBeneficiaria;
 
 import ar.edu.utn.frba.ddsi.donaciones.dto.entidadbeneficiaria.EntidadBeneficiariaDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;

@@ -128,9 +128,20 @@
             <p class="form-ayuda">
                 La subcategoría es la que decide con qué necesidades puede matchear la donación:
                 el asignador sólo propone entidades que pidieron bienes de esa misma subcategoría.
+                Por eso se elige del catálogo y no se escribe a mano: una subcategoría nueva no la
+                pidió nadie, así que la donación quedaría en depósito sin match posible.
                 Si cargás bienes de subcategorías o unidades distintas, el sistema parte el
                 formulario en una donación por grupo.
             </p>
+
+            <!-- El catálogo lo pueblan las necesidades de las entidades. Sin necesidades cargadas no
+                 hay nada que elegir, y registrar la donación va a fallar en el backend. -->
+            <div th:if="${#maps.isEmpty(catalogo)}" class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                El catálogo de categorías está vacío: todavía ninguna entidad cargó una necesidad.
+                Hasta que haya al menos una no se puede registrar una donación, porque no habría
+                subcategoría válida a la que asociarla.
+            </div>
 
             <div class="filas-repetibles" id="filasBienes">
                 <div th:each="bien, iter : *{bienes}" class="fila-repetible fila-bien">
@@ -143,17 +154,26 @@
                     </div>
 
                     <div class="campo">
-                        <label class="form-label">Categoría</label>
-                        <input type="text" class="form-control" data-campo="categoria"
-                               placeholder="Alimentos"
-                               th:field="*{bienes[__${iter.index}__].categoria}">
+                        <label class="form-label">Categoría <span class="obligatorio">*</span></label>
+                        <select class="form-select selector-categoria-bien" data-campo="categoria"
+                                th:field="*{bienes[__${iter.index}__].categoria}">
+                            <option value="">Elegí una categoría...</option>
+                            <option th:each="entrada : ${catalogo}"
+                                    th:value="${entrada.key}" th:text="${entrada.key}">Alimentos</option>
+                        </select>
                     </div>
 
                     <div class="campo">
                         <label class="form-label">Subcategoría <span class="obligatorio">*</span></label>
-                        <input type="text" class="form-control" data-campo="subcategoria"
-                               placeholder="Arroz"
-                               th:field="*{bienes[__${iter.index}__].subcategoria}">
+                        <!-- Se renderizan TODAS las subcategorías del catálogo, no sólo las de la
+                             categoría elegida: th:field sólo puede marcar como selected una opción que
+                             esté en el DOM. El JS las filtra por categoría al cargar y en cada cambio. -->
+                        <select class="form-select selector-subcategoria-bien" data-campo="subcategoria"
+                                th:field="*{bienes[__${iter.index}__].subcategoria}">
+                            <option value="">Elegí primero la categoría...</option>
+                            <option th:each="sub : ${subcategorias}"
+                                    th:value="${sub}" th:text="${sub}">Arroz</option>
+                        </select>
                     </div>
 
                     <div class="campo campo-chico">
@@ -255,12 +275,21 @@
             <input type="text" class="form-control" data-campo="descripcion" placeholder="Arroz largo fino">
         </div>
         <div class="campo">
-            <label class="form-label">Categoría</label>
-            <input type="text" class="form-control" data-campo="categoria" placeholder="Alimentos">
+            <label class="form-label">Categoría <span class="obligatorio">*</span></label>
+            <select class="form-select selector-categoria-bien" data-campo="categoria">
+                <option value="">Elegí una categoría...</option>
+                <option th:each="entrada : ${catalogo}"
+                        th:value="${entrada.key}" th:text="${entrada.key}">Alimentos</option>
+            </select>
         </div>
         <div class="campo">
             <label class="form-label">Subcategoría <span class="obligatorio">*</span></label>
-            <input type="text" class="form-control" data-campo="subcategoria" placeholder="Arroz">
+            <!-- Arranca sólo con el placeholder: las opciones las pone el JS al elegir la categoría.
+                 A diferencia de las filas de arriba, acá no hay th:field que necesite tener la
+                 lista completa en el DOM. -->
+            <select class="form-select selector-subcategoria-bien" data-campo="subcategoria">
+                <option value="">Elegí primero la categoría...</option>
+            </select>
         </div>
         <div class="campo campo-chico">
             <label class="form-label">Cantidad <span class="obligatorio">*</span></label>
@@ -310,6 +339,11 @@
 </template>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Antes del script del formulario (que no es defer): de acá sale el filtrado de subcategorías
+     por categoría. Mismo contrato que /entidad/necesidades: { "Alimentos": ["Arroz", ...] }. -->
+<script th:inline="javascript">
+    window.CATALOGO = /*[[${catalogo}]]*/ {};
+</script>
 <script src="../../static/js/admin-donacion-formulario.js" th:src="@{/js/admin-donacion-formulario.js}"></script>
 <script th:src="@{/js/core/donacion-fotos.js}" defer></script>
 
