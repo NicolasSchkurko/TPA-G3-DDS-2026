@@ -262,7 +262,8 @@
 
         form.addEventListener("submit", function () {
             submitBtn.disabled = true;
-            submitBtn.textContent = "Confirmando…";
+            input.disabled = true;
+            submitBtn.textContent = "Subiendo foto y confirmando…";
         });
     }
 

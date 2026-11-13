@@ -9,6 +9,7 @@ import ar.edu.utn.frba.ddsi.front.dto.SeguimientoDTO;
 import ar.edu.utn.frba.ddsi.front.dto.logistica.LogisticaDTOs;
 
 import ar.edu.utn.frba.ddsi.front.services.EntidadContext;
+import ar.edu.utn.frba.ddsi.front.services.FileStorageService;
 import ar.edu.utn.frba.ddsi.front.services.IdentidadService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,17 +40,20 @@ public class EntidadViewController {
     private final IdentidadService identidadService;
     private final DonacionesClient donacionesClient;
     private final LogisticasClient logisticasClient;
+    private final FileStorageService fileStorageService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public EntidadViewController(EntidadContext entidadContext,
                                  IdentidadService identidadService,
                                  DonacionesClient donacionesClient,
-                                 LogisticasClient logisticasClient) {
+                                 LogisticasClient logisticasClient,
+                                 FileStorageService fileStorageService) {
         this.entidadContext = entidadContext;
         this.identidadService = identidadService;
         this.donacionesClient = donacionesClient;
         this.logisticasClient = logisticasClient;
+        this.fileStorageService = fileStorageService;
     }
 
     /* ============================ Dashboard ============================ */
@@ -228,15 +232,18 @@ public class EntidadViewController {
         }
 
 
-        LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
-        actualizacion.setEstado("ENTREGADA");
-        actualizacion.setFotoUrl(fotoBase64);
-        actualizacion.setJustificacion(observacion != null && !observacion.isBlank() ? observacion : null);
-
         try {
+            LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
+            actualizacion.setEstado("ENTREGADA");
+            actualizacion.setFotoUrl(fileStorageService.guardarImagenDesdeDataUrl(fotoBase64));
+            actualizacion.setJustificacion(observacion != null && !observacion.isBlank() ? observacion : null);
+
             logisticasClient.actualizarEstadoEntrega(id, actualizacion);
             flash.addFlashAttribute("toastTipo", "success");
             flash.addFlashAttribute("toastMensaje", "¡Recepción confirmada! Gracias por avisarnos.");
+        } catch (IllegalArgumentException e) {
+            flash.addFlashAttribute("toastTipo", "error");
+            flash.addFlashAttribute("toastMensaje", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo confirmar la recepción de {}: {}", id, e.getMessage());
             flash.addFlashAttribute("toastTipo", "error");

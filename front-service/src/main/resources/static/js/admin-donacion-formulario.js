@@ -218,6 +218,34 @@
             }
         }
 
+        function mostrarEstadoFoto(fila, texto) {
+            let estado = fila.querySelector('.bien-foto-estado');
+            if (!estado) {
+                estado = document.createElement('div');
+                estado.className = 'bien-foto-estado text-muted small mt-1';
+                estado.setAttribute('role', 'status');
+                estado.setAttribute('aria-live', 'polite');
+                const error = fila.querySelector('.bien-foto-error');
+                if (error && error.parentNode) {
+                    error.parentNode.insertBefore(estado, error);
+                } else {
+                    fila.appendChild(estado);
+                }
+            }
+            if (!texto) {
+                estado.hidden = true;
+                estado.replaceChildren();
+                return;
+            }
+            const spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm me-1';
+            spinner.setAttribute('aria-hidden', 'true');
+            const etiqueta = document.createElement('span');
+            etiqueta.textContent = texto;
+            estado.replaceChildren(spinner, etiqueta);
+            estado.hidden = false;
+        }
+
         async function subirFoto(fila, archivo) {
             const oculto = fila.querySelector('.bien-foto-url');
             const error = fila.querySelector('.bien-foto-error');
@@ -237,6 +265,8 @@
             const datos = new FormData();
             datos.append('file', archivo);
             uploadsPendientes++;
+            mostrarEstadoFoto(fila, 'Subiendo imagen…');
+            if (input) input.disabled = true;
             try {
                 const headers = {};
                 if (csrfMeta && csrfHeaderMeta) headers[csrfHeaderMeta.content] = csrfMeta.content;
@@ -252,6 +282,8 @@
                 if (error) { error.textContent = e.message || 'No se pudo subir la foto.'; error.hidden = false; }
             } finally {
                 uploadsPendientes--;
+                if (input) input.disabled = false;
+                mostrarEstadoFoto(fila, '');
             }
         }
 

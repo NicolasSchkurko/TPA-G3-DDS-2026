@@ -23,7 +23,7 @@ public class UploadController {
     @PostMapping("/donacion")
     public ResponseEntity<?> subirFotoDonacion(@RequestParam("file") MultipartFile archivo) {
         try {
-            return ResponseEntity.ok(Map.of("url", fileStorageService.guardarImagen(archivo, "donaciones")));
+            return ResponseEntity.ok(Map.of("url", fileStorageService.guardarImagen(archivo)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {

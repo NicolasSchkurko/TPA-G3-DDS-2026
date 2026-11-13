@@ -100,11 +100,7 @@ services:
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       LOGISTICAS_URL: http://logisticas-service:8086/api
       SPRING_THYMELEAF_CACHE: "true"
-      APP_UPLOADS_DIR: /app/uploads
-    volumes:
-      - uploads-data:/app/uploads
+      # Las imágenes van a un alojamiento externo (ver app.imagenes.upload-url), así que no
+      # hace falta volumen local. Si querés cambiar el host, definí IMAGENES_UPLOAD_URL en .env.
     mem_limit: 512m
     restart: unless-stopped
-
-volumes:
-  uploads-data:

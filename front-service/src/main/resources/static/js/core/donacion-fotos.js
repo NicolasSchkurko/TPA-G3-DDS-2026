@@ -13,10 +13,45 @@
     let fotos = [];
     let pendientes = 0;
 
+    const estadoBox = document.createElement('div');
+    estadoBox.id = 'fotosDonacionEstado';
+    estadoBox.className = 'text-muted small mt-2';
+    estadoBox.setAttribute('role', 'status');
+    estadoBox.setAttribute('aria-live', 'polite');
+    estadoBox.hidden = true;
+    if (preview && preview.parentNode) {
+        preview.insertAdjacentElement('afterend', estadoBox);
+    } else if (errorBox && errorBox.parentNode) {
+        errorBox.parentNode.insertBefore(estadoBox, errorBox);
+    }
+
     function mostrarError(mensaje) {
         if (!errorBox) return;
         errorBox.textContent = mensaje || '';
         errorBox.hidden = !mensaje;
+    }
+
+    function mostrarEstado(texto) {
+        if (!texto) {
+            estadoBox.hidden = true;
+            estadoBox.replaceChildren();
+            return;
+        }
+        const spinner = document.createElement('span');
+        spinner.className = 'spinner-border spinner-border-sm me-1';
+        spinner.setAttribute('aria-hidden', 'true');
+        const etiqueta = document.createElement('span');
+        etiqueta.textContent = texto;
+        estadoBox.replaceChildren(spinner, etiqueta);
+        estadoBox.hidden = false;
+    }
+
+    function actualizarEstado() {
+        if (pendientes <= 0) {
+            mostrarEstado('');
+            return;
+        }
+        mostrarEstado(pendientes === 1 ? 'Subiendo la foto…' : 'Subiendo ' + pendientes + ' fotos…');
     }
 
     function render() {
@@ -72,6 +107,7 @@
         if (!archivos.length) return;
         mostrarError('');
         pendientes += archivos.length;
+        actualizarEstado();
         try {
             for (const archivo of archivos) {
                 const url = await subir(archivo);
@@ -82,6 +118,7 @@
             mostrarError(e.message || 'No se pudo subir la foto.');
         } finally {
             pendientes -= archivos.length;
+            actualizarEstado();
             input.value = '';
         }
     });

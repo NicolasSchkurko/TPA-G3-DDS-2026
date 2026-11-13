@@ -79,7 +79,9 @@
     if (form) {
         form.addEventListener("submit", function () {
             submitBtn.disabled = true;
-            submitBtn.textContent = "Confirmando…";
+            input.disabled = true;
+            submitBtn.textContent = "Subiendo foto y confirmando…";
+            if (hint) hint.textContent = "Subiendo la foto del comprobante. No cierres esta página.";
         });
     }
 })();

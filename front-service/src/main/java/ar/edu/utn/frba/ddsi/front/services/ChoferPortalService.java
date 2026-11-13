@@ -36,13 +36,16 @@ public class ChoferPortalService {
     private final LogisticasClient logisticasClient;
     private final ObjectMapper objectMapper;
     private final SeguimientoTokenService tokenService;
+    private final FileStorageService fileStorageService;
 
     public ChoferPortalService(LogisticasClient logisticasClient,
                                ObjectMapper objectMapper,
-                               SeguimientoTokenService tokenService) {
+                               SeguimientoTokenService tokenService,
+                               FileStorageService fileStorageService) {
         this.logisticasClient = logisticasClient;
         this.objectMapper = objectMapper;
         this.tokenService = tokenService;
+        this.fileStorageService = fileStorageService;
     }
 
     public ChoferDashboardDTO construir(Authentication authentication, int historialPagina) {
@@ -123,7 +126,7 @@ public class ChoferPortalService {
 
         LogisticaDTOs.ActualizacionEntrega actualizacion = new LogisticaDTOs.ActualizacionEntrega();
         actualizacion.setEstado("ENTREGADA");
-        actualizacion.setFotoUrl(fotoBase64);
+        actualizacion.setFotoUrl(fileStorageService.guardarImagenDesdeDataUrl(fotoBase64));
         actualizacion.setJustificacion(observacion != null && !observacion.isBlank() ? observacion : null);
         logisticasClient.actualizarEstadoEntrega(idDonacion, actualizacion);
     }
