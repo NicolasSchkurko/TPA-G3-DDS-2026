@@ -931,6 +931,22 @@
     text-transform: uppercase;
 }
 
+.notification-detail { max-width: 860px; padding: var(--gap-5); }
+.notification-detail-back { display: inline-flex; margin-bottom: var(--gap-4); }
+.notification-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--gap-3);
+}
+.notification-detail h2 { margin: var(--gap-3) 0; font-size: 21px; }
+.notification-detail-body { margin-top: var(--gap-4); white-space: pre-wrap; line-height: 1.65; }
+.notification-detail time { color: var(--muted); font-size: 13px; }
+
+@media (max-width: 600px) {
+    .notification-detail-header { flex-direction: column; }
+}
+
 /* =========================================================
    Vincular perfil
    ========================================================= */

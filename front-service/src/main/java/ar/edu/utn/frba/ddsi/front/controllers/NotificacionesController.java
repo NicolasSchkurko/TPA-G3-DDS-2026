@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.front.services.NotificacionesDerivadasService;
 import ar.edu.utn.frba.ddsi.front.services.NotificacionesUsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -45,6 +47,25 @@ public class NotificacionesController {
         model.addAttribute("sinLeer", sinLeer);
         model.addAttribute("filtro", filtroNormalizado);
         return "notificaciones";
+    }
+
+    @GetMapping("/{id}")
+    public String detalle(@PathVariable String id,
+                          @RequestParam(value = "filtro", defaultValue = "todas") String filtro,
+                          Authentication authentication, HttpServletRequest request,
+                          HttpSession session, Model model) {
+        NotificacionesDerivadasService.Notificacion notificacion =
+                notificacionesUsuarioService.notificaciones(request, authentication, session).stream()
+                        .filter(n -> n.id().equals(id))
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        notificacionesUsuarioService.marcarLeida(request, session, id);
+        model.addAttribute("notificacion", new NotificacionesDerivadasService.Notificacion(
+                notificacion.id(), notificacion.tipo(), notificacion.titulo(), notificacion.detalle(),
+                notificacion.fecha(), notificacion.idDonacion(), true, notificacion.origen(), notificacion.meta()));
+        model.addAttribute("filtro", "noLeidas".equalsIgnoreCase(filtro) ? "noLeidas" : "todas");
+        return "detalle-notificacion";
     }
 
     @PostMapping("/todas-leidas")

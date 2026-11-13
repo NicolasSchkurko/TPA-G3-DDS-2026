@@ -65,6 +65,8 @@
                       th:action="@{/notificaciones/{id}/leida(id=${n.id()}, filtro=${filtro})}">
                     <button class="btn btn-ghost btn-sm" type="submit">Marcar leída</button>
                 </form>
+                <a class="btn btn-primary btn-sm"
+                   th:href="@{/notificaciones/{id}(id=${n.id()}, filtro=${filtro})}">Ver</a>
             </div>
         </article>
     </div>
