@@ -20,9 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Order(1)
 public class InicializadorCategorias implements CommandLineRunner {
 
-    /** Dónde están publicadas las insignias del seed: se guarda la referencia, no los bytes. */
-    private static final String URL_INSIGNIA = "https://incentivos.example.edu.ar/img/";
-
     private final RepositorioCategorias repositorioCategorias;
     private final RepositorioMisiones repositorioMisiones;
     private final MisionFactory misionFactory;
@@ -39,6 +36,7 @@ public class InicializadorCategorias implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (repositorioCategorias.count() != 0) {
+            actualizarUrlsDeInsigniasDeEjemplo();
             return;
         }
 
@@ -49,7 +47,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             "Realiza tu primera donación para empezar a colaborar.",
             "Primer paso",
             "Otorgada a quien completa su primera donación al programa.",
-            URL_INSIGNIA + "primer-paso.png",
+            null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "ENTREGADA")
@@ -60,7 +58,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             "Realiza 1 donación durante 3 meses consecutivos.",
             "Constancia solidaria",
             "Reconoce la continuidad: una donación en cada uno de tres meses seguidos.",
-            URL_INSIGNIA + "constancia-solidaria.png",
+            null,
             misionFactory.crearConstancia(1, "MONTHS"),
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 3, null, "ENTREGADA")
@@ -71,7 +69,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             "Realiza 5 donaciones de al menos 3 categorías distintas.",
             "Donador versátil",
             "Se otorga al donante que reparte su ayuda entre varias categorías de bienes.",
-            URL_INSIGNIA + "donador-versatil.png",
+            null,
             null,
             misionFactory.crearAtributoImpacto("CATEGORIA"),
             misionFactory.crearOperacion("VALORES_DISTINTOS", 5, 3, null)
@@ -82,7 +80,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             "Realiza 1 donación que supere 6 bienes.",
             "Manos a la obra",
             "Para la donación generosa: una sola entrega de siete bienes o más.",
-            URL_INSIGNIA + "manos-a-la-obra.png",
+            null,
             null,
             misionFactory.crearAtributoImpacto("CANTIDAD_BIENES"),
             // El umbral es exclusivo: "supera 6" significa 7 o más.
@@ -94,7 +92,7 @@ public class InicializadorCategorias implements CommandLineRunner {
             "Logra 1 donación con estado recibida por una entidad beneficiaria.",
             "Ayuda recibida",
             "Certifica que la donación llegó efectivamente a la entidad beneficiaria.",
-            URL_INSIGNIA + "ayuda-recibida.png",
+            null,
             null,
             misionFactory.crearAtributoImpacto("ESTADO"),
             misionFactory.crearOperacion("COINCIDENCIAS", 1, null, "RECIBIDA")
@@ -120,5 +118,22 @@ public class InicializadorCategorias implements CommandLineRunner {
         transformador.agregarMision(misionDonacionesExitosas);
 
         repositorioCategorias.saveAll(List.of(colaborador, sostenedor, transformador));
+    }
+
+        /** Quita URLs de ejemplo para que la imagen se asigne desde la respuesta de n8n. */
+    private void actualizarUrlsDeInsigniasDeEjemplo() {
+        List<Mision> misiones = repositorioMisiones.findAll();
+        boolean cambio = false;
+        for (Mision mision : misiones) {
+            String url = mision.getInsigniaObjetivo().getUrlImagen();
+            if (url != null && (url.startsWith("/img/badges/")
+                    || url.startsWith("https://incentivos.example.edu.ar/img/"))) {
+                mision.getInsigniaObjetivo().limpiarUrlImagen();
+                cambio = true;
+            }
+        }
+        if (cambio) {
+            repositorioMisiones.saveAll(misiones);
+        }
     }
 }

@@ -1,0 +1,9 @@
+$kind: http-request
+description: AsignadorDonaciones.ejecutarMatchmakingBatch() recorre todas las donaciones EN_DEPOSITO contra todas las necesidades no satisfechas y genera un ResultadoMatchmaking por cada donacion con alguna propuesta.
+url: "{{baseUrl}}/api/donaciones/matchmaking/ejecutar"
+method: POST
+scripts:
+  - type: afterResponse
+    code: pm.test('ejecuta el matchmaking', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 6000

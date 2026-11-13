@@ -5,11 +5,12 @@ import ar.edu.utn.frba.ddsi.donaciones.clients.NotificacionesClient;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IDDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.incentivos.IncentivosDonacionDTO;
 import ar.edu.utn.frba.ddsi.donaciones.dto.logistica.EventoLogisticaDTO;
-import ar.edu.utn.frba.ddsi.donaciones.dto.personaDonante.PersonaDonanteDTO;
+import ar.edu.utn.frba.ddsi.donaciones.dto.personadonante.PersonaDonanteDTO;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.Bien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.DonacionFacade;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -19,12 +20,15 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.ServicioMensaje.FabricaEs
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorEventosLogistica;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioCiudades;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonaciones;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDonantes;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioNecesidades;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioPersonas;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorIncentivos;
+import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorCatalogo;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonaciones;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeDonantes;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeEventosProcesados;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeNecesidades;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDePersonas;
 import ar.edu.utn.frba.ddsi.donaciones.services.DonanteService;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -54,6 +58,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -190,11 +195,11 @@ public class ContratoIncentivosTest {
     void altaDePerfil_cumpleContratoDeIncentivos() throws Exception {
         IncentivosClient clienteAlta = mock(IncentivosClient.class);
         DonanteService donanteService = new DonanteService(
-                mock(RepositorioPersonas.class),
-                mock(RepositorioCiudades.class),
+                mock(RepositorioDePersonas.class),
+                mock(GestorCatalogo.class),
                 mock(FabricaEstrategiasNotificacion.class),
                 clienteAlta,
-                mock(RepositorioDonantes.class),
+                mock(RepositorioDeDonantes.class),
                 mock(java.util.concurrent.ExecutorService.class)
         );
 
@@ -228,7 +233,7 @@ public class ContratoIncentivosTest {
     void impactoDeEntrega_cumpleContratoDeIncentivos() throws Exception {
         Donacion donacion = donacionAsignable(LocalDate.of(2026, 10, 7));
 
-        RepositorioDonaciones repositorioDonaciones = mock(RepositorioDonaciones.class);
+        RepositorioDeDonaciones repositorioDonaciones = mock(RepositorioDeDonaciones.class);
         when(repositorioDonaciones.obtenerPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
         IncentivosClient incentivosClient = mock(IncentivosClient.class);
@@ -236,6 +241,7 @@ public class ContratoIncentivosTest {
                 repositorioDonaciones,
                 mock(FabricaEstrategiasNotificacion.class),
                 incentivosClient,
+                mock(RepositorioDeEventosProcesados.class),
                 new com.fasterxml.jackson.databind.ObjectMapper()
         );
 
@@ -264,8 +270,42 @@ public class ContratoIncentivosTest {
     }
 
     @Test
-    @DisplayName("La fecha de realización del formulario queda como fechaEntrega de cada donación segmentada")
-    void fechaRealizacionDelFormulario_quedaEnCadaDonacionSegmentada() {
+    @DisplayName("Punto 76: la entrega encola el impacto en la outbox y no llama directo a incentivos")
+    void impactoDeEntrega_usaOutbox() {
+        Donacion donacion = donacionAsignable(LocalDate.of(2026, 10, 7));
+
+        RepositorioDeDonaciones repositorioDonaciones = mock(RepositorioDeDonaciones.class);
+        when(repositorioDonaciones.obtenerPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+
+        IncentivosClient incentivosClient = mock(IncentivosClient.class);
+        GestorIncentivos gestorIncentivos = mock(GestorIncentivos.class);
+        UUID outboxId = UUID.randomUUID();
+        when(gestorIncentivos.encolarImpacto(eq(donacion.getDonante().getId()), any()))
+                .thenReturn(outboxId);
+        GestorEventosLogistica gestor = new GestorEventosLogistica(
+                repositorioDonaciones,
+                mock(FabricaEstrategiasNotificacion.class),
+                incentivosClient,
+                mock(RepositorioDeEventosProcesados.class),
+                new ObjectMapper(),
+                gestorIncentivos
+        );
+
+        EventoLogisticaDTO entregaConfirmada = new EventoLogisticaDTO();
+        entregaConfirmada.setId(2L);
+        entregaConfirmada.setTipoEvento("ENTREGA_CONFIRMADA");
+        entregaConfirmada.setReferenciaId(donacion.getId().toString());
+        gestor.procesarEvento(entregaConfirmada, List.of());
+
+        verify(gestorIncentivos).encolarImpacto(eq(donacion.getDonante().getId()),
+                any(IncentivosDonacionDTO.class));
+        verify(gestorIncentivos).intentarAhora(outboxId);
+        verifyNoInteractions(incentivosClient);
+    }
+
+    @Test
+    @DisplayName("Punto 62: la fechaEntrega se deja null al segmentar y se setea recién al entregar")
+    void fechaEntrega_esNullAlSegmentar_ySeSeteaAlEntregar() {
         Donante donante = mock(Donante.class);
 
         SubcategoriaBien subcategoria = mock(SubcategoriaBien.class);
@@ -280,8 +320,11 @@ public class ContratoIncentivosTest {
 
         assertFalse(donaciones.isEmpty());
         for (Donacion donacion : donaciones) {
-            assertEquals(fechaRealizacion, donacion.getFechaEntrega(),
-                    "sin este valor, el reporte a incentivos sale con fecha nula (punto 10)");
+            assertEquals(null, donacion.getFechaEntrega(),
+                    "punto 62: la fecha de entrega no se conoce al crear la donación");
+            donacion.actualizarEstado(Estado.ENTREGADO, "Entrega confirmada en el test");
+            assertEquals(LocalDate.now(), donacion.getFechaEntrega(),
+                    "punto 62: al pasar a ENTREGADO se registra la fecha de entrega real");
         }
     }
 
@@ -289,11 +332,11 @@ public class ContratoIncentivosTest {
     @DisplayName("La actualización de donante propaga el nuevo nombreUsuario a incentivos")
     void actualizacionDeDonante_propagaAIncentivos() {
         IncentivosClient cliente = mock(IncentivosClient.class);
-        RepositorioDonantes repoDonantes = mock(RepositorioDonantes.class);
-        RepositorioPersonas repoPersonas = mock(RepositorioPersonas.class);
+        RepositorioDeDonantes repoDonantes = mock(RepositorioDeDonantes.class);
+        RepositorioDePersonas repoPersonas = mock(RepositorioDePersonas.class);
         DonanteService donanteService = new DonanteService(
                 repoPersonas,
-                mock(RepositorioCiudades.class),
+                mock(GestorCatalogo.class),
                 mock(FabricaEstrategiasNotificacion.class),
                 cliente,
                 repoDonantes,

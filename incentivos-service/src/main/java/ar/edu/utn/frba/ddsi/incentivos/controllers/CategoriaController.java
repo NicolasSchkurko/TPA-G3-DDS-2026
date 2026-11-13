@@ -23,14 +23,14 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de administración de categorías. Las escrituras exigen {@code Admin-Id}; borrar
- * una categoría con donantes responde 409.
+ * Endpoints de administración de categorías. El front valida el rol ADMIN; el backend
+ * solo acepta llamadas de la red interna. Borrar una categoría con donantes responde 409.
  */
 @RestController
 @RequestMapping("/api/categorias")
@@ -91,7 +91,7 @@ public class CategoriaController {
     })
     @PostMapping("/admin")
     public ResponseEntity<CategoriaDTO> crearCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
             @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody CategoriaDTO request
     ) {
@@ -111,7 +111,7 @@ public class CategoriaController {
     })
     @PutMapping("/admin/{id}")
     public ResponseEntity<CategoriaDTO> actualizarCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
             @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la categoría a actualizar", required = true)
             @PathVariable UUID id,
@@ -131,7 +131,7 @@ public class CategoriaController {
     })
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<Void> eliminarCategoria(
-            @Parameter(description = "UUID del administrador", required = true)
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
             @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la categoría a eliminar", required = true)
             @PathVariable UUID id

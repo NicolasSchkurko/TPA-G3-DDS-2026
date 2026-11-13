@@ -1,9 +1,10 @@
 package ar.edu.utn.frba.ddsi.notificaciones.exceptions;
 
-import ar.edu.utn.frba.ddsi.notificaciones.dto.ErrorResponseDTO;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.Error.ErrorResponseDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -61,6 +62,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST.value()));
     }
 
+    /** Un {@code sort} que no existe en la entidad es un 400, no un 500. */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarOrdenInvalido(PropertyReferenceException ex) {
+        log.warn("Orden inválido en la consulta: {}", ex.getMessage());
+
+        return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "El orden solicitado no corresponde a un campo ordenable",
+                HttpStatus.BAD_REQUEST.value()));
+    }
+
     /** Datos inválidos detectados por el dominio (por ejemplo, un medio de contacto desconocido). */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> manejarIllegalArgument(IllegalArgumentException ex) {
@@ -69,6 +80,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.badRequest().body(new ErrorResponseDTO(
                 ex.getMessage(),
                 HttpStatus.BAD_REQUEST.value()));
+    }
+
+    /** La notificación ya salió o está en curso: conflicto, no error interno. */
+    @ExceptionHandler(NotificacionNoReintentableException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarNoReintentable(
+            NotificacionNoReintentableException ex) {
+        log.warn("Reintento rechazado: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDTO(
+                ex.getMessage(),
+                HttpStatus.CONFLICT.value()));
     }
 
     /** Respeta el status elegido con {@code throw new ResponseStatusException(...)}. */

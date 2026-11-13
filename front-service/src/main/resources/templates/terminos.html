@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Términos y condiciones — DonaTrack</title>
+    <meta name="description" content="Términos y condiciones de uso y política de privacidad del portal DonaTrack de donaciones.">
+    <link rel="stylesheet" th:href="@{/css/tokens.css}">
+    <link rel="stylesheet" th:href="@{/css/terminos.css}">
+</head>
+<body class="app legal-body">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<main class="legal" id="contenido" tabindex="-1">
+
+    <header class="legal-header">
+        <h1>Términos y condiciones</h1>
+        <p class="legal-lead">Condiciones de uso del portal DonaTrack de donaciones: quién puede usarlo, cómo se
+            registran las donaciones y qué se hace con la información que circula por el sistema.</p>
+        <p class="legal-updated">Última actualización: noviembre de 2026</p>
+    </header>
+
+    <section class="legal-card" aria-labelledby="terminos-h">
+        <h2 id="terminos-h">Términos y condiciones de uso</h2>
+
+        <h3>1. Objeto y alcance</h3>
+        <p>DonaTrack es un portal de gestión de donaciones que conecta a personas donantes, entidades
+            beneficiarias, personas choferes y administración. El sitio permite registrar donaciones, asignarlas a
+            entidades según sus necesidades, coordinar la logística de retiro y entrega, notificar a las partes y
+            llevar un registro de misiones, puntos e insignias.</p>
+        <p>Al crear una cuenta o registrar una donación aceptás estos términos. Si no estás de acuerdo, no uses el
+            portal.</p>
+
+        <h3>2. Cuentas de usuario</h3>
+        <ul>
+            <li>Las cuentas son personales e intransferibles; cada cuenta declara correctamente sus datos de identificación y contacto.</li>
+            <li>Cada cuenta puede tener uno o más roles: donante, entidad, chofer o administración. Los roles se asignan y se agregan desde la propia cuenta.</li>
+            <li>Es responsabilidad de la persona usuaria proteger sus credenciales y dar aviso de cualquier uso indebido.</li>
+            <li>Las cuentas creadas por el depósito a nombre de personas donantes se activan con el correo de bienvenida; su uso indebido invalida los beneficios asociados.</li>
+        </ul>
+
+        <h3>3. Registro y gestión de donaciones</h3>
+        <ul>
+            <li>Las donaciones se registran con una descripción de los bienes, su condición y la entidad a la que se asignan.</li>
+            <li>Los bienes sujetos a vencimiento o a condiciones de conservación específicas deben declararlo; omitirlo puede suspender la asignación.</li>
+            <li>La administración puede rechazar, reasignar o dar de baja una donación si la información declarada es inexacta o los bienes no son aptos.</li>
+            <li>La entrega se confirma en el depósito o en el domicilio acordado; el comprobante de recepción es el que cierra el ciclo de la donación.</li>
+        </ul>
+
+        <h3>4. Reglas de convivencia</h3>
+        <ul>
+            <li>No está permitido usar el portal para registrarse con datos ajenos, reclamar perfiles que no te corresponden ni intentar acceder a información reservada a otros roles.</li>
+            <li>No está permitido alterar los datos de entrega, fotos o comprobantes.</li>
+            <li>Si detectás un error, escribí a <a href="mailto:donaciones@ddsi.edu.ar">donaciones@ddsi.edu.ar</a> y te ayudamos a corregirlo.</li>
+        </ul>
+
+        <h3>5. Disponibilidad del servicio</h3>
+        <p>El portal se ofrece en carácter académico. Puede haber interrupciones, mantenimientos o demoras en las
+            notificaciones y en la asignación de donaciones. No se garantiza disponibilidad 24/7 ni entrega en
+            plazos determinados.</p>
+    </section>
+
+    <section class="legal-card" aria-labelledby="privacidad-h">
+        <h2 id="privacidad-h">Política de privacidad</h2>
+
+        <h3>1. Datos que tratamos</h3>
+        <ul>
+            <li><strong>Identificación:</strong> nombre y apellido o razón social, tipo y número de documento o CUIT, fecha de nacimiento.</li>
+            <li><strong>Contacto:</strong> correo electrónico, teléfono y/o WhatsApp; dirección completa para la logística.</li>
+            <li><strong>Operativos:</strong> registro de donaciones, entregas, confirmaciones, fotos de evidencia, notificaciones y actividad de misiones.</li>
+            <li><strong>Técnicos:</strong> cuenta de acceso y roles; el portal no usa cookies de seguimiento publicitario.</li>
+        </ul>
+
+        <h3>2. Para qué los usamos</h3>
+        <ul>
+            <li>Coordinar el registro, la asignación y la entrega de donaciones.</li>
+            <li>Comunicarnos por correo, SMS o WhatsApp sobre estados de la donación, entregas y misiones.</li>
+            <li>Generar los comprobantes y reportes que exigen los procesos internos y académicos del proyecto.</li>
+        </ul>
+
+        <h3>3. Con quién se comparten</h3>
+        <p>Con las entidades beneficiarias que reciben una donación y con las personas choferes asignadas a la
+            entrega, en lo necesario para completar la operación. No se venden datos ni se ceden para marketing.</p>
+
+        <h3>4. Conservación y seguridad</h3>
+        <p>Los datos se conservan el tiempo necesario para cumplir la finalidad operativa y las obligaciones
+            propias del proyecto. Se aplican medidas técnicas y organizativas razonables (control de acceso por
+            rol, conexiones cifradas y registro de operaciones).</p>
+
+        <h3>5. Tus derechos</h3>
+        <p>Podés pedir acceso, rectificación, actualización o supresión de tus datos personales en los términos de
+            la Ley 25.326. Escribinos a <a href="mailto:donaciones@ddsi.edu.ar">donaciones@ddsi.edu.ar</a> indicando
+            tu nombre de usuario.</p>
+
+        <p class="legal-updated">Si actualizamos esta política, se publicará en esta misma página.</p>
+    </section>
+
+    <section class="legal-card" aria-labelledby="contacto-h">
+        <h2 id="contacto-h">Responsable y contacto</h2>
+        <p>DonaTrack — proyecto académico de la asignatura Desarrollo de Software (DDSI) de la UTN FRBA.</p>
+        <ul>
+            <li>Correo: <a href="mailto:donaciones@ddsi.edu.ar">donaciones@ddsi.edu.ar</a></li>
+            <li>Dirección: Campus UTN FRBA, Buenos Aires</li>
+        </ul>
+    </section>
+
+    <div class="legal-footer">
+        <a class="btn btn-secondary" th:href="@{/}">Volver al inicio</a>
+    </div>
+
+</main>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

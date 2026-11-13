@@ -1,0 +1,287 @@
+:root {
+  --dt-green: #1b7838;
+  --dt-green-dark: #145c2b;
+  --dt-green-soft: #eaf4ee;
+  --dt-ink: #172019;
+  --dt-muted: #667068;
+  --dt-line: #dfe7e1;
+}
+
+body,
+.login-pf body {
+  min-height: 100vh;
+  color: var(--dt-ink);
+  font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #eef2ed url("../img/mapa-fondo.jpg") center center / cover no-repeat fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, rgba(245, 248, 245, .70), rgba(234, 244, 238, .62));
+  backdrop-filter: blur(5px);
+}
+
+.login-pf-page {
+  padding-top: clamp(32px, 8vh, 96px);
+}
+
+#kc-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#kc-header-wrapper {
+  padding: 0;
+  color: var(--dt-ink);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  text-transform: none;
+}
+
+#kc-header-wrapper::before {
+  content: "";
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  margin-right: 10px;
+  vertical-align: -10px;
+  border-radius: 50%;
+  background: var(--dt-green);
+  box-shadow: 0 0 0 5px rgba(27, 120, 56, .12);
+}
+
+.pf-v5-c-login__main,
+.card-pf,
+#kc-form,
+#kc-info {
+  border: 1px solid var(--dt-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 22px 55px rgba(15, 18, 16, .15);
+}
+
+.pf-v5-c-login__main {
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.card-pf {
+  padding: clamp(24px, 4vw, 40px);
+}
+
+#kc-page-title,
+h1#kc-page-title {
+  margin: 0 0 20px;
+  color: var(--dt-ink);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.form-group label,
+.pf-c-form__label,
+.control-label {
+  color: var(--dt-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pf-v5-c-form-control,
+.pf-c-form-control,
+.form-control {
+  min-height: 48px;
+  border: 1px solid var(--dt-line);
+  border-radius: 10px;
+  color: var(--dt-ink);
+  background: #fff;
+  box-shadow: none;
+  outline: none;
+}
+
+.pf-v5-c-form-control input,
+.pf-v5-c-form-control select,
+.pf-v5-c-form-control textarea {
+  color: var(--dt-ink);
+  background: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
+  font: inherit;
+}
+
+.pf-v5-c-form-control:focus-within,
+.pf-c-form-control:focus,
+.form-control:focus {
+  border-color: var(--dt-green);
+  box-shadow: 0 0 0 3px rgba(27, 120, 56, .16);
+}
+
+.pf-v5-c-button.pf-m-primary,
+.pf-c-button.pf-m-primary,
+.btn-primary {
+  min-height: 48px;
+  border: 1px solid var(--dt-green);
+  border-radius: 10px;
+  background: var(--dt-green);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-c-button.pf-m-primary:hover,
+.btn-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus,
+.pf-c-button.pf-m-primary:focus,
+.btn-primary:focus {
+  border-color: var(--dt-green-dark);
+  background: var(--dt-green-dark);
+}
+
+a,
+#kc-registration a,
+#kc-info a {
+  color: var(--dt-green-dark);
+  font-weight: 600;
+}
+
+#kc-info,
+#kc-registration {
+  margin-top: 16px;
+}
+
+.alert-error,
+.pf-c-alert.pf-m-danger {
+  border-radius: 10px;
+}
+
+#kc-logo-wrapper {
+  display: none;
+}
+
+/* language selector in the login header */
+.pf-v5-c-login__main-header-utilities .pf-v5-c-form-control {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.pf-v5-c-login__main-header-utilities .pf-v5-c-form-control select {
+  min-height: 36px;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .login-pf-page {
+    padding: 20px 12px;
+  }
+
+  .card-pf {
+    padding: 22px 18px;
+  }
+
+  #kc-header-wrapper {
+    font-size: 25px;
+  }
+}
+
+/* El login siempre en modo claro, aunque el SO esté en modo oscuro. */
+:root {
+  color-scheme: light;
+  --keycloak-card-top-color: var(--dt-green);
+}
+
+#kc-header-wrapper {
+  color: var(--dt-ink) !important;
+}
+
+/* Alerta informativa (ej. "Authenticate to link your account with Google"). */
+.pf-v5-c-alert,
+.pf-v5-c-alert.pf-m-info {
+  background-color: var(--dt-green-soft) !important;
+  border-color: var(--dt-green) !important;
+  color: var(--dt-ink) !important;
+}
+
+.pf-v5-c-alert .pf-v5-c-alert__title,
+.pf-v5-c-alert .pf-v5-c-alert__description {
+  color: var(--dt-ink) !important;
+}
+
+.pf-v5-c-alert .pf-v5-c-alert__icon {
+  color: var(--dt-green) !important;
+}
+
+/* Botón del ojo del password y botones sociales. */
+.pf-v5-c-button.pf-m-control,
+#kc-social-providers .pf-v5-c-button {
+  background-color: #fff !important;
+  color: var(--dt-ink) !important;
+  border-color: var(--dt-line) !important;
+}
+
+.pf-v5-c-button.pf-m-control:hover,
+#kc-social-providers .pf-v5-c-button:hover {
+  background-color: var(--dt-green-soft) !important;
+}
+
+/* El borde superior de la tarjeta era azul de Keycloak. */
+.pf-v5-c-login__main-header {
+  border-top-color: var(--dt-green);
+}
+
+/* Unificar el fondo de la tarjeta: el footer de PatternFly venía gris claro. */
+.pf-v5-c-login__main-footer {
+  background-color: transparent;
+}
+
+/* Chrome pinta los campos autocompletados de amarillo; mantenerlos blancos. */
+.pf-v5-c-form-control input:-webkit-autofill,
+.pf-v5-c-form-control input:-webkit-autofill:hover,
+.pf-v5-c-form-control input:-webkit-autofill:focus,
+.pf-v5-c-form-control input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: var(--dt-ink) !important;
+  caret-color: var(--dt-ink);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Tarjeta opaca y todas sus secciones con el mismo color: sin transparencias
+   que dejen ver el mapa distinto en cada bloque. */
+.pf-v5-c-login__main,
+.card-pf {
+  background: #fff !important;
+}
+
+#kc-form,
+#kc-info,
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer,
+.pf-v5-c-login__main-footer-band {
+  background: transparent !important;
+}
+
+/* Autofill de Chrome: cubre tanto el input suelto como el envuelto por PatternFly. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.pf-v5-c-form-control:-webkit-autofill,
+.pf-v5-c-form-control:-webkit-autofill:hover,
+.pf-v5-c-form-control:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: var(--dt-ink) !important;
+  caret-color: var(--dt-ink) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Mis necesidades — DonaTrack</title>
+    <meta name="description" content="Registrá y gestioná las necesidades materiales de tu entidad beneficiaria.">
+    <link rel="stylesheet" th:href="@{/css/entidad.css(v=4)}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="page" id="contenido" tabindex="-1">
+
+    <nav class="crumbs" aria-label="Migas de pan">
+        <a th:href="@{/entidad}">Mi entidad</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Necesidades</span>
+    </nav>
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Mis necesidades</h1>
+            <p class="page-subtitle">Registrá qué necesita tu entidad. Las necesidades activas se muestran en el mapa y sirven para asignarte donaciones.</p>
+        </div>
+        <button class="btn btn-primary" type="button" data-open-necesidad-modal>
+            <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+            Nueva necesidad
+        </button>
+    </header>
+
+    <div class="filters" role="search" aria-label="Filtrar necesidades">
+        <input type="search" id="filterText" placeholder="Buscar por descripción o subcategoría…"
+               aria-label="Buscar necesidades" autocomplete="off">
+        <select id="filterTipo" aria-label="Filtrar por tipo">
+            <option value="">Todos los tipos</option>
+            <option value="RECURRENTE">Recurrente</option>
+            <option value="EXTRAORDINARIA">Única vez</option>
+        </select>
+        <select id="filterEstado" aria-label="Filtrar por estado">
+            <option value="activa">Solo activas</option>
+            <option value="todos">Todas</option>
+        </select>
+    </div>
+
+    <!-- Estado vacío (sin necesidades en absoluto) -->
+    <div th:if="${#lists.isEmpty(necesidades)}" class="card empty-state" style="padding: var(--gap-7) var(--gap-4);">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <path d="M2 5.5 8 2l6 3.5v6L8 15l-6-3.5zM8 2v13M2 5.5 8 9l6-3.5"/>
+        </svg>
+        <h3>Todavía no registraste necesidades</h3>
+        <p>Contá qué le hace falta a tu entidad: alimentos, ropa, medicamentos, útiles escolares. Cuanto más precisa sea la necesidad, más fácil es asignarle donaciones.</p>
+        <button class="btn btn-primary" type="button" data-open-necesidad-modal>Registrar la primera necesidad</button>
+    </div>
+
+    <!-- Sin resultados para el filtro aplicado -->
+    <div id="needEmpty" class="empty-state" hidden>
+        <h3>Ninguna necesidad coincide con el filtro</h3>
+        <p>Probá con otra búsqueda o limpiá los filtros.</p>
+        <button class="btn btn-secondary" type="button" id="clearFilters">Limpiar filtros</button>
+    </div>
+
+    <div class="need-grid" id="needGrid">
+        <article class="need-card" th:each="n : ${necesidades}"
+                 th:attr="data-tipo=${n.tipoNecesidad}, data-activa=${n.activa == null or n.activa}, data-text=${(n.descripcion ?: '') + ' ' + (n.nombreSubcategoria ?: '') + ' ' + (n.nombreCategoria ?: '')}">
+            <div class="need-card-head">
+                <div>
+                    <h2 th:text="${n.nombreSubcategoria}">Alimentos no perecederos</h2>
+                    <p class="need-desc" th:text="${n.descripcion}">Arroz, fideos y leche en polvo</p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+                    <span class="chip chip-info" th:text="${n.tipoNecesidad == 'EXTRAORDINARIA' ? 'Única vez' : 'Recurrente'}">Recurrente</span>
+                    <span class="chip" th:classappend="${n.activa == null or n.activa ? ' chip-success' : ''}"
+                          th:text="${n.activa == null or n.activa ? 'Activa' : 'Inactiva'}">Activa</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="need-figures">
+                    <span>Recibido: <strong th:text="${n.bienesRecibidos()}">165</strong> de <strong th:text="${n.cantidadObjetivo}">240</strong></span>
+                    <span th:text="${n.progreso()} + '%'">69%</span>
+                </div>
+                <div class="progress" role="progressbar"
+                     th:attr="aria-valuenow=${n.progreso()}, aria-valuemin=0, aria-valuemax=100"
+                     th:aria-label="${'Progreso de ' + n.nombreSubcategoria}">
+                    <div class="progress-bar" th:classappend="${n.progreso() >= 100 ? ' is-complete' : ''}"
+                         th:style="'width:' + ${n.progreso()} + '%'"></div>
+                </div>
+            </div>
+
+            <p class="need-item-meta">
+                <span th:text="${n.nombreCategoria}">Alimentos</span>
+                <span th:if="${n.unidadDeMedida != null}" th:text="${n.unidadDeMedida}">UNIDADES</span>
+                <span th:if="${n.plazoEnDias != null}" th:text="'Plazo: ' + ${n.plazoEnDias} + ' días'">Plazo: 45 días</span>
+                <span th:if="${n.plazoEnDias == null}">Sin plazo</span>
+            </p>
+
+            <div class="need-actions">
+                <button class="btn btn-secondary btn-sm js-edit-need" type="button"
+                        th:attr="data-id=${n.id},
+                                 data-tipo=${n.tipoNecesidad},
+                                 data-categoria=${n.nombreCategoria},
+                                 data-subcategoria=${n.nombreSubcategoria},
+                                 data-descripcion=${n.descripcion},
+                                 data-cantidad=${n.cantidadObjetivo},
+                                 data-unidad=${n.unidadDeMedida},
+                                 data-plazo=${n.plazoEnDias}">
+                    Editar
+                </button>
+                <button class="btn btn-danger btn-sm js-delete-need" type="button"
+                        th:attr="data-action=@{/entidad/necesidades/{id}/eliminar(id=${n.id})}">
+                    Dar de baja
+                </button>
+            </div>
+        </article>
+    </div>
+</main>
+
+<!-- ============ Modal: alta / edición ============ -->
+<div class="modal" id="necesidadModal" hidden role="dialog" aria-modal="true" aria-labelledby="necesidadModalTitle">
+    <div class="modal-dialog" role="document">
+        <div class="modal-head">
+            <h2 id="necesidadModalTitle">Nueva necesidad</h2>
+            <button class="modal-close" type="button" data-close-necesidad-modal aria-label="Cerrar">&times;</button>
+        </div>
+        <form id="necesidadForm" method="post" th:action="@{/entidad/necesidades}" novalidate>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="tipoNecesidad">Tipo de necesidad <span class="req" aria-hidden="true">*</span></label>
+                        <select id="tipoNecesidad" name="tipoNecesidad" required>
+                            <option value="RECURRENTE">Recurrente (se renueva)</option>
+                            <option value="EXTRAORDINARIA">Única vez (extraordinaria)</option>
+                        </select>
+                        <span class="hint">Las recurrentes vuelven a aparecer período tras período; las extraordinarias son puntuales.</span>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="nombreCategoria">Categoría <span class="req" aria-hidden="true">*</span></label>
+                            <input id="nombreCategoria" name="nombreCategoria" list="catCategorias"
+                                   placeholder="Elegí o escribí una nueva" maxlength="100" required
+                                   autocomplete="off">
+                            <datalist id="catCategorias"></datalist>
+                        </div>
+                        <div class="field">
+                            <label for="nombreSubcategoria">Subcategoría <span class="req" aria-hidden="true">*</span></label>
+                            <input id="nombreSubcategoria" name="nombreSubcategoria" list="catSubcategorias"
+                                   placeholder="Elegí o escribí una nueva" maxlength="100" required
+                                   autocomplete="off">
+                            <datalist id="catSubcategorias"></datalist>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="descripcion">Descripción <span class="req" aria-hidden="true">*</span></label>
+                        <textarea id="descripcion" name="descripcion" rows="3" maxlength="500" required
+                                  placeholder="Ej.: arroz, fideos y leche en polvo para el merendero"></textarea>
+                        <span class="hint">Sé específico: ayuda a que te asignen donaciones correctas.</span>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="cantidadObjetivo">Cantidad objetivo <span class="req" aria-hidden="true">*</span></label>
+                            <input id="cantidadObjetivo" name="cantidadObjetivo" type="number" min="1" step="1" required
+                                   placeholder="Ej.: 240">
+                            <span class="hint">Unidades totales que buscás reunir.</span>
+                            <span class="error" id="cantidadError" hidden>La cantidad debe ser mayor a 0.</span>
+                        </div>
+                        <div class="field" id="unidadField">
+                            <label for="unidadDeMedida">Unidad de medida <span class="req" aria-hidden="true">*</span></label>
+                            <select id="unidadDeMedida" name="unidadDeMedida" required>
+                                <option value="UNIDADES">Unidades</option>
+                                <option value="KILOGRAMOS">Kilogramos</option>
+                                <option value="LITROS">Litros</option>
+                            </select>
+                            <span class="hint">Se usa para mostrar el progreso y comparar donaciones.</span>
+                        </div>
+                        <div class="field" id="plazoField">
+                            <label for="plazoEnDias">Período</label>
+                            <select id="plazoEnDias" name="plazoEnDias">
+                                <option value="7">Semanal (7 días)</option>
+                                <option value="15">Quincenal (15 días)</option>
+                                <option value="30" selected>Mensual (30 días)</option>
+                                <option value="60">Bimestral (60 días)</option>
+                                <option value="90">Trimestral (90 días)</option>
+                                <option value="180">Semestral (180 días)</option>
+                                <option value="365">Anual (365 días)</option>
+                                <option value="custom">Otro (escribir días)</option>
+                            </select>
+                            <input type="number" id="plazoCustom" min="1" step="1"
+                                   placeholder="Cantidad de días" hidden
+                                   aria-label="Cantidad de días del período"
+                                   style="margin-top: var(--gap-2);">
+                            <span class="hint">Solo para necesidades recurrentes. Indica cada cuánto se renueva la necesidad.</span>
+                        </div>
+                    </div>
+
+                    <span class="error" id="formError" role="alert" hidden></span>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-secondary" type="button" data-close-necesidad-modal>Cancelar</button>
+                <button class="btn btn-primary" type="submit" id="necesidadSubmit">Guardar necesidad</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============ Modal: confirmar baja ============ -->
+<div class="modal" id="confirmModal" hidden role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="modal-dialog" role="document">
+        <div class="modal-head">
+            <h2 id="confirmModalTitle">Dar de baja la necesidad</h2>
+            <button class="modal-close" type="button" data-close-confirm-modal aria-label="Cerrar">&times;</button>
+        </div>
+        <form id="confirmForm" method="post" action="#">
+            <div class="modal-body">
+                <p style="margin: 0;">La necesidad va a quedar inactiva y dejará de recibir propuestas de donación. Podés volver a crearla cuando quieras.</p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-secondary" type="button" data-close-confirm-modal>Cancelar</button>
+                <button class="btn btn-danger" type="submit">Dar de baja</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/entidad/necesidades.js}" defer></script>
+<script th:inline="javascript">
+    window.CATALOGO = JSON.parse(/*[[${catalogoJson}]]*/ '{}');
+</script>
+</body>
+</html>

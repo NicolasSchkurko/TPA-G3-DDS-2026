@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title th:text="${donacion.descripcion} + ' — Donación — DonaTrack'">Donación — DonaTrack</title>
+    <link rel="stylesheet" th:href="@{/css/entidad.css(v=4)}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="page" id="contenido" tabindex="-1">
+
+    <nav class="crumbs" aria-label="Migas de pan">
+        <a th:href="@{/entidad}">Mi entidad</a>
+        <span aria-hidden="true">›</span>
+        <a th:href="@{/entidad/donaciones}">Donaciones</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page" th:text="${donacion.descripcion}">Detalle</span>
+    </nav>
+
+    <div class="detail-layout">
+
+        <!-- ============ Columna principal ============ -->
+        <div style="display: flex; flex-direction: column; gap: var(--gap-4);">
+
+            <section class="card detail-card" aria-labelledby="donacionTitulo">
+                <h1 id="donacionTitulo" style="margin-top: 0; font-size: 22px;" th:text="${donacion.descripcion}">Arroz y fideos x 1.200 kg</h1>
+                <dl class="detail-facts" style="margin-top: var(--gap-4);">
+                    <div>
+                        <dt>Donante</dt>
+                        <dd th:text="${donacion.donanteName != null ? donacion.donanteName : 'Donante anónimo'}">Comercial del Sur</dd>
+                    </div>
+                    <div>
+                        <dt>Categoría</dt>
+                        <dd th:text="${donacion.categoriaBienName != null ? donacion.categoriaBienName : 'Sin categoría'}">Alimentos</dd>
+                    </div>
+                    <div>
+                        <dt>Cantidad</dt>
+                        <dd th:text="${donacion.cantidadTotalBienes != null ? donacion.cantidadTotalBienes : '—'}">1.600</dd>
+                    </div>
+                    <div>
+                        <dt>Fecha estimada</dt>
+                        <dd th:text="${donacion.fechaEntrega != null ? donacion.fechaEntrega : 'Sin fecha'}">2026-06-12</dd>
+                    </div>
+                    <div>
+                        <dt>Estado de la donación</dt>
+                        <dd><span class="chip chip-info" th:text="${donacion.etiquetaEstado()}">ASIGNADO</span></dd>
+                    </div>
+                    <div th:if="${entrega != null}">
+                        <dt>Estado logístico</dt>
+                        <dd>
+                            <span class="chip"
+                                  th:classappend="${entrega.estado == 'ENTREGADA' ? ' chip-success' : (entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info')}"
+                                  th:text="${entrega.etiquetaEstado()}">EN_CAMINO</span>
+                        </dd>
+                    </div>
+                </dl>
+                <p th:if="${entrega != null && entrega.fotoComprobante != null && !entrega.fotoComprobante.isBlank()}"
+                   style="margin-bottom: 0; margin-top: var(--gap-4);">
+                    <strong>Foto de recepción:</strong> comprobante disponible en el depósito.
+                </p>
+            </section>
+
+            <section class="card detail-card" aria-labelledby="timelineTitle">
+                <h2 id="timelineTitle" style="font-size: 16px; margin-bottom: var(--gap-4);">Seguimiento de la entrega</h2>
+                <ol class="timeline">
+                    <li class="timeline-item" th:each="item : ${timeline}">
+                        <strong th:text="${item.titulo}">Estado actual de la donación</strong>
+                        <p th:text="${item.detalle}">La donación figura como ASIGNADO.</p>
+                        <time th:if="${item.fecha != null}" th:text="${item.fecha}">2026-06-12</time>
+                    </li>
+                </ol>
+            </section>
+        </div>
+
+        <!-- ============ Confirmación de recepción ============ -->
+        <aside class="card confirm-card" aria-labelledby="confirmTitle">
+
+            <div th:if="${yaConfirmada}">
+                <h2 id="confirmTitle">Recepción confirmada</h2>
+                <p style="color: var(--muted);">Ya confirmaste la recepción de esta donación. Gracias por avisarnos.</p>
+                <span class="chip chip-success" style="font-size: 13px;">Entrega registrada como recibida</span>
+                <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}" data-back="true">Volver a mis donaciones</a>
+            </div>
+
+            <div th:unless="${yaConfirmada}">
+                <h2 id="confirmTitle">Confirmar recepción</h2>
+
+                <div th:if="${!puedeConfirmar}">
+                    <p style="color: var(--muted);">Esta entrega todavía no está en camino o ya fue procesada, así que no se puede confirmar ahora.</p>
+                    <span class="chip chip-info"
+                          th:text="${entrega != null ? 'Estado actual: ' + entrega.etiquetaEstado() : 'Sin ítems logísticos asociados'}">Estado actual: PENDIENTE</span>
+                    <a class="btn btn-secondary btn-block" style="margin-top: var(--gap-4);" th:href="@{/entidad/donaciones}" data-back="true">Volver a mis donaciones</a>
+                </div>
+
+                <div th:if="${puedeConfirmar}">
+                    <p style="color: var(--muted); font-size: 13px;">Cargá una foto de la donación recibida. Quedará registrada como comprobante de recepción.</p>
+
+                    <form id="confirmarForm" method="post"
+                          th:action="@{/entidad/donaciones/{id}/confirmar(id=${donacion.id})}">
+
+                        <label class="photo-drop" for="fotoInput" id="photoDrop">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h1L6 2h4l1.5 2h1A1.5 1.5 0 0 1 14 5.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/>
+                                <circle cx="8" cy="8.75" r="2.5"/>
+                            </svg>
+                            <span><strong id="photoDropLabel">Tocá para sacar o elegir una foto</strong></span>
+                            <span class="hint">JPG o PNG · se comprime automáticamente</span>
+                            <input id="fotoInput" type="file" accept="image/*" capture="environment">
+                        </label>
+
+                        <img id="photoPreview" class="photo-preview" alt="Vista previa de la foto de la donación recibida" hidden>
+                        <input type="hidden" name="fotoBase64" id="fotoBase64" value="">
+
+                        <div class="field" style="margin-top: var(--gap-3);">
+                            <label for="observacion">Observación (opcional)</label>
+                            <textarea id="observacion" name="observacion" rows="2" maxlength="300"
+                                      placeholder="Ej.: llegaron 10 cajas en buen estado"></textarea>
+                        </div>
+
+                        <button class="btn btn-primary btn-block" id="confirmSubmit" type="submit" style="margin-top: var(--gap-4);" disabled>
+                            Confirmar recepción
+                        </button>
+                        <p id="confirmHint" class="hint" role="status" style="text-align: center; margin-bottom: 0;">Adjuntá una foto para habilitar la confirmación.</p>
+                    </form>
+
+                    <form method="post" th:action="@{/entidad/donaciones/{id}/no-recibida(id=${donacion.id})}" style="margin-top: var(--gap-4);">
+                        <div class="field">
+                            <label for="justificacionNoRecibida">Motivo por el que no se recibió (obligatorio)</label>
+                            <textarea id="justificacionNoRecibida" name="justificacion" rows="2" maxlength="300" required
+                                      placeholder="Ej.: el camión no llegó o la mercadería estaba dañada"></textarea>
+                        </div>
+                        <button class="btn btn-danger btn-block" type="submit" style="margin-top: var(--gap-3);"
+                                onclick="return confirm('¿Registrar que la donación no fue recibida?');">
+                            No recibida
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/entidad/confirmacion.js}" defer></script>
+</body>
+</html>

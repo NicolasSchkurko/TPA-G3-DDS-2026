@@ -2,6 +2,7 @@ package ar.edu.utn.frba.ddsi.donaciones.necesidad;
 
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.CategoriaBien;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadExtraordinaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.NecesidadRecurrente;
@@ -10,8 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-
+import static org.mockito.Mockito.*;
 
 public class NecesidadTest {
   CategoriaBien vestimenta = new CategoriaBien("Vestimenta");
@@ -38,6 +38,7 @@ public class NecesidadTest {
     assertEquals(10, recurrente.getPlazoEnDias());
 
     assertTrue(necesidadRecurrente.getDonaciones().isEmpty());
+    assertTrue(necesidadRecurrente.isActiva());
   }
 
   @Test
@@ -55,6 +56,7 @@ public class NecesidadTest {
     assertEquals(100, necesidadExtraordinaria.getCantidadObjetivo());
 
     assertTrue(necesidadExtraordinaria.getDonaciones().isEmpty());
+    assertTrue(necesidadExtraordinaria.isActiva());
   }
 
   @Test
@@ -77,4 +79,18 @@ public class NecesidadTest {
     assertFalse(necesidadRecurrente.estaSatisfecha());
   }
 
+  @Test
+  @DisplayName("Punto 70: Una necesidad inactiva nunca es compatible con una donación")
+  void necesidad_inactiva_no_es_compatible() {
+    Necesidad necesidad = new NecesidadExtraordinaria(
+            subcategoria,
+            "Ropa",
+            100);
+    necesidad.setActiva(false);
+
+    Donacion donacion = mock(Donacion.class);
+    when(donacion.getSubcategoria()).thenReturn(subcategoria);
+
+    assertFalse(necesidad.esCompatibleCon(donacion));
+  }
 }

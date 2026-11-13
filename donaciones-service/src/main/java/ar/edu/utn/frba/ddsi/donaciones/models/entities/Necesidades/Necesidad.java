@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Bienes.SubcategoriaBien;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
@@ -13,6 +14,7 @@ import jakarta.persistence.OneToMany;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +27,9 @@ public abstract class Necesidad {
     @Id
     private UUID id = UUID.randomUUID(); // Identificador único autogenerado
 
+    @Column(nullable = false)
+    private boolean activa = true;
+
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
     SubcategoriaBien subcategoria;
@@ -32,16 +37,20 @@ public abstract class Necesidad {
     // Lado inverso: el dueño de la relación es Donacion.necesidad (@JoinColumn necesidad_id).
     // Sin cascade acá: registrar/quitar una Donacion de esta lista no debe alterar su ciclo de vida.
     @OneToMany(mappedBy = "necesidad")
+    @BatchSize(size = 50)
     List<Donacion> donaciones = new ArrayList<>();
 
     String descripcion;
     Integer cantidadObjetivo;
+    /** Unidad de medida declarada por la entidad (UNIDADES, KILOGRAMOS, LITROS). */
+    private String unidadDeMedida;
 
     public Necesidad(SubcategoriaBien subcategoria, String descripcion, Integer cantidadObjetivo) {
         this.subcategoria = subcategoria;
         this.descripcion = descripcion;
         this.cantidadObjetivo = cantidadObjetivo;
         this.donaciones = new ArrayList<>();
+        this.activa = true;
     }
 
     protected Necesidad() {
@@ -71,6 +80,25 @@ public abstract class Necesidad {
     public abstract boolean estaSatisfecha();
 
     public boolean esCompatibleCon(Donacion donacion) {
-        return !this.estaSatisfecha() && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
+        return this.activa && !this.estaSatisfecha() && this.subcategoria != null && donacion != null && donacion.getSubcategoria() != null && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
+    }
+
+    /**
+     * Variante para matchmaking: usa la cantidad ya precomputada por necesidad en vez de
+     * navegar la colección de donaciones.
+     */
+    public boolean esCompatibleCon(Donacion donacion, int cantidadRecibidaVigente) {
+        return this.activa
+            && this.cantidadObjetivo != null
+            && cantidadRecibidaVigente < this.cantidadObjetivo
+            && this.subcategoria != null
+            && donacion != null
+            && donacion.getSubcategoria() != null
+            && this.subcategoria.getNombre().equals(donacion.getSubcategoria().getNombre());
+    }
+
+    /** Cantidad faltante contra la cantidad precomputada (misma ventana que esCompatibleCon). */
+    public Integer cantidadFaltante(int cantidadRecibidaVigente) {
+        return this.cantidadObjetivo - cantidadRecibidaVigente;
     }
 }

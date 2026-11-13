@@ -9,7 +9,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.Entid
 
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorAsignaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.gestores.GestorMatchmaking;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioDeResultadosMatchmaking;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeResultadosMatchmaking;
 
 
 import java.util.*;
@@ -25,17 +25,28 @@ import java.util.stream.Collectors;
 public class AsignadorDonaciones {
 
     private final List<AlgoritmoAsignacion> algoritmos;
+    private final Map<UUID, Integer> cantidadesVigentesPorNecesidad;
     private final RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking;
     private GestorMatchmaking gestorMatchmaking;
     private GestorAsignaciones gestorAsignaciones;
 
     public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking) {
+        this(gestorMatchmaking, gestorAsignaciones, repositorioDeResultadosMatchmaking, null, null);
+    }
+
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, Map<UUID, Integer> donacionesUltimoTrimestrePorEntidad) {
+        this(gestorMatchmaking, gestorAsignaciones, repositorioDeResultadosMatchmaking,
+            donacionesUltimoTrimestrePorEntidad, null);
+    }
+
+    public AsignadorDonaciones(GestorMatchmaking gestorMatchmaking, GestorAsignaciones gestorAsignaciones, RepositorioDeResultadosMatchmaking repositorioDeResultadosMatchmaking, Map<UUID, Integer> donacionesUltimoTrimestrePorEntidad, Map<UUID, Integer> cantidadesVigentesPorNecesidad) {
         this.repositorioDeResultadosMatchmaking = repositorioDeResultadosMatchmaking;
         this.algoritmos = new ArrayList<>();
         this.gestorMatchmaking = gestorMatchmaking;
         this.gestorAsignaciones = gestorAsignaciones;
+        this.cantidadesVigentesPorNecesidad = cantidadesVigentesPorNecesidad;
         algoritmos.add(new CompatibilidadSemantica());
-        algoritmos.add(new SubAtendidos());
+        algoritmos.add(new SubAtendidos(donacionesUltimoTrimestrePorEntidad));
     }
 
     public List<AlgoritmoAsignacion> getAlgoritmos() {
@@ -46,8 +57,7 @@ public class AsignadorDonaciones {
         if (todasLasDonaciones == null || todasLasEntidades == null) {
             return;
         }
-        // Aislado por donación: si una falla (p.ej. un resultado de matchmaking duplicado), el
-        // resto del lote tiene que seguir procesándose en vez de abortar el batch entero.
+
         for (Donacion donacion : todasLasDonaciones) {
             try {
                 procesarMatchmaking(donacion, todasLasEntidades);
@@ -64,10 +74,24 @@ public class AsignadorDonaciones {
      * 3. Si NO hay intersección, devuelve las propuestas originales intactas.
      */
     public void procesarMatchmaking(Donacion donacion, List<EntidadBeneficiaria> todasLasEntidades) {
+        if (donacion != null && donacion.getId() != null) {
+            repositorioDeResultadosMatchmaking.findByDonacionId(donacion.getId())
+                    .ifPresent(repositorioDeResultadosMatchmaking::eliminarResultado);
+        }
+
         validarAlgoritmosConfigurados();
 
+        // Excluir la entidad propia del donante ANTES de ejecutar los algoritmos, para que
+        // no aparezca en ningún ranking ni en la intersección.
+        List<EntidadBeneficiaria> entidadesElegibles = todasLasEntidades;
+        if (entidadesElegibles != null) {
+            entidadesElegibles = entidadesElegibles.stream()
+                    .filter(e -> !EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), e))
+                    .collect(Collectors.toList());
+        }
+
         // 1. Ejecutar todos los algoritmos devolviendo una única lista plana
-        List<PropuestaAsignacion> todasLasPropuestas = ejecutarTodosLosAlgoritmos(donacion, todasLasEntidades);
+        List<PropuestaAsignacion> todasLasPropuestas = ejecutarTodosLosAlgoritmos(donacion, entidadesElegibles);
 
         // 2. Calcular la intersección consolidada
         List<PropuestaAsignacion> interseccion = obtenerInterseccion(todasLasPropuestas);
@@ -81,6 +105,9 @@ public class AsignadorDonaciones {
         } else {
             // Si no hay intersección, ordenar por posición original y devolverlas nativas
             todasLasPropuestas.sort(Comparator.comparingInt(PropuestaAsignacion::getPosicion));
+            for (int i = 0; i < todasLasPropuestas.size(); i++) {
+                todasLasPropuestas.get(i).setPosicion(i + 1);
+            }
             resultadoFinal = todasLasPropuestas;
         }
 
@@ -116,7 +143,7 @@ public class AsignadorDonaciones {
 
         List<PropuestaAsignacion> listaPlana = new ArrayList<>();
         for (AlgoritmoAsignacion algoritmo : this.algoritmos) {
-            listaPlana.addAll(algoritmo.rankear(donacion, todasLasEntidades));
+            listaPlana.addAll(algoritmo.rankear(donacion, todasLasEntidades, cantidadesVigentesPorNecesidad));
         }
         return listaPlana;
     }
@@ -178,7 +205,7 @@ public class AsignadorDonaciones {
         // Guardar el resultado PRIMERO: si ya existe uno para esta donación (guardar() tira
         // IllegalArgumentException), el estado no debe cambiar a PENDIENTE_ASIGNACION. Con el
         // orden inverso, una donación podía quedar en PENDIENTE_ASIGNACION sin
-        // ResultadoMatchmaking y, como buscarDonacionesSinAsignar() sólo trae EN_DEPOSITO, el
+        // ResultadoMatchmaking y, como buscarIdsSinAsignar() sólo trae EN_DEPOSITO, el
         // scheduler nunca la volvía a recoger.
         ResultadoMatchmaking resultado = new ResultadoMatchmaking(
                 donacion,

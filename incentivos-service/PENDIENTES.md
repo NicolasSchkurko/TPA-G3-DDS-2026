@@ -1,3 +1,16 @@
+## Revisión del enunciado hasta Entrega 6
+
+El servicio cubre perfiles, progreso de misiones, insignias, métricas/rankings, APIs REST y persistencia
+relacional; también hay publicación de eventos a n8n con outbox. Los puntos técnicos abiertos que siguen
+abajo afectan seguridad de administración, consistencia/concurrencia, operación de la outbox y reglas de
+negocio. E2 requiere además confirmar el alcance funcional completo de analíticas y avisos. Faltan los
+diagramas de clases/ERD y la justificación de diseño versionados (pendiente transversal). E6 es del
+`front-service`; el backend ya no valida Keycloak, solo acepta tráfico de la red interna.
+
+Nota de vigencia: la baja lógica/anonimización de perfil con preservación de métricas ya figura en
+`Corregidos` (punto 54); no reabrirla como borrado físico.
+
+---
 # Pendientes técnicos de `incentivos-service`
 
 Registro de problemas conocidos del servicio, con el motivo y la propuesta de arreglo
@@ -9,245 +22,14 @@ de esta lista y pasa a la sección [Corregidos](#corregidos) del final.
 
 | # | Punto | Severidad | Por qué está acá |
 |---|---|---|---|
-| 1 | 39 | Alta | Un perfil queda huérfano si la baja del donante en donaciones no llega |
-| 2 | 1 | Alta | La identidad de admin declarada en un header no está vinculada a una identidad autenticada |
-| 3 | 43 | Media | El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones |
-| 4 | 44 | Media | Un `nombreUsuario` largo revienta el alta con un 409 confuso |
-| 5 | 40 | Baja | El mensaje publicado en redes arranca con una coma y la red está fija en `discord` |
-| 6 | 45 | Baja | La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte |
-| 7 | 46 | Baja | Un período de ranking ya existente responde 400 en vez de 409 |
-| 8 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
-| 9 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
-| 10 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
+| 1 | 37 | Baja | La configuración Checkstyle no se ejecuta automáticamente en el build |
+| 2 | 23 | Baja | Higiene del código: decisiones de identidad y cobertura JPA |
+| 3 | 10 | Documentado | Decidir si el ranking cuenta insignias o misiones (decisión documentada, no relevante) |
 
-El punto 1 requiere una decisión del equipo para acordar una identidad compartida entre servicios.
 El punto 10 queda documentado pero no es relevante: el equipo decidió deliberadamente contar insignias.
 El punto 23 conserva anotaciones sobre decisiones de identidad y ampliación de cobertura JPA.
 
 El detalle de cada fix está en [Corregidos](#corregidos), un ítem por corrección.
-
----
-
-## 39. Un perfil queda huérfano si la baja del donante en donaciones no llega
-
-**Estado:** abierto
-**Severidad:** alta
-**Archivos:** `src/main/java/ar/edu/utn/frba/ddsi/incentivos/controllers/PerfilController.java` (`DELETE /api/perfiles/interno/{idUsuario}`), `src/main/java/ar/edu/utn/frba/ddsi/incentivos/services/PerfilService.java` (`eliminarPerfilPorBajaDeDonante`, `borrarPerfilYHistorial`). Contraparte: punto 35 de `donaciones-service/PENDIENTES.md`.
-
-### Qué pasa
-
-El perfil gamificado de un donante dado de baja en `donaciones-service` **sobrevive en la base de incentivos**. La baja la dispara y la ejecuta donaciones por HTTP síncrono (`DELETE /api/perfiles/interno/{idUsuario}`); incentivos no tiene forma de enterarse por sí solo de que el donante dejó de existir. Cuando esa llamada no llega —o llega con un id que no matchea— el perfil queda huérfano y nada lo limpia después.
-
-### Por qué no se ve
-
-1. `PerfilService.eliminarPerfilPorBajaDeDonante` es idempotente y **devuelve 200 aunque no borre nada**: hace `if (!repositorioPerfiles.existsById(idUsuario)) return;`. Un id que no coincide con ningún perfil (perfil creado con otro id, datos viejos o de un seed) es indistinguible de un borrado exitoso. El llamador no puede saber si quedó algo.
-2. La baja depende de que donaciones ejecute la llamada, y **en el momento correcto**: si la baja local aborta antes (por la FK del punto 34 de donaciones) o falla la red, la cascada no corre y no hay reintento.
-3. No hay ninguna consulta ni job que detecte perfiles cuyo `idUsuario` ya no exista en donaciones.
-
-### Propuesta
-
-1. Consumir un evento `donante.baja` publicado por donaciones (Rabbit) y borrar ahí el perfil y su historial de impactos de forma idempotente, con DLQ y reintentos. Deja de depender de una llamada HTTP en medio de la baja del otro servicio.
-2. Exponer una **reconciliación** (endpoint de admin o job) que liste/borre perfiles sin donante, o un borrado de respaldo por `nombreUsuario`.
-3. Verificar que el despliegue tenga el endpoint `/api/perfiles/interno/{idUsuario}` (commit `7e9da04`); sin él, la llamada de donaciones da 404 y la baja entera falla.
-
----
-
-## 1. La autorización de admin se apoya en un header controlado por el cliente
-
-**Estado:** abierto (decisión explícita del equipo, no corregido a propósito)
-**Severidad:** alta
-**Archivos:** `controllers/CategoriaController.java`, `controllers/MisionController.java`,
-`models/gestores/ValidadorAdmin.java`, `config/SecurityConfig.java`
-
-### Qué pasa
-
-Los endpoints de administración reciben el UUID del administrador en un **header
-enviado por el cliente**:
-
-```java
-@PostMapping("/admin")
-public ResponseEntity<CategoriaDTO> crearCategoria(
-    @RequestHeader("Admin-Id") UUID idAdmin,
-    @RequestBody CategoriaDTO request) { ... }
-```
-
-`ValidadorAdmin` se limita a preguntar a `donaciones-service` si ese UUID existe:
-
-```java
-public void verificarPermisos(UUID idAdmin) {
-  if (!donacionClient.verificarAdmin(idAdmin)) {
-    throw new SecurityException("El usuario no tiene permisos de administrador o no existe.");
-  }
-}
-```
-
-Eso valida **identidad declarada, no autoridad**: cualquiera que conozca el UUID de un
-admin puede mandar `Admin-Id: <uuid-del-admin>` y crear, modificar o borrar categorías y
-misiones. No hace falta ser ese admin.
-
-Se suma una incoherencia de fondo: conviven dos mecanismos de seguridad que no se hablan.
-
-| Capa | Qué exige | Qué protege |
-|---|---|---|
-| `SecurityConfig` | HTTP Basic sobre `anyRequest().authenticated()` | que la petición tenga usuario |
-| `ValidadorAdmin` + header `Admin-Id` | que el UUID exista en donaciones-service | que el usuario sea admin |
-
-Además, `SecurityConfig` no tiene un `UserDetailsService`: sin usuarios en memoria ni
-proveedor externo, `httpBasic` no tiene contra qué validar credenciales, así que en la
-práctica levanta un `AuthenticationProvider` vacío. Conviven dos controles y ninguno
-está bien anclado a una identidad verificable.
-
-### Por qué no se corrigió
-
-El arreglo correcto requiere decidir el modelo de identidad entre los cuatro
-microservicios (¿JWT compartido? ¿gateway con SSO? ¿propagar el `Principal` por
-`RestTemplate`?), lo cual excede el alcance de este servicio y afecta a los demás
-módulos y al cliente de front.
-
-### Propuesta
-
-1. Emitir un **JWT firmado por un emisor común** en la puerta de entrada (gateway o
-   auth-service).
-2. Hacer que `SecurityConfig` valide la firma del token y extraiga los roles:
-   `hasRole("ADMIN")` sobre las rutas `/api/categorias/admin/**` y
-   `/api/misiones/admin/**`.
-3. Eliminar el header `Admin-Id` y `ValidadorAdmin`: la identidad viene en el token y la
-   auditoría lee el subject autenticado.
-4. Mientras tanto, **no exponer el servicio fuera de la red interna** y tratar el header
-   `Admin-Id` como no confiable.
-
----
-
-## 43. El historial de rankings pagina en memoria: trae todos los rankings con todas sus posiciones
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `models/repositories/SpringRepositories/RepositorioRankings.java:30-31`,
-`services/RankingService.java:168-172`
-
-### Qué pasa
-
-`GET /api/rankings` es paginado, pero la consulta que lo alimenta hace `fetch` de una colección
-y a la vez recibe `Pageable`:
-
-```java
-@EntityGraph(attributePaths = "posiciones")
-Page<RankingMensual> findAllByOrderByPeriodoDesc(Pageable pageable);
-```
-
-Hibernate no puede aplicar `LIMIT`/`OFFSET` sobre un `fetch join` a una colección: ignora el
-límite y **trae todos los rankings con todas sus posiciones a memoria**, y recién ahí Spring
-arma la página. La respuesta sale correcta, pero el costo crece con todo el historial.
-
-### Cómo se dispara
-
-Pedir una página del historial (`GET /api/rankings?size=10`) cuando hay muchos rankings
-publicados —uno por mes— y cada uno con todos los donantes de ese mes.
-
-### Propuesta de arreglo
-
-Paginar sobre `RankingMensual` sin el `@EntityGraph` y resolver las posiciones por página, o una
-`@Query` con `countQuery` aparte como ya se hizo en `paginaInsigniasPorIdUsuario`.
-
----
-
-## 44. El alta de perfil no acota el largo de `nombreUsuario`: un nombre largo revienta con un 409 confuso
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `dto/Persona/PerfilDonanteDTO.java:19-20`, `models/entities/Perfil/Perfil.java`
-
-### Qué pasa
-
-`PerfilDonanteDTO.nombreUsuario` solo tiene `@NotBlank`; no hay `@Size` ni `@Column(length = ...)`
-en `Perfil`. La columna queda `varchar(255)`, así que un nombre de más de 255 caracteres pasa la
-validación y falla en el INSERT con `DataIntegrityViolationException`, que el handler traduce a
-**409 "hay datos relacionados que la impiden"** — un mensaje que no tiene nada que ver con la
-causa. `role` está igual de suelto.
-
-### Cómo se dispara
-
-`POST /api/perfiles` (o `/lote`, ver punto 42) con `nombreUsuario` de 256+ caracteres.
-
-### Propuesta de arreglo
-
-`@Size(max = 255)` en el DTO y `@Column(length = ...)` en la entidad, para que sea un 400 con el
-campo señalado.
-
----
-
-## 40. La publicación en redes arranca con una coma y la red está fija en `discord`
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `.../clients/N8nClient.java`, `.../N8nClientTest.java`
-
-### Qué pasa
-
-`encolarInsignia` arma el `mensaje` de la publicación como
-`", por ganar la insignia " + event.insigniaObtenida() + ...`: **arranca con `", "`**, resto de
-una concatenación a la que le falta el prefijo, así que el texto que sale a la red empieza con
-una coma. Además la red está **hardcodeada en `"discord"`**. El test solo verifica
-`containsString`, así que pasa igual con la coma.
-
-### Propuesta
-
-Armar el mensaje completo (por ejemplo `event.nombreUsuario() + " ganó la insignia ..."`), hacer
-configurable la red social, y cambiar el test a una igualdad exacta sobre `mensaje`.
-
----
-
-## 45. La outbox de n8n reintenta para siempre: no hay tope de intentos ni descarte
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `services/PublicacionesN8nService.java:70-79`,
-`models/entities/PublicacionPendienteN8n.java:74-83`
-
-### Qué pasa
-
-`reintentar` agenda el próximo intento con backoff exponencial acotado a una hora
-(`RETRASO_MAXIMO_SEGUNDOS = 3600`) y no hay máximo de intentos ni cola de descarte: una
-publicación que nunca va a poder enviarse (payload inválido, red inexistente) se reintenta cada
-hora **indefinidamente**. `intentos` y `ultimoError` se guardan, así que el dato está, pero nada
-corta el ciclo.
-
-### Cómo se dispara
-
-Una fila en `publicacion_pendiente_n8n` cuyo `POST` a n8n siempre falla (por ejemplo el webhook
-responde 4xx por el payload): el scheduler `procesarPendientes` la reintenta en cada ciclo.
-
-### Propuesta de arreglo
-
-Un tope de intentos (`intentos >= N` → estado `DESCARTADA`) o una DLQ, y un log/alerta cuando se
-descarta.
-
----
-
-## 46. Un período de ranking ya existente responde 400 en vez de 409
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `services/RankingService.java:124-135`
-
-### Qué pasa
-
-`generarYGuardar` lanza `IllegalArgumentException("Ya existe un ranking para el período: ...")`
-cuando `findByPeriodo(...)` encuentra algo. `GlobalExceptionHandler` mapea
-`IllegalArgumentException` a **400**, aunque el conflicto con un recurso existente es un **409**
-(y `ConflictoException` ya existe para eso). Además, el camino del scheduler
-(`crearRankingMensualActual`) usa el mismo método, así que si un admin generó el mes anterior a
-mano, el scheduler loguea un **ERROR** por un caso esperado.
-
-### Cómo se dispara
-
-`POST /api/rankings` con un período ya publicado (devuelve 400), o el `RankingScheduler` cuando
-el ranking del mes anterior ya existe.
-
-### Propuesta de arreglo
-
-Lanzar `ConflictoException` (409) en el camino HTTP y tratar "ya existe" como no-op idempotente
-en el camino del scheduler.
 
 ---
 
@@ -448,9 +230,9 @@ falla el test y no tres meses después cuando alguien lo use sin querer.
 **Logging.** `DonacionClient` pasó a `@Slf4j`. Además de dejar de imprimir a `System.err`
 mientras el resto del proyecto usa SLF4J, ahora manda el stack trace completo: antes se
 imprimía solo `e.getMessage()`, así que cuando una integración fallaba no quedaba rastro de
-dónde había venido el problema. El 4xx de `verificarAdmin` sigue siendo un `warn` sin stack
-trace a propósito (es "este id no es de un admin", no un problema de infraestructura) y el
-resto pasa a `error` con stack trace.
+dónde había venido el problema. Los 4xx de integración se registran como `warn` sin stack
+trace a propósito (son datos que no existen, no una caída) y el resto pasa a `error` con stack
+trace.
 
 **Nombres.**
 
@@ -489,14 +271,10 @@ setter, que es justo lo que se sacó.
 
 ### Lo que queda abierto
 
-1. **La identidad de admin sigue dependiendo del header `Admin-Id`.** Se mantiene abierto
-   hasta acordar autenticación e identidad compartidas con los otros servicios; suspender la
-   transacción durante la llamada remota no convierte ese header en una identidad confiable.
-2. **La cobertura JPA es inicial, no exhaustiva.** `PersistenciaJpaTest` crea el esquema con
-   Hibernate/H2 y prueba persistencia de enums, borrado en cascada al reemplazar una regla,
-   suspensión de la transacción ante la llamada remota y persistencia/reclamo de la outbox.
-   Los nuevos mappings y consultas igual necesitan casos de integración específicos a medida
-   que se agreguen.
+1. **La cobertura JPA es inicial, no exhaustiva.** `PersistenciaJpaTest` crea el esquema con
+   Hibernate/H2 y prueba persistencia de enums, borrado en cascada al reemplazar una regla y
+   persistencia/reclamo de la outbox. Los nuevos mappings y consultas igual necesitan casos de
+   integración específicos a medida que se agreguen.
 
 ---
 
@@ -549,8 +327,35 @@ Un ítem por fix, en el orden en que se cerraron. Los números son los que tení
 corrigió; los que no llevan número son fixes sin punto propio. Cuando hubo una decisión consciente
 que conviene no deshacer sin leer el porqué, va en cursiva en la misma línea.
 
+- **1.** Se eliminó `Admin-Id` y `ValidadorAdmin`: el rol de administrador se valida solo en el front después del login con Keycloak, y los backends se protegen con ACL de red (`seguridad.ips-internas` + `seguridad.servicios-internos`). Se eliminó el prefijo `/interno` y donaciones/logística/incentivos/notificaciones ya no dependen de Keycloak. *El alta de admins sigue usando el `sub` de Keycloak como `Administrador.id`.*
+- **66.** Donaciones destacadas: query `buscarDestacadas` (entregadas, `completMision`, orden por fecha), `DestacadasService` con límite 1..100 y default `incentivos.destacadas.limite=30`, endpoint público `GET /api/donaciones/destacadas` con caché de 5 minutos, y landing server-side con Thymeleaf vía BFF. Cobertura en `DestacadasServiceTest`, `PersistenciaJpaTest` e `IncentivosClientTest`. *Sin coordenadas todavía: el mapa queda sin marcadores hasta que logística/donaciones las provean.*
+- **46.** Un período de ranking ya existente responde 409 (`ConflictoException`); el scheduler devuelve el ranking existente sin volver a generarlo.
+- **40.** El mensaje de la publicación ya no arranca con coma. El campo `redSocial` se eliminó del payload y de la outbox: n8n no lo usa y era una configuración muerta. *Migración: `ALTER TABLE publicacion_pendiente_n8n DROP COLUMN red_social;` en bases existentes.*
+- **57.** `N8nClient` despacha cada envío a un pool acotado `n8nExecutor`; el ciclo del scheduler solo reclama y encola. El lease de la outbox sube a 300s para cubrir la cola.
+- **45.** La outbox de n8n descarta la publicación tras 10 intentos fallidos, con log de error; la query de reclamo excluye las descartadas.
+- **65.** Se eliminó `AdminService`: no estaba cableado a ningún controller y duplicaba operaciones masivas sin paginar de `CategoriaService`/`MisionService`.
+- **53.** `actualizarDatosPerfil` ignora nombres compuestos solo por espacios y recorta los espacios de los válidos. Cobertura en `PerfilServiceTest`.
+- **64.** Dockerfile con `-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError`, `mem_limit: 512m` en el compose y Hikari/batch configurados (pool 10, batch 50, batch fetch 50).
+- **63.** El camino de donaciones usa `findByIdParaDonacion`, cuyo `EntityGraph` no trae `insigniasObtenidas`; `valoresObservados` se acota a `cantValoresDistintos`. Cobertura en `RendimientoConsultasTest`, `PersistenciaJpaTest` y `ProgresoMisionTest`.
+- **62.** El alta en lote resuelve la categoría base una sola vez, busca los ids existentes en una query y persiste con `saveAll` en bloques de 100; si un bloque falla, reintenta ítem por ítem. Cobertura en `PerfilServiceTest` (sección `AltaEnLote`).
+- **61.** La sincronización de perfiles pagina por categoría y por misión, y las notificaciones se publican desde un executor acotado de 4 hilos, fuera del hilo que commitea. *Residual: sigue habiendo un HTTP por evento; la resolución masiva de contactos queda pendiente.*
+- **60.** La pasada de constancia trae las donaciones de cada bloque en una sola consulta por ids y misiones, filtra por la misión vigente y evalúa con `evaluarConstanciaOrdenada`; `reiniciarProgresoDeMision` también pagina. *Residual: la consulta no acota por fecha; trae el historial progresado de las misiones del bloque.*
+- **56.** La consulta del scheduler de constancia pagina en SQL: se reemplazó `JOIN FETCH` + `Pageable` por `@EntityGraph` y `countQuery` explícito, evitando `HHH000104` y la paginación en memoria. Cobertura en `RendimientoConsultasTest` y `PersistenciaJpaTest`.
+- **55.** El reintento por `OptimisticLockingFailureException` espera con backoff exponencial y jitter (20–100 ms) entre intentos, sin bucle cerrado. Cobertura en `PerfilServiceTest` (sección `Concurrencia`).
+- **52.** La notificación que falla al publicarse ya no queda en un buffer en memoria: se persiste en la outbox `notificacion_pendiente` con lease y backoff, y un scheduler en `NotificacionClient` la republica y confirma o reprograma. Se conserva `idSolicitud` para la idempotencia del receptor. Cobertura en `NotificacionClientTest` y `PersistenciaJpaTest`.
+- **51.** El reclamo de la outbox de n8n usa `PageRequest.of(0, 1)`, así el bloqueo pesimista afecta solo la fila que se va a enviar. Cobertura en `PublicacionesN8nServiceTest`.
+- **50.** La deduplicación de insignias ahora compara `Insignia` por `idInsignia` (`equals`/`hashCode`), tolerando los proxies de Hibernate, y la tabla `insignia_obtenida` tiene un unique constraint `(perfil_id, insignia_id)`. Cobertura en `PerfilTest` (sección `InsigniasSinDuplicados`) y `PersistenciaJpaTest`.
+- **59.** Lectura de rankings paginada: `paginaPosiciones` consulta `Ranking` por `rankingMensual.idRanking` y `puesto` con `LIMIT`/`OFFSET` en la base; `/top` limita en SQL, `GET /{id}` y `/actual` aceptan `Pageable`, el historial devuelve `RankingResumenDTO` sin posiciones y `RankingMesDTO.ranking` pasa a ser `Page<RankingDTO>`. Cobertura en `RankingServiceTest` (sección `Snapshot`) y `PersistenciaJpaTest`.
+- **58.** Generación del ranking por lotes de 500: proyección `RankingFilaDTO` (id, nombre y total) sin materializar `Perfil`, estado de puestos y empates entre páginas, y `persist` + `flush` + `clear` por lote. Cobertura en `RankingServiceTest` (sección `Snapshot`) y `PersistenciaJpaTest`.
+- **49.** La caducidad de la constancia mensual se evalúa por mes calendario, no por el instante exacto de la última donación: si la última fue el 1 de octubre, todo noviembre sigue dentro de la racha. Se respeta la cantidad configurada en `ReglaConstancia` (en meses se compara `YearMonth` con `plusMonths(cantidad)`; en las demás unidades se mantiene la suma de la cantidad). Cobertura en `ProgresoMisionTest` (sección `ConstanciaPorMeses`).
+- **48.** `Categoria.siguienteMision` y `eliminarMision` comparan `Mision` por `idMision`, tolerando los proxies de Hibernate; si falta el id (misión nueva) comparan por referencia. Cobertura en `CategoriaTest`.
+- **47.** `actualizarCategoria` ya permite mover una categoría a una posición ocupada: se eliminó la guarda `existsByPosicionSecuencia` que devolvía un 409 espurio y se dejó que `SecuenciaCategoria.desplazarParaActualizar` valide el rango y corra en bloque a las categorías del medio. Las categorías con posición actual `null` se incorporan como un alta. Cobertura en `CategoriaServiceTest` y `SecuenciaCategoriaTest`.
+- **39.** La baja del donante viaja por la outbox durable de `donaciones-service` (`ELIMINAR_PERFIL`) con lease, backoff y reintentos, en la misma transacción del soft delete; se eliminó la reconciliación periódica por cron. Como hook puntual, el front expone `POST /api/reconciliacion/{idUsuario}`: si donaciones no encuentra al donante o lo devuelve inactivo, ejecuta la baja idempotente `DELETE /api/perfiles/{idUsuario}` en incentivos. *Residual: el hook necesita una pantalla o acción del front que lo dispare.*
+- **54.** Soft Delete y minimización en `Perfil` preservando métricas de `ImpactoDonacion` y snapshots de `Ranking`: agregado estado `activo = true` en `Perfil`, método de dominio `darDeBaja()` (anonimiza `nombreUsuario = null`, desvincula categoría y anula misiones/insignias vía `orphanRemoval`), se eliminó definitivamente `deleteByIdUsuario` para salvaguardar la contabilidad histórica de donaciones, y las consultas/actualizaciones sobre perfiles inactivos responden 404 (`InexistenteException`).
+- **44.** Alta de perfil acota el largo de `nombreUsuario` (`@Size(max = 500)` en `PerfilDonanteDTO` y `@Column(length = 500)` en `Perfil`; rechaza nombres largos con 400 Bean Validation en vez de un 409 por violación de integridad).
+- **43.** El historial de rankings pagina en base de datos sin cargar todas las posiciones a memoria: se removió `@EntityGraph` en `RepositorioRankings` y se configuró `@BatchSize(size = 30)` en `RankingMensual.posiciones` para hidratar en sub-lotes.
 - **42.** `crearPerfilesEnLote` maneja transacciones independientes por perfil (`TransactionTemplate`) evitando que un error de persistencia marque la sesión en rollback-only y tumbe el lote entero. Errores formateados sin exponer internals de BD.
-- **21.** Las rutas de ranking exigen administrador (`Admin-Id` + `ValidadorAdmin`). *El scheduler entra por un método privado sin permisos.*
+- **21.** Las rutas de ranking quedan detrás de la ACL de red; el rol `ADMIN` se valida en el front. *El scheduler entra por un método privado sin permisos.*
 - **12.** Las llamadas HTTP salieron de las transacciones (timeouts; el contacto se resuelve en `AFTER_COMMIT`). *Sin reintentos automáticos: el `POST` a n8n no tiene idempotency key.*
 - **8.** La categoría del donante es visible en `GET /api/perfiles/{idUsuario}/publico` (`permitAll`). *Con DTO aparte; sin categoría devuelve `null`, no 404.*
 - **26.** La constancia cuenta meses calendario, no donaciones. *En misiones con constancia, `progreso` cuenta meses.*

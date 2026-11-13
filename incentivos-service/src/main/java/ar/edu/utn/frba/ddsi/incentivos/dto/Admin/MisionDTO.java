@@ -12,12 +12,13 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 public class MisionDTO {
-
+    private UUID idMision;
     @NotBlank(message = "La misión requiere un nombre")
     private String nombreMision;
 
@@ -82,7 +83,7 @@ public class MisionDTO {
 
         Insignia insignia = mision.getInsigniaObjetivo();
 
-        return new MisionDTO(
+        MisionDTO dto = new MisionDTO(
             mision.getNombreMision(),
             mision.getDescripcion(),
             insignia == null ? null : insignia.getNombre(),
@@ -92,5 +93,7 @@ public class MisionDTO {
             atributo == null ? null : atributo.name(),
             OperacionDTO.desdeEntidad(operacion)
         );
+        dto.setIdMision(mision.getIdMision());
+        return dto;
     }
 }

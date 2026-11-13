@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion;
 
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.EntidadPropia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
@@ -8,14 +9,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.UUID;
 
 public class CompatibilidadSemantica implements AlgoritmoAsignacion {
 
     /** Top-10 con un Min-Heap limitado en vez de ordenar todo: se recorre una vez (O(N))
      *  y en memoria quedan como máximo los 10 mejores. */
     @Override
-    public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+    public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades,
+                                            Map<UUID, Integer> cantidadesVigentesPorNecesidad) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
 
         PriorityQueue<PropuestaAsignacion> top10 = new PriorityQueue<>(
@@ -23,12 +27,24 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
+            if (!entidad.isActiva()) {
+                continue;
+            }
+            if (EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), entidad)) {
+                continue;
+            }
             for (Necesidad necesidad : entidad.getNecesidades()) {
-                if (!necesidad.esCompatibleCon(donacion)) {
+                Integer cantidadRecibida = cantidadesVigentesPorNecesidad == null
+                    ? null
+                    : cantidadesVigentesPorNecesidad.getOrDefault(necesidad.getId(), 0);
+                boolean compatible = cantidadRecibida == null
+                    ? necesidad.esCompatibleCon(donacion)
+                    : necesidad.esCompatibleCon(donacion, cantidadRecibida);
+                if (!compatible) {
                     continue;
                 }
 
-                double score = calcularScore(necesidad, donacion);
+                double score = calcularScore(necesidad, donacion, cantidadRecibida);
                 if (score <= 0) {
                     continue;
                 }
@@ -45,13 +61,16 @@ public class CompatibilidadSemantica implements AlgoritmoAsignacion {
         return extraerRanking(top10, nombreAlgoritmo);
     }
 
-    private double calcularScore(Necesidad necesidad, Donacion donacion) {
+    private double calcularScore(Necesidad necesidad, Donacion donacion,
+                                 Integer cantidadRecibida) {
         // cantidadFaltante() usa la misma ventana que esCompatibleCon()/estaSatisfecha(): para
         // una NecesidadRecurrente eso es cantidadRecibidaEnPeriodo(), no el histórico completo.
         // Antes medían contra columnas distintas: una recurrente ya llenada en el pasado quedaba
         // "compatible" (período en 0) pero con score <= 0 (histórico ya cubierto), así que el
         // filtro de la línea de arriba la descartaba para siempre.
-        int cantidadFaltante = necesidad.cantidadFaltante();
+        int cantidadFaltante = cantidadRecibida == null
+            ? necesidad.cantidadFaltante()
+            : necesidad.cantidadFaltante(cantidadRecibida);
         int cantidadDonada = donacion.sumaCantidadBienes();
 
         // Blindaje de división por cero: una donación con suma de bienes 0 (o una necesidad sin

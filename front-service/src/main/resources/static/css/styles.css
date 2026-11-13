@@ -1,0 +1,163 @@
+/* =========================================================
+   Paleta del portal (modo claro)
+   Acento     #1B7838
+   Dominante  #FFFFFF
+   Secundario #8A8A8A
+   Texto      #000000
+   ========================================================= */
+:root {
+    --brand-accent: #1b7838;
+    --brand-accent-dark: #145c2b;
+    --brand-accent-soft: #eaf4ee;
+    --brand-gray: #8a8a8a;
+    --brand-ink: #000000;
+
+    /* Sobrescribe el primary de Bootstrap 5.3 */
+    --bs-primary: #1b7838;
+    --bs-primary-rgb: 27, 120, 56;
+    --bs-link-color: #1b7838;
+    --bs-link-color-rgb: 27, 120, 56;
+    --bs-link-hover-color: #145c2b;
+    --bs-link-hover-color-rgb: 20, 92, 43;
+}
+
+/* Custom styles for front-service */
+body {
+    font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    color: var(--brand-ink);
+}
+
+.card {
+    border-radius: 0.75rem;
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+a.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.static-card {
+    background-color: #fff;
+    border-radius: 0.75rem;
+}
+
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+}
+
+
+/* Fondo de mapa real, difuminado para páginas de acceso restringido */
+.sin-acceso-page {
+    position: relative;
+    isolation: isolate;
+    background: #f4f7f4;
+}
+
+.sin-acceso-page::before {
+    content: "";
+    position: fixed;
+    inset: -12%;
+    z-index: -1;
+    pointer-events: none;
+    background: #eef2ed url("/images/mapa-fondo.jpg") center center / cover no-repeat;
+    filter: blur(6px) saturate(.72) brightness(1.06);
+    opacity: .42;
+    transform: scale(1.04);
+}
+
+.sin-acceso-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(244, 247, 244, .45), rgba(244, 247, 244, .7));
+}
+
+.sin-acceso-page :focus-visible {
+    outline: 2px solid #1b7838;
+    outline-offset: 2px;
+}
+
+.map-bg-credit {
+    position: fixed;
+    right: 10px;
+    bottom: 8px;
+    z-index: 2;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .78);
+    color: #5f6b62;
+    font-size: 10px;
+    line-height: 1.25;
+}
+
+.map-bg-credit a { color: inherit; }
+
+/* Fondo de mapa difuminado para páginas de estado */
+.map-blur-page {
+    position: relative;
+    isolation: isolate;
+    background: #f4f7f4;
+}
+
+.map-blur-page::before {
+    content: "";
+    position: fixed;
+    inset: -12%;
+    z-index: -1;
+    pointer-events: none;
+    background: #eef2ed url("/images/mapa-fondo.jpg") center center / cover no-repeat;
+    filter: blur(6px) saturate(.72) brightness(1.06);
+    opacity: .42;
+    transform: scale(1.04);
+}
+
+.map-blur-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(244, 247, 244, .45), rgba(244, 247, 244, .7));
+}
+
+.leaflet-control-attribution { font-size: 11px; }
+
+.bien-foto-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bien-foto-preview-img {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    border: 1px solid var(--line, #e1e5e0);
+    border-radius: 8px;
+}
+
+.bien-foto-input::file-selector-button {
+    margin-right: 10px;
+    padding: 7px 12px;
+    border: 1px solid var(--brand-accent-soft, #d9ebe0);
+    border-radius: 6px;
+    background: var(--brand-accent-soft, #eaf4ee);
+    color: var(--brand-accent-dark, #145c2b);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fotos-donacion-preview { display: flex; flex-wrap: wrap; gap: 10px; }
+.foto-donacion { position: relative; width: 120px; margin: 0; }
+.foto-donacion img { width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--line-strong, #cdd4ce); border-radius: 8px; }
+.foto-donacion-quitar { display: block; width: 100%; margin-top: 4px; border: 0; background: transparent; color: #b91c1c; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }

@@ -44,6 +44,9 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
     @Column(length = 500)
     private String nombreUsuario;
 
+    @Column(nullable = false)
+    private boolean activo = true;
+
     @ManyToOne
     @JoinColumn(name = "categoria_id")
     private Categoria categoriaActual;
@@ -95,10 +98,30 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         this.nombreUsuario = nombre;
     }
 
-    /** Recalcula la racha de la misión vigente a partir del historial. No hace nada sin misión. */
+    /**
+     * Da de baja lógica al perfil (soft delete) y minimiza sus datos:
+     * desactiva el perfil, anonimiza el nombre de usuario, desvincula la categoría,
+     * limpia el progreso de la misión actual y remueve todas las insignias obtenidas
+     * (eliminadas de la persistencia por {@code orphanRemoval = true}).
+     * Preserva el historial en {@code ImpactoDonacion} y snapshots de ranking.
+     */
+    public void darDeBaja() {
+        this.activo = false;
+        this.nombreUsuario = null;
+        this.categoriaActual = null;
+        this.progresoMisionActual = null;
+        if (this.insigniasObtenidas != null) {
+            this.insigniasObtenidas.clear();
+        }
+    }
+
+    /**
+     * Recalcula la racha de la misión vigente. Recibe solo las donaciones que progresaron y
+     * en orden ascendente; el scheduler las trae así de una sola consulta por bloque.
+     */
     public void verificarProgresoMision(List<ImpactoDonacion> donaciones) {
         if (progresoMisionActual != null) {
-            progresoMisionActual.evaluarConstancia(donaciones, LocalDateTime.now());
+            progresoMisionActual.evaluarConstanciaOrdenada(donaciones, LocalDateTime.now());
         }
     }
 
@@ -130,6 +153,7 @@ public class Perfil extends AbstractAggregateRoot<Perfil> {
         registerEvent(new MisionCompletada(
                 misionAnterior != null ? misionAnterior.getNombreMision() : null,
                 insignia.getNombre(),
+                insignia.getIdInsignia(),
                 this.idUsuario,
                 this.nombreUsuario,
                 donacion

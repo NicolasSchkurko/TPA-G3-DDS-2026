@@ -16,8 +16,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,17 +56,25 @@ public class Donacion {
     // repositorio: cascade PERSIST/MERGE, sin orphanRemoval.
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "donacion_id")
+    @BatchSize(size = 50)
     private List<Bien> bienes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "estado", columnDefinition = "varchar(32)")
     private Estado estado;
 
-    // Catálogo compartido (buscar-o-crear vía RepositorioSubcategoriasDeBienes), sin cascade.
+    // Catálogo compartido (buscar-o-crear vía RepositorioDeSubcategoriasDeBienes), sin cascade.
     @ManyToOne
     @JoinColumn(name = "subcategoria_id")
     private SubcategoriaBien subcategoria;
 
     private LocalDate fechaEntrega;
+
+    /** Fotos generales de la donación, independientes de los bienes. */
+    @OneToMany(mappedBy = "donacion", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("orden ASC")
+    @BatchSize(size = 50)
+    private List<DonacionImagen> imagenes = new ArrayList<>();
 
     /** Trazabilidad de los cambios de estado. */
     @ElementCollection
@@ -101,6 +111,14 @@ public class Donacion {
 
     public void agregarBienes(List<Bien> nuevosBienes) {
         this.bienes.addAll(nuevosBienes);
+    }
+
+    public void agregarImagen(String urlFoto, int orden) {
+        this.imagenes.add(new DonacionImagen(this, urlFoto, orden));
+    }
+
+    public List<String> urlsDeImagenes() {
+        return this.imagenes.stream().map(DonacionImagen::getUrlFoto).toList();
     }
 
     public void actualizarEstado(Estado nuevoEstado, String justificacion) {

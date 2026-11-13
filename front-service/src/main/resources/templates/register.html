@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Registrarse — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <style>
+        .register-card {
+            max-width: 760px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+    <main class="flex-grow-1 d-flex align-items-center py-4" id="contenido" tabindex="-1">
+    <div class="container">
+        <div class="static-card border-0 register-card">
+            <div class="card-body p-4 p-md-5">
+                <div class="mb-3">
+                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/}">
+                        <i class="bi bi-house me-1" aria-hidden="true"></i> Volver
+                    </a>
+                </div>
+                <div class="text-center mb-4">
+                    <div class="bg-primary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 54px; height: 54px;">
+                        <i class="bi bi-person-plus fs-3"></i>
+                    </div>
+                    <h1 class="h4 fw-bold">DonaTrack — Crear cuenta</h1>
+                    <p class="text-muted small">Portal de Donaciones e Incentivos</p>
+                </div>
+
+                <div th:if="${error}" class="alert alert-danger d-flex align-items-center py-2" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span th:text="${error}">No se pudo completar el registro.</span>
+                </div>
+                <div th:if="${msg}" class="alert alert-success d-flex align-items-center py-2" role="status">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span th:text="${msg}">Registro realizado correctamente.</span>
+                </div>
+
+                <form th:action="@{/register}" method="post" id="registerForm">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="username" class="form-label fw-semibold">Usuario</label>
+                            <input type="text" class="form-control" id="username" name="username" autocomplete="username" minlength="3" required
+                                   th:value="${formularioRegistro != null ? formularioRegistro['username'] : ''}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="email" class="form-label fw-semibold">Correo electrónico</label>
+                            <input type="email" class="form-control" id="email" name="email" autocomplete="email" required
+                                   placeholder="nombre@dominio.com" aria-describedby="emailHelp">
+                            <div class="form-text" id="emailHelp">Si ya existe una cuenta con ese correo, iniciá sesión y agregá el rol desde tu cuenta.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="password" class="form-label fw-semibold">Contraseña</label>
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" minlength="8" required>
+                            <div class="form-text">Debe tener al menos 8 caracteres.</div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="tipoRegistro" class="form-label fw-semibold">Quiero registrarme como</label>
+                        <select class="form-select" id="tipoRegistro" name="tipoRegistro" required>
+                            <option value="" disabled selected hidden>Seleccioná una opción</option>
+                            <option value="DONANTE"
+                                    th:selected="${(formularioRegistro != null and formularioRegistro['tipoRegistro'] == 'DONANTE') or (formularioRegistro == null and param.tipoRegistro != null and param.tipoRegistro[0] == 'DONANTE')}">Donante</option>
+                            <option value="ENTIDAD"
+                                    th:selected="${formularioRegistro != null and formularioRegistro['tipoRegistro'] == 'ENTIDAD'}">Entidad beneficiaria</option>
+                            <option sec:authorize="hasRole('ADMIN')" value="ADMIN">Administrador</option>
+                        </select>
+                    </div>
+
+                    <p class="form-text mb-4">Tu usuario, contraseña, email y permisos se guardan en forma segura en Keycloak.</p>
+
+                    <th:block th:replace="~{fragments/registro-campos :: donante(true)}"></th:block>
+
+                    <th:block th:replace="~{fragments/registro-campos :: admin(true)}"></th:block>
+
+                    <th:block th:replace="~{fragments/registro-campos :: entidad(true)}"></th:block>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-person-check me-1"></i> Registrarme
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top text-center">
+                    <small class="text-muted">¿Ya tenés cuenta? <a th:href="@{/login}" class="text-decoration-none fw-semibold">Ingresá</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+    <script>
+        const registrationType = document.getElementById("tipoRegistro");
+        const personType = document.getElementById("tipoPersona");
+        const formSections = document.querySelectorAll(".registration-fields");
+
+        function updateRequiredFields() {
+            formSections.forEach((section) => {
+                const active = section.dataset.registration === registrationType.value;
+                section.classList.toggle("d-none", !active);
+                section.querySelectorAll("input, select").forEach((field) => {
+                    field.required = active && field.dataset.required === "true";
+                    field.disabled = !active;
+                });
+            });
+
+            const donorSection = document.querySelector('[data-registration="DONANTE"]');
+            if (donorSection) {
+                const selectedPerson = personType.value;
+                donorSection.querySelectorAll("[data-persona]").forEach((group) => {
+                    const active = registrationType.value === "DONANTE" && group.dataset.persona === selectedPerson;
+                    group.classList.toggle("d-none", !active);
+                    group.querySelectorAll("input, select").forEach((field) => {
+                        field.required = registrationType.value === "DONANTE"
+                            && active
+                            && field.dataset.required === "true";
+                        field.disabled = !active;
+                    });
+                });
+            }
+        }
+
+        document.querySelectorAll(".registration-fields input, .registration-fields select").forEach((field) => {
+            field.dataset.required = ["nombre", "apellido", "edad", "numeroDeDocumento", "genero",
+                "razonSocial", "rubro", "cuit", "tipoJuridico", "nombreAMostrar",
+                "altura", "ciudad", "provincia", "pais"].includes(field.name) ? "true" : "false";
+        });
+
+        // La dirección es opcional para donantes y obligatoria para entidades.
+        document.querySelectorAll('[data-registration="ENTIDAD"] input[name="calleUno"], [data-registration="ENTIDAD"] input[name="altura"], [data-registration="ENTIDAD"] input[name="ciudad"], [data-registration="ENTIDAD"] input[name="provincia"], [data-registration="ENTIDAD"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "true";
+        });
+        document.querySelectorAll('[data-registration="DONANTE"] input[name="calleUno"], [data-registration="DONANTE"] input[name="altura"], [data-registration="DONANTE"] input[name="ciudad"], [data-registration="DONANTE"] input[name="provincia"], [data-registration="DONANTE"] input[name="pais"]').forEach((field) => {
+            field.dataset.required = "false";
+        });
+
+        document.querySelectorAll('[data-registration="ADMIN"] select[name="tipoContacto"], [data-registration="ADMIN"] input[name="valorContacto"]').forEach((field) => {
+            field.dataset.required = "true";
+        });
+        // El correo obligatorio del donante es el de la cuenta (datos de usuario de arriba).
+        document.querySelectorAll('[data-registration="DONANTE"] input[name="valorContacto"]').forEach((field) => {
+            field.dataset.required = "false";
+        });
+
+        registrationType.addEventListener("change", updateRequiredFields);
+        personType.addEventListener("change", updateRequiredFields);
+        updateRequiredFields();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

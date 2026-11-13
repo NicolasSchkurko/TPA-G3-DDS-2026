@@ -1,0 +1,106 @@
+package ar.edu.utn.frba.ddsi.front.clients;
+
+import ar.edu.utn.frba.ddsi.front.dto.NotificacionServicioDTO;
+import ar.edu.utn.frba.ddsi.front.dto.PageResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+import java.util.Collections;
+import java.util.List;
+import org.springframework.http.MediaType;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Cliente REST para notificaciones-service. Si el servicio no responde, devuelve una lista
+ * vacía para que la bandeja del portal siga funcionando con la actividad derivada.
+ */
+@Component
+public class NotificacionesServicioClient {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificacionesServicioClient.class);
+
+    private final RestClient restClient;
+    private final String baseUrl;
+
+    public NotificacionesServicioClient(RestClient restClient,
+                                        @Value("${servicio.notificaciones.url}") String baseUrl) {
+        this.restClient = restClient;
+        this.baseUrl = baseUrl;
+    }
+
+    /** Notificaciones más recientes de un destinatario (email o teléfono). Nunca lanza excepción. */
+    public List<NotificacionServicioDTO> listarPorDestinatario(String destinatario, int size) {
+        if (destinatario == null || destinatario.isBlank()) return Collections.emptyList();
+        int limite = Math.min(Math.max(size, 1), 50);
+        try {
+            PageResponse<NotificacionServicioDTO> pagina = restClient.get()
+                    .uri(baseUrl + "/notificaciones?destinatario={destinatario}&size={size}",
+                            destinatario.trim().toLowerCase(), limite)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<PageResponse<NotificacionServicioDTO>>() {});
+            return pagina != null && pagina.getContent() != null ? pagina.getContent() : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("No se pudieron obtener las notificaciones de {}: {}", destinatario, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public Set<String> listarLeidas(String usuarioId) {
+        try {
+            Set<String> ids = restClient.get()
+                    .uri(baseUrl + "/notificaciones/lecturas?usuarioId={usuarioId}", usuarioId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Set<String>>() {});
+            if (ids == null) {
+                throw new IllegalStateException(
+                        "notificaciones-service devolvió una respuesta vacía al consultar lecturas");
+            }
+            return ids;
+        } catch (RestClientException e) {
+            log.warn("No se pudieron consultar las lecturas persistidas del usuario {}: {}",
+                    usuarioId, e.getMessage());
+            return Set.of();
+        }
+    }
+
+    public void marcarLeidas(String usuarioId, Set<String> notificacionIds) {
+        if (notificacionIds.isEmpty()) return;
+        Map<String, Object> solicitud = new LinkedHashMap<>();
+        solicitud.put("usuarioId", usuarioId);
+        solicitud.put("notificacionIds", notificacionIds);
+        restClient.post()
+                .uri(baseUrl + "/notificaciones/lecturas")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(solicitud)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public boolean enviarEmail(String destinatario, String asunto, String cuerpo) {
+        if (destinatario == null || destinatario.isBlank()) return false;
+        Map<String, String> solicitud = new LinkedHashMap<>();
+        solicitud.put("medioDeContacto", "email");
+        solicitud.put("direccionDeContacto", destinatario.trim().toLowerCase());
+        solicitud.put("asuntoMensaje", asunto);
+        solicitud.put("cuerpoMensaje", cuerpo);
+        try {
+            restClient.post()
+                    .uri(baseUrl + "/notificaciones")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(solicitud)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (Exception e) {
+            log.warn("No se pudo solicitar el email a {}: {}", destinatario, e.getMessage());
+            return false;
+        }
+    }
+}

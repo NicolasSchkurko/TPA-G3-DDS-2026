@@ -1,0 +1,42 @@
+$kind: http-request
+description: "resolverMedioPredeterminado() usa el primer medio de la lista si no se manda medioPredeterminado, asi que con un EMAIL alcanza para que GestorAsignaciones pueda notificar mas adelante. OJO: Direccion.piso es 'int' primitivo pero DireccionDTO.piso es 'Integer' -- si no se manda piso, el unboxing nulo tira NPE (500) en toDomain(). Por eso siempre se manda un valor, aunque conceptualmente deberia ser opcional (bug de backend, fuera de alcance de este archivo)."
+url: "{{baseUrl}}/api/personas"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "tipoPersona": "HUMANA",
+      "nombre": "{{$randomFirstName}}",
+      "apellido": "{{$randomLastName}}",
+      "edad": 28,
+      "numeroDeDocumento": {{$randomInt}},
+      "genero": "OTRO",
+      "direccion": {
+        "calleUno": "{{$randomStreetName}}",
+        "altura": 123,
+        "piso": 1,
+        "ciudad": "CABA",
+        "provincia": "Buenos Aires",
+        "pais": "Argentina"
+      },
+      "mediosDeContacto": [
+        { "tipo": "EMAIL", "valor": "{{$randomEmail}}" }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('crea el donante', function () { pm.response.to.have.status(201); });
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set('donanteId', body.id);
+          pm.collectionVariables.set('donanteNombre', body.nombre);
+          const contactos = body.mediosDeContacto || body.mediosContacto || [];
+          const email = contactos.find(function (medio) { return medio.tipo === 'EMAIL'; });
+          if (email) pm.collectionVariables.set('donanteEmail', email.valor);
+      }
+    language: text/javascript
+order: 2000

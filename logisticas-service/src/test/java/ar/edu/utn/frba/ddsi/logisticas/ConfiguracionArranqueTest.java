@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.logisticas;
 
-import ar.edu.utn.frba.ddsi.logisticas.Scheduler.PlanificadorDeRutasScheduler;
+import ar.edu.utn.frba.ddsi.logisticas.scheduler.PlanificadorDeRutasScheduler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -8,25 +8,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Dos cosas que no se ven hasta que ya rompio algo, y por eso conviene que fallen aqui.
- *
- * <p><b>La credencial de la base no puede estar como default.</b> Con
- * {@code ${DB_USERNAME:valentin}}, cualquier arranque sin las variables —un {@code java -jar} a
- * secas, un deploy que se olvido de definirlas— conectaba igual, en claro y sin avisar. Ahora
- * {@code application.properties} no tiene default: si falta la variable, el servicio no levanta.
- *
- * <p><b>El cron dice 2 de la mañana porque el horario va escrito.</b> Spring usa la zona de la
- * JVM cuando el cron no declara {@code zone}. La imagen final no define {@code TZ}, el compose no
- * le pasa ninguna, y el {@code DB_URL} fuerza {@code serverTimezone=UTC}: en Docker la
- * planificación corría a las 02:00 UTC, que son las 23:00 de Argentina, y en un host con otra
- * zona seria una hora distinta. Declararla la deja de depender de dónde corra.
- */
 @DisplayName("La configuracion no deja credenciales ni horarios surprises")
 class ConfiguracionArranqueTest {
 
@@ -39,8 +27,6 @@ class ConfiguracionArranqueTest {
         }
     }
 
-    // --- Punto 33: la credencial de la base ---
-
     @Test
     @DisplayName("Las credenciales de la base no tienen default: si faltan, no se arranca")
     void lasCredencialesNoTienenDefault() throws IOException {
@@ -52,14 +38,6 @@ class ConfiguracionArranqueTest {
                 .isEqualTo("${MONGODB_URI}");
     }
 
-    /**
-     * Ninguna property de credenciales puede traer un valor por defecto.
-     *
-     * <p>Estructural a proposito, y no buscando la clave que estaba escrita: un test que
-     * comprueba que "no aparece tal contraseña" tiene que escribirla para nombrarla, y entonces
-     * la deja en el repo, que es justo lo que se esta evitando. Ademas asi detecta el default que
-     * sea, y no solo el de un despliegue.
-     */
     @Test
     @DisplayName("Ninguna property de credenciales trae un valor por defecto")
     void ningunaCredencialTieneDefault() throws IOException {
@@ -73,8 +51,6 @@ class ConfiguracionArranqueTest {
                     .doesNotContain(":");
         }
     }
-
-    // --- Punto 39: la zona del cron ---
 
     @Test
     @DisplayName("El cron de planificacion declara la zona, no la hereda de la JVM")
@@ -93,7 +69,18 @@ class ConfiguracionArranqueTest {
         assertThat(programado.cron()).isEqualTo("0 0 2 * * ?");
     }
 
-    // --- Punto 25: la DLQ tiene que ser alcanzable ---
+    @Test
+    @DisplayName("Punto 72: el contenedor acota el heap y la memoria")
+    void elContenedorAcotaLaMemoria() throws IOException {
+        String dockerfile = Files.readString(Path.of("Dockerfile"));
+        assertThat(dockerfile)
+                .contains("-XX:MaxRAMPercentage=70.0")
+                .contains("-XX:+ExitOnOutOfMemoryError");
+
+        String compose = Files.readString(Path.of("..", "docker-compose.yml"));
+        assertThat(compose)
+                .containsPattern("(?s)logisticas-service:.*?mem_limit:\\s*512m");
+    }
 
     @Test
     @DisplayName("Un mensaje que el listener descarta va a la DLQ, no vuelve a la cola")

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Setter
 @Component
@@ -24,11 +25,6 @@ public class PlanificadorDeRutas {
 
   private ProveedorRutasExterno proveedorExterno;
 
-  /**
-   * Manda las donaciones pendientes al proveedor externo en lotes de
-   * {@value #TAMANO_LOTE_MAXIMO}, particionando también los camiones disponibles
-   * para que ningún camión viaje en más de un lote en el mismo día.
-   */
   public void iniciarPlanificacion(List<ItemEntrega> itemsPendientes, List<Camion> camionesDisponibles) {
     if (itemsPendientes == null || itemsPendientes.isEmpty() || camionesDisponibles == null || camionesDisponibles.isEmpty()) {
       return;
@@ -55,11 +51,6 @@ public class PlanificadorDeRutas {
     }
   }
 
-  /**
-   * Reconstruye las rutas que devolvio el proveedor externo.
-   *
-   * @param itemsPorPatenteCamion patente del camion -> ids de las donaciones que debe llevar
-   */
   public List<Ruta> procesarCallbackRutas(
       Map<String, List<UUID>> itemsPorPatenteCamion,
       List<Camion> repositorioCamiones,
@@ -67,23 +58,29 @@ public class PlanificadorDeRutas {
 
     List<Ruta> rutasGeneradas = new ArrayList<>();
 
+    Map<String, Camion> camionesPorPatente = repositorioCamiones.stream()
+        .collect(Collectors.toMap(Camion::getPatente, c -> c));
+
+    Map<UUID, ItemEntrega> itemsPorId = repositorioItems.stream()
+        .collect(Collectors.toMap(ItemEntrega::getIdDonacion, i -> i));
+
     for (Map.Entry<String, List<UUID>> asignacion : itemsPorPatenteCamion.entrySet()) {
       String patente = asignacion.getKey();
       List<UUID> idsItemsAsignados = asignacion.getValue();
 
-      Camion camion = repositorioCamiones.stream()
-                                         .filter(c -> c.getPatente().equals(patente))
-                                         .findFirst()
-                                         .orElseThrow(() -> new IllegalArgumentException("Camión no encontrado con patente: " + patente));
+      Camion camion = camionesPorPatente.get(patente);
+      if (camion == null) {
+        throw new IllegalArgumentException("Camión no encontrado con patente: " + patente);
+      }
 
       Ruta nuevaRuta = new Ruta(camion);
 
       // agregarEntrega agrupa solo, creando una parada por entidad destino.
       for (UUID idItem : idsItemsAsignados) {
-        ItemEntrega item = repositorioItems.stream()
-                                           .filter(i -> i.getIdDonacion().equals(idItem))
-                                           .findFirst()
-                                           .orElseThrow(() -> new IllegalArgumentException("Item pendiente no encontrado: " + idItem));
+        ItemEntrega item = itemsPorId.get(idItem);
+        if (item == null) {
+          throw new IllegalArgumentException("Item pendiente no encontrado: " + idItem);
+        }
 
         nuevaRuta.agregarEntrega(item);
       }
@@ -95,6 +92,11 @@ public class PlanificadorDeRutas {
                 "la capacidad máxima (peso o volumen) del camión patente: " + patente
         );
       }
+
+      // La ocupación real del camión sale de la ruta generada. El simulador la calcula
+      // sobre copias descartables, así que sin esto la base queda siempre en 0.
+      camion.setPesoOcupado(nuevaRuta.pesoTotalCargadoKg());
+      camion.setVolumenOcupado(nuevaRuta.volumenTotalCargadoM3());
 
       nuevaRuta.setEstado(EstadoRuta.PROGRAMADA);
       rutasGeneradas.add(nuevaRuta);

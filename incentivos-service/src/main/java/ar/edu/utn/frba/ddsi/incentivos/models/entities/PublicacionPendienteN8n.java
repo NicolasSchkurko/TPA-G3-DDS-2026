@@ -34,7 +34,8 @@ public class PublicacionPendienteN8n {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String mensaje;
 
-    @Column(nullable = false, length = 100)
+    // Nullable: las filas creadas por la outbox anterior no tenian red social.
+    @Column(length = 100)
     private String redSocial;
 
     @Column(nullable = false, length = 500)
@@ -42,6 +43,9 @@ public class PublicacionPendienteN8n {
 
     @Column(nullable = false)
     private UUID idUsuario;
+
+    // Nullable para que las filas pendientes anteriores a la integracion sigan migrando.
+    private UUID idInsignia;
 
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
@@ -57,18 +61,23 @@ public class PublicacionPendienteN8n {
     @Column(length = 2000)
     private String ultimoError;
 
+    @Column(nullable = false)
+    private boolean descartada;
+
     public PublicacionPendienteN8n(PerfilPublicacionDTO publicacion, LocalDateTime ahora) {
         this.prompt = publicacion.getPrompt();
         this.mensaje = publicacion.getMensaje();
         this.redSocial = publicacion.getRedSocial();
         this.nombreUsuario = publicacion.getNomUsuario();
         this.idUsuario = publicacion.getIdUsuario();
+        this.idInsignia = publicacion.getIdInsignia();
         this.fechaCreacion = ahora;
         this.proximoIntento = ahora;
     }
 
     public PerfilPublicacionDTO comoDto() {
-        return new PerfilPublicacionDTO(prompt, mensaje, redSocial, nombreUsuario, idUsuario);
+        return new PerfilPublicacionDTO(prompt, mensaje, redSocial, nombreUsuario, idUsuario,
+                idInsignia);
     }
 
     public void reclamarHasta(LocalDateTime vencimiento) {
@@ -78,6 +87,13 @@ public class PublicacionPendienteN8n {
 
     public void reintentarEn(LocalDateTime proximoIntento, String error) {
         this.proximoIntento = proximoIntento;
+        this.leaseHasta = null;
+        this.ultimoError = error == null ? null : error.substring(0, Math.min(error.length(), 2000));
+    }
+
+    /** Marca la fila como descartada: se deja de reintentar. */
+    public void descartar(String error) {
+        this.descartada = true;
         this.leaseHasta = null;
         this.ultimoError = error == null ? null : error.substring(0, Math.min(error.length(), 2000));
     }

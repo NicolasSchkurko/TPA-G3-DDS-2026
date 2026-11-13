@@ -10,376 +10,14 @@ lista y pasa a la sección [Corregidos](#corregidos) del final.
 El orden no es el de la severidad declarada en cada punto sino el del daño real: cuánto se
 rompe cuando pasa, y qué tan fácil es que pase.
 
-| # | Punto | Por qué está acá |
+| # | Punto | Severidad | Por qué está acá |
 |---|---|---|
-| 20 | 20 | El reintento manual que prometen los comentarios no existe: ni endpoint, ni scheduler, ni forma de buscar por estado |
-| 3 | 3 | Solo hay dos tests, y ninguno cubre el camino de Rabbit |
-| 21 | 21 | La idempotencia es check-then-act sin lock: dos entregas concurrentes mandan dos mails |
-| 22 | 22 | Binding de `notificaciones.evento.logistica` que ningún servicio publica |
-| 24 | 24 | La organización de paquetes no sigue la de `incentivos-service` (repos, dto, clientes) |
-| 25 | 25 | `GestorNotificaciones` mezcla responsabilidades: no está partido por comportamiento |
-| 26 | 26 | No hay endpoint de colección ni paginación (`GET /notificaciones` paginado) |
-| 27 | 27 | El canal SMS del enunciado no está contemplado: solo email, teléfono y WhatsApp |
-| 28 | 28 | El mapa de la ruta viaja como URL en el texto, no como adjunto |
-| 29 | 29 | El camino de solicitud no es idempotente: una reentrega crea notificación y mail duplicados |
-| 30 | 30 | El consumidor no valida `asunto`/`cuerpo`: una solicitud sin ellos se pierde sin dejar rastro |
-| 31 | 31 | El aviso interno se publica con la routing key `notificaciones.incentivo` |
----
 
-## 3. Solo hay dos tests, y ninguno cubre el camino de Rabbit
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `src/test/`
-
-### Qué pasa
-
-El módulo tiene dos tests:
-
-- `NotificacionesServiceApplicationTests`: carga el contexto de Spring.
-- `N8nIntegrationTest`: el del punto 1.
-
-No hay ningún test de `GestorNotificaciones` (el orden guardar → publicar), de
-`Notificacion` (el constructor de tres parámetros que se agregó) ni de `ConsumidorNotificaciones`.
-Es decir, el código que cambió en el último merge no tiene nada que lo cubra.
-
-### Propuesta
-
-- `GestorNotificacionesTest` con `ProductorNotificaciones` mockeado, verificando que la
-  notificación se guarda antes de publicar. El orden importa y es el motivo del comentario en
-  el código, así que debería estar protegido por un test.
-- `NotificacionTest` sobre el constructor y los tres `marcar*`, en especial que `marcarEnviada`
-  setea `fechaEnvio` y que `fechaEnvio` es nullable en una notificación nueva.
+No quedan pendientes abiertos.
 
 ---
 
-## 20. El reintento manual que prometen los comentarios no existe
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:**
-`.../controllers/NotificadorController.java`,
-`.../models/repositories/RepositorioNotificaciones.java:19`
-
-### Qué pasa
-
-El Javadoc del gestor (líneas 69-70) y el del consumidor (líneas 45-46) dicen que una notificación
-fallida *"se puede reintentar desde la base"*, y el punto 2 de este backlog repite que *"el
-reintento manual es posible hoy"*. No lo es: el único endpoint del servicio es
-`GET /notificaciones/{id}`. No hay POST de reintento, no hay scheduler, y no hay ningún método para
-buscar las `PENDIENTE` y `FALLIDA` (el `findByEstado` que existía sin uso se borró con el punto 23).
-
-O sea que hoy toda fila que no llega a `ENVIADA` es terminal: queda el registro como única
-evidencia, sin ningún camino de recuperación, ni automatizado ni manual por API.
-
-### Propuesta
-
-- `POST /notificaciones/{id}/reintento` que republica el aviso, pasando por el mismo camino
-  post-commit del punto 18.
-- Un `@Scheduled` que reintente las `PENDIENTE` con fecha de creación antigua, con tope de
-  intentos: es el automatismo que pide el punto 2.
-
----
-
-## 21. La idempotencia es check-then-act sin lock
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:** `.../messaging/ConsumidorNotificaciones.java:111-118`
-
-### Qué pasa
-
-`procesarAvisoDeNotificacionExistente` lee el estado, decide y envía, todo sin transacción ni lock:
-dos entregas concurrentes del mismo aviso (reentrega del broker con más de un consumidor, o un
-doble publicado) pasan ambas el control de `ENVIADA` antes de que ninguna escriba el resultado, y
-la notificación sale dos veces.
-
-Hoy lo evita la configuración, no el diseño: el container levanta un consumidor por cola y la
-ventana entre el `findById` y el `save` final es chica. Con `concurrency > 1` o dos instancias del
-servicio apuntando a la misma cola, deja de ser gratis.
-
-### Propuesta
-
-- Update condicional de estado (`UPDATE notificaciones SET estado='ENVIADA' WHERE id=? AND
-  estado<>'ENVIADA'`) y solo enviar si afectó una fila, o bloqueo pesimista al leerla.
-- Es la misma alternativa que ya propone el punto 6 para reemplazar el `save` de la entidad
-  entera: un solo cambio cerraría los dos.
-
----
-
-## 22. La cola escucha `notificaciones.evento.logistica` y ningún servicio publica esa clave
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:** `.../config/rabbit/RabbitConfig.java:70-76`
-
-### Qué pasa
-
-`bindingNotificacionesEventosLogistica` ata la cola al routing key `notificaciones.evento.logistica`
-y no hay ningún productor que lo use. `logisticas-service` publica en `logistica.eventos.exchange`
-con `logistica.evento` (`ProductorEventosLogistica.java:44-47`), y este servicio recibe esos hechos
-recién cuando `donaciones-service` los reenvía por `notificaciones.donacion`.
-
-No rompe nada: es un binding sin tráfico. El riesgo es de lectura, no de runtime: invita a pensar
-que logística habla directo con este servicio, que es exactamente lo que el enunciado prohíbe.
-
-### Propuesta
-
-- Sacar el binding y la constante `RK_EVENTO_LOGISTICA`, o dejar en ambos un comentario que diga
-  que la ruta real es logística → donaciones → notificaciones.
-
----
-
-## 24. La organización de paquetes no sigue la de `incentivos-service`
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `.../models/repositories/`, `.../dto/`, `.../clientes/`
-
-### Qué pasa
-
-`incentivos-service` ordena por responsabilidad y por área; acá quedó plano. Diferencias concretas:
-
-- Los Spring Data van en `models/repositories/SpringRepositories/`; acá están sueltos en
-  `models/repositories/`.
-- Los DTO se agrupan por área (`dto/Perfil/`, `dto/Admin/`, `dto/n8n/`); acá hay un `dto/` plano con
-  todo mezclado.
-- El paquete de clientes HTTP se llama `clients/`; acá se llama `clientes/`.
-- Tiene `controllers/request/` para los filtros de query y `models/events/` para los eventos de
-  dominio; acá no hay equivalentes (todavía no hacen falta, pero conviene la misma forma).
-
-No rompe nada: es de lectura y de consistencia entre módulos.
-
-### Propuesta
-
-Renombrar y mover sin cambiar comportamiento:
-
-- `models/repositories/*.java` → `models/repositories/SpringRepositories/`.
-- `dto/` → subcarpetas por área (por ejemplo `dto/Notificacion/` para `NotificacionDTO`,
-  `SolicitudNotificacionDTO` y `NotificacionPayload`; `dto/Error/` para `ErrorResponseDTO`).
-- `clientes/` → `clients/`.
-- Cuando aparezcan filtros de query, `controllers/request/`.
-
----
-
-## 25. `GestorNotificaciones` mezcla responsabilidades: no está partido por comportamiento
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:** `.../models/gestores/GestorNotificaciones.java`
-
-### Qué pasa
-
-`incentivos-service` nombra los gestores por lo que hacen (`ValidadorAdmin`, `SincronizacionPerfiles`,
-`SecuenciaCategoria`), no por la entidad que tocan. Acá hay un único `GestorNotificaciones` que hace
-cuatro cosas distintas:
-
-- guardar y publicar la solicitud (`enviarSolicitudDeNotificacion`, con el `afterCommit`),
-- construir y persistir (`crearNotificacion`),
-- elegir el medio y despachar (`enviarNotificacion`),
-- consultar (`obtenerNotificacionPorId`).
-
-### Propuesta
-
-Partirlo por comportamiento, con nombres que digan qué hacen. Una división posible:
-`RegistroNotificaciones` (guardar + publicar), `DespachoNotificaciones` (elegir el medio y enviar) y
-`ConsultaNotificaciones` (buscar por id / listar). Ajustar los llamadores
-(`NotificadorService`, `ConsumidorNotificaciones`) y los tests.
-
----
-
-## 26. No hay endpoint de colección ni paginación
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivos:** `.../controllers/NotificadorController.java`,
-`.../models/repositories/RepositorioNotificaciones.java`
-
-### Qué pasa
-
-El servicio solo expone `POST /notificaciones` y `GET /notificaciones/{id}`. No hay forma de listar
-las notificaciones ni de filtrarlas por estado, aunque el punto 20 pide poder encontrar las
-`PENDIENTE`/`FALLIDA` para reintentar.
-
-`incentivos-service` expone sus colecciones paginadas: `GET` con
-`@PageableDefault(page = 0, size = 10, sort = ...) Pageable` y `ResponseEntity<Page<DTO>>`
-(`RankingController`, `MisionController`, `CategoriaController`, las insignias de `PerfilController`).
-
-### Propuesta
-
-Agregar `GET /notificaciones` siguiendo ese patrón:
-
-- Controller: `ResponseEntity<Page<NotificacionDTO>>` con
-  `@RequestParam(required = false) EstadoNotificacion estado` y
-  `@PageableDefault(page = 0, size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC)`.
-- Service: `Page<NotificacionDTO> listar(EstadoNotificacion estado, Pageable pageable)`.
-- Repo: `Page<Notificacion> findByEstado(EstadoNotificacion estado, Pageable pageable)` y
-  `Page<Notificacion> findAll(Pageable pageable)` (el `findByEstado` que había, sin paginar, se borró
-  por muerto con el punto 23).
-- Tests de controller con `MockMvc`: 200, tamaño de página y filtro por estado.
-
----
-
-## 27. El canal SMS del enunciado no está contemplado: solo email, teléfono y WhatsApp
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../models/entities/MedioDeEnvio/MedioDeEnvioFactory.java`,
-`.../models/entities/MedioDeEnvio/Telefono.java`
-
-### Qué pasa
-
-El enunciado pide comunicación multicanal por **correo electrónico, SMS y WhatsApp**. El servicio
-tiene tres medios —`Mail` (`email`), `Telefono` (`telefono`) y `Whatsapp` (`whatsapp`)—, pero
-ninguno se llama `sms` y `MedioDeEnvioFactory` no reconoce ese valor.
-
-`mapearAMedioEnvio` busca el tipo tal cual (`sms`) en el mapa de beans, después prueba los alias
-(`mail`/`gmail`/`tel`/`celular`/`wa`/…) y, si no lo encuentra, lanza
-`IllegalArgumentException("Tipo de medio de contacto desconocido: …")`. Eso deja la notificación en
-`FALLIDA`: un productor que mande `medioDeContacto: "SMS"` no envía nada.
-
-En todo el repo no hay una sola referencia a `SMS`: los servicios de dominio emiten `EMAIL`/`MAIL`,
-`TELEFONO` y `WHATSAPP`. O sea que el "SMS" del enunciado hoy solo se cumple si se lo trata como el
-medio `telefono`, y por convención, no por contrato.
-
-### Propuesta
-
-- Agregar el alias `sms` en `MedioDeEnvioFactory` (apuntando a `telefono`, o a un `MedioDeEnvio`
-  `Sms` propio si el envío por n8n necesita un canal distinto del telefónico).
-- Que el servicio de dominio que corresponda emita `SMS`, o dejar asentado que `TELEFONO` **es** el
-  canal SMS del enunciado.
-- Test que publique con `medioDeContacto: "SMS"` y verifique que se despacha por el medio esperado.
-
----
-
-## 28. El mapa de la ruta viaja como URL en el texto, no como adjunto
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:** `.../dto/NotificacionPayload.java`
-
-### Qué pasa
-
-El escenario "inicio de ruta adjuntando un mapa interactivo" **se despacha**: `logisticas-service`
-arma `Ruta.urlSeguimiento` en `publicarInicioRuta`, lo manda en el evento `INICIO_RUTA`,
-`donaciones-service` lo reenvía y `NotificacionViaje` arma el cuerpo con
-`"Sigue la entrega: <url>"`. El link llega, pero:
-
-- Viaja como texto dentro de `mensaje.cuerpo`. `NotificacionPayload` solo tiene `canal`,
-  `direccionContacto` y `mensaje` (asunto/cuerpo): no hay campo de adjunto ni de link estructurado,
-  así que el "mapa adjunto" es una URL pegada en el texto.
-- La URL es un template placeholder (`https://donaciones-app.example.com/seguimiento/<idRuta>`), no
-  un mapa real; eso vive en `logisticas-service`.
-
-No es un incumplimiento estricto (el link se envía), pero si se espera un adjunto o un campo
-propio, hoy no hay dónde ponerlo.
-
-### Propuesta
-
-- Si alcanza con el link, dejarlo escrito en el contrato y no cambiar nada.
-- Si se quiere un adjunto real, agregar un campo opcional (por ejemplo `urlMapa` o `adjuntos`) a
-  `NotificacionPayload` y que el `MedioDeEnvio`/n8n lo usen.
-
----
-
-## 29. El camino de solicitud no es idempotente: una reentrega crea notificación y mail duplicados
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../messaging/ConsumidorNotificaciones.java:127-150`,
-`.../models/gestores/GestorNotificaciones.java:66-85`
-
-### Qué pasa
-
-Para una **solicitud** (mensaje sin `id`, el que publican `donaciones-service` e
-`incentivos-service`), `procesarSolicitud` llama a `gestor.enviarSolicitudDeNotificacion`, que crea
-una `Notificacion` nueva con un `UUID` al azar. No hay ninguna clave de idempotencia en
-`SolicitudNotificacionDTO` ni en el flujo: la misma solicitud procesada dos veces genera dos filas
-y dos mails.
-
-El camino del **aviso** (mensaje con `id`) sí chequea `ENVIADA` antes de reenviar; el de solicitud
-no tiene nada. Es la contracara del punto 21: ahí el problema es la concurrencia sobre el mismo id;
-acá no hay id que valga.
-
-### Cómo se dispara
-
-RabbitMQ es at-least-once. Cualquier reentrega del mensaje de dominio —el proceso muere después de
-guardar y antes del ack, o el broker reinicia la conexión— vuelve a ejecutar `recibir` con el mismo
-JSON y produce una segunda notificación y un segundo envío. El enunciado pide la integración por
-cola justamente por alta carga, que es cuando más reentregas hay.
-
-### Propuesta
-
-- Definir una clave de idempotencia por solicitud: que el servicio de dominio mande un
-  `idSolicitud` (o `clave`) estable por evento y guardarla con índice único, o deduplicar por
-  `hash(medio + direccion + asunto + cuerpo)` en una ventana.
-- Tabla de mensajes procesados con TTL, o `INSERT ... ON DUPLICATE KEY` sobre esa clave, y publicar
-  el aviso solo si se insertó.
-
----
-
-## 30. El consumidor no valida `asunto`/`cuerpo`: una solicitud sin ellos se pierde sin dejar rastro
-
-**Estado:** abierto
-**Severidad:** media
-**Archivos:** `.../messaging/ConsumidorNotificaciones.java:127-150`,
-`.../dto/SolicitudNotificacionDTO.java`
-
-### Qué pasa
-
-`procesarSolicitud` chequea a mano que `medioDeContacto` y `direccionDeContacto` no estén en blanco,
-pero **no** mira `asuntoMensaje` ni `cuerpoMensaje`. El DTO tiene `@NotBlank` en los cuatro campos
-(punto 8/14), pero esas anotaciones las dispara `@Valid` en el controller HTTP: el consumidor
-deserializa con Jackson, sin Bean Validation, así que no se aplican.
-
-Con asunto o cuerpo `null`, `enviarSolicitudDeNotificacion` llega al `INSERT` de `mensajes` (cuyas
-columnas son `nullable = false`), tira `DataIntegrityViolationException`, la atrapa el
-`catch (RuntimeException)` de `recibir` —que loguea y **no reencola**— y el mensaje se da por
-consumido: la notificación nunca se crea y no queda ni una fila en `FALLIDA`.
-
-Es la misma clase de defecto que el punto 8/14 pero en el otro borde: el HTTP quedó validado, el de
-la cola no. Hoy no lo dispara ningún productor (los dos mandan asunto y cuerpo), pero es una
-pérdida silenciosa esperando al primer campo que falte.
-
-### Propuesta
-
-- Validar los cuatro campos con el mismo criterio que el controller (llamar a un `Validator` de
-  Bean Validation sobre el DTO deserializado, o chequear asunto/cuerpo a mano como ya se hace con
-  los otros dos).
-
----
-
-## 31. El aviso interno se publica con la routing key `notificaciones.incentivo`
-
-**Estado:** abierto
-**Severidad:** baja
-**Archivo:** `.../messaging/ProductorNotificaciones.java:55`
-
-### Qué pasa
-
-`ProductorNotificaciones.enviar(Notificacion)` —el aviso que este mismo servicio publica para
-despachar una notificación recién guardada— usa `RabbitConfig.RK_INCENTIVO`
-(`"notificaciones.incentivo"`), que es la clave de los avisos de incentivos, no una propia.
-
-Hoy no rompe porque la única cola es la de este servicio y está atada a las tres routing keys. Pero
-la clave es semánticamente falsa: si `incentivos-service` (o cualquier otro) declara una cola atada
-a `notificaciones.incentivo` para sus propios fines, empieza a recibir los avisos internos de
-notificaciones, que no son `PerfilNotificacionDTO` y no puede procesar.
-
-### Cómo se dispara
-
-Se declara un consumidor sobre `notificaciones.incentivo` → cada notificación que este servicio se
-publica a sí mismo llega ahí y falla al deserializar.
-
-### Propuesta
-
-- Publicar el aviso interno con una routing key propia (por ejemplo `notificaciones.aviso`),
-  declarada en `RabbitConfig` y atada a la cola de notificaciones. Actualizar la constante y el
-  binding.
-
----
-
-# Corregidos
+## Corregidos
 
 Un bullet por fix. El detalle largo (mecanismo, verificación y evidencia) quedó en el historial de git.
 
@@ -402,3 +40,30 @@ Un bullet por fix. El detalle largo (mecanismo, verificación y evidencia) qued�
 - **18. Se publicaba antes del commit** — la publicación pasó a `afterCommit` con `registerSynchronization`.
 - **19. `enviarNotificacion` ignoraba `direccionContacto`** — la dirección del mensaje gana y se setea en la entidad.
 - **23. Código muerto y comentarios obsoletos** — se borraron clases y métodos sin uso, y todos los javadocs largos.
+- **30. El consumidor no valida `asunto`/`cuerpo`** - se validan ambos campos en `procesarSolicitud`, rechazando solicitudes incompletas a DLQ con `AmqpRejectAndDontRequeueException`.
+- **32. El consumidor traga excepciones** - se elimino la captura silenciosa en `recibir()`; los fallos irrecuperables se derivan a DLQ con `AmqpRejectAndDontRequeueException` y los transitorios se relanzan para reintento en RabbitMQ.
+- **31. Aviso interno con routing key de incentivos** — se definió la routing key propia `notificaciones.aviso` en `RabbitConfig` con su binding a `colaNotificaciones`, y `ProductorNotificaciones` publica los avisos bajo esa clave.
+- **33. Discriminación errónea por campo `id` en JSON** — `ConsumidorNotificaciones` ahora discrimina avisos de solicitudes mediante la routing key AMQP (`notificaciones.aviso`) y no por el payload; `SolicitudNotificacionDTO` tolera campos desconocidos.
+- **29. Idempotencia en camino de solicitudes** — se incorporó `idSolicitud` en el contrato compartido con los emisores (donaciones e incentivos), persistido con constraint UNIQUE en `Notificacion`, deduplicando reentregas en `ConsumidorNotificaciones` y `GestorNotificaciones`.
+- **38. Fallos transitorios de n8n se perdían por ACK sin reintento** — `GestorNotificaciones.enviarNotificacion` envolvía toda `RuntimeException` en `IllegalArgumentException` y `ConsumidorNotificaciones.enviar` la tragaba marcando `FALLIDA`, de modo que el listener terminaba OK y RabbitMQ hacía ACK. Se dejó de envolver y el consumidor ahora distingue: 4xx (`HttpClientErrorException`) y medio inválido (`IllegalArgumentException`) -> `AmqpRejectAndDontRequeueException` directo a la DLQ; red/timeout/5xx (`RestClientException`) -> se relanza para el retry de Spring AMQP. Se agregó un `RabbitRetryTemplateCustomizer` para que `AmqpRejectAndDontRequeueException` no se reintente con el policy por defecto. Tests de regresión en `ConsumidorNotificacionesTest`, `GestorNotificacionesTest` y `RabbitConfigTest`. Archivos: `GestorNotificaciones.java`, `ConsumidorNotificaciones.java`, `RabbitConfig.java`, `ConsumidorNotificacionesTest.java`, `GestorNotificacionesTest.java`, `RabbitConfigTest.java`. Corregido 2026-11-09, sin commit.
+- **34. `POST /api/notificaciones` aceptaba medios inválidos con 202** — `SolicitudNotificacionDTO` solo validaba `@NotBlank`, así que un `medioDeContacto` desconocido se persistía como `PENDIENTE` y moria en el consumidor como `FALLIDA`. `NotificadorController` ahora valida en el borde (`MedioDeEnvioFactory.mapearAMedioEnvio`) antes de delegar: un medio desconocido lanza `IllegalArgumentException` y `GlobalExceptionHandler` responde 400 con el detalle. Los alias (`MAIL`, `WHATSAPP`, etc.) siguen aceptándose. Tests en `NotificadorControllerTest` (400 para `telegram` sin llegar al service, 202 para `MAIL`). Archivos: `NotificadorController.java`, `NotificadorControllerTest.java`. Corregido 2026-11-09, sin commit.
+- **35. `enviarNotificacion` enmascaraba fallas de red como `IllegalArgumentException`** — el `catch (RuntimeException)` del gestor envolvía timeouts/errores de n8n y los marcaba como error de argumento, impidiendo distinguir datos inválidos de infraestructura. Resuelto junto con el 38: se eliminó el wrapping y el gestor propaga el tipo original (`RestClientException` para red/timeout, `IllegalArgumentException` solo para medio inválido). Test de regresión: `GestorNotificacionesTest#propagaLaFallaDeRedSinEnvolverlaEnIllegalArgumentException`. Archivos: `GestorNotificaciones.java`, `GestorNotificacionesTest.java`. Corregido 2026-11-09, sin commit.
+- **39. `POST /api/notificaciones` no devolvía el id ni `Location`** — respondía 202 con un string plano, así que el emisor no podía consultar el estado de la entrega. `GestorNotificaciones` y `NotificadorService` ahora devuelven el `UUID` de la notificación (en idempotencia, el id existente) y el controller responde `202` con `{ "id": "..." }` (`SolicitudAceptadaDTO`) y cabecera `Location: /api/notificaciones/{id}`. Tests en `NotificadorControllerTest` (id + Location en 202) y en `GestorNotificacionesIntegracionTest` (la reentrega devuelve el mismo id). Archivos: `NotificadorController.java`, `NotificadorService.java`, `GestorNotificaciones.java`, `SolicitudAceptadaDTO.java`, `NotificadorControllerTest.java`, `ConsumidorNotificacionesTest.java`, `GestorNotificacionesIntegracionTest.java`. Corregido 2026-11-09, sin commit.
+- **37. `NotificacionMapper` reventaba con NPE ante `mensaje` o `fechaCreacion` nulos** — el mapper asumía no nulos y una fila anómala (o entidad construida sin argumentos) producía 500 en `GET /api/notificaciones/{id}`. Ahora guarda `mensaje` con un `if` y usa `Objects.toString(campo, null)` para `estado` y `fechaCreacion`, devolviendo `null` en el DTO cuando el dato falta. Tests en `NotificacionMapperTest` (sin mensaje; sin estado/fechaCreacion). Archivos: `NotificacionMapper.java`, `NotificacionMapperTest.java`. Corregido 2026-11-09, sin commit.
+- **20. El reintento manual no existía** — se agregó `POST /api/notificaciones/{id}/reintento` (202 con el id, 404 si no existe, 409 si ya está `ENVIADA`) que republica el aviso por el mismo camino post-commit. Para el automatismo se agregó `ReintentoNotificacionesScheduler`: cada 5 minutos republica las `PENDIENTE` con más de 10 minutos y hasta 3 intentos; el reclamo es un compare-and-set sobre la nueva columna `intentos` (`reclamarParaReintento`), así una sola réplica publica, y `compensarReintentoFallido` devuelve el intento si la publicación falla. Tests: `NotificadorControllerTest` (202/404/409), `NotificadorServiceTest`, `ReintentoNotificacionesSchedulerTest` y `RepositorioNotificacionesReintentoTest` (H2). Archivos: `NotificadorController.java`, `NotificadorService.java`, `GestorNotificaciones.java`, `ReintentoNotificacionesScheduler.java`, `RepositorioNotificaciones.java`, `Notificacion.java`, `NotificacionesServiceApplication.java`, `application.properties`, `pom.xml`, `NotificadorControllerTest.java`, `NotificadorServiceTest.java`, `ReintentoNotificacionesSchedulerTest.java`, `RepositorioNotificacionesReintentoTest.java`. Corregido 2026-11-09, sin commit.
+- **3. Ya estaba cubierto** — al revisar el pendiente, `ConsumidorNotificacionesTest` ya prueba la distinción aviso/solicitud, la reentrega idempotente, los errores de BD y los mensajes malformados; `NotificacionTest` cubre el alta en `PENDIENTE`, `marcarEnviada()` y `marcarFallida()`. Suite del módulo: 72 tests, 0 fallas. No hizo falta agregar código. Corregido 2026-11-09, sin commit.
+- **27. No era un pendiente: `telefono` es el canal SMS** — el servicio ya tiene los tres medios del enunciado (`email`, `telefono` y `whatsapp`); el "SMS" que pide el enunciado es el canal que acá se implementa como `telefono`. Es un problema de nombres, no de cobertura. Se elimina del backlog. Corregido 2026-11-09, sin commit.
+- **21. La idempotencia es check-then-act sin lock** — el aviso se reclama con `findByIdParaEnvio` (`@Lock(PESSIMISTIC_WRITE)`) y pasa a `ENVIANDO` con `claimId` en la transacción corta de `GestorNotificaciones.reclamarParaEnvio` (ver #44); dos entregas concurrentes se serializan y la segunda no vuelve a llamar a n8n. Tests: `RepositorioNotificacionesBloqueoTest`, `ConsumidorNotificacionesTest#avisoSeReclamaAntesDeEnviar` y `#elListenerNoEsTransaccional`. Archivos: `ConsumidorNotificaciones.java`, `RepositorioNotificaciones.java`, `ConsumidorNotificacionesTest.java`, `GestorNotificacionesIntegracionTest.java`, `RepositorioNotificacionesBloqueoTest.java`. Corregido 2026-11-09, sin commit.
+- **22. La cola escuchaba `notificaciones.evento.logistica`** — se eliminaron el binding `bindingNotificacionesEventosLogistica` y la constante `RK_EVENTO_LOGISTICA`; la ruta real es logística → donaciones → notificaciones. Test de regresión: `RabbitConfigTest#losBindingsDeLaColaNoIncluyenLaRutaDirectaDeLogistica` enumera los bindings de la cola y exige exactamente aviso, incentivo y donación (antes fallaba con la clave de logística). En un broker existente el binding viejo no se borra solo: `RabbitAdmin` declara pero no elimina, así que si la cola ya estaba creada hay que quitarlo a mano. Archivos: `RabbitConfig.java`, `RabbitConfigTest.java`. Corregido 2026-11-09, sin commit.
+- **36. `NotificacionDTO` no exponía el `id`** — se agregó el campo `id` al DTO y `NotificacionMapper` lo completa con `Objects.toString(notificacion.getId(), null)`; el `GET /api/notificaciones/{id}` y la futura colección paginada ya pueden identificar cada registro. Test: `NotificacionMapperTest#mapeaTodosLosCamposIncluidoElTipoDeMedioDeContacto` afirma el id mapeado. Archivos: `NotificacionDTO.java`, `NotificacionMapper.java`, `NotificacionMapperTest.java`. Corregido 2026-11-09, sin commit.
+- **40. `Notificacion` forzaba `merge` con SELECT previo** — implementa `Persistable<UUID>` con un flag `isNew` `@Transient` y callbacks `@PostLoad`/`@PostPersist`; un alta nueva va por `persist` y no hace SELECT antes del INSERT. Test: `NotificacionPersistenciaTest` con un `StatementInspector` que captura el SQL; con `isNew=true` solo hay INSERTs, y al forzar `isNew=false` aparecen los dos SELECT previos. Archivos: `Notificacion.java`, `NotificacionPersistenciaTest.java`, `SqlInspector.java`. Corregido 2026-11-09, sin commit.
+- **41. El scheduler cargaba todas las `PENDIENTE` con su `Mensaje`** — `findParaReintentar` ahora devuelve la proyección `NotificacionReintentable` (id, intentos, medio y dirección) con `Pageable`; el scheduler pide lotes de 100 y republica sin cargar la entidad ni el `Mensaje`. Se agregó el índice `(estado, fecha_creacion, intentos)` y `intentos` nace en 0 (la columna sigue nullable por las filas viejas; las queries usan `coalesce`). No se pasó `mensaje` a LAZY: la proyección ya evita que el scheduler lo cargue y el envío/GET sí lo necesitan. Tests: `RepositorioNotificacionesReintentoTest` (paginación, proyección completa, `intentos` nulo y SQL sin `mensajes` con `SqlInspector`) y `ReintentoNotificacionesSchedulerTest` (lote de 100). El índice lo crea `ddl-auto=update` en dev; en producción conviene una migración versionada. Archivos: `RepositorioNotificaciones.java`, `NotificacionReintentable.java`, `ReintentoNotificacionesScheduler.java`, `ProductorNotificaciones.java`, `Notificacion.java`, `RepositorioNotificacionesReintentoTest.java`, `ReintentoNotificacionesSchedulerTest.java`, `ConsumidorNotificacionesTest.java`, `GestorNotificacionesIntegracionTest.java`. Corregido 2026-11-09, sin commit.
+- **42. Rabbit con `prefetch=250` y un solo consumidor** — se configuró `prefetch=10`, `concurrency=2` y `max-concurrency=4` (parametrizables por `RABBIT_*`), acorde al timeout de n8n. Test: `ConfiguracionArranqueTest#rabbitTienePrefetchYConcurrenciaAcotados`. Archivos: `application.properties`, `ConfiguracionArranqueTest.java`. Corregido 2026-11-09, sin commit.
+- **43. OSIV, Hikari y virtual threads sin límites** — `spring.jpa.open-in-view=false`, Hikari `maximum-pool-size=5`, `minimum-idle=2` y timeouts explícitos; `server.tomcat.max-connections=200` y `accept-count=100` (el body se limita en el proxy). Test: `ConfiguracionArranqueTest#jpaSinOsivYPoolAcotado`. Archivos: `application.properties`, `ConfiguracionArranqueTest.java`. Corregido 2026-11-09, sin commit.
+- **44. La llamada a n8n dentro de la transacción** — el listener ya no es transaccional: `GestorNotificaciones.reclamarParaEnvio` toma el lock y pasa la fila a `ENVIANDO` en una transacción corta (persistiendo medio/dirección del aviso), el HTTP corre afuera y `marcarEnviada`/`marcarFallida` cierran en otra transacción condicional con `claimId` de fencing (un cierre viejo no pisa un claim nuevo). Se agregó `fecha_intento` + `claim_id`; el scheduler libera los `ENVIANDO` colgados a `PENDIENTE` sumando un intento (y contempla `fecha_intento` NULL); los 408/425/429 se tratan como transitorios (retry) en vez de DLQ, y el reintento manual devuelve 409 si está en curso. Reemplaza la transacción del listener del #21: el lock ahora vive en el reclamo corto. Tests: `ConsumidorNotificacionesTest#avisoSeReclamaAntesDeEnviar`, `#avisoCon429SePropagaParaReintento` y `#elListenerNoEsTransaccional`, `GestorNotificacionesTest` (claim, cierres y `@Transactional`), `RepositorioNotificacionesReintentoTest` (fencing, cierres y liberación) y `ReintentoNotificacionesSchedulerTest#liberaEnviosColgadosAntesDeConsultar`. Riesgo residual: si el cierre falla después del HTTP, la fila queda `ENVIANDO` hasta que el scheduler la libera; el envío es at-least-once, no exactly-once. Archivos: `ConsumidorNotificaciones.java`, `GestorNotificaciones.java`, `RepositorioNotificaciones.java`, `Notificacion.java`, `EstadoNotificacion.java`, `ReintentoNotificacionesScheduler.java`, `NotificadorService.java`, tests. Corregido 2026-11-09, sin commit.
+- **26. No había endpoint de colección ni paginación** — `GET /api/notificaciones` con `@PageableDefault(size=10, sort=fechaCreacion, DESC)` y filtro opcional `estado`; el repo usa `findByEstado`/`findAll(Pageable)` con `@EntityGraph("mensaje")` (evita el N+1), el gestor pagina y el service mapea a `Page<NotificacionDTO>` con `@Transactional(readOnly=true)`; se agregó índice por `fecha_creacion` y un handler de `sort` inválido (400 en vez de 500). Tests: `RepositorioNotificacionesListadoTest` (filtro/página, cero SELECT separados de `mensajes` y `PropertyReferenceException` con sort inexistente; verifiqué el N+1 sin `@EntityGraph`), `NotificadorControllerTest#listaPaginadoYFiltraPorEstado` (captura el `Pageable` y su sort), `#obtieneUnaNotificacionPorId`, `#unaNotificacionInexistenteDevuelve404`, `#unSortInvalidoDevuelve400` y `NotificadorServiceTest#listaPaginadoYFiltraPorEstado`. Archivos: `NotificadorController.java`, `NotificadorService.java`, `GestorNotificaciones.java`, `RepositorioNotificaciones.java`, tests. Corregido 2026-11-09, sin commit.
+- **28. El mapa de la ruta viajaba solo como URL en el texto** — se agregó `urlMapa` opcional de punta a punta: `Ruta.urlSeguimiento` → evento `INICIO_RUTA` (logísticas ya lo mandaba) → `NotificacionViaje` en donaciones (`Mensaje.urlMapa` y `NotificacionDTO.urlMapa`) → `SolicitudNotificacionDTO`/`Mensaje`/`NotificacionPayload` en notificaciones → payload de n8n. El link sigue en el texto por compatibilidad y ahora viaja además como campo estructurado. `url_mapa` se declaró con `length=1024` y el DTO valida `@Size(max=1024)` (el consumidor MQ también rechaza a DLQ un valor más largo); la columna la crea `ddl-auto=update` (en producción conviene una migración versionada). Incentivos no manda mapas, no necesita cambios. Tests: `NotificacionViajeTest` y `ServicioNotificacionesTest` en donaciones; `NotificacionPersistenciaTest#persisteYRecuperaElUrlMapa` (JPA real), `NotificadorServiceTest#procesarSolicitudPropagaElUrlMapa`, `ConsumidorNotificacionesTest#solicitudConUrlMapaLaPropaga` y `#solicitudConUrlMapaDemasiadoLargoSeRechazaADeadLetter`, `NotificacionMapperTest#mapeaElUrlMapaCuandoElMensajeLoTiene` y `N8nIntegrationTest#publicaElUrlMapaCuandoElMensajeLoTiene`. Archivos: notificaciones (`SolicitudNotificacionDTO`, `Mensaje`, `GestorNotificaciones`, `ConsumidorNotificaciones`, `NotificadorService`, `NotificacionPayload`, `NotificacionDTO`, `NotificacionMapper`) y donaciones (`Mensaje`, `NotificacionViaje`, `NotificacionDTO`, `ServicioNotificaciones`). Corregido 2026-11-09, sin commit.
+- **45. Dockerfile sin `MaxRAMPercentage` y compose sin `mem_limit`** — el `ENTRYPOINT` de notificaciones ahora fija `-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError` y el compose declara `mem_limit: 512m`; el heap se calcula contra el límite del contenedor y un OOM sale con exit code visible. Test: `ConfiguracionArranqueTest#elContenedorAcotaLaMemoria`. El resto de los servicios queda en el punto 6 de `PENDIENTES.md` raíz. Archivos: `notificaciones-service/Dockerfile`, `docker-compose.yml`, `ConfiguracionArranqueTest.java`. Corregido 2026-11-09, sin commit.
+- **25. `GestorNotificaciones` mezclaba responsabilidades** — dividido por comportamiento y capas: `GestorSolicitudes` valida la solicitud, decide idempotencia (`idSiYaExiste`) y valida el reintento (`validarReintento`, con `NotificacionNoReintentableException` → 409); `GestorEnvio` elige el medio, despacha y hace el claim `ENVIANDO` (`reclamar`). Ninguno usa repositorio ni services. `NotificadorService` es el único que usa el repositorio, crea con `Notificacion.crear(...)`, persiste, publica en `afterCommit`, consulta/lista (`buscar` con estado nullable) y delega las decisiones a los gestores; quedó sin `if` de estado/filtros (solo el chequeo de sincronización del afterCommit). `GestorNotificaciones` y el pasamanos `ConsultaNotificaciones` se eliminaron; el consumidor quedó cableado al service. Tests: `GestorSolicitudesTest`, `GestorEnvioTest`, `NotificadorServiceTest`, `RepositorioNotificacionesListadoTest` y `ConsumidorNotificacionesTest` (119/0). Archivos: `GestorSolicitudes.java`, `GestorEnvio.java`, `Notificacion.java`, `NotificadorService.java`, `ConsumidorNotificaciones.java`, `RepositorioNotificaciones.java`, tests. Corregido 2026-11-09, sin commit.
+- **24. La organización de paquetes no seguía la de incentivos** — `models/repositories` → `models/repositories/SpringRepositories`; DTOs por área (`dto/Notificaciones`, `dto/n8n` para el payload de n8n, `dto/Error`); `clientes` → `clients`; el filtro del listado pasó a `controllers/request/NotificacionFiltroRequest` (`@ParameterObject @ModelAttribute`). No hay eventos de dominio en el módulo, así que `models/events` no aplica. Sin cambio de comportamiento; tests de repositorio movidos a `SpringRepositories` y suite 119/0. Archivos: `N8nClient.java`, `NotificadorController.java`, `NotificacionFiltroRequest.java`, `NotificacionDTO.java`, `SolicitudNotificacionDTO.java`, `SolicitudAceptadaDTO.java`, `NotificacionPayload.java`, `ErrorResponseDTO.java`, `RepositorioNotificaciones.java`, `NotificacionReintentable.java`, tests. Corregido 2026-11-09, sin commit.
+- **46. `N8nClient` logueaba el cuerpo completo y el `RestTemplate` no usaba pool** — el INFO ahora emite asunto, destino y `cuerpo=N chars`; el cuerpo completo solo en DEBUG. `RestTemplateConfig` pasó a `JdkClientHttpRequestFactory` con `HttpClient` del JDK (pool keep-alive) y los timeouts existentes; el test de timeout verifica el factory y el corte. Tests: `N8nIntegrationTest#elInfoNoLogueaElCuerpoCompletoYElDebugSi` y `RestTemplateConfigTest` (factory JDK + timeout). Archivos: `N8nClient.java`, `RestTemplateConfig.java`, `N8nIntegrationTest.java`, `RestTemplateConfigTest.java`. Corregido 2026-11-10, sin commit.

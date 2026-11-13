@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Realizar una donación — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<main class="container flex-grow-1 py-4" id="contenido" tabindex="-1">
+    <div class="static-card border-0 mx-auto" style="max-width: 850px;">
+        <div class="card-body p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">Realizar una donación</h1>
+                    <p class="text-muted mb-0">Contanos qué bienes querés donar.</p>
+                </div>
+                <a class="btn btn-outline-secondary" th:href="@{/}" data-back="true">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver
+                </a>
+            </div>
+
+            <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}">
+                No se pudo registrar la donación.
+            </div>
+            <form th:action="@{/realizar-donacion}" th:object="${formulario}" method="post">
+                <div class="mb-4">
+                    <span class="form-label fw-semibold d-block">Donante</span>
+                    <p class="form-control bg-light mb-0"
+                       th:text="${donante.tipoPersona == 'JURIDICA'
+                           ? donante.razonSocial
+                           : donante.nombre + ' ' + donante.apellido}">
+                        Perfil del donante
+                    </p>
+                    <input type="hidden" name="idDonante" th:value="${donante.id}">
+                </div>
+
+                <div class="mb-4">
+                    <label for="fechaRealizacion" class="form-label fw-semibold">Fecha de realización</label>
+                    <input class="form-control bg-light" type="date" id="fechaRealizacion"
+                           th:field="*{fechaRealizacion}" readonly>
+                    <div class="form-text">Se registra automáticamente con la fecha de hoy.</div>
+                </div>
+
+                <section aria-labelledby="bienesTitulo" class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 id="bienesTitulo" class="h5 fw-semibold mb-0">Bienes a donar</h2>
+                        <button class="btn btn-outline-primary btn-sm" type="button" id="agregarBien">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar bien
+                        </button>
+                    </div>
+
+                    <div id="listaBienes">
+                        <fieldset class="bien-item border rounded p-3 mb-3"
+                                  th:each="bien, stat : ${formulario.bienes}">
+                            <legend class="float-none w-auto px-2 fs-6 fw-semibold"
+                                    th:text="'Bien ' + (${stat.index} + 1)">Bien 1</legend>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" th:for="'bienDescripcion' + ${stat.index}">Descripción</label>
+                                    <input class="form-control" th:id="'bienDescripcion' + ${stat.index}"
+                                           th:field="*{bienes[__${stat.index}__].descripcion}" type="text" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienCategoria' + ${stat.index}">Categoría</label>
+                                    <select class="form-select bien-categoria" th:id="'bienCategoria' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].categoria}" required>
+                                        <option value="">Elegí una categoría</option>
+                                        <option th:each="categoria : ${catalogo.keySet()}"
+                                                th:value="${categoria}" th:text="${categoria}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienSubcategoria' + ${stat.index}">Subcategoría</label>
+                                    <select class="form-select bien-subcategoria" th:id="'bienSubcategoria' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].subcategoria}" required>
+                                        <option value="">Elegí una subcategoría</option>
+                                        <option th:if="${bien.subcategoria != null and !#strings.isEmpty(bien.subcategoria)}"
+                                                th:value="${bien.subcategoria}" th:text="${bien.subcategoria}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienCantidad' + ${stat.index}">Cantidad</label>
+                                    <input class="form-control" th:id="'bienCantidad' + ${stat.index}"
+                                           th:field="*{bienes[__${stat.index}__].cantidad}" type="number" min="1" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienUnidad' + ${stat.index}">Unidad de medida</label>
+                                    <select class="form-select" th:id="'bienUnidad' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].unidadDeMedida}" required>
+                                        <option value="UNIDADES">Unidades</option>
+                                        <option value="KILOGRAMOS">Kilogramos</option>
+                                        <option value="LITROS">Litros</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" th:for="'bienTipo' + ${stat.index}">Tipo de bien</label>
+                                    <select class="form-select bien-tipo" th:id="'bienTipo' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].tipoBien}" required>
+                                        <option value="CON_ESTADO">Bien con estado</option>
+                                        <option value="PERECEDERO">Perecedero</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3 bien-usado">
+                                    <div class="form-check">
+                                        <input class="form-check-input" th:id="'bienUsado' + ${stat.index}"
+                                               th:name="'bienes[' + ${stat.index} + '].usado'"
+                                               th:checked="${bien.usado}" type="checkbox" value="true">
+                                        <label class="form-check-label" th:for="'bienUsado' + ${stat.index}">Es usado</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3 bien-vencimiento" hidden>
+                                    <label class="form-label" th:for="'bienFechaVencimiento' + ${stat.index}">Fecha de vencimiento</label>
+                                    <input class="form-control" th:id="'bienFechaVencimiento' + ${stat.index}"
+                                           th:field="*{bienes[__${stat.index}__].fechaVencimiento}" type="date">
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm quitar-bien" type="button" hidden>
+                                Quitar bien
+                            </button>
+                        </fieldset>
+                    </div>
+                </section>
+
+                <section class="mb-4" aria-labelledby="fotosDonacionTitulo">
+                    <h2 id="fotosDonacionTitulo" class="h5 fw-semibold mb-2">Fotos de la donación</h2>
+                    <p class="text-muted small mb-3">Podés subir varias fotos. Se muestran públicamente cuando la donación está entregada.</p>
+                    <input id="fotosDonacion" class="form-control" type="file" multiple
+                           accept="image/jpeg,image/png,image/webp">
+                    <div id="fotosDonacionPreview" class="fotos-donacion-preview mt-3"></div>
+                    <div id="fotosDonacionHidden"></div>
+                    <div id="fotosDonacionError" class="text-danger small mt-2" hidden></div>
+                    <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB por imagen.</div>
+                </section>
+
+                <div id="formUploadError" class="alert alert-danger" role="alert" hidden></div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" th:href="@{/}" data-back="true">Cancelar</a>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-heart-fill me-1" aria-hidden="true"></i> Registrar donación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    window.CATALOGO_DONACION = /*[[${catalogo}]]*/ {};
+</script>
+<script>
+    const listaBienes = document.getElementById("listaBienes");
+    const plantillaBien = listaBienes.querySelector(".bien-item");
+
+    function actualizarBienes() {
+        const bienes = listaBienes.querySelectorAll(".bien-item");
+        bienes.forEach((bien, index) => {
+            bien.querySelector("legend").textContent = `Bien ${index + 1}`;
+            bien.querySelectorAll("[name]").forEach((campo) => {
+                campo.name = campo.name.replace(/bienes\[\d+]/, `bienes[${index}]`);
+            });
+            bien.querySelectorAll("[id]").forEach((campo) => {
+                campo.id = campo.id.replace(/\d+$/, index);
+            });
+            bien.querySelectorAll("label[for]").forEach((label) => {
+                label.htmlFor = label.htmlFor.replace(/\d+$/, index);
+            });
+            bien.querySelector(".quitar-bien").hidden = bienes.length === 1;
+            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
+            actualizarTipoBien(bien);
+        });
+    }
+
+    function actualizarTipoBien(bien) {
+        const esPerecedero = bien.querySelector(".bien-tipo").value === "PERECEDERO";
+        const vencimiento = bien.querySelector(".bien-vencimiento");
+        const usado = bien.querySelector(".bien-usado");
+        vencimiento.hidden = !esPerecedero;
+        vencimiento.querySelector("input").required = esPerecedero;
+        usado.hidden = esPerecedero;
+    }
+
+    document.getElementById("agregarBien").addEventListener("click", () => {
+        const nuevoBien = plantillaBien.cloneNode(true);
+        nuevoBien.querySelectorAll("input").forEach((campo) => {
+            if (campo.type === "checkbox") {
+                campo.checked = false;
+            } else {
+                campo.value = "";
+            }
+        });
+        nuevoBien.querySelectorAll("select").forEach((campo) => {
+            campo.selectedIndex = 0;
+        });
+        listaBienes.appendChild(nuevoBien);
+        actualizarBienes();
+    });
+
+    listaBienes.addEventListener("click", (evento) => {
+        const quitar = evento.target.closest(".quitar-bien");
+        if (quitar) {
+            quitar.closest(".bien-item").remove();
+            actualizarBienes();
+        }
+    });
+
+    listaBienes.addEventListener("change", (evento) => {
+        if (evento.target.matches(".bien-categoria")) {
+            const bien = evento.target.closest(".bien-item");
+            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
+        }
+        if (evento.target.matches(".bien-tipo")) {
+            actualizarTipoBien(evento.target.closest(".bien-item"));
+        }
+    });
+
+    const CATALOGO = window.CATALOGO_DONACION || {};
+
+    function repoblarSubcategorias(bien, valorSeleccionado) {
+        const select = bien.querySelector(".bien-subcategoria");
+        if (!select) return;
+        const categoria = (bien.querySelector(".bien-categoria").value || "").trim().toLowerCase();
+        const clave = Object.keys(CATALOGO).find((c) => c.toLowerCase() === categoria);
+        const opciones = clave
+            ? (CATALOGO[clave] || [])
+            : [...new Set(Object.values(CATALOGO).flat())];
+        const actual = valorSeleccionado || select.value;
+
+        select.replaceChildren();
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Elegí una subcategoría";
+        select.appendChild(placeholder);
+
+        [...new Set(opciones)].sort((a, b) => a.localeCompare(b, "es")).forEach((subcategoria) => {
+            const option = document.createElement("option");
+            option.value = subcategoria;
+            option.textContent = subcategoria;
+            select.appendChild(option);
+        });
+
+        if (actual && Array.from(select.options).some((option) => option.value === actual)) {
+            select.value = actual;
+        }
+    }
+
+    actualizarBienes();
+</script>
+<script th:src="@{/js/core/donacion-fotos.js}" defer></script>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

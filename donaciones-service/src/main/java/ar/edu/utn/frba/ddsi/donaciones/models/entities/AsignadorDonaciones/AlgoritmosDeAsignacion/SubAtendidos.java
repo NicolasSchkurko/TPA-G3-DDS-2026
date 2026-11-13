@@ -1,21 +1,36 @@
 package ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.AlgoritmosDeAsignacion;
 
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.EntidadPropia;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.AsignadorDonaciones.PropuestaAsignacion;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Donacion;
+import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Estado;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.EntidadBeneficiaria.EntidadBeneficiaria;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Necesidades.Necesidad;
 
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.UUID;
 
 public class SubAtendidos implements AlgoritmoAsignacion {
+
+    private final Map<UUID, Integer> conteosPorEntidad;
+
+    public SubAtendidos() {
+        this(null);
+    }
+
+    public SubAtendidos(Map<UUID, Integer> conteosPorEntidad) {
+        this.conteosPorEntidad = conteosPorEntidad;
+    }
 
     /** Prioriza a las entidades con menos donaciones en el último trimestre, con un
      *  Max-Heap de 10 (el score más alto queda en el peek y sale primero). */
     @Override
-    public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+    public List<PropuestaAsignacion> rankear(Donacion donacion, List<EntidadBeneficiaria> entidades,
+                                            Map<UUID, Integer> cantidadesVigentesPorNecesidad) {
         String nombreAlgoritmo = this.getClass().getSimpleName();
 
         /*
@@ -35,11 +50,18 @@ public class SubAtendidos implements AlgoritmoAsignacion {
         );
 
         for (EntidadBeneficiaria entidad : entidades) {
+            if (EntidadPropia.esPropia(donacion == null ? null : donacion.getDonante(), entidad)) {
+                continue;
+            }
             // El historial se calcula una sola vez por entidad, con inicialización perezosa.
             double cantidadDonaciones = -1;
 
             for (Necesidad necesidad : entidad.getNecesidades()) {
-                if (!necesidad.esCompatibleCon(donacion)) {
+                boolean compatible = cantidadesVigentesPorNecesidad == null
+                    ? necesidad.esCompatibleCon(donacion)
+                    : necesidad.esCompatibleCon(donacion,
+                        cantidadesVigentesPorNecesidad.getOrDefault(necesidad.getId(), 0));
+                if (!compatible) {
                     continue;
                 }
 
@@ -62,8 +84,12 @@ public class SubAtendidos implements AlgoritmoAsignacion {
     }
 
     private int cantidadDonacionesUltimoTrimestre(EntidadBeneficiaria entidad) {
+        if (conteosPorEntidad != null) {
+            return conteosPorEntidad.getOrDefault(entidad.getId(), 0);
+        }
         LocalDate haceUnTrimestre = LocalDate.now().minusMonths(3);
         return (int) entidad.verDonaciones().stream()
+                            .filter(d -> d.getEstado() == Estado.ENTREGADO)
                             .filter(d -> d.getFechaEntrega() != null)
                             .filter(d -> d.getFechaEntrega().isAfter(haceUnTrimestre))
                             .count();

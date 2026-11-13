@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.notificaciones;
 
-import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.n8n.NotificacionPayload;
 import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio.Mail;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Mensaje.Mensaje;

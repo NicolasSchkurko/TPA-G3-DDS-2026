@@ -6,16 +6,20 @@ import ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories.Re
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Operaciones transaccionales para encolar y reclamar publicaciones de n8n. */
+@Slf4j
 @Service
 public class PublicacionesN8nService {
 
-    private static final long LEASE_SEGUNDOS = 60;
+    private static final long LEASE_SEGUNDOS = 300;
     private static final long RETRASO_BASE_SEGUNDOS = 30;
     private static final long RETRASO_MAXIMO_SEGUNDOS = 3600;
+    private static final int MAX_INTENTOS = 10;
 
     private final RepositorioPublicacionesPendientes repositorio;
 
@@ -41,7 +45,7 @@ public class PublicacionesN8nService {
      */
     @Transactional
     public Optional<PublicacionReclamada> reclamarSiguiente(LocalDateTime ahora) {
-        return repositorio.buscarSiguienteParaEnviar(ahora).stream()
+        return repositorio.buscarSiguienteParaEnviar(ahora, PageRequest.of(0, 1)).stream()
                 .findFirst()
                 .map(publicacion -> {
                     publicacion.reclamarHasta(ahora.plusSeconds(LEASE_SEGUNDOS));
@@ -72,6 +76,12 @@ public class PublicacionesN8nService {
         PublicacionPendienteN8n publicacion = repositorio.findById(id)
                 .orElseThrow(() -> new IllegalStateException(
                         "No existe la publicacion pendiente " + id));
+        if (publicacion.getIntentos() >= MAX_INTENTOS) {
+            publicacion.descartar(error);
+            log.error("Publicacion {} descartada tras {} intentos: {}",
+                    id, publicacion.getIntentos(), error);
+            return;
+        }
         int exponente = Math.min(publicacion.getIntentos() - 1, 7);
         long espera = Math.min(RETRASO_BASE_SEGUNDOS * (1L << exponente),
                 RETRASO_MAXIMO_SEGUNDOS);

@@ -10,8 +10,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /** Simulador de un proveedor externo de rutas: agrupa por ciudad, "procesa" dos segundos
@@ -20,13 +22,19 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
 
   private static final Logger log = LoggerFactory.getLogger(ProveedorRutasExternoSimulado.class);
 
-  private final String URL_CALLBACK_LOCAL = "http://localhost:8086/api/PlanificacionRutas/callback";
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+
+  private final String urlCallback;
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final Executor executor;
 
-  public ProveedorRutasExternoSimulado() {
-    this.httpClient = HttpClient.newHttpClient();
+  public ProveedorRutasExternoSimulado(Executor executor, String urlCallback) {
+    this.httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     this.objectMapper = new ObjectMapper();
+    this.executor = executor;
+    this.urlCallback = urlCallback;
   }
 
   @Override
@@ -40,16 +48,23 @@ public class ProveedorRutasExternoSimulado implements ProveedorRutasExterno {
         log.debug("Asignación simulada: {}", jsonBody);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL_CALLBACK_LOCAL))
+                .uri(URI.create(urlCallback))
+                .timeout(REQUEST_TIMEOUT)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() / 100 != 2) {
+          log.error("El callback del simulador rechazó la planificación en {} ({}): {}",
+                  urlCallback, response.statusCode(), response.body());
+        } else {
+          log.info("Planificación simulada enviada a {} ({})", urlCallback, response.statusCode());
+        }
       } catch (Exception e) {
-        log.error("Falló la planificación simulada", e);
+        log.error("Falló la planificación simulada al enviar a {}", urlCallback, e);
       }
-    });
+    }, executor);
   }
 
   private Map<String, List<UUID>> procesarAgrupacion(List<ItemEntrega> lote, List<Camion> camionesDisponibles) {

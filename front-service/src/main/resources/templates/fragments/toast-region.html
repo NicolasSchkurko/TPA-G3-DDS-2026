@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!--
+  Región de toasts accesibles (aria-live). Renderiza el toast flash de la
+  petición actual, si existe. El JS de core/toast.js agrega avisos dinámicos.
+-->
+<th:block th:fragment="toastRegion">
+    <div class="toast-region" id="toastRegion"
+         role="status" aria-live="polite" aria-label="Avisos del sistema">
+        <div th:if="${toastMensaje}" class="toast"
+             th:classappend="${toastTipo == 'success' ? ' toast-success' : (toastTipo == 'error' ? ' toast-error' : ' toast-info')}">
+            <div>
+                <strong th:text="${toastTipo == 'success' ? 'Listo' : (toastTipo == 'error' ? 'Atención' : 'Aviso')}">Aviso</strong><br>
+                <span th:text="${toastMensaje}">Mensaje</span>
+            </div>
+            <button class="toast-close" type="button" data-toast-close
+                    onclick="this.closest('.toast').remove()" aria-label="Descartar aviso">&times;</button>
+        </div>
+    </div>
+</th:block>
+
+</body>
+</html>

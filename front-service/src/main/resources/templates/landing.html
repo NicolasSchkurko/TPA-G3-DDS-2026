@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>DonaTrack · Donaciones en el mapa</title>
+    <meta name="description"
+          content="Mapa de donaciones de la red solidaria DonaTrack: entregadas, en camino y pendientes en la Ciudad de Buenos Aires.">
+
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" href="/css/landing.css?v=5" th:href="@{/css/landing.css(v=5)}">
+</head>
+<body class="landing">
+
+    <!-- Sprite de iconos: evita cargar una fuente de iconos completa -->
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <symbol id="i-compass" viewBox="0 0 16 16">
+            <path d="M8 16.016a7.5 7.5 0 0 0 1.962-14.74A1 1 0 0 0 9 0H7a1 1 0 0 0-.962 1.276A7.5 7.5 0 0 0 8 16.016m6.5-7.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
+            <path d="m6.94 7.44 4.95-2.83-2.83 4.95-4.949 2.83 2.828-4.95z"/>
+        </symbol>
+        <symbol id="i-person" viewBox="0 0 16 16">
+            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+        </symbol>
+        <symbol id="i-arrow-right" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+        </symbol>
+        <symbol id="i-basket2" viewBox="0 0 16 16">
+            <path d="M4 10a1 1 0 0 1 2 0v2a1 1 0 0 1-2 0zm3 0a1 1 0 0 1 2 0v2a1 1 0 0 1-2 0zm3 0a1 1 0 1 1 2 0v2a1 1 0 0 1-2 0z"/>
+            <path d="M5.757 1.071a.5.5 0 0 1 .172.686L3.383 6h9.234L10.07 1.757a.5.5 0 1 1 .858-.514L13.783 6H15.5a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-.623l-1.844 6.456a.75.75 0 0 1-.722.544H3.69a.75.75 0 0 1-.722-.544L1.123 8H.5a.5.5 0 0 1-.5-.5v-1A.5.5 0 0 1 .5 6h1.717L5.07 1.243a.5.5 0 0 1 .686-.172zM2.163 8l1.714 6h8.246l1.714-6z"/>
+        </symbol>
+        <symbol id="i-bag-heart" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M10.5 3.5a2.5 2.5 0 0 0-5 0V4h5zm1 0V4H15v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4h3.5v-.5a3.5 3.5 0 1 1 7 0M14 14V5H2v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1M8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132"/>
+        </symbol>
+        <symbol id="i-book" viewBox="0 0 16 16">
+            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/>
+        </symbol>
+        <symbol id="i-capsule" viewBox="0 0 16 16">
+            <path d="M1.828 8.9 8.9 1.827a4 4 0 1 1 5.657 5.657l-7.07 7.071A4 4 0 1 1 1.827 8.9Zm9.128.771 2.893-2.893a3 3 0 1 0-4.243-4.242L6.713 5.429z"/>
+        </symbol>
+        <symbol id="i-gift" viewBox="0 0 16 16">
+            <path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A3 3 0 0 1 3 2.506zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43zM9 3h2.932l.023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0zM1 4v2h6V4zm8 0v2h6V4zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5z"/>
+        </symbol>
+        <symbol id="i-truck" viewBox="0 0 16 16">
+            <path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-3.998-.085A1.5 1.5 0 0 1 0 10.5zm1.294 7.456A2 2 0 0 1 4.732 11h5.536a2 2 0 0 1 .732-.732V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .294.456M12 10a2 2 0 0 1 1.732 1h.768a.5.5 0 0 0 .5-.5V8.35a.5.5 0 0 0-.11-.312l-1.48-1.85A.5.5 0 0 0 13.02 6H12zm-9 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2m9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/>
+        </symbol>
+    </svg>
+
+    <div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+    <main class="landing-shell" id="contenido" tabindex="-1">
+        <aside class="sidebar" aria-label="Donaciones destacadas">
+            <div class="sidebar-intro">
+                <h1>Seguí las donaciones en el mapa.</h1>
+                <p>Entregadas, en camino y pendientes de la red solidaria de la Ciudad de Buenos Aires.</p>
+                <div class="sidebar-actions">
+                    <a class="btn btn-primary"
+                       sec:authorize="hasRole('DONANTE')"
+                       th:href="@{/realizar-donacion}">Donar</a>
+                    <a class="btn btn-primary"
+                       sec:authorize="isFullyAuthenticated() and !hasRole('DONANTE')"
+                       th:href="@{/cuenta/roles}">Quiero donar</a>
+                    <a class="btn btn-primary" sec:authorize="isAnonymous()"
+                       th:href="@{/register(tipoRegistro='DONANTE')}">Quiero donar</a>
+                    <a class="btn btn-secondary" href="/donaciones" th:href="@{/donaciones}">Ver donaciones</a>
+                </div>
+                <button class="entity-search-trigger" id="openEntitySearch" type="button"
+                        th:if="${esDonante}" aria-haspopup="dialog" aria-controls="entitySearchModal">
+                    <span>Buscar entidades beneficiarias</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                </button>
+            </div>
+
+            <section class="sidebar-section landing-purpose" aria-labelledby="proposito-title">
+                <h2 id="proposito-title">Propósito de DonaTrack</h2>
+                <p>Conectar personas donantes, entidades beneficiarias, choferes y administración para
+                   registrar, asignar y seguir cada donación hasta su entrega, con trazabilidad y
+                   notificaciones para todas las partes.</p>
+                <ul class="purpose-list">
+                    <li>Registrar donaciones y asignarlas según las necesidades de cada entidad.</li>
+                    <li>Coordinar el retiro y la entrega con seguimiento del estado.</li>
+                    <li>Reconocer la participación con misiones, puntos e insignias.</li>
+                </ul>
+            </section>
+
+            <section class="sidebar-section" aria-labelledby="destacadas-title">
+                <div class="section-head">
+                    <h2 id="destacadas-title">Donaciones destacadas</h2>
+                    <span id="panelCount" th:text="${destacadas != null ? #lists.size(destacadas) : 0}">0</span>
+                </div>
+
+                <div class="donation-list" id="donationList">
+                    <a class="donation-card map-donation-data" th:each="donacion : ${destacadasMapa}"
+                       th:href="@{/donaciones/{id}(id=${donacion.idDonacion})}"
+                       th:attr="data-id=${donacion.idDonacion},
+                                data-latitude=${donacion.latitud},
+                                data-longitude=${donacion.longitud},
+                                data-area=${donacion.ubicacion ?: ''},
+                                data-title=${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
+                                    ? donacion.subCategoria
+                                    : (donacion.categoria ?: 'Donación')},
+                                data-organization=${donacion.entidadBeneficiaria ?: 'Entidad beneficiaria'}">
+                        <span class="card-icon" aria-hidden="true">
+                            <svg class="icon"><use href="#i-gift"></use></svg>
+                        </span>
+                        <span class="card-body">
+                            <span class="card-title"
+                                  th:text="${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
+                                      ? donacion.subCategoria
+                                      : (donacion.categoria ?: 'Donación')}">Donación</span>
+                            <span class="card-meta">
+                                <span th:text="${donacion.entidadBeneficiaria ?: 'Entidad no informada'}">Entidad</span>
+                                <span aria-hidden="true"> · </span>
+                                <time th:if="${donacion.fechaEntrega != null}"
+                                      th:datetime="${donacion.fechaEntrega}"
+                                      th:text="${#temporals.format(donacion.fechaEntrega, 'dd/MM/yyyy')}">Fecha</time>
+                                <span th:if="${donacion.fechaEntrega == null}">Fecha no informada</span>
+                            </span>
+                        </span>
+                        <span class="row-status" aria-label="Estado: entregada">
+                            <span class="status-dot" aria-hidden="true"></span><span>Entregada</span>
+                        </span>
+                    </a>
+                    <p class="panel-empty" th:if="${#lists.isEmpty(destacadas)}">
+                        Todavía no hay donaciones destacadas.
+                    </p>
+                    <noscript>
+                        <p class="panel-noscript">Activá JavaScript para ver el mapa interactivo.</p>
+                    </noscript>
+                </div>
+            </section>
+
+        </aside>
+
+        <section class="map-pane" aria-label="Mapa de donaciones">
+            <div id="map"></div>
+
+            <div class="map-legend" aria-label="Referencias del mapa">
+                <span><i class="legend-dot delivered" aria-hidden="true"></i> Entregada</span>
+                <span><i class="legend-dot transit" aria-hidden="true"></i> En camino</span>
+                <span><i class="legend-dot pending" aria-hidden="true"></i> Pendiente</span>
+                <span><i class="legend-dot depot" aria-hidden="true"></i> Depósito</span>
+            </div>
+
+            <p class="map-caption">Últimas donaciones destacadas · Ubicaciones de entidades beneficiarias</p>
+        </section>
+    </main>
+
+    <div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+    <div class="entity-search-modal" id="entitySearchModal" aria-hidden="true" th:if="${esDonante}">
+        <button class="entity-search-backdrop" type="button" data-close-entity-search
+                aria-label="Cerrar búsqueda"></button>
+        <section class="entity-search-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="entitySearchTitle">
+            <button class="entity-search-close" type="button" data-close-entity-search
+                    aria-label="Cerrar">&times;</button>
+            <h2 id="entitySearchTitle">Entidades beneficiarias</h2>
+            <label class="entity-search-visually-hidden" for="entitySearchInput">Filtrar por nombre</label>
+            <input class="entity-search-input" type="search" id="entitySearchInput"
+                   placeholder="Filtrar por nombre..." autocomplete="off">
+
+            <div class="entity-search-toolbar">
+                <span>Listado de entidades</span>
+                <label for="entitySortOrder">Ordenar por</label>
+                <select id="entitySortOrder">
+                    <option value="asc">Nombre (A-Z)</option>
+                    <option value="desc">Nombre (Z-A)</option>
+                </select>
+            </div>
+
+            <div class="entity-search-results" id="entitySearchResults" aria-live="polite">
+                <p class="entity-search-empty" id="entitySearchEmpty" hidden>
+                    No se encontraron entidades.
+                </p>
+                <article class="entity-search-result"
+                         th:each="entidad : ${entidades}"
+                         th:attr="data-search=${entidad.razonSocial ?: ''},
+                                  data-name=${entidad.razonSocial ?: ''}">
+                    <h3 th:text="${entidad.razonSocial}">Nombre de la entidad</h3>
+                </article>
+            </div>
+        </section>
+    </div>
+
+    <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+    <script src="/js/landing.js?v=5" th:src="@{/js/landing.js(v=5)}"></script>
+    <script th:src="@{/js/entity-search.js}"></script>
+</body>
+</html>

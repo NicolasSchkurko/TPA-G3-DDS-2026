@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Mis donaciones — DonaTrack</title>
+    <meta name="description" content="Estado de las donaciones asignadas a tu entidad beneficiaria.">
+    <link rel="stylesheet" th:href="@{/css/entidad.css(v=4)}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="page" id="contenido" tabindex="-1">
+
+    <nav class="crumbs" aria-label="Migas de pan">
+        <a th:href="@{/entidad}">Mi entidad</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Donaciones</span>
+    </nav>
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Mis donaciones</h1>
+            <p class="page-subtitle">Estado de las donaciones asignadas a tu entidad, desde el depósito hasta la entrega.</p>
+        </div>
+        <a class="btn btn-secondary" th:href="@{/entidad/seguimiento}">Ver en el mapa</a>
+    </header>
+
+    <div class="filters" role="search" aria-label="Filtrar donaciones">
+        <input type="search" id="filterText" placeholder="Buscar por descripción, donante o categoría…"
+               aria-label="Buscar donaciones" autocomplete="off">
+        <select id="filterEstado" aria-label="Filtrar por estado de la donación">
+            <option value="">Todos los estados</option>
+            <option value="ASIGNADO">Asignadas</option>
+            <option value="EN_TRASLADO">En traslado</option>
+            <option value="ENTREGADO">Entregadas</option>
+            <option value="PENDIENTE_ASIGNACION">Pendientes de asignación</option>
+        </select>
+    </div>
+
+    <div th:if="${#lists.isEmpty(donaciones)}" class="card empty-state" style="padding: var(--gap-7) var(--gap-4);">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A3 3 0 0 1 3 2.506z"/>
+        </svg>
+        <h3>Todavía no tenés donaciones asignadas</h3>
+        <p>Cuando la red te asigne una donación va a aparecer acá con su estado en tiempo real.</p>
+    </div>
+
+    <div id="donacionesEmpty" class="empty-state" hidden>
+        <h3>Ninguna donación coincide con el filtro</h3>
+        <p>Probá con otra búsqueda.</p>
+        <button class="btn btn-secondary" type="button" id="clearFilters">Limpiar filtros</button>
+    </div>
+
+    <div class="donacion-list" id="donacionList">
+        <a class="donacion-row" th:each="d : ${donaciones}"
+           th:attr="data-estado=${d.estado}, data-text=${(d.descripcion ?: '') + ' ' + (d.donanteName ?: '') + ' ' + (d.categoriaBienName ?: '')}"
+           th:href="@{/entidad/donaciones/{id}(id=${d.id})}">
+            <span class="delivery-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A3 3 0 0 1 3 2.506z"/></svg>
+            </span>
+            <span>
+                <h3 th:text="${d.descripcion}">Arroz y fideos x 1.200 kg</h3>
+                <p>
+                    <span th:text="${d.donanteName != null ? d.donanteName : 'Donante anónimo'}">Comercial del Sur</span>
+                    <span th:if="${d.categoriaBienName != null}"> · <span th:text="${d.categoriaBienName}">Alimentos</span></span>
+                    <span th:if="${d.fechaEntrega != null}"> · Entrega: <span th:text="${d.fechaEntrega}">2026-06-12</span></span>
+                </p>
+            </span>
+            <span style="display:flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                <span class="chip chip-info" th:text="${d.etiquetaEstado()}">ASIGNADO</span>
+                <th:block th:with="entrega=${entregas != null ? entregas.get(d.id) : null}">
+                    <span th:if="${entrega != null}"
+                          class="chip"
+                          th:classappend="${entrega.estado == 'ENTREGADA' ? ' chip-success' : (entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info')}"
+                          th:text="${entrega.etiquetaEstado()}">En camino</span>
+                    <span th:if="${entrega == null}" class="chip">Sin ítems logísticos</span>
+                </th:block>
+            </span>
+        </a>
+    </div>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/entidad/donaciones.js}" defer></script>
+</body>
+</html>

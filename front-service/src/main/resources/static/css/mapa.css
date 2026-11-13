@@ -1,0 +1,17 @@
+/* =========================================================
+   Mapa base (Leaflet) — estilos compartidos por todas las
+   páginas con mapa de front-service.
+   ========================================================= */
+
+/* Área táctil mínima WCAG 2.5.5 (48x48) para los controles de zoom */
+.leaflet-control-zoom a {
+    width: 48px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+    font-size: 18px !important;
+}
+
+.leaflet-control-zoom {
+    border-radius: 8px !important;
+    overflow: hidden;
+}

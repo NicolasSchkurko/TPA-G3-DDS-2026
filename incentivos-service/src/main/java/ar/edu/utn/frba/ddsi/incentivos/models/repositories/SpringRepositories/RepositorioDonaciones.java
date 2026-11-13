@@ -3,9 +3,11 @@ package ar.edu.utn.frba.ddsi.incentivos.models.repositories.SpringRepositories;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ResumenMetricaDTO;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Actividad.ImpactoDonacion;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,13 +29,31 @@ public interface RepositorioDonaciones
     );
 
     /**
-     * {@code ImpactoDonacion} no tiene relación JPA hacia {@code Perfil} (es un {@code UUID}
-     * suelto, no un {@code @ManyToOne}): no hay FK en la base que bloquee el borrado de un
-     * perfil, así que sin este método las filas de historial quedaban húerfanas en silencio
-     * en vez de frenar el borrado con un 409. Se llama explícitamente antes de borrar el
-     * perfil.
+     * Donaciones que hicieron progresar la misión para un bloque de perfiles, en una sola
+     * consulta y ordenadas por usuario y fecha. El scheduler filtra después por la misión
+     * vigente de cada perfil.
      */
-    void deleteByIdUsuario(UUID idUsuario);
+    @Query("SELECT d FROM ImpactoDonacion d "
+            + "WHERE d.idUsuario IN :ids AND d.idMision IN :misiones "
+            + "AND d.hizoProgresarMision = true "
+            + "ORDER BY d.idUsuario, d.fechaEntrega")
+    List<ImpactoDonacion> buscarDonacionesQueProgresaronDePerfiles(
+            @Param("ids") Collection<UUID> ids,
+            @Param("misiones") Collection<UUID> misiones
+    );
+
+    /**
+     * Últimas donaciones entregadas que completaron una misión, para el landing público.
+     * El desempate por id mantiene el orden estable entre fechas iguales.
+     */
+    @Query("""
+            SELECT d FROM ImpactoDonacion d
+            WHERE d.completMision = true
+              AND d.estado = 'ENTREGADA'
+              AND d.fechaEntrega IS NOT NULL
+            ORDER BY d.fechaEntrega DESC, d.idDonacion DESC
+            """)
+    List<ImpactoDonacion> buscarDestacadas(Pageable pageable);
 
     @Query("""
             SELECT new ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.ResumenMetricaDTO(

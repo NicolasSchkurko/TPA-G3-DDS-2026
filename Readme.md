@@ -87,7 +87,7 @@ Los tests no necesitan infraestructura: los de persistencia de `incentivos-servi
 
 ## Docker Compose
 
-Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5679` y conserva su configuración en un volumen:
+Desde la raíz del repositorio, Compose construye los cuatro servicios con el contexto del proyecto y levanta MySQL, RabbitMQ y n8n. n8n queda disponible en `http://localhost:5678` y conserva su configuración en un volumen:
 
 ```bash
 docker compose up --build
@@ -110,7 +110,7 @@ Puertos disponibles desde la máquina local:
 | Logísticas | 8086 |
 | RabbitMQ AMQP | 5672 |
 | Panel de RabbitMQ | 15672 |
-| n8n | 5679 |
+| n8n | 5678 |
 | MySQL Incentivos | 3309 |
 | MySQL Notificaciones | 3310 |
 | MySQL Donaciones | 3311 |
@@ -127,18 +127,6 @@ RabbitMQ es el canal de integración entre servicios: donaciones publica las don
 Cada microservicio tiene su Swagger en `/api-docs`, y la carpeta `postman/` trae colecciones para probar los flujos (entre ellas, un ciclo completo entre servicios).
 
 Los cuatro mantienen un `PENDIENTES.md` propio con los problemas técnicos conocidos que quedaron abiertos. Los IDs nunca se renumeran, así que hay huecos: cada punto dice su severidad, los archivos afectados y una propuesta concreta. Lo que ya se corrigió queda en la sección `# Corregidos` de cada archivo, con el motivo por el que se cambió.
-
-## Pendiente de enunciado: visibilidad configurable de insignias
-
-> Estado: **no implementado** en `incentivos-service`.
-
-El enunciado pide que las insignias obtenidas puedan visualizarse en el perfil de la persona donante *"siempre que la persona usuaria las configure como visibles"*. O sea, la visibilidad tiene que ser **una decisión de la persona donante**, no un dato que el servicio asuma.
-
-Hoy no hay forma de configurarla:
-
-- `InsigniaObtenida` (`models/entities/Perfil/InsigniaObtenida.java`) solo tiene `perfil`, `insignia` y `fechaObtencion`. **No existe el campo de visibilidad.**
-- En consecuencia, `GET /api/perfiles/{idUsuario}/insignias` devuelve **todas** las insignias otorgadas, sin filtro.
-- No hay endpoint para cambiar ese estado.
 
 ### Qué hay que hacer
 

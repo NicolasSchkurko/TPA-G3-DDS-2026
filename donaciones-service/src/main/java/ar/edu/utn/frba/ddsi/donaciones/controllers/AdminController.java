@@ -38,23 +38,15 @@ public class AdminController {
 
     @Operation(summary = "Obtener admin por id")
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerPorId(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.getAdminPorId(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<AdminDTO> obtenerPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getAdminPorId(id));
     }
 
     @Operation(summary = "Actualizar admin por id")
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarAdmin(@PathVariable UUID id, @RequestBody AdminDTO dto) {
-        try {
-            AdminDTO actualizada = service.actualizarAdmin(id, dto);
-            return ResponseEntity.ok(actualizada);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<AdminDTO> actualizarAdmin(@PathVariable UUID id, @RequestBody AdminDTO dto) {
+        AdminDTO actualizada = service.actualizarAdmin(id, dto);
+        return ResponseEntity.ok(actualizada);
     }
 
     @Operation(summary = "Eliminar admin por id")

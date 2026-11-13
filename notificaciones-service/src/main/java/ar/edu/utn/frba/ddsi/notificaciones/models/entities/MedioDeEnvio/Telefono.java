@@ -1,6 +1,6 @@
 package ar.edu.utn.frba.ddsi.notificaciones.models.entities.MedioDeEnvio;
 
-import ar.edu.utn.frba.ddsi.notificaciones.dto.NotificacionPayload;
+import ar.edu.utn.frba.ddsi.notificaciones.dto.n8n.NotificacionPayload;
 import ar.edu.utn.frba.ddsi.notificaciones.gateways.NotificacionGateway;
 import ar.edu.utn.frba.ddsi.notificaciones.models.entities.Notificacion.Notificacion;
 import org.springframework.stereotype.Component;

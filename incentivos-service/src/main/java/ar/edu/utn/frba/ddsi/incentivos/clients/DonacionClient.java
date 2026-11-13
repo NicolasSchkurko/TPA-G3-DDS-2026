@@ -10,12 +10,10 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Cliente de {@code donaciones-service}, de donde salen dos cosas: el medio de contacto
- * del donante y la verificación de que quien opera es un administrador.
+ * Cliente de {@code donaciones-service} para resolver el medio de contacto del donante.
  */
 @Slf4j
 @Service
@@ -56,27 +54,6 @@ public class DonacionClient {
         } catch (Exception e) {
             log.warn("No se pudo obtener el contacto del usuario {}", idUsuario, e);
             return null;
-        }
-    }
-
-    /**
-     * Si el id corresponde a un administrador. Un 4xx es un no-admin; cualquier otro fallo es
-     * infraestructura y se registra con stack trace.
-     */
-    public boolean verificarAdmin(UUID idAdmin) {
-        try {
-            ResponseEntity<Object> response = restTemplate.getForEntity(
-                urlDonaciones("/api/admins/" + idAdmin),
-                Object.class
-            );
-
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (HttpClientErrorException e) {
-            log.warn("El id {} no corresponde a un administrador: {}", idAdmin, e.getMessage());
-            return false;
-        } catch (Exception e) {
-            log.error("No se pudo verificar el administrador {}", idAdmin, e);
-            return false;
         }
     }
 

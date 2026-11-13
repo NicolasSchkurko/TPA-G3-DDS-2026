@@ -13,10 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-/**
- * Consultas sobre los rankings publicados. "El ranking actual" es el último mes cerrado, no
- * el de período más alto: un ranking del mes en curso sale vacío.
- */
+/** Consultas sobre los rankings publicados. */
 @Repository
 public interface RepositorioRankings extends JpaRepository<RankingMensual, UUID> {
 
@@ -29,18 +26,18 @@ public interface RepositorioRankings extends JpaRepository<RankingMensual, UUID>
      */
     Page<RankingMensual> findAllByOrderByPeriodoDesc(Pageable pageable);
 
-    /**
-     * El ranking del último período ya cerrado.
-     *
-     * @param ultimoPeriodoValido el mes en curso: solo cuenta lo anterior
-     */
-    Optional<RankingMensual> findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth ultimoPeriodoValido);
+    /** Último ranking publicado hasta el mes indicado, incluyendo un snapshot del mes en curso. */
+    Optional<RankingMensual> findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth periodo);
 
     @Query("SELECT p FROM RankingMensual rm JOIN rm.posiciones p WHERE rm.idRanking = :idRanking AND p.idUsuario = :idUsuario")
     Optional<Ranking> findPosicionEnRanking(@Param("idRanking") UUID idRanking, @Param("idUsuario") UUID idUsuario);
 
+    /** Posiciones paginadas de un ranking, ordenadas por puesto, sin cargar la colección entera. */
+    @Query("SELECT p FROM Ranking p WHERE p.rankingMensual.idRanking = :idRanking ORDER BY p.puesto ASC")
+    Page<Ranking> paginaPosiciones(@Param("idRanking") UUID idRanking, Pageable pageable);
+
     default Ranking obtenerPosicionActualDeUsuario(UUID idUsuario) {
-        RankingMensual rank = findFirstByPeriodoLessThanOrderByPeriodoDesc(YearMonth.now())
+        RankingMensual rank = findFirstByPeriodoLessThanEqualOrderByPeriodoDesc(YearMonth.now())
             .orElseThrow(InexistenteException::new);
 
         return findPosicionEnRanking(rank.getIdRanking(), idUsuario)

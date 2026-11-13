@@ -4,13 +4,17 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.M
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.MedioDeContacto;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Telefono;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Mensaje.MedioDeContacto.Whatsapp;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class MediosContactoDTO {
+    @NotBlank(message = "El tipo de medio de contacto es obligatorio")
     private String tipo;
+
+    @NotBlank(message = "El valor del medio de contacto es obligatorio")
     private String valor;
 
     public MediosContactoDTO() {
@@ -22,7 +26,12 @@ public class MediosContactoDTO {
     }
 
     public MedioDeContacto toDomain() {
-        if (tipo == null || valor == null) return null;
+        if (tipo == null || tipo.isBlank()) {
+            throw new IllegalArgumentException("El tipo de medio de contacto es obligatorio");
+        }
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException("El valor del medio de contacto es obligatorio");
+        }
         return switch (tipo.toUpperCase()) {
             case "EMAIL", "MAIL" -> new Mail(valor.toLowerCase());
             case "TELEFONO" -> new Telefono(valor);

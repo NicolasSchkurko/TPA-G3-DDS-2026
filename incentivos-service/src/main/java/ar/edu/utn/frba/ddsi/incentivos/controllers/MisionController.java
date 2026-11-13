@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -90,7 +91,7 @@ public class MisionController {
     })
     @PostMapping("/admin")
     public ResponseEntity<MisionDTO> crearMision(
-            @Parameter(description = "UUID del administrador", required = true)
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
             @RequestHeader("Admin-Id") UUID idAdmin,
             @Valid @RequestBody MisionDTO request
     ) {
@@ -110,8 +111,8 @@ public class MisionController {
     })
     @PutMapping("/admin/{id}")
     public ResponseEntity<MisionDTO> actualizarMision(
-            @Parameter(description = "UUID del administrador", required = true)
-            @RequestHeader("Admin-Id") UUID idAdmin,
+            @Parameter(description = "UUID del administrador autenticado por el front", required = true)
+            @RequestHeader("X-Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a actualizar", required = true)
             @PathVariable UUID id,
             @Valid @RequestBody MisionDTO mision
@@ -130,12 +131,16 @@ public class MisionController {
     })
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<Void> eliminarMision(
-            @Parameter(description = "UUID del administrador", required = true)
+            @Parameter(description = "UUID del administrador autenticado en front-service", required = true)
             @RequestHeader("Admin-Id") UUID idAdmin,
             @Parameter(description = "UUID de la misión a eliminar", required = true)
             @PathVariable UUID id
     ) {
         service.eliminarMision(idAdmin, id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static UUID idDe(Principal principal) {
+        return UUID.fromString(principal.getName());
     }
 }

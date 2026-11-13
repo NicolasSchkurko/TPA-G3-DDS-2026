@@ -3,6 +3,7 @@ package ar.edu.utn.frba.ddsi.incentivos.controllers;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.CrearRankingDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingDTO;
 import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingMesDTO;
+import ar.edu.utn.frba.ddsi.incentivos.dto.Perfil.RankingResumenDTO;
 import ar.edu.utn.frba.ddsi.incentivos.services.RankingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,11 +46,16 @@ public class RankingController {
     // ========== CREAR ==========
     @Operation(
             summary = "Crear ranking para un período específico",
-            description = "Genera un nuevo ranking mensual a partir de los datos históricos de donaciones de ese período. Es una operación de administración: requiere el header Admin-Id."
+            description = "Genera un ranking mensual según la cantidad de misiones completadas en ese período, "
+                    + "sin importar la categoría. "
+                    + "Se permite el mes actual como snapshot parcial, que no se recalcula automáticamente. "
+                    + "Devuelve la primera página de posiciones. Es una operación de administración: "
+                    + "el front valida el rol ADMIN y el backend está detrás de la ACL."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ranking creado con éxito"),
-            @ApiResponse(responseCode = "400", description = "Ya existe un ranking para ese período"),
+            @ApiResponse(responseCode = "400", description = "Período futuro o inválido"),
+            @ApiResponse(responseCode = "409", description = "Ya existe un ranking para ese período"),
             @ApiResponse(responseCode = "403", description = "No autorizado")
     })
     @PostMapping
@@ -82,7 +88,7 @@ public class RankingController {
 
     @Operation(
             summary = "Consultar el ranking general por ID",
-            description = "Obtiene la lista de puntajes y posiciones de todos los colaboradores para un ranking específico."
+            description = "Obtiene una página de posiciones de un ranking específico. Por defecto devuelve 10; se pagina con page/size."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ranking recuperado con éxito"),
@@ -91,9 +97,10 @@ public class RankingController {
     @GetMapping("/{id}")
     public ResponseEntity<RankingMesDTO> obtenerRanking(
             @Parameter(description = "UUID del ranking solicitado", example = "123e4567-e89b-12d3-a456-426614174000")
-            @PathVariable UUID id) {
-        RankingMesDTO rankingMes = service.obtenerRanking(id);
-        return ResponseEntity.ok(rankingMes);
+            @PathVariable UUID id,
+            @ParameterObject
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        return ResponseEntity.ok(service.obtenerRanking(id, pageable));
     }
 
     @Operation(
@@ -101,7 +108,7 @@ public class RankingController {
             description = "Devuelve las primeras posiciones del ranking, ordenadas de mayor a menor puntaje. "
                     + "Por defecto devuelve el top 10; el tamaño del podio se ajusta con el parámetro `limite`. "
                     + "El ranking se persiste completo, así que el `limite` recorta la respuesta y no el "
-                    + "snapshot: pedir 50 devuelve 50 aunque el ranking tenga más."
+                    + "snapshot: pedir 50 devuelve 50 aunque el ranking tenga más. El máximo es 100."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Podio recuperado con éxito"),
@@ -119,28 +126,29 @@ public class RankingController {
 
     @Operation(
             summary = "Obtener el último ranking publicado",
-            description = "Retorna el snapshot de ranking más reciente, sin depender del mes calendario actual."
+            description = "Retorna una página del snapshot de ranking más reciente, sin depender del mes calendario actual."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ranking actual recuperado con éxito"),
             @ApiResponse(responseCode = "404", description = "No existe ningún ranking publicado")
     })
     @GetMapping("/actual")
-    public ResponseEntity<RankingMesDTO> obtenerRankingActual() {
-        RankingMesDTO rankingActual = service.obtenerRankingActual();
-        return ResponseEntity.ok(rankingActual);
+    public ResponseEntity<RankingMesDTO> obtenerRankingActual(
+            @ParameterObject
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        return ResponseEntity.ok(service.obtenerRankingActual(pageable));
     }
 
     @Operation(
             summary = "Obtener historial de todos los rankings",
-            description = "Retorna la lista paginada de rankings generados en el sistema, del más reciente al más antiguo."
+            description = "Retorna los encabezados paginados de los rankings generados, del más reciente al más antiguo, sin cargar sus posiciones."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Historial de rankings recuperado con éxito"),
             @ApiResponse(responseCode = "404", description = "No hay rankings disponibles")
     })
     @GetMapping
-    public ResponseEntity<Page<RankingMesDTO>> obtenerHistorialRankings(
+    public ResponseEntity<Page<RankingResumenDTO>> obtenerHistorialRankings(
             @ParameterObject
             @PageableDefault(page = 0, size = 10, sort = "periodo", direction = Sort.Direction.DESC)
             Pageable pageable) {
@@ -150,7 +158,7 @@ public class RankingController {
     // ========== ELIMINAR ==========
     @Operation(
             summary = "Eliminar un ranking",
-            description = "Elimina un ranking específico del sistema. Es una operación de administración: requiere el header Admin-Id."
+            description = "Elimina un ranking específico del sistema. Es una operación de administración: el front valida el rol ADMIN y el backend está detrás de la ACL."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ranking eliminado con éxito"),

@@ -76,7 +76,8 @@ public class Categoria {
             return;
         }
 
-        boolean removida = this.categoriaMisiones.removeIf(cm -> cm.getMision().equals(mision));
+        boolean removida = this.categoriaMisiones.removeIf(
+                cm -> esLaMismaMision(cm.getMision(), mision));
         if (!removida) {
             return;
         }
@@ -112,7 +113,7 @@ public class Categoria {
         }
 
         Integer posicionActual = this.categoriaMisiones.stream()
-                                                       .filter(cm -> cm.getMision().equals(misionActual))
+                                                       .filter(cm -> esLaMismaMision(cm.getMision(), misionActual))
                                                        .map(CategoriaMision::getPosicion)
                                                        .findFirst()
                                                        .orElse(null);
@@ -129,6 +130,21 @@ public class Categoria {
     }
 
     /**
+     * Compara por id para tolerar los proxies de Hibernate: la misma fila puede venir como
+     * proxy en la colección y como entidad cargada en el argumento. Sin id (entidad nueva)
+     * solo vale la identidad de referencia.
+     */
+    private static boolean esLaMismaMision(Mision una, Mision otra) {
+        if (una == null || otra == null) {
+            return false;
+        }
+        if (una.getIdMision() == null || otra.getIdMision() == null) {
+            return una == otra;
+        }
+        return una.getIdMision().equals(otra.getIdMision());
+    }
+
+    /**
      * Reemplaza nombre y secuencia por los de otra categoría. Las posiciones se recalculan
      * desde el orden en que vienen.
      */
@@ -138,7 +154,7 @@ public class Categoria {
         }
 
         List<CategoriaMision> nuevaSecuencia = cambios.getCategoriaMisiones();
-        if (nuevaSecuencia == null || nuevaSecuencia.isEmpty()) {
+        if (nuevaSecuencia == null) {
             return;
         }
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!--
+  Uso mínimo en una página:
+
+  <head>
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+  </head>
+  <body>
+    <div id="map" class="ddsi-map"></div>
+    <th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+    <script>
+      const map = DDSIMap.create({ container: "map", center: [-34.6037, -58.3816], zoom: 13 });
+    </script>
+  </body>
+
+  Cada página agrega sus propias capas: marcadores, polylines o GeoJSON.
+-->
+
+<!-- Assets de Leaflet + componente propio. Cargar solo en páginas que muestran mapa. -->
+<th:block th:fragment="assets">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="dns-prefetch" href="//tile.openstreetmap.org">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" th:href="@{/css/mapa.css}">
+</th:block>
+
+<th:block th:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script th:src="@{/js/components/leaflet-map.js}"></script>
+</th:block>
+
+</body>
+</html>

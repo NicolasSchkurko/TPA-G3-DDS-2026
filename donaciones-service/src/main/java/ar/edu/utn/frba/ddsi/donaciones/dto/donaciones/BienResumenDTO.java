@@ -43,7 +43,7 @@ public class BienResumenDTO {
     return toDomain(subcatTransitoria);
   }
 
-  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía RepositorioSubcategoriasDeBienes) en vez de
+  // Recibe la SubcategoriaBien ya resuelta (buscar-o-crear vía RepositorioDeSubcategoriasDeBienes) en vez de
   // construir CategoriaBien/SubcategoriaBien "al vuelo": eso rompía merge() por no estar
   // cascadeadas (son catálogo compartido, igual que Necesidad.subcategoria). Usar esta variante
   // siempre que el Bien resultante se vaya a persistir vía JPA.
@@ -51,6 +51,7 @@ public class BienResumenDTO {
     UnidadDeMedida um = null;
     if (unidadDeMedida != null) {
       um = switch (unidadDeMedida.toUpperCase()) {
+        case "UNIDADES", "UNIDAD", "U" -> UnidadDeMedida.UNIDADES;
         case "KILOGRAMOS", "KILOS", "KG" -> UnidadDeMedida.KILOGRAMOS;
         case "LITROS", "LT" -> UnidadDeMedida.LITROS;
         default -> null;

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Camión — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="${edicion} ? 'Editar camión' : 'Nuevo camión'">Camión</h1>
+    </div>
+    <a class="btn btn-secondary" th:href="@{/admin/camiones}" data-back="true">Volver</a>
+</header>
+<main class="main-admin" id="contenido" tabindex="-1">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form th:action="${edicion} ? @{/admin/camiones/{patente}/actualizar(patente=${patente})} : @{/admin/camiones/nuevo}" th:object="${camion}" method="post" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Patente</label>
+                    <input class="form-control" th:field="*{patente}" th:readonly="${edicion}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Volumen (m²)</label>
+                    <input class="form-control" type="number" step="0.1" th:field="*{capacidadVolumen}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Altura (m)</label>
+                    <input class="form-control" type="number" step="0.1" th:field="*{altura}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Capacidad de carga</label>
+                    <input class="form-control" type="number" step="0.1" th:field="*{capacidadCarga}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Chofer</label>
+                    <select class="form-select" th:field="*{idChofer}">
+                        <option value="">Sin asignar</option>
+                        <option th:each="chofer : ${choferes}" th:value="${chofer.idChofer}" th:text="${chofer.nombre}">Chofer</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Disponible</label>
+                    <select class="form-select" th:field="*{disponible}">
+                        <option th:value="true">Disponible</option>
+                        <option th:value="false">Ocupado</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

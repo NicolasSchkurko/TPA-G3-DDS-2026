@@ -1,0 +1,475 @@
+/* =========================================================
+   DonaTrack · Mapa completo de una ruta (autenticado)
+   ========================================================= */
+
+.seguimiento-body {
+    min-height: 100dvh;
+}
+
+.seguimiento-body .app-footer {
+    margin-top: 0;
+}
+
+.seguimiento-shell {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+}
+
+.seguimiento-map-shell {
+    position: relative;
+    width: 100%;
+    height: clamp(620px, calc(100dvh - 76px), 980px);
+    min-height: 520px;
+    overflow: hidden;
+    background: var(--map-bg);
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    background: var(--map-bg);
+    z-index: 1;
+}
+
+/* ---------- Cabecera superpuesta ---------- */
+.seguimiento-topbar {
+    position: absolute;
+    z-index: 900;
+    top: var(--gap-4);
+    left: var(--gap-4);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap-3);
+    max-width: min(560px, calc(100% - 420px));
+    flex-wrap: wrap;
+    pointer-events: none;
+}
+
+.seguimiento-topbar > * {
+    pointer-events: auto;
+}
+
+.seguimiento-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--hit);
+    padding: 0 var(--gap-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .96);
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(8px);
+}
+
+.seguimiento-back:hover,
+.seguimiento-back:focus-visible {
+    color: var(--accent-dark);
+    background: var(--white);
+}
+
+.seguimiento-title-card {
+    padding: var(--gap-3) var(--gap-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, .96);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(8px);
+}
+
+.eyebrow {
+    margin: 0 0 var(--gap-1);
+    color: var(--accent-dark);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.seguimiento-title-card h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(22px, 2.4vw, 32px);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+}
+
+.seguimiento-lead {
+    margin: var(--gap-1) 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/* ---------- Drawer ---------- */
+.seguimiento-drawer {
+    position: absolute;
+    z-index: 900;
+    top: var(--gap-4);
+    right: var(--gap-4);
+    bottom: var(--gap-4);
+    display: flex;
+    flex-direction: column;
+    width: min(380px, calc(100% - 2 * var(--gap-4)));
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 18px 50px rgba(15, 18, 16, .18);
+    backdrop-filter: blur(10px);
+    transition: transform .22s ease, opacity .22s ease;
+}
+
+.seguimiento-drawer.is-collapsed {
+    transform: translateX(calc(100% + var(--gap-4)));
+    opacity: 0;
+    pointer-events: none;
+}
+
+.seguimiento-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    padding: var(--gap-4);
+    border-bottom: 1px solid var(--line);
+}
+
+.seguimiento-drawer-head h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 20px;
+    letter-spacing: -0.02em;
+}
+
+.drawer-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--hit);
+    height: var(--hit);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--ink-2);
+    cursor: pointer;
+}
+
+.drawer-toggle:hover,
+.drawer-toggle:focus-visible {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+.seguimiento-drawer.is-collapsed .drawer-toggle svg {
+    transform: rotate(180deg);
+}
+
+.seguimiento-drawer-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-4);
+    min-height: 0;
+    padding: var(--gap-4);
+    overflow: auto;
+}
+
+.seguimiento-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gap-2);
+}
+
+.seguimiento-summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--gap-2) var(--gap-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--map-bg);
+}
+
+.seguimiento-summary strong {
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1;
+}
+
+.seguimiento-summary span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* ---------- Lista de paradas ---------- */
+.seguimiento-stops {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stop-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: var(--gap-3);
+    padding: var(--gap-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    min-height: var(--hit);
+}
+
+.stop-item:hover,
+.stop-item:focus-visible {
+    border-color: var(--line);
+    background: var(--map-bg);
+}
+
+.seguimiento-stops li.is-actual .stop-item {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.seguimiento-stops li.is-deposito .stop-item {
+    background: var(--map-bg);
+}
+
+.stop-number {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--map-bg);
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.seguimiento-stops li.is-actual .stop-number {
+    background: var(--accent);
+    color: var(--white);
+}
+
+.seguimiento-stops li.is-completa .stop-number {
+    background: #dcefe2;
+    color: var(--accent-dark);
+}
+
+.seguimiento-stops li.is-deposito .stop-number {
+    background: var(--ink);
+    color: var(--white);
+}
+
+.stop-copy {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.stop-copy strong {
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.stop-meta {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.stop-item .chip {
+    flex: 0 0 auto;
+    font-size: 10.5px;
+}
+
+/* ---------- Leyenda y FAB ---------- */
+.seguimiento-legend {
+    position: absolute;
+    z-index: 800;
+    left: var(--gap-4);
+    bottom: var(--gap-4);
+    display: flex;
+    align-items: center;
+    gap: var(--gap-3);
+    max-width: calc(100% - 420px);
+    padding: var(--gap-2) var(--gap-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: var(--shadow-sm);
+    color: var(--muted);
+    font-size: 11.5px;
+    flex-wrap: wrap;
+    backdrop-filter: blur(8px);
+}
+
+.seguimiento-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.seguimiento-legend .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.legend-dot.actual { background: var(--accent); }
+.legend-dot.completada { background: #86c79b; }
+.legend-dot.pendiente { background: #b8c1ba; }
+.legend-dot.deposito { background: var(--ink); }
+
+.seguimiento-drawer-fab {
+    display: none;
+    position: absolute;
+    z-index: 950;
+    right: var(--gap-3);
+    bottom: var(--gap-3);
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--ink);
+    font-size: 20px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+}
+
+.seguimiento-map-shell.drawer-collapsed .seguimiento-drawer-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.seguimiento-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align: center;
+}
+
+/* ---------- Pines ---------- */
+.ruta-pin {
+    display: grid;
+    place-items: center;
+    width: 30px !important;
+    height: 30px !important;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: #2f8f4d;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 1px 5px rgba(15, 18, 16, .28);
+}
+
+.ruta-pin.is-actual {
+    background: var(--accent);
+    transform: scale(1.12);
+}
+
+.ruta-pin.is-completa {
+    background: #7fc596;
+    color: var(--ink);
+}
+
+.ruta-pin.is-deposito {
+    background: var(--ink);
+    box-shadow: 0 0 0 2px var(--ink);
+}
+
+.ruta-pin.is-camion {
+    width: 40px !important;
+    height: 40px !important;
+    border-color: var(--white);
+    background: var(--accent-dark);
+    font-size: 18px;
+    box-shadow: 0 3px 12px rgba(15, 18, 16, .35);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+    .seguimiento-map-shell {
+        height: calc(100dvh - 64px);
+        min-height: 560px;
+    }
+
+    .seguimiento-topbar {
+        top: var(--gap-3);
+        left: var(--gap-3);
+        right: var(--gap-3);
+        max-width: none;
+    }
+
+    .seguimiento-title-card {
+        order: 2;
+        flex: 1 1 100%;
+        padding: var(--gap-2) var(--gap-3);
+    }
+
+    .seguimiento-title-card h1 {
+        font-size: 22px;
+    }
+
+    .seguimiento-drawer {
+        top: auto;
+        right: var(--gap-3);
+        bottom: var(--gap-3);
+        left: var(--gap-3);
+        width: auto;
+        max-height: min(52dvh, 430px);
+        border-radius: var(--radius-lg);
+    }
+
+    .seguimiento-drawer.is-collapsed {
+        transform: translateY(calc(100% + var(--gap-3)));
+    }
+
+    .seguimiento-legend {
+        display: none;
+    }
+}
+
+@media (max-width: 520px) {
+    .seguimiento-back {
+        padding: 0 var(--gap-2);
+    }
+
+    .seguimiento-summary strong {
+        font-size: 17px;
+    }
+
+    .stop-item .chip {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .seguimiento-drawer {
+        transition: none;
+    }
+}

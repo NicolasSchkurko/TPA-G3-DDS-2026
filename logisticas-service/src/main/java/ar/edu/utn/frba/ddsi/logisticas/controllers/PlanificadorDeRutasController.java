@@ -1,7 +1,7 @@
 package ar.edu.utn.frba.ddsi.logisticas.controllers;
 
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
-import ar.edu.utn.frba.ddsi.logisticas.Scheduler.PlanificadorDeRutasScheduler;
+import ar.edu.utn.frba.ddsi.logisticas.scheduler.PlanificadorDeRutasScheduler;
 import ar.edu.utn.frba.ddsi.logisticas.services.PlanificadorRutasService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -48,7 +48,8 @@ public class PlanificadorDeRutasController {
   public ResponseEntity<String> recibirRutasPlanificadas(@RequestBody String jsonAsignacion) {
     try {
       List<Ruta> rutasGeneradas = planificadorService.procesarCallbackRutas(jsonAsignacion);
-      if (rutasGeneradas.equals(planificadorService.asignarChoferes(rutasGeneradas))){
+      List<Ruta> rutasAsignadas = planificadorService.asignarChoferes(rutasGeneradas);
+      if (rutasGeneradas.size() == rutasAsignadas.size()) {
         return ResponseEntity.ok("Rutas procesadas y guardadas exitosamente en el sistema de logística.");
       } else {
         return ResponseEntity.ok("Lo sentimos, no pudimos asignar todas las rutas por falta de choferes");

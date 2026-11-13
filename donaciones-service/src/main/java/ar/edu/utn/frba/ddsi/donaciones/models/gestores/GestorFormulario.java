@@ -6,7 +6,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Don
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.Formulario;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.SegmentadorDonaciones.SegmentadorDonaciones;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.donador.Donante;
-import ar.edu.utn.frba.ddsi.donaciones.models.repositories.repos.RepositorioFormularios;
+import ar.edu.utn.frba.ddsi.donaciones.models.repositories.interfaces.RepositorioDeFormularios;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,10 +17,10 @@ import java.util.UUID;
 @Service
 public class GestorFormulario {
 
-    private final RepositorioFormularios repositorioFormularios;
+    private final RepositorioDeFormularios repositorioFormularios;
 
     // Constructor para inyección de dependencias
-    public GestorFormulario(RepositorioFormularios repositorioFormularios) {
+    public GestorFormulario(RepositorioDeFormularios repositorioFormularios) {
         this.repositorioFormularios = repositorioFormularios;
     }
 

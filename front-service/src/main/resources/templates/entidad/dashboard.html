@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad — DonaTrack' : 'Mi entidad — DonaTrack'}">Mi entidad — DonaTrack</title>
+    <meta name="description" content="Seguimiento de las donaciones asignadas a tu entidad: necesidades, entregas activas y confirmación de recepción.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/donante-mapa.css}">
+    <link rel="stylesheet" th:href="@{/css/entidad.css(v=4)}">
+</head>
+<body class="beneficiary-map-page">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="map-main sidebar-collapsed" id="contenido" tabindex="-1">
+    <h1 class="visually-hidden" th:text="${entidad != null ? entidad.razonSocial + ' — Mi entidad' : 'Mi entidad'}">Mi entidad</h1>
+
+    <!-- ============ Drawer izquierdo: necesidades ============ -->
+    <aside class="donor-sidebar" id="necesidadesPanel" aria-label="Necesidades de la entidad">
+        <header class="sidebar-heading">
+            <div>
+                <p class="sidebar-eyebrow">Mi entidad</p>
+                <h2>Necesidades</h2>
+                <p class="text-muted small mb-0">Seguí el progreso de lo que necesita tu entidad.</p>
+            </div>
+            <span class="history-count" th:text="${necesidadesActivas}">0</span>
+        </header>
+
+        <a class="donate-cta" th:href="@{/entidad/necesidades(nueva=1)}">
+            <i class="bi bi-plus-circle" aria-hidden="true"></i>
+            <span>Nueva necesidad</span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+
+        <section class="history-list" id="necesidadesList" aria-label="Necesidades destacadas">
+            <article class="need-item" th:each="n : ${necesidadesDestacadas}">
+                <div class="need-item-head">
+                    <span class="need-item-title" th:text="${n.nombreSubcategoria}">Alimentos</span>
+                    <span class="need-item-amount">
+                        <span th:text="${n.bienesRecibidos()}">10</span>/<span th:text="${n.cantidadObjetivo}">100</span>
+                    </span>
+                </div>
+                <div class="progress" role="progressbar"
+                     th:attr="aria-valuenow=${n.progreso()}, aria-valuemin=0, aria-valuemax=100"
+                     aria-label="Progreso de la necesidad">
+                    <div class="progress-bar" th:classappend="${n.progreso() >= 100 ? ' is-complete' : ''}"
+                         th:style="'width:' + ${n.progreso()} + '%'"></div>
+                </div>
+                <div class="need-item-meta">
+                    <span th:text="${n.nombreCategoria}">Alimentos</span>
+                    <span th:text="${n.tipoNecesidad == 'EXTRAORDINARIA' ? 'Única vez' : 'Recurrente'}">Recurrente</span>
+                </div>
+            </article>
+            <p class="history-empty" th:if="${#lists.isEmpty(necesidadesDestacadas)}">
+                Todavía no tenés necesidades registradas.
+            </p>
+            <p class="history-empty">
+                <a th:href="@{/entidad/necesidades}" style="color: var(--accent-dark); font-weight: 600;">Ver todas las necesidades →</a>
+            </p>
+        </section>
+    </aside>
+
+    <button class="map-corner-toggle map-corner-toggle-left" id="toggleNecesidades"
+            type="button" aria-expanded="false" aria-controls="necesidadesPanel"
+            aria-label="Mostrar necesidades de la entidad">
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="map-corner-toggle-label">Necesidades</span>
+    </button>
+
+    <!-- ============ Mapa de entregas activas ============ -->
+    <section class="beneficiary-map" aria-label="Mapa con las entregas activas de tu entidad">
+        <div id="map" class="ddsi-map" role="application"
+             aria-label="Mapa interactivo. Muestra tu entidad y los camiones con entregas asignadas."></div>
+
+        <button class="map-corner-toggle map-corner-toggle-right" id="toggleEntidadData"
+                type="button" aria-expanded="false" aria-controls="entidadDataPanel"
+                aria-label="Abrir datos de la entidad">
+            <span class="map-corner-toggle-label">Datos</span>
+            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+
+        <aside class="map-drawer map-drawer-right" id="entidadDataPanel" aria-hidden="true" aria-label="Datos de la entidad y donaciones">
+            <div class="incentives-heading">
+                <div>
+                    <p class="incentives-eyebrow">Entidad beneficiaria</p>
+                    <h2 th:text="${entidad.razonSocial}">Comedor Los Piletones</h2>
+                </div>
+                <i class="bi bi-building" aria-hidden="true"></i>
+            </div>
+
+            <div class="incentive-section">
+                <div class="incentive-section-title">
+                    <h3>Datos de la entidad</h3>
+                </div>
+                <p class="mission-description" th:text="${entidad.rubro != null ? entidad.rubro : 'Sin rubro'}">Asistencia social</p>
+                <p class="mission-description" th:if="${entidad.cuit != null}">CUIT <span th:text="${entidad.cuit}">30-12345678-9</span></p>
+                <p class="mission-description" th:if="${entidad.direccion != null}" th:text="${entidad.direccion.etiqueta()}">Av. Perito Moreno 2400</p>
+                <p class="mission-description" th:if="${entidad.direccion != null and entidad.direccion.ciudad != null}" th:text="${entidad.direccion.ciudad}">Villa Soldati</p>
+                <span class="chip" th:classappend="${entidad.activa == null or entidad.activa ? ' chip-success' : ' chip-danger'}"
+                      th:text="${entidad.activa == null or entidad.activa ? 'Activa' : 'Dada de baja'}">Activa</span>
+            </div>
+
+            <div class="incentive-section">
+                <div class="incentive-section-title">
+                    <h3>Resumen</h3>
+                </div>
+                <div class="summary-stats" style="grid-template-columns: repeat(2, 1fr);">
+                    <span class="summary-stat"><strong th:text="${totalDonaciones}">0</strong>donaciones</span>
+                    <span class="summary-stat"><strong th:text="${necesidadesActivas}">0</strong>necesidades</span>
+                    <span class="summary-stat"><strong th:text="${enCamino}">0</strong>en camino</span>
+                    <span class="summary-stat"><strong th:text="${notifNoLeidas != null ? notifNoLeidas : 0}">0</strong>avisos</span>
+                </div>
+            </div>
+
+            <div class="incentive-section" th:if="${proximaEntrega != null}">
+                <div class="incentive-section-title">
+                    <h3>Próxima entrega</h3>
+                </div>
+                <a class="summary-next-link"
+                   th:href="${proximaEntrega.idDonacion != null ? '/entidad/donaciones/' + proximaEntrega.idDonacion : '/entidad/seguimiento'}">
+                    <span class="summary-next-main">
+                        <strong th:text="${proximaEntrega.cantidad + ' ' + (proximaEntrega.unidadDeMedida != null ? proximaEntrega.unidadDeMedida : 'unidades')}">1.600 KG</strong>
+                        <span class="chip" th:classappend="${proximaEntrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
+                              th:text="${proximaEntrega.estado == 'EN_CAMINO' ? 'En camino' : 'Pendiente'}">En camino</span>
+                    </span>
+                    <span class="summary-next-zona" th:text="${proximaEntrega.zona != null ? proximaEntrega.zona : ''}">Villa Soldati</span>
+                </a>
+            </div>
+
+            <div class="incentive-section">
+                <div class="incentive-section-title">
+                    <h3>Entregas activas</h3>
+                    <span>
+                        <a th:if="${camiones != null and !#lists.isEmpty(camiones) and camiones[0].tokenSeguimiento != null}"
+                           th:href="@{/seguimiento/{token}(token=${camiones[0].tokenSeguimiento})}"
+                           target="_blank" rel="noopener"
+                           style="font-size: 12px; color: var(--accent-dark); margin-right: 10px;">Mapa completo</a>
+                        <a th:href="@{/entidad/seguimiento}" style="font-size: 12px; color: var(--accent-dark);">Ver en mapa →</a>
+                    </span>
+                </div>
+                <div th:if="${#lists.isEmpty(entregasActivas)}" class="incentives-empty">
+                    Sin entregas activas por ahora.
+                </div>
+                <a class="delivery-item" th:each="entrega : ${entregasActivas}"
+                   style="text-decoration: none; color: inherit; margin-bottom: 8px;"
+                   th:href="@{/entidad/donaciones/{id}(id=${entrega.idDonacion})}">
+                    <span class="delivery-icon" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.56l1.48 1.85a1.5 1.5 0 0 1 .33.94v3.15a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H6a2 2 0 1 1-4 0H1.5A1.5 1.5 0 0 1 0 10.5z"/></svg>
+                    </span>
+                    <span>
+                        <h3 th:text="${entrega.cantidad + ' ' + (entrega.unidadDeMedida != null ? entrega.unidadDeMedida : 'unidades')}">1.600 KG</h3>
+                        <p>
+                            <span class="chip" th:classappend="${entrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
+                                  th:text="${entrega.estado == 'EN_CAMINO' ? 'En camino' : 'Pendiente'}">En camino</span>
+                            <span th:text="${entrega.zona != null ? entrega.zona : ''}">Villa Soldati</span>
+                        </p>
+                    </span>
+                </a>
+            </div>
+
+            <div class="incentive-section">
+                <div class="summary-actions" aria-label="Acciones rápidas">
+                    <a class="btn btn-secondary btn-sm" th:href="@{/entidad/notificaciones}">Avisos</a>
+                    <a class="btn btn-secondary btn-sm" th:href="@{/entidad/donaciones}">Donaciones</a>
+                    <a class="btn btn-primary btn-sm" th:href="@{/entidad/necesidades(nueva=1)}">Nueva necesidad</a>
+                </div>
+            </div>
+        </aside>
+
+        <div class="map-overlay map-overlay-bl">
+            <div class="map-legend-card" aria-label="Referencias del mapa">
+                <span class="legend">
+                    <span><i class="legend-dot" aria-hidden="true"></i> Mi entidad</span>
+                    <span><i class="legend-dot transit" aria-hidden="true"></i> Camión en camino</span>
+                </span>
+            </div>
+        </div>
+
+        <p class="map-selection-notice" id="mapSelectionNotice" aria-live="polite"></p>
+
+        <div class="map-overlay" style="top: auto; bottom: 84px; left: var(--gap-3);">
+            <div id="mapError" class="banner banner-error" role="alert" hidden
+                 style="max-width: 320px; background: rgba(255,255,255,.97);">
+                <div>No pudimos actualizar el seguimiento. <button type="button" id="mapRetry" class="btn btn-ghost btn-sm" style="min-height: 36px;">Reintentar</button></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+<script th:src="@{/js/entidad/map.js}" defer></script>
+<script th:src="@{/js/core/toast.js}" defer></script>
+<script th:src="@{/js/core/polling.js}" defer></script>
+<script th:src="@{/js/entidad/dashboard.js}" defer></script>
+<script th:inline="javascript">
+    window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
+    window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 30000}]];
+</script>
+</body>
+</html>

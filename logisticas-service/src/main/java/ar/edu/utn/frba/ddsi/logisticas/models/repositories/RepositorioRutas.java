@@ -1,46 +1,25 @@
 package ar.edu.utn.frba.ddsi.logisticas.models.repositories;
 
-import ar.edu.utn.frba.ddsi.logisticas.models.entities.Chofer.Chofer;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.EstadoRuta;
 import ar.edu.utn.frba.ddsi.logisticas.models.entities.Ruta.Ruta;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RepositorioRutas extends MongoRepository<Ruta, UUID> {
 
-    default Optional<Ruta> findByIdDonacion(UUID idDonacion){
-        return this.findAll().stream()
-                .filter(ruta -> ruta.obtenerTodosLosItems().stream()
-                        .anyMatch(item -> item.getIdDonacion().equals(idDonacion)))
-                .findFirst();
-    }
+    Optional<Ruta> findFirstByParadasItemsIdDonacion(UUID idDonacion);
 
-    default Optional<Ruta> findByChofer(Chofer chofer){
-        if (chofer == null) return Optional.empty();
-        return this.findAll().stream()
-                .filter(ruta -> ruta.getCamionAsignado() != null &&
-                        chofer.equals(ruta.getCamionAsignado().getChofer()))
-                .findFirst();
-    }
+    Optional<Ruta> findFirstByCamionAsignadoChoferIdChoferAndEstado(UUID idChofer, EstadoRuta estado);
 
-    default Optional<Ruta> findByChoferYEstado(Chofer chofer, EstadoRuta estado) {
-        if (chofer == null || estado == null || chofer.getIdChofer() == null) {
-            return Optional.empty();
-        }
+    List<Ruta> findByEstadoIn(Collection<EstadoRuta> estados);
 
-        UUID idChofer = chofer.getIdChofer();
-
-        return this.findAll().stream()
-                .filter(ruta -> ruta.getCamionAsignado() != null)
-                .filter(ruta -> ruta.getCamionAsignado().getChofer() != null)
-                .filter(ruta -> idChofer.equals(
-                        ruta.getCamionAsignado().getChofer().getIdChofer()
-                ))
-                .filter(ruta -> estado.equals(ruta.getEstado()))
-                .findFirst();
-    }
+    Page<Ruta> findByCamionAsignadoChoferIdChofer(UUID idChofer, Pageable pageable);
 }

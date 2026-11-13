@@ -1,0 +1,660 @@
+/* =========================================================
+   DonaTrack · Portal del chofer
+   Jornada, paradas, entregas e historial sobre el design system.
+   ========================================================= */
+
+.chofer-page {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--gap-5) var(--gap-4) var(--gap-7);
+    flex: 1;
+}
+
+/* ---------- Migas y encabezado ---------- */
+.crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    margin-bottom: var(--gap-3);
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1;
+}
+
+.crumbs > * {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit);
+}
+
+.crumbs a {
+    padding: 0 var(--gap-1);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.crumbs a:hover,
+.crumbs a:focus-visible {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+}
+
+.page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--gap-4);
+    margin-bottom: var(--gap-5);
+    flex-wrap: wrap;
+}
+
+.eyebrow {
+    margin: 0 0 var(--gap-1);
+    color: var(--accent-dark);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: clamp(26px, 2.6vw, 34px);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+}
+
+.lead {
+    margin: var(--gap-2) 0 0;
+    max-width: 66ch;
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.6;
+}
+
+.chofer-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    flex-wrap: wrap;
+}
+
+/* ---------- Resumen ---------- */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gap-3);
+    margin-bottom: var(--gap-4);
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: var(--gap-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.summary-label {
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.summary-value {
+    color: var(--ink);
+    font-size: 21px;
+    line-height: 1.15;
+}
+
+.summary-meta {
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.chip-actual {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+
+.summary-card .progress {
+    margin: var(--gap-1) 0;
+}
+
+/* ---------- Grilla principal ---------- */
+.content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+    gap: var(--gap-4);
+    align-items: start;
+}
+
+.panel {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    padding: var(--gap-4) var(--gap-5);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+
+.panel-subtitle {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.panel-body {
+    padding: var(--gap-4) var(--gap-5);
+}
+
+/* ---------- Paradas ---------- */
+.parada {
+    padding: var(--gap-4) var(--gap-5);
+}
+
+.parada + .parada {
+    border-top: 1px solid var(--line);
+}
+
+.parada.is-actual {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.parada.is-completa {
+    background: #fbfcfb;
+}
+
+.parada.is-deposito {
+    background: #f7f8f6;
+    box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.parada.is-deposito .parada-numero.is-deposito {
+    background: var(--ink);
+    color: var(--white);
+}
+
+.parada-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--gap-3);
+}
+
+.parada {
+    cursor: pointer;
+}
+
+.parada-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--gap-2);
+    flex-wrap: wrap;
+}
+
+.parada-map-btn {
+    min-height: var(--hit);
+    padding: 0 var(--gap-2);
+    font-size: 12px;
+}
+
+.parada-map-btn:hover,
+.parada-map-btn:focus-visible {
+    background: var(--accent-soft);
+}
+
+.parada-id {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap-3);
+    min-width: 0;
+}
+
+.parada-numero {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--map-bg);
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.parada.is-actual .parada-numero {
+    background: var(--accent);
+    color: var(--white);
+}
+
+.parada.is-completa .parada-numero {
+    background: #dcefe2;
+    color: var(--accent-dark);
+}
+
+.parada-dir {
+    margin: 3px 0 0;
+    color: var(--ink);
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.parada-zona {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.parada-hint {
+    margin: var(--gap-2) 0 0 42px;
+    color: var(--status-urgent);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.parada-lock {
+    margin: var(--gap-2) 0 0 42px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.parada-vacia {
+    margin: var(--gap-3) 0 0 42px;
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+/* ---------- Paquetes ---------- */
+.bienes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2);
+    margin: var(--gap-3) 0 0 42px;
+    padding: 0;
+    list-style: none;
+}
+
+.bien {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    padding: var(--gap-2) var(--gap-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+}
+
+.bien.is-entregada {
+    border-color: #d7e8dc;
+    background: #f7faf8;
+}
+
+.bien-main {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    min-width: 0;
+}
+
+.bien-dot {
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+    background: var(--white);
+}
+
+.bien-dot.is-done {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.bien-cantidad {
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+.bien-id {
+    margin-left: 6px;
+    color: var(--muted-2);
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.bien-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    flex-shrink: 0;
+}
+
+.bien.is-entregada .bien-cantidad {
+    color: var(--muted);
+}
+
+/* ---------- Mapa ---------- */
+.map-panel .panel-head {
+    border-bottom: 1px solid var(--line);
+}
+
+.map-frame {
+    position: relative;
+    min-height: 420px;
+}
+
+#rutaMap {
+    width: 100%;
+    height: 540px;
+    background: var(--map-bg);
+}
+
+.map-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: var(--gap-5);
+    background: var(--map-bg);
+    color: var(--muted);
+    text-align: center;
+}
+
+.map-empty strong {
+    display: block;
+    margin-bottom: var(--gap-1);
+    color: var(--ink-2);
+    font-size: 14px;
+}
+
+.map-empty p {
+    margin: 0;
+    font-size: 12.5px;
+}
+
+.map-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-4);
+    padding: var(--gap-2) var(--gap-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.map-legend .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legend-dot.actual { background: var(--accent); }
+.legend-dot.completada { background: #86c79b; }
+.legend-dot.pendiente { background: #b8c1ba; }
+
+/* ---------- Historial ---------- */
+.historial-panel {
+    margin-top: var(--gap-4);
+}
+
+.historial-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.historial-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--gap-3);
+    padding: var(--gap-3) var(--gap-5);
+}
+
+.historial-item + .historial-item {
+    border-top: 1px solid var(--line);
+}
+
+.historial-date {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.historial-route {
+    color: var(--muted);
+    font-size: 12.5px;
+    min-width: 0;
+}
+
+.historial-route strong {
+    color: var(--ink-2);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    padding: var(--gap-3) var(--gap-5);
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+/* ---------- Modal de entrega ---------- */
+.modal-subtitle {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+.photo-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--gap-1);
+    padding: var(--gap-5) var(--gap-4);
+    border: 2px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--map-bg);
+    color: var(--ink-2);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.photo-drop:hover,
+.photo-drop:focus-within {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.photo-drop svg {
+    width: 30px;
+    height: 30px;
+    color: var(--accent-dark);
+}
+
+.photo-drop input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.photo-hint {
+    color: var(--muted);
+    font-size: 11.5px;
+}
+
+.photo-preview {
+    width: 100%;
+    max-height: 220px;
+    margin-top: var(--gap-3);
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+#entregaForm .field {
+    margin-top: var(--gap-3);
+}
+
+/* ---------- Pines del mapa ---------- */
+.ruta-pin {
+    display: grid;
+    place-items: center;
+    width: 30px !important;
+    height: 30px !important;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    background: #2f8f4d;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 1px 5px rgba(15, 18, 16, .28);
+}
+
+.ruta-pin.is-actual {
+    background: var(--accent);
+    transform: scale(1.12);
+}
+
+.ruta-pin.is-completa {
+    background: #7fc596;
+    color: var(--ink);
+}
+
+.ruta-pin.is-deposito {
+    background: var(--ink);
+    border-color: var(--white);
+    box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #rutaMap {
+        height: 420px;
+    }
+}
+
+@media (max-width: 720px) {
+    .chofer-page {
+        padding: var(--gap-4) var(--gap-3) var(--gap-6);
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header {
+        align-items: flex-start;
+    }
+
+    .chofer-actions {
+        width: 100%;
+    }
+
+    .chofer-actions form,
+    .chofer-actions .btn {
+        width: 100%;
+    }
+
+    .panel-head,
+    .panel-body,
+    .parada {
+        padding-left: var(--gap-4);
+        padding-right: var(--gap-4);
+    }
+
+    .bienes,
+    .parada-hint,
+    .parada-lock,
+    .parada-vacia {
+        margin-left: 0;
+    }
+
+    .bien {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .bien-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #rutaMap {
+        height: 360px;
+    }
+
+    .map-frame {
+        min-height: 360px;
+    }
+
+    .historial-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .historial-date {
+        grid-column: 1 / -1;
+    }
+
+    .historial-item .btn {
+        width: 100%;
+    }
+}

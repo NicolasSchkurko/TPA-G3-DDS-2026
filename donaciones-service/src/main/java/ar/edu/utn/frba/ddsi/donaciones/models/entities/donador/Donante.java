@@ -4,6 +4,7 @@ import ar.edu.utn.frba.ddsi.donaciones.models.entities.Donaciones.Formulario.For
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.Personas.Persona;
 import ar.edu.utn.frba.ddsi.donaciones.models.entities.direccion.Direccion;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -12,6 +13,8 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +25,20 @@ import java.util.List;
 public class Donante {
     @Id
     private UUID id;
+
+    // Identificador inmutable de la cuenta de Keycloak vinculada a este perfil.
+    // Es la identidad del usuario (el email es solo medio de contacto).
+    @Column(name = "keycloak_sub", unique = true, length = 36)
+    private String keycloakSub;
+
+    // Soft delete: el donante nunca se elimina físicamente para preservar claves foráneas de donaciones.
+    @Column(nullable = false)
+    private boolean activo = true;
+
+    private LocalDateTime fechaBaja;
+
+    /** Último aviso de inactividad enviado; evita repetirlo mientras siga inactivo (punto 67). */
+    private LocalDate ultimaNotificacionInactividad;
 
     // Lado inverso: el dueño de la relación es Formulario.donante (@JoinColumn donante_id).
     // Sin cascade acá: agregar/quitar un Formulario de esta lista no debe alterar su ciclo de
@@ -36,16 +53,16 @@ public class Donante {
     @JoinColumn(name = "direccion_id")
     private Direccion direccion;
 
-    // ManyToOne (no OneToOne): la Persona vive en su propio repositorio (RepositorioPersonas),
+    // ManyToOne (no OneToOne): la Persona vive en su propio repositorio (RepositorioDePersonas),
     // igual que Administrador.humano / EntidadBeneficiaria.personaJuridica. Sin cascade REMOVE:
     // dar de baja el donante no debe borrar la Persona asociada. Se registra explícitamente vía
-    // RepositorioPersonas antes de guardar el Donante (ver DonanteService).
+    // RepositorioDePersonas antes de guardar el Donante (ver DonanteService).
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "persona_id")
     private Persona persona;
 
-    protected Donante() {
-        // Constructor requerido por JPA/Hibernate.
+    public Donante() {
+        this.id = UUID.randomUUID();
     }
 
     public Donante(Direccion direccion, Persona persona ) {
@@ -53,9 +70,19 @@ public class Donante {
         this.formularios = new ArrayList<>();
         this.direccion = direccion;
         this.persona = persona;
+        this.activo = true;
     }
 
-
+    public void darDeBaja() {
+        this.activo = false;
+        this.fechaBaja = LocalDateTime.now();
+        if (this.persona != null) {
+            this.persona.anonimizar();
+        }
+        if (this.direccion != null) {
+            this.direccion.anonimizar();
+        }
+    }
 
     public void agregarFormulario(Formulario formulario){
         this.formularios.add(formulario);

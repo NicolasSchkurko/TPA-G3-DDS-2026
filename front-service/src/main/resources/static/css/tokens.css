@@ -1,0 +1,56 @@
+/* =========================================================
+   DDSI · Design tokens
+   Sistema unificado de color, tipografía, espaciado y radios.
+   Reutiliza la identidad de la landing (verde #1B7838 + blanco).
+   ========================================================= */
+
+:root {
+    /* Color de marca */
+    --accent: #1b7838;
+    --accent-dark: #155f2d;
+    --accent-soft: #eef5f0;
+
+    --white: #ffffff;
+    --ink: #0f1210;
+    --ink-2: #333b34;
+    --muted: #5b635c;
+    --muted-2: #6b726c;
+
+    --line: #e1e5e0;
+    --line-strong: #cdd4ce;
+    --map-bg: #f0f2ee;
+
+    /* Estados */
+    --status-delivered: #1b7838;
+    --status-transit: #6b7280;
+    --status-urgent: #b45309;
+    --status-danger: #b91c1c;
+    --status-info: #1d4ed8;
+
+    /* Espaciado (escala de 4) */
+    --gap-1: 4px;
+    --gap-2: 8px;
+    --gap-3: 12px;
+    --gap-4: 16px;
+    --gap-5: 24px;
+    --gap-6: 32px;
+    --gap-7: 48px;
+
+    /* Radios y sombras */
+    --radius-sm: 4px;
+    --radius: 6px;
+    --radius-lg: 12px;
+    --radius-pill: 999px;
+    --shadow-sm: 0 1px 2px rgba(15, 18, 16, .06), 0 1px 3px rgba(15, 18, 16, .08);
+    --shadow-md: 0 4px 12px rgba(15, 18, 16, .1), 0 2px 4px rgba(15, 18, 16, .06);
+    --shadow-lg: 0 12px 32px rgba(15, 18, 16, .18);
+
+    /* Interacción */
+    --hit: 48px;           /* área táctil mínima WCAG 2.5.5 / AAA táctil */
+    --header-h: 64px;
+    --footer-h: 56px;
+    --panel-w: 400px;
+    --panel-collapsed-w: 300px;
+
+    --font: "Public Sans", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}

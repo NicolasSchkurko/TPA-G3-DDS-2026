@@ -30,13 +30,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Endpoints de perfiles de donante: datos, misión en curso, insignias e historial. El perfil
- * público es el único abierto; las escrituras exigen el header {@code Admin-Id}.
+ * público es el único abierto; el resto queda detrás de la ACL de red y el front valida el rol ADMIN.
  */
 @RestController
 @RequestMapping("/api/perfiles")
@@ -128,7 +127,7 @@ public class PerfilController {
             @Parameter(description = "UUID del usuario asociado al perfil")
             @PathVariable UUID idUsuario,
             @ParameterObject
-            @PageableDefault(page = 0, size = 10, sort = "fechaObtencion", direction = Sort.Direction.DESC)
+            @PageableDefault(page = 0, size = 10)
             Pageable pageable) {
         return ResponseEntity.ok(perfilService.obtenerInsigniasPorIdUsuario(idUsuario, pageable));
     }
@@ -174,7 +173,8 @@ public class PerfilController {
 
     @Operation(
         summary = "Actualizar un perfil",
-        description = "Actualiza los datos de un perfil existente."
+        description = "Actualiza un perfil desde el front. El rol ADMIN se valida en el front; "
+            + "el backend solo acepta llamadas de la red interna."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil actualizado con éxito"),
@@ -183,18 +183,15 @@ public class PerfilController {
     })
     @PutMapping("/{idUsuario}")
     public ResponseEntity<PerfilDTO> actualizarPerfil(
-        @Parameter(description = "UUID del administrador", required = true)
-        @RequestHeader("Admin-Id") UUID idAdmin,
-        @Parameter(description = "UUID del usuario")
         @PathVariable UUID idUsuario,
         @RequestBody PerfilDTO perfil) {
-        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(idUsuario, idAdmin, perfil));
+        return ResponseEntity.ok(perfilService.actualizarDatosPerfil(idUsuario, null, perfil));
     }
 
-    // ========== ELIMINAR ==========
     @Operation(
         summary = "Eliminar un perfil",
-        description = "Elimina completamente un perfil del sistema, incluyendo sus insignias, progreso y datos asociados."
+        description = "Elimina un perfil desde el front. El rol ADMIN se valida en el front; "
+            + "el backend solo acepta llamadas de la red interna."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil eliminado con éxito"),
@@ -202,51 +199,32 @@ public class PerfilController {
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
     @DeleteMapping("/{idUsuario}")
-    public ResponseEntity<Void> eliminarPerfil(
-        @Parameter(description = "UUID del administrador", required = true)
-        @RequestHeader("Admin-Id") UUID idAdmin,
-        @Parameter(description = "UUID del perfil a eliminar")
-        @PathVariable UUID idUsuario) {
-        perfilService.eliminarPerfil(idUsuario, idAdmin);
+    public ResponseEntity<Void> eliminarPerfil(@PathVariable UUID idUsuario) {
+        perfilService.eliminarPerfil(idUsuario, null);
         return ResponseEntity.ok().build();
     }
 
     @Operation(
-        summary = "Eliminar perfil por baja de donante (uso interno)",
-        description = "Lo invoca donaciones-service cuando se elimina un donante, para que el "
-            + "perfil gamificado (y su historial de impacto de donaciones) no quede húerfano. "
-            + "No pide Admin-Id: la baja ya la autorizó donaciones-service, esto es la "
-            + "consecuencia automática, no una acción de administrador nueva. Idempotente: si el "
-            + "donante nunca llegó a tener perfil, no hace nada y responde 200 igual."
+        summary = "Sincronizar perfil por baja de donante",
+        description = "Lo invoca donaciones-service cuando se elimina un donante. Idempotente."
     )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200",
-            description = "Perfil (y su historial de donaciones) eliminado, o no existía")
-    })
-    @DeleteMapping("/interno/{idUsuario}")
+    @DeleteMapping("/sincronizacion/{idUsuario}")
     public ResponseEntity<Void> eliminarPerfilPorBajaDeDonante(
-        @Parameter(description = "UUID del donante dado de baja")
         @PathVariable UUID idUsuario) {
         perfilService.eliminarPerfilPorBajaDeDonante(idUsuario);
         return ResponseEntity.ok().build();
     }
 
     @Operation(
-        summary = "Actualizar perfil por modificación de donante (uso interno)",
-        description = "Lo invoca donaciones-service cuando se actualiza un donante, para propagar "
-            + "el nuevo nombre de usuario a incentivos. No requiere header de administrador. "
-            + "Idempotente: si el donante no llegó a tener perfil, responde 200 sin error."
+        summary = "Sincronizar perfil por modificación de donante",
+        description = "Lo invoca donaciones-service cuando se actualiza un donante. Idempotente."
     )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Perfil actualizado con éxito, o no existía"),
-        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
-    })
-    @PutMapping("/interno/{idUsuario}")
+    @PutMapping("/sincronizacion/{idUsuario}")
     public ResponseEntity<Void> actualizarPerfilPorModificacionDeDonante(
-        @Parameter(description = "UUID del donante modificado")
         @PathVariable UUID idUsuario,
-        @RequestBody PerfilDonanteDTO dto) {
-        perfilService.actualizarPerfilPorModificacionDeDonante(idUsuario, dto);
+        @RequestBody PerfilDTO perfil) {
+        perfilService.actualizarPerfilPorModificacionDeDonante(
+                idUsuario, new PerfilDonanteDTO(idUsuario, perfil.getNombreUsuario(), null));
         return ResponseEntity.ok().build();
     }
 }

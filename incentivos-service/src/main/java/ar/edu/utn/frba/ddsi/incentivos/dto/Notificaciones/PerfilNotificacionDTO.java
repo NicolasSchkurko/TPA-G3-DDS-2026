@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
  * Lo que este servicio publica en el broker para notificaciones. Los nombres de los campos
@@ -18,6 +19,8 @@ public class PerfilNotificacionDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    private String idSolicitud;
+
     private String medioDeContacto;
 
     private String direccionDeContacto;
@@ -30,6 +33,15 @@ public class PerfilNotificacionDTO implements Serializable {
                                  String direccionDeContacto,
                                  String cuerpoMensaje,
                                  String asuntoMensaje) {
+        this(UUID.randomUUID().toString(), medioDeContacto, direccionDeContacto, cuerpoMensaje, asuntoMensaje);
+    }
+
+    public PerfilNotificacionDTO(String idSolicitud,
+                                 String medioDeContacto,
+                                 String direccionDeContacto,
+                                 String cuerpoMensaje,
+                                 String asuntoMensaje) {
+        this.idSolicitud = idSolicitud != null ? idSolicitud : UUID.randomUUID().toString();
         this.medioDeContacto = medioDeContacto;
         this.direccionDeContacto = direccionDeContacto;
         this.cuerpoMensaje = cuerpoMensaje;

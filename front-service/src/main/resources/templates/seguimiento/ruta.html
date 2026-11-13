@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Seguimiento de ruta — DonaTrack</title>
+    <meta name="description" content="Seguimiento del recorrido de una ruta de donaciones en el mapa.">
+    <th:block th:replace="~{fragments/mapa :: assets}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/seguimiento.css}">
+</head>
+<body class="app seguimiento-body">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+<main class="seguimiento-shell" id="contenido" tabindex="-1">
+    <section class="seguimiento-map-shell" aria-label="Mapa de la ruta">
+        <div id="map" role="application" aria-label="Mapa con las paradas y la ubicación del camión"></div>
+
+        <div class="seguimiento-topbar">
+            <a class="seguimiento-back" th:href="@{/}" data-back="true">
+                <span aria-hidden="true">←</span> Volver
+            </a>
+            <div class="seguimiento-title-card">
+                <p class="eyebrow">Seguimiento</p>
+                <h1>
+                    <span th:if="${patente != null and !patente.isBlank()}">Ruta <span th:text="${patente}">AB123CD</span></span>
+                    <span th:if="${patente == null or patente.isBlank()}">Ruta de donaciones</span>
+                </h1>
+                <p class="seguimiento-lead" th:text="${depositoEtiqueta != null ? 'Salida desde ' + depositoEtiqueta : 'Recorrido de la ruta'}">
+                    Salida desde el depósito
+                </p>
+            </div>
+            <span class="chip chip-success" th:if="${estadoEtiqueta != null}" th:text="${estadoEtiqueta}">En curso</span>
+        </div>
+
+        <aside class="seguimiento-drawer" id="seguimientoDrawer" aria-label="Datos de la ruta">
+            <header class="seguimiento-drawer-head">
+                <div>
+                    <p class="eyebrow">Recorrido</p>
+                    <h2>Paradas</h2>
+                </div>
+                <button class="drawer-toggle" id="toggleDrawer" type="button"
+                        aria-expanded="true" aria-controls="drawerBody">
+                    <span class="visually-hidden">Contraer panel de paradas</span>
+                    <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 3l5 5-5 5"/>
+                    </svg>
+                </button>
+            </header>
+
+            <div class="seguimiento-drawer-body" id="drawerBody">
+                <div class="seguimiento-summary">
+                    <div>
+                        <strong th:text="${totalPaquetes}">0</strong>
+                        <span>paquetes</span>
+                    </div>
+                    <div>
+                        <strong th:text="${totalEntregadas}">0</strong>
+                        <span>entregados</span>
+                    </div>
+                    <div>
+                        <strong th:text="${totalPaquetes - totalEntregadas}">0</strong>
+                        <span>pendientes</span>
+                    </div>
+                </div>
+
+                <ol class="seguimiento-stops">
+                    <li th:each="parada : ${paradas}"
+                        th:classappend="${parada.deposito ? ' is-deposito' : (parada.actual ? ' is-actual' : (parada.estado == 'completa' ? ' is-completa' : ''))}">
+                        <button class="stop-item" type="button"
+                                th:attr="data-map-parada=${parada.numero},
+                                         aria-label=${parada.deposito ? 'Ver el depósito en el mapa' : 'Ver la parada ' + parada.numero + ' en el mapa'}">
+                            <span class="stop-number" aria-hidden="true"
+                                  th:text="${parada.deposito ? 'D' : parada.numero}">1</span>
+                            <span class="stop-copy">
+                                <strong th:text="${parada.direccion}">Av. Perito Moreno 2400</strong>
+                                <span class="stop-meta" th:if="${!parada.deposito}">
+                                    <span th:text="${parada.entregadas + '/' + parada.total + ' entregados'}">0/0 entregados</span>
+                                </span>
+                                <span class="stop-meta" th:if="${parada.deposito}">Punto de partida</span>
+                            </span>
+                            <span class="chip"
+                                  th:classappend="${parada.deposito ? ' chip-info' : (parada.actual ? ' chip-actual' : (parada.estado == 'completa' ? ' chip-success' : ''))}"
+                                  th:text="${parada.estadoEtiqueta}">Pendiente</span>
+                        </button>
+                    </li>
+                </ol>
+
+                <p class="seguimiento-note" th:if="${!hayTrazado}">
+                    La ruta todavía no tiene coordenadas suficientes para dibujar el recorrido.
+                </p>
+            </div>
+        </aside>
+
+        <button class="seguimiento-drawer-fab" id="toggleDrawerFab" type="button"
+                aria-expanded="true" aria-controls="seguimientoDrawer">
+            <span aria-hidden="true">☰</span>
+            <span class="visually-hidden">Mostrar u ocultar paradas</span>
+        </button>
+
+        <div class="seguimiento-legend" aria-label="Referencias del mapa">
+            <span><i class="legend-dot actual" aria-hidden="true"></i> Parada actual</span>
+            <span><i class="legend-dot completada" aria-hidden="true"></i> Completada</span>
+            <span><i class="legend-dot pendiente" aria-hidden="true"></i> Pendiente</span>
+            <span><i class="legend-dot deposito" aria-hidden="true"></i> Depósito</span>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+
+<th:block th:replace="~{fragments/mapa :: scripts}"></th:block>
+<script th:inline="javascript">
+    window.SEGUIMIENTO_GEOJSON = JSON.parse(/*[[${geojson}]]*/ '{"type":"FeatureCollection","features":[]}');
+</script>
+<script th:src="@{/js/seguimiento-mapa.js}"></script>
+</body>
+</html>

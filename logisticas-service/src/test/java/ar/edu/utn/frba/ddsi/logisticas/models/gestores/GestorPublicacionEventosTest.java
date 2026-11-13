@@ -20,36 +20,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.amqp.AmqpException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-/**
- * El evento tiene que quedar <b>guardado y publicado</b>, y no guardado dos veces ni publicado
- * por la mitad.
- *
- * <p>Cubre tres cosas que compartían el mismo archivo y la misma causa:
- *
- * <ul>
- *   <li>La relación ítem-evento apuntaba con {@code mappedBy="id"} a la clave primaria del
- *       propio evento, así que Hibernate armaba una relación que no existe y la lista salía
- *       siempre vacía.</li>
- *   <li>El mismo evento se metía en la lista de <i>todos</i> los ítems de la ruta.</li>
- *   <li>La publicación al broker pasaba dentro de la transacción, así que un rollback dejaba el
- *       mensaje afuera de una entrega que nunca ocurrió.</li>
- * </ul>
- *
- * <p>El mapeo se verifica por reflexión porque el módulo no tiene una base embebida en el build
- * offline: lo que se afirma es que la declaración JPA apunta a la FK real, que es exactamente
- * lo que estaba mal.
- */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Los eventos se guardan una vez por ítem, con su FK, y se publican recién al commitear")
@@ -85,14 +69,6 @@ class GestorPublicacionEventosTest {
         return ruta;
     }
 
-    /**
-     * Arma una parada a mano en vez de con {@code new Parada(item)}.
-     *
-     * <p>El constructor de {@code Parada} lee la entidad del ítem para sacar la dirección, y acá
-     * la entidad es null porque a estos tests lo que les interesa es el evento y su FK, no la
-     * jerarquía de direcciones. La parada se llena por {@code agregarItem}, que es lo mismo que
-     * hace el planificador.
-     */
     private static Ruta rutaCon(ItemEntrega... items) {
         Ruta ruta = rutaVacia();
 
@@ -115,21 +91,14 @@ class GestorPublicacionEventosTest {
         TransactionSynchronizationManager.clearSynchronization();
     }
 
-    // --- El inicio de ruta es de la ruta, no de cada item ---
-
     @Test
     @DisplayName("El INICIO_RUTA no se mete en la lista de los items: es un hecho de la ruta")
     void elInicioDeRutaNoSeMeteEnLaListaDeLosItems() {
-        // Antes era una sola instancia de EventoLogistica metida en las listas de todos los
-        // items de la ruta. Con mappedBy="item" cada fila pertenece a un item, asi que no hay a
-        // que FK asignarle una instancia compartida.
         ItemEntrega primero = item(ID_DONACION_A);
         ItemEntrega segundo = item(ID_DONACION_B);
 
         gestor().publicarInicioRuta(rutaCon(primero, segundo));
 
-        // Una sola fila por inicio de ruta. Clonar el evento por item multiplicaria las filas
-        // que devuelve el polling, con el mismo payload y el mismo referenciaId.
         verify(repoEventos, times(1)).save(any(EventoLogistica.class));
         assertThat(primero.getEventos()).isEmpty();
         assertThat(segundo.getEventos()).isEmpty();
@@ -151,6 +120,17 @@ class GestorPublicacionEventosTest {
     }
 
     @Test
+    @DisplayName("Punto 73: el inicio de ruta arma la URL de seguimiento del front")
+    void elInicioDeRutaArmaLaUrlDelFront() {
+        Ruta ruta = rutaVacia();
+
+        gestor().publicarInicioRuta(ruta);
+
+        assertThat(ruta.getUrlSeguimiento())
+                .isEqualTo("http://localhost:8080/seguimiento/" + ruta.getIdRuta());
+    }
+
+    @Test
     @DisplayName("Al broker sale un solo INICIO_RUTA, aunque la ruta lleve varios items")
     void alBrokerSaleUnSoloInicioDeRuta() {
         // El consumidor notifica una vez por mensaje: N mensajes serian N notificaciones del
@@ -158,6 +138,33 @@ class GestorPublicacionEventosTest {
         gestor().publicarInicioRuta(rutaCon(item(ID_DONACION_A), item(ID_DONACION_B)));
 
         verify(productorEventos, times(1)).publicar(any(EventoLogistica.class));
+    }
+
+    @Test
+    @DisplayName("Punto 69: el ítem conserva solo el último evento")
+    void elItemConservaSoloElUltimoEvento() {
+        ItemEntrega item = item(ID_DONACION_A);
+        item.setEstado(EstadoEntrega.EN_CAMINO);
+        item.getEventos().add(new EventoLogistica(
+            "EVENTO_VIEJO", ID_DONACION_A.toString(), java.time.LocalDateTime.now(), null));
+
+        gestor().publicarEntregaConfirmada(item, rutaCon(item), "http://foto.jpg");
+
+        assertThat(item.getEventos()).hasSize(1);
+        assertThat(item.getEventos().get(0).getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
+    }
+
+    @Test
+    @DisplayName("Punto 69: un ítem con eventos null (leído de Mongo) no rompe al guardar el último")
+    void elItemConEventosNullNoRompe() {
+        ItemEntrega item = item(ID_DONACION_A);
+        item.setEstado(EstadoEntrega.EN_CAMINO);
+        item.setEventos(null);
+
+        gestor().publicarEntregaConfirmada(item, rutaCon(item), "http://foto.jpg");
+
+        assertThat(item.getEventos()).hasSize(1);
+        assertThat(item.getEventos().get(0).getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
     }
 
     @Test
@@ -173,14 +180,9 @@ class GestorPublicacionEventosTest {
         assertThat(captor.getValue().getTipoEvento()).isEqualTo("ENTREGA_CONFIRMADA");
     }
 
-    // --- Publicar despues del commit (punto 28) ---
-
     @Test
     @DisplayName("Con transaccion abierta el evento NO se publica hasta el commit")
     void noSePublicaAntesDelCommit() {
-        // Publicar dentro de la transaccion hacia que un rollback posterior dejara el mensaje
-        // afuera igual: la base volvia a su estado y donaciones-service ya habia notificado una
-        // entrega que en logistica nunca ocurrio.
         ItemEntrega item = item(ID_DONACION_A);
         item.setEstado(EstadoEntrega.EN_CAMINO);
 
@@ -217,6 +219,28 @@ class GestorPublicacionEventosTest {
     }
 
     @Test
+    @DisplayName("Si el broker falla despues del commit, la operacion no se rompe")
+    void unFalloDelBrokerTrasElCommitNoSePropaga() {
+        // La transaccion ya commiteo y el evento quedo guardado. Si la excepcion del broker sale
+        // de afterCommit, el controller responde 500 por un cambio que en la base si ocurrio y el
+        // reintento del cliente encuentra el estado ya avanzado.
+        ItemEntrega item = item(ID_DONACION_A);
+        item.setEstado(EstadoEntrega.EN_CAMINO);
+
+        TransactionSynchronizationManager.initSynchronization();
+        gestor().publicarEntregaConfirmada(item, rutaCon(item), "http://foto.jpg");
+
+        doThrow(new AmqpException("broker caido"))
+                .when(productorEventos).publicar(any(EventoLogistica.class));
+
+        assertThatCode(GestorPublicacionEventosTest::commitear).doesNotThrowAnyException();
+
+        // Se intentó publicar y el evento quedó persistido para una republicación manual.
+        verify(productorEventos).publicar(any(EventoLogistica.class));
+        verify(repoEventos).save(any(EventoLogistica.class));
+    }
+
+    @Test
     @DisplayName("Sin transaccion abierta se publica en el momento, no se pierde el evento")
     void sinTransaccionSePublicaIgual() {
         // Agendar la publicacion para un commit que no existe la perderia: es lo que pasa con
@@ -245,14 +269,6 @@ class GestorPublicacionEventosTest {
         verify(productorEventos, times(1)).publicar(captor.getValue());
     }
 
-    /**
-     * El inicio de ruta se publica aunque la ruta no lleve ítems todavía.
-     *
-     * <p>El hecho de que arrancó la ruta es real y notificarlo está bien: el payload lleva la
-     * URL de seguimiento, y una ruta recién planificada puede no tener ítems asignados en el
-     * momento en que el chofer la arranca. Lo que no corresponde es inventar un evento por cada
-     * ítem de una lista vacía, que era lo que hacía la versión anterior de este método.
-     */
     @Test
     @DisplayName("Una ruta sin items publica su inicio igual, una sola vez")
     void unaRutaSinItemsPublicaUnSoloInicio() {

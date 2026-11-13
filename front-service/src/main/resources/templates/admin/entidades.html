@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Administrar entidades — DonaTrack</title>
+    <meta name="description" content="Administración de entidades beneficiarias registradas en el sistema">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../static/css/admin.css" th:href="@{/css/admin.css}">
+</head>
+
+<body class="app">
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+<header class="admin-page-head">
+    <div>
+        <p class="eyebrow">Administración</p>
+        <h1 th:text="'Administrar entidades'">Administración</h1>
+        <p class="admin-page-lead" th:text="'Buscá, actualizá o eliminá entidades beneficiarias y consultá sus necesidades.'">Gestioná los datos del sistema.</p>
+    </div>
+    <a class="btn btn-secondary" th:href="@{/admin}" data-back="true" th:text="'Volver al panel'">Volver</a>
+</header>
+<main class="main-admin" id="contenido" tabindex="-1">
+
+    <!-- ===== Mensajes de resultado ===== -->
+    <div th:if="${exito}" class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <span th:text="${exito}">Operación exitosa</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${error}">Ocurrió un error</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+
+    <!-- ===== Barra de herramientas: buscador + registrar ===== -->
+    <!-- Sin importación por CSV: el backend sólo tiene importador de donantes (/api/personas/importar). -->
+    <div class="barra-herramientas">
+
+        <!-- Buscador: filtra la tabla mientras se escribe, sin necesidad de clickear -->
+        <div class="buscador">
+            <i class="bi bi-search buscador-icono" aria-hidden="true"></i>
+            <input type="search"
+                   id="buscadorEntidades"
+                   class="buscador-input"
+                   placeholder="Buscar entidades por nombre..."
+                   autocomplete="off"
+                   aria-label="Buscar entidades por razón social">
+            <button type="button" id="limpiarBusqueda" class="buscador-limpiar" aria-label="Limpiar búsqueda" hidden>
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="acciones-barra">
+            <a th:href="@{/admin/entidades/nuevo}" class="btn-nuevo">
+                <i class="bi bi-building-add"></i>
+                Registrar entidad
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== Tabla de entidades ===== -->
+    <div class="tabla-entidades">
+
+        <div class="tabla-encabezado">
+            <span class="col-desplegar" aria-hidden="true"></span>
+            <span class="col-entidad">Entidad</span>
+            <span class="col-contacto">Contacto</span>
+            <span class="col-acciones">Acciones</span>
+        </div>
+
+        <div class="tabla-cuerpo" id="tablaCuerpo">
+
+            <!-- Sin entidades en el sistema -->
+            <div th:if="${#lists.isEmpty(entidades)}" class="fila-vacia">
+                <i class="bi bi-buildings"></i>
+                <p>Todavía no hay entidades registradas.</p>
+            </div>
+
+            <!-- Una fila por entidad, con su panel de necesidades desplegable debajo -->
+            <div th:each="entidad : ${entidades}"
+                 class="fila-entidad"
+                 th:with="etiqueta=${entidad.etiqueta()},
+                          necesidades=${entidad.necesidadesActivas()},
+                          idPanel=${'necesidades-' + entidad.id}"
+                 th:attr="data-nombre=${etiqueta}">
+
+                <div class="fila-principal">
+
+                    <!-- La flecha despliega las necesidades. El JS también deja clickear el resto
+                         de la fila, pero el control accesible es este botón. -->
+                    <button type="button"
+                            class="btn-desplegar"
+                            th:attr="aria-controls=${idPanel},
+                                     aria-label='Ver necesidades de ' + ${etiqueta}"
+                            aria-expanded="false">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+
+                    <div class="col-entidad">
+                        <div class="avatar-entidad">
+                            <i class="bi bi-buildings"></i>
+                        </div>
+                        <div class="datos-entidad">
+                            <span class="nombre-entidad" th:text="${etiqueta}">Razón social</span>
+                            <span class="linea-meta">
+                                <span class="badge-tipo badge-juridica"
+                                      th:text="${entidad.tipoJuridico != null ? entidad.tipoJuridico : 'ONG'}">ONG</span>
+                                <span class="contador-necesidades"
+                                      th:classappend="${#lists.isEmpty(necesidades)} ? 'contador-vacio' : ''"
+                                      th:text="${#lists.isEmpty(necesidades)
+                                                  ? 'Sin necesidades'
+                                                  : (#lists.size(necesidades) == 1
+                                                      ? '1 necesidad'
+                                                      : #lists.size(necesidades) + ' necesidades')}">
+                                    0 necesidades
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="col-contacto">
+                        <span th:if="${entidad.correo() != null}">
+                            <i class="bi bi-envelope"></i>
+                            <span th:text="${entidad.correo()}">mail@ejemplo.com</span>
+                        </span>
+                        <span th:if="${entidad.telefono != null and !entidad.telefono.isEmpty()}">
+                            <i class="bi bi-telephone"></i>
+                            <span th:text="${entidad.telefono}">11 1234-5678</span>
+                        </span>
+                        <span th:if="${entidad.direccion != null}">
+                            <i class="bi bi-geo-alt"></i>
+                            <span th:text="${entidad.direccion.etiqueta()}">Calle 123</span>
+                        </span>
+                        <span class="sin-contacto"
+                              th:if="${entidad.correo() == null
+                                       and (entidad.telefono == null or entidad.telefono.isEmpty())
+                                       and entidad.direccion == null}">
+                            Sin contacto cargado
+                        </span>
+                    </div>
+
+                    <div class="col-acciones">
+                        <a th:href="@{'/admin/entidades/' + ${entidad.id} + '/editar'}" class="btn-actualizar">
+                            <i class="bi bi-pencil-square"></i> Actualizar
+                        </a>
+
+                        <form th:action="@{'/admin/entidades/' + ${entidad.id} + '/eliminar'}"
+                              method="post"
+                              class="form-eliminar d-inline">
+                            <button type="submit" class="btn-eliminar">
+                                <i class="bi bi-trash3"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ===== Panel de necesidades (server-rendered) =====
+                     GET /api/entidades ya devuelve las necesidades embebidas en cada entidad, así
+                     que no hace falta un request extra por fila al desplegar. -->
+                <div class="panel-necesidades" th:id="${idPanel}" hidden>
+
+                    <p class="panel-vacio" th:if="${#lists.isEmpty(necesidades)}">
+                        <i class="bi bi-inbox"></i>
+                        Esta entidad todavía no cargó necesidades.
+                    </p>
+
+                    <div th:unless="${#lists.isEmpty(necesidades)}" class="lista-necesidades">
+                        <article th:each="necesidad : ${necesidades}" class="necesidad">
+
+                            <div class="necesidad-cabecera">
+                                <span class="necesidad-titulo">
+                                    <i class="bi bi-box-seam"></i>
+                                    <span th:text="${necesidad.nombreSubcategoria != null
+                                                      ? necesidad.nombreSubcategoria
+                                                      : 'Bien sin categorizar'}">Subcategoría</span>
+                                </span>
+                                <!-- toUpperCase y no equalsIgnoreCase: tolera tipoNecesidad en null,
+                                     que acá cae en "Recurrente" igual que el default del backend. -->
+                                <span class="badge-necesidad"
+                                      th:with="extraordinaria=${#strings.toUpperCase(necesidad.tipoNecesidad) == 'EXTRAORDINARIA'}"
+                                      th:classappend="${extraordinaria} ? 'badge-extraordinaria' : 'badge-recurrente'"
+                                      th:text="${extraordinaria} ? 'Extraordinaria' : 'Recurrente'">Recurrente</span>
+                            </div>
+
+                            <p class="necesidad-categoria"
+                               th:if="${necesidad.nombreCategoria != null}"
+                               th:text="'Categoría: ' + ${necesidad.nombreCategoria}">Categoría: Alimentos</p>
+
+                            <p class="necesidad-descripcion"
+                               th:if="${necesidad.descripcion != null and !necesidad.descripcion.isEmpty()}"
+                               th:text="${necesidad.descripcion}">Descripción de la necesidad</p>
+
+                            <div class="necesidad-progreso">
+                                <div class="barra-progreso">
+                                    <div class="barra-progreso-relleno"
+                                         th:style="'width: ' + ${necesidad.progreso()} + '%'"></div>
+                                </div>
+                                <span class="progreso-texto"
+                                      th:text="${necesidad.bienesRecibidos()} + ' de '
+                                               + ${necesidad.cantidadObjetivo != null ? necesidad.cantidadObjetivo : 0}
+                                               + ' bienes (' + ${necesidad.progreso()} + '%)'">
+                                    0 de 10 bienes (0%)
+                                </span>
+                            </div>
+
+                            <p class="necesidad-plazo"
+                               th:if="${necesidad.plazoEnDias != null}"
+                               th:text="'Se renueva cada ' + ${necesidad.plazoEnDias} + ' días'">
+                                Se renueva cada 30 días
+                            </p>
+                        </article>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Aparece cuando el filtro no encuentra coincidencias -->
+            <div class="fila-vacia" id="sinResultados" hidden>
+                <i class="bi bi-search"></i>
+                <p>No encontramos entidades que coincidan con la búsqueda.</p>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../static/js/admin-entidades.js" th:src="@{/js/admin-entidades.js}"></script>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

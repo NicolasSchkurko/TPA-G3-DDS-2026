@@ -8,14 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-/**
- * Publica los eventos de trazabilidad para que {@code donaciones-service} notifique: logística
- * publica el hecho y otro servicio notifica, que es lo único compatible con no invocar a
- * nadie desde acá.
- *
- * <p>Se publica sobre un evento ya persistido, no antes: si el consumidor recibiera el evento
- * primero, trabajaría sobre un registro que todavía no existe.
- */
 @Component
 public class ProductorEventosLogistica {
 

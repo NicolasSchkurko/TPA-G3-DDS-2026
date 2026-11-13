@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Detalle de notificación — DonaTrack</title>
+    <meta name="description" content="Detalle de una notificación de DonaTrack.">
+    <link rel="stylesheet" th:href="@{/css/entidad.css(v=4)}">
+</head>
+<body class="app">
+
+<div th:replace="~{fragments/app-shell :: appHeader}"></div>
+<div th:replace="~{fragments/toast-region :: toastRegion}"></div>
+
+<main class="page" id="contenido" tabindex="-1">
+    <nav class="crumbs" aria-label="Migas de pan">
+        <a th:href="@{/}">Inicio</a>
+        <span aria-hidden="true">›</span>
+        <a th:href="@{/notificaciones(filtro=${filtro})}">Notificaciones</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Detalle</span>
+    </nav>
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Notificaciones</h1>
+            <p class="page-subtitle">Detalle del aviso recibido</p>
+        </div>
+    </header>
+
+    <article class="card notification-detail">
+        <a class="btn btn-secondary btn-sm notification-detail-back"
+           th:href="@{/notificaciones(filtro=${filtro})}">Volver</a>
+        <div class="notification-detail-header">
+            <time th:if="${notificacion.fecha() != null}" th:text="${notificacion.fecha()}">12 jun 2026, 10:30</time>
+            <span class="notif-meta-chip" th:if="${notificacion.meta() != null}"
+                  th:text="${notificacion.meta()}">Correo · ENVIADA</span>
+        </div>
+        <h2 th:text="${notificacion.titulo()}">Título de la notificación</h2>
+        <p class="notification-detail-body" th:text="${notificacion.detalle()}">Detalle de la notificación</p>
+    </article>
+</main>
+
+<div th:replace="~{fragments/app-shell :: appFooter}"></div>
+<script th:src="@{/js/core/toast.js}" defer></script>
+</body>
+</html>

@@ -1,12 +1,15 @@
 package ar.edu.utn.frba.ddsi.incentivos.models.entities.CategoriaPerfil;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.MisionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Factory.OperacionFactory;
 import ar.edu.utn.frba.ddsi.incentivos.models.entities.Mision.Mision;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,6 +90,16 @@ class CategoriaTest {
     }
 
     @Test
+    @DisplayName("permite quitar todas las misiones al editar una categoría")
+    void permiteQuitarTodasLasMisionesAlEditar() {
+        Categoria categoria = categoriaCon(mision("A"), mision("B"));
+
+        categoria.actualizarCon(new Categoria("Categoria", null, 1, List.of()));
+
+        assertThat(categoria.getCategoriaMisiones()).isEmpty();
+    }
+
+    @Test
     @DisplayName("la ultima mision de la secuencia no tiene siguiente")
     void laUltimaMisionNoTieneSiguiente() {
         // No hace falta un esUltimaMision: siguienteMision == null ya responde eso.
@@ -107,6 +120,52 @@ class CategoriaTest {
         assertThat(categoria.siguienteMision(mision("A"))).isNull();
         categoria.eliminarMision(mision("A"));
         assertThat(categoria.getCategoriaMisiones()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("encuentra la siguiente aunque la colección tenga un proxy de Hibernate")
+    void siguienteMisionToleraProxy() {
+        UUID idA = UUID.randomUUID();
+        Mision proxyA = mock(Mision.class);
+        Mision cargadaA = mock(Mision.class);
+        when(proxyA.getIdMision()).thenReturn(idA);
+        when(cargadaA.getIdMision()).thenReturn(idA);
+        Mision b = mision("B");
+
+        Categoria categoria = categoriaCon(proxyA, b);
+
+        // El proxy y la entidad cargada son instancias distintas con el mismo id.
+        assertThat(categoria.siguienteMision(cargadaA)).isSameAs(b);
+    }
+
+    @Test
+    @DisplayName("elimina la misión aunque la colección tenga un proxy de Hibernate")
+    void eliminarMisionToleraProxy() {
+        UUID idA = UUID.randomUUID();
+        Mision proxyA = mock(Mision.class);
+        Mision cargadaA = mock(Mision.class);
+        when(proxyA.getIdMision()).thenReturn(idA);
+        when(cargadaA.getIdMision()).thenReturn(idA);
+        Mision b = mision("B");
+
+        Categoria categoria = categoriaCon(proxyA, b);
+        categoria.eliminarMision(cargadaA);
+
+        assertThat(categoria.getCategoriaMisiones()).hasSize(1);
+        assertThat(categoria.primeraMision()).isSameAs(b);
+    }
+
+    @Test
+    @DisplayName("no confunde dos misiones nuevas distintas")
+    void noConfundeDosMisionesNuevasDistintas() {
+        // Sin id no hay identidad persistente: dos misiones nuevas diferentes no son la misma.
+        Mision a = mision("A");
+        Mision otra = mision("A");
+        Categoria categoria = categoriaCon(a);
+
+        assertThat(categoria.siguienteMision(otra)).isNull();
+        categoria.eliminarMision(otra);
+        assertThat(categoria.getCategoriaMisiones()).hasSize(1);
     }
 
     @Test

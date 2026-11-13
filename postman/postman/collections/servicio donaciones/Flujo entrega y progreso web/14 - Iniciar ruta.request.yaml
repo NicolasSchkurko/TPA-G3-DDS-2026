@@ -1,0 +1,9 @@
+$kind: http-request
+description: Inicia la ruta usando el chofer realmente asignado, guardado por el paso 13.
+url: http://localhost:8086/api/rutas/chofer/{{choferId}}/iniciar
+method: PATCH
+scripts:
+  - type: afterResponse
+    code: pm.test('inicia la ruta', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 14000

@@ -19,8 +19,11 @@ public class SegmentadorDonaciones {
 
     public SegmentadorDonaciones segmentador;
 
-    /** La fecha de realización del formulario queda como fechaEntrega de cada donación
-     *  (punto 10 de PENDIENTES.md): es la que usan incentivos y los conteos por período. */
+    /** La fecha de entrega NO se setea al crear: se asigna recién cuando la donación se
+     *  entrega (Donacion.actualizarEstado al pasar a ENTREGADO). Antes se usaba la fecha del
+     *  formulario, lo que falseaba SubAtendidos (contaba donaciones en depósito como entregadas)
+     *  y anulaba la fecha de entrega real (punto 62 de PENDIENTES.md). El parámetro se
+     *  conserva por compatibilidad con DonacionFacade/DonacionService. */
     public static List<Donacion> segmentar(Donante donante, List<Bien> bienesRecibidos, LocalDate fechaEntrega) {
         Map<String, List<Bien>> grupos = new HashMap<>();
 
@@ -69,7 +72,7 @@ public class SegmentadorDonaciones {
             bienesDelGrupo,
             Estado.EN_DEPOSITO,
             sub,
-            fechaEntrega
+            null
         );
     }
 }

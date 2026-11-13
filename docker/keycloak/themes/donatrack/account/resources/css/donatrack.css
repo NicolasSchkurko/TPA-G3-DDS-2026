@@ -1,0 +1,22 @@
+:root { --dt-green: #1b7838; --dt-green-dark: #145c2b; --dt-ink: #172019; --dt-line: #dfe7e1; }
+body { font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--dt-ink); }
+.pf-v5-c-masthead, .pf-c-masthead { background: #1b7838 !important; }
+.pf-v5-c-button.pf-m-primary, .pf-c-button.pf-m-primary { background: #1b7838 !important; border-color: #1b7838 !important; }
+a { color: #145c2b; }
+
+.pf-v5-c-form-control,
+.pf-c-form-control {
+  border: 1px solid var(--dt-line);
+  border-radius: 10px;
+  color: var(--dt-ink);
+  background: #fff;
+  box-shadow: none;
+  outline: none;
+}
+
+.pf-v5-c-form-control:focus,
+.pf-c-form-control:focus {
+  border-color: var(--dt-green);
+  box-shadow: 0 0 0 3px rgba(27, 120, 56, .16);
+  outline: none;
+}

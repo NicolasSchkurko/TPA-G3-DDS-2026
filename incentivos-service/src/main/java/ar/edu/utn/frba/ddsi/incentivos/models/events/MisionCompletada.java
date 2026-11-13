@@ -10,7 +10,13 @@ import java.util.UUID;
  */
 public record MisionCompletada(String misionAnterior,
                                String insigniaObtenida,
+                               UUID idInsignia,
                                UUID idUsuario,
                                String nombreUsuario,
                                ImpactoDonacion impactoDonacion) {
+    public MisionCompletada(String misionAnterior, String insigniaObtenida,
+                            UUID idUsuario, String nombreUsuario,
+                            ImpactoDonacion impactoDonacion) {
+        this(misionAnterior, insigniaObtenida, null, idUsuario, nombreUsuario, impactoDonacion);
+    }
 }

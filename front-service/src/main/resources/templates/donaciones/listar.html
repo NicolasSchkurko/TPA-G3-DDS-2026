@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>Pedido de donaciones — DonaTrack</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/donaciones.css}">
+</head>
+<body class="app">
+
+    <div th:replace="~{fragments/app-shell :: appHeader}"></div>
+
+    <main class="container donaciones-page" id="contenido" tabindex="-1">
+        <div class="donaciones-head">
+            <div>
+                <h1>Pedido de donaciones</h1>
+                <p>Donaciones registradas en el sistema y su estado actual.</p>
+            </div>
+            <a th:href="@{/}" class="btn btn-secondary">Volver al inicio</a>
+        </div>
+
+        <form class="donaciones-filters" method="get" th:action="@{/donaciones}">
+            <div>
+                <label for="q">Buscar</label>
+                <input type="search" id="q" name="q" placeholder="Descripción, donante, categoría…"
+                       th:value="${filtros != null ? filtros.get('q') : ''}">
+            </div>
+            <div>
+                <label for="estado">Estado</label>
+                <select id="estado" name="estado">
+                    <option value="">Todos los estados</option>
+                    <option th:each="e : ${estadosDisponibles}" th:value="${e}"
+                            th:text="${T(ar.edu.utn.frba.ddsi.front.dto.DonacionDTO).etiquetaDeEstado(e)}"
+                            th:selected="${filtros != null and filtros.get('estado') == e}">Estado</option>
+                </select>
+            </div>
+            <div>
+                <label for="categoria">Categoría</label>
+                <select id="categoria" name="categoria">
+                    <option value="">Todas las categorías</option>
+                    <option th:each="c : ${categoriasDisponibles}" th:value="${c}" th:text="${c}"
+                            th:selected="${filtros != null and filtros.get('categoria') == c}">Categoría</option>
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+            <div>
+                <a class="btn btn-secondary" th:href="@{/donaciones}">Limpiar</a>
+            </div>
+        </form>
+
+        <p class="donaciones-total" th:text="${totalResultados} + ' resultado(s)'">0 resultados</p>
+
+        <div th:if="${#lists.isEmpty(donacionesFiltradas)}" class="donaciones-empty">
+            <i class="bi bi-inbox"></i>
+            <p>Todavía no hay donaciones que coincidan con los filtros.</p>
+        </div>
+
+        <div class="donaciones-grid" th:if="${!#lists.isEmpty(donacionesFiltradas)}">
+            <article class="donacion-card" th:each="donacion : ${donacionesFiltradas}">
+                <div class="donacion-card-media"
+                     th:classappend="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null ? '' : ' donacion-card-media--empty'}">
+                    <img th:if="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null}"
+                         th:src="${donacion.imagenPrincipal()}" alt="Foto de la donación">
+                    <i th:unless="${'ENTREGADO'.equalsIgnoreCase(donacion.estado) and donacion.imagenPrincipal() != null}"
+                       class="bi bi-gift" aria-hidden="true"></i>
+                </div>
+                <div class="donacion-card-body">
+                    <h2 class="donacion-card-title"
+                        th:text="${donacion.tituloVisible()}">
+                        Donación
+                    </h2>
+                    <p class="donacion-card-desc" th:if="${!#strings.isEmpty(donacion.descripcionVisible())}"
+                       th:text="${donacion.descripcionVisible()}">Descripción</p>
+                    <div class="donacion-card-row">
+                        <span class="badge-estado" th:classappend="${donacion.claseEstado()}"
+                              th:text="${donacion.etiquetaEstado()}">Estado</span>
+                    </div>
+                    <div class="donacion-card-meta">
+                        <span th:text="${'Donante: ' + (donacion.donanteName != null ? donacion.donanteName : 'Anónimo')}">Donante</span>
+                        <span th:text="${'Entidad: ' + (donacion.entidadBeneficiaria != null ? donacion.entidadBeneficiaria : 'No asignada')}">Entidad</span>
+                        <span th:if="${donacion.fechaEntrega != null}" th:text="${'Fecha: ' + #temporals.format(donacion.fechaEntrega, 'dd/MM/yyyy')}">Fecha</span>
+                        <span th:text="${'Cantidad: ' + (donacion.cantidadTotalBienes != null ? donacion.cantidadTotalBienes : 0)}">Cantidad</span>
+                        <span th:if="${donacion.categoriaBienName != null}" th:text="${'Categoría: ' + donacion.categoriaBienName}">Categoría</span>
+                    </div>
+                </div>
+                <div class="donacion-card-footer">
+                    <a class="btn btn-primary btn-sm" style="width:100%" th:href="@{/donaciones/{id}(id=${donacion.id})}">Ver donación</a>
+                </div>
+            </article>
+        </div>
+
+        <nav class="donaciones-pagination" th:if="${totalPaginas > 1}" aria-label="Paginación de donaciones">
+            <a class="pagination-arrow" th:if="${tienePaginaAnterior}"
+               th:href="@{/donaciones(q=${filtros['q']}, estado=${filtros['estado']}, categoria=${filtros['categoria']}, page=${paginaActual - 1})}"
+               aria-label="Página anterior">←</a>
+            <th:block th:each="i : ${#numbers.sequence(0, totalPaginas - 1)}">
+                <span class="pagination-current" th:if="${i == paginaActual}" th:text="${i + 1}" aria-current="page">1</span>
+                <a th:unless="${i == paginaActual}"
+                   th:href="@{/donaciones(q=${filtros['q']}, estado=${filtros['estado']}, categoria=${filtros['categoria']}, page=${i})}"
+                   th:text="${i + 1}">2</a>
+            </th:block>
+            <a class="pagination-arrow" th:if="${tienePaginaSiguiente}"
+               th:href="@{/donaciones(q=${filtros['q']}, estado=${filtros['estado']}, categoria=${filtros['categoria']}, page=${paginaActual + 1})}"
+               aria-label="Página siguiente">→</a>
+        </nav>
+    </main>
+
+    <div th:replace="~{fragments/app-shell :: appFooter}"></div>
+</body>
+</html>

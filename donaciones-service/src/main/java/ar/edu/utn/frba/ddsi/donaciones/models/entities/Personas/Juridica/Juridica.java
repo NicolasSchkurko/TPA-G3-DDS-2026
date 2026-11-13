@@ -55,12 +55,27 @@ public class Juridica extends Persona {
   @Override
   public String getNombreDeUsuario() {
     if (this.razonSocial == null || this.razonSocial.isBlank()) {
-      throw new IllegalStateException("La persona jurídica no tiene razón social");
+      return null;
     }
     return this.razonSocial.trim();
   }
 
   public void agregarRepresentantes(List<Representante> representantes) {
     this.representantes.addAll(representantes);
+  }
+
+  @Override
+  public void anonimizar() {
+    limpiarMediosDeContacto();
+    this.razonSocial = null;
+    this.cuit = null;
+    this.rubro = null;
+    this.tipoJuridico = null;
+    for (Representante r : this.representantes) {
+      if (r.getHumana() != null) {
+        r.getHumana().anonimizar();
+      }
+    }
+    this.representantes.clear();
   }
 }
