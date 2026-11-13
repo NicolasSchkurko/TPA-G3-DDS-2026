@@ -22,12 +22,15 @@
             eyebrow: "Qué hacemos",
             title: "De la donación a la entrega, sin perder el rastro.",
             body: `
+                <p>Conectamos personas donantes, entidades beneficiarias, choferes y administración
+                para registrar, asignar y seguir cada donación hasta su entrega, con trazabilidad y
+                notificaciones para todas las partes.</p>
                 <ul>
-                    <li><strong>Registramos</strong> donaciones de alimentos, ropa, útiles y medicamentos.</li>
+                    <li><strong>Registramos</strong> donaciones de alimentos, ropa, útiles y medicamentos, y las asignamos según las necesidades de cada entidad.</li>
                     <li><strong>Vinculamos</strong> cada donación con la entidad que la recibe.</li>
-                    <li><strong>Coordinamos</strong> el retiro y la entrega junto al servicio logístico.</li>
+                    <li><strong>Coordinamos</strong> el retiro y la entrega con seguimiento del estado.</li>
                     <li><strong>Notificamos</strong> cada cambio de estado a donantes y organizaciones.</li>
-                    <li><strong>Incentivamos</strong> la participación con misiones, puntos e insignias.</li>
+                    <li><strong>Reconocemos</strong> la participación con misiones, puntos e insignias.</li>
                 </ul>
             `
         },

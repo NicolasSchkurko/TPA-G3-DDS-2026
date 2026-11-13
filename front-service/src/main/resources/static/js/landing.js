@@ -130,6 +130,13 @@
                     element.classList.remove("is-active");
                 }
             });
+
+            card.addEventListener("click", (event) => {
+                const id = card.dataset.id;
+                if (!map || !markersById.has(id)) return;
+                event.preventDefault();
+                focusDonation(id);
+            });
         });
     }
 

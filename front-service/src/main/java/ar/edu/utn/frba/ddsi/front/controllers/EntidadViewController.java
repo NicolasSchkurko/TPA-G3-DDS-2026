@@ -65,6 +65,7 @@ public class EntidadViewController {
 
         SeguimientoDTO seguimiento = datos.seguimiento();
         model.addAttribute("seguimientoJson", toJson(mapDataSeguimiento(datos.entidad(), seguimiento)));
+        model.addAttribute("donacionesJson", toJson(donacionesVista(datos.donaciones())));
         model.addAttribute("entregasActivas", seguimiento.getEntregas());
         model.addAttribute("camiones", seguimiento.getCamiones());
         model.addAttribute("necesidadesDestacadas",
@@ -448,6 +449,24 @@ public class EntidadViewController {
             model.addAttribute("necesidades", necesidades);
         }
         return new DatosPortal(entidad, donaciones, entregas, seguimiento, false, necesidades);
+    }
+
+    /** Datos mínimos de las donaciones para la preview del mapa del portal de entidad. */
+    private List<Map<String, Object>> donacionesVista(List<DonacionDTO> donaciones) {
+        if (donaciones == null) return List.of();
+        return donaciones.stream().map(donacion -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", donacion.getId());
+            item.put("titulo", donacion.getDescripcion() != null && !donacion.getDescripcion().isBlank()
+                    ? donacion.getDescripcion() : "Donación");
+            item.put("estado", donacion.getEstado());
+            item.put("estadoEtiqueta", donacion.etiquetaEstado());
+            item.put("categoria", donacion.getCategoriaBienName());
+            item.put("donante", donacion.getDonanteName());
+            item.put("fechaEntrega", donacion.getFechaEntrega() != null ? donacion.getFechaEntrega().toString() : null);
+            item.put("cantidad", donacion.getCantidadTotalBienes());
+            return item;
+        }).toList();
     }
 
     private Map<String, Object> mapDataSeguimiento(EntidadBeneficiariaDTO entidad, SeguimientoDTO seguimiento) {

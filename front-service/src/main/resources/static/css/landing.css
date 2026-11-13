@@ -869,25 +869,7 @@ body.entity-search-open {
     }
 }
 
-/* ---------------- Propósito y galería ---------------- */
-.landing-purpose p {
-    margin: 0 0 10px;
-    color: var(--ink-2);
-    font-size: 13.5px;
-    line-height: 1.55;
-}
-
-.purpose-list {
-    margin: 0;
-    padding-left: 18px;
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.purpose-list li + li {
-    margin-top: 4px;
-}
+/* ---------------- Galería ---------------- */
 
 .landing-gallery .gallery-grid {
     display: grid;

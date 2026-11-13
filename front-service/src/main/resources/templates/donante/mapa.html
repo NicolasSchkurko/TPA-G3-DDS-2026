@@ -286,7 +286,7 @@
     <script th:inline="javascript">
         window.DONANTE_SEGUIMIENTO = JSON.parse(/*[[${seguimientoDonanteJson}]]*/ '{}');
     </script>
-    <script th:src="@{/js/donante-mapa.js}"></script>
+    <script th:src="@{/js/donante-mapa.js(v=2)}"></script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>
 </body>
 </html>

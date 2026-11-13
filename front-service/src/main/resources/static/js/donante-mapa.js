@@ -4,6 +4,7 @@
     let map = null;
     const markersByEntityId = new Map();
     const markersByEntityName = new Map();
+    const entityAreas = new Map();
     const truckMarkers = new Map();
     const truckLines = new Map();
     let depotMarker = null;
@@ -78,6 +79,7 @@
             markersByEntityId.set(id, marker);
         }
         markersByEntityName.set(normalize(name), marker);
+        entityAreas.set(normalize(name), card.dataset.city || "");
         return marker;
     }
 
@@ -158,6 +160,40 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
+    }
+
+    const DONATION_STATUS_COLORS = {
+        ENTREGADO: "#1b7838",
+        EN_TRASLADO: "#6b7280",
+        ASIGNADO: "#b45309",
+        LISTA_PARA_ENTREGAR: "#b45309",
+        PENDIENTE_ASIGNACION: "#b45309",
+        ENTREGA_FALLIDA: "#b42318",
+        VENCIDO: "#b42318"
+    };
+
+    function colorEstado(status) {
+        return DONATION_STATUS_COLORS[String(status || "").toUpperCase()] || "#5b635c";
+    }
+
+    function popupDonacion(card) {
+        const title = card.querySelector(".history-card-title")?.textContent.trim()
+            || card.dataset.name || "Donación";
+        const status = card.querySelector(".history-card-status")?.textContent.trim()
+            || card.dataset.status || "Sin estado";
+        const entity = card.dataset.entity || "Destino pendiente";
+        const area = entityAreas.get(normalize(entity)) || "";
+        const href = card.dataset.id
+            ? `/donaciones/${encodeURIComponent(card.dataset.id)}`
+            : "/donaciones";
+        return `<img class="popup-image" src="/images/donaciones/ejemplo.png"
+                     alt="Imagen de ejemplo de una donación">`
+            + `<span class="popup-eyebrow" style="color:${colorEstado(card.dataset.status)}">`
+            + `${escapeHtml(status)}</span>`
+            + `<div class="popup-title">${escapeHtml(title)}</div>`
+            + `<div class="popup-meta">${escapeHtml(entity)}`
+            + (area ? ` · ${escapeHtml(area)}` : "") + `</div>`
+            + `<a class="popup-link" href="${href}">Ver donación →</a>`;
     }
 
     function initEntityDialog() {
@@ -453,6 +489,7 @@
                     return;
                 }
                 mapNotice.textContent = `Destino: ${card.dataset.entity}.`;
+                marker.setPopupContent(popupDonacion(card));
                 map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 14), { duration: 0.6 });
                 window.setTimeout(() => marker.openPopup(), 650);
             });

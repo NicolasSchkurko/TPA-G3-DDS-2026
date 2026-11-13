@@ -122,7 +122,8 @@
                     <h3>Próxima entrega</h3>
                 </div>
                 <a class="summary-next-link"
-                   th:href="${proximaEntrega.idDonacion != null ? '/entidad/donaciones/' + proximaEntrega.idDonacion : '/entidad/seguimiento'}">
+                   th:href="${proximaEntrega.idDonacion != null ? '/entidad/donaciones/' + proximaEntrega.idDonacion : '/entidad/seguimiento'}"
+                   th:attr="data-donacion=${proximaEntrega.idDonacion}">
                     <span class="summary-next-main">
                         <strong th:text="${proximaEntrega.cantidad + ' ' + (proximaEntrega.unidadDeMedida != null ? proximaEntrega.unidadDeMedida : 'unidades')}">1.600 KG</strong>
                         <span class="chip" th:classappend="${proximaEntrega.estado == 'EN_CAMINO' ? ' chip-warning' : ' chip-info'}"
@@ -148,7 +149,8 @@
                 </div>
                 <a class="delivery-item" th:each="entrega : ${entregasActivas}"
                    style="text-decoration: none; color: inherit; margin-bottom: 8px;"
-                   th:href="@{/entidad/donaciones/{id}(id=${entrega.idDonacion})}">
+                   th:href="@{/entidad/donaciones/{id}(id=${entrega.idDonacion})}"
+                   th:attr="data-donacion=${entrega.idDonacion}">
                     <span class="delivery-icon" aria-hidden="true">
                         <svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.56l1.48 1.85a1.5 1.5 0 0 1 .33.94v3.15a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H6a2 2 0 1 1-4 0H1.5A1.5 1.5 0 0 1 0 10.5z"/></svg>
                     </span>
@@ -198,9 +200,10 @@
 <script th:src="@{/js/entidad/map.js}" defer></script>
 <script th:src="@{/js/core/toast.js}" defer></script>
 <script th:src="@{/js/core/polling.js}" defer></script>
-<script th:src="@{/js/entidad/dashboard.js}" defer></script>
+<script th:src="@{/js/entidad/dashboard.js(v=2)}" defer></script>
 <script th:inline="javascript">
     window.ENTIDAD_SEGUIMIENTO = JSON.parse(/*[[${seguimientoJson}]]*/ '{}');
+    window.ENTIDAD_DONACIONES = JSON.parse(/*[[${donacionesJson}]]*/ '[]');
     window.ENTIDAD_POLLING_MS = [[${pollingMs != null ? pollingMs : 30000}]];
 </script>
 </body>
