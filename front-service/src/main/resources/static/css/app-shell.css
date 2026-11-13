@@ -358,6 +358,19 @@ body.app > main {
     flex-shrink: 0;
 }
 
+.user-menu-badge {
+    margin-left: auto;
+    min-width: 22px;
+    padding: 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
     .brand-sub { display: none; }
@@ -391,6 +404,14 @@ body.app > main {
 
     .icon-btn-donate {
         display: none;
+    }
+
+    .icon-btn-bell {
+        display: none;
+    }
+
+    .header-actions {
+        gap: var(--gap-1);
     }
 }
 

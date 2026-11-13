@@ -72,6 +72,23 @@ public class KeycloakRegistrationClient {
      */
     public String crearUsuario(String username, String password, String email, String role,
                                String firstName, String lastName) {
+        return crearUsuarioInterno(username, password, email, role, firstName, lastName,
+                false, !verificacionHabilitada);
+    }
+
+    /**
+     * Cuenta creada por un administrador: la password es temporal y Keycloak obliga a cambiarla
+     * en el primer login. El email queda verificado porque las credenciales se envían ahí.
+     */
+    public String crearUsuarioTemporal(String username, String password, String email, String role,
+                                       String firstName, String lastName) {
+        return crearUsuarioInterno(username, password, email, role, firstName, lastName,
+                true, true);
+    }
+
+    private String crearUsuarioInterno(String username, String password, String email, String role,
+                                       String firstName, String lastName,
+                                       boolean passwordTemporal, boolean emailVerificado) {
         String token = obtenerToken();
         String nombre = firstName != null && !firstName.isBlank() ? firstName.trim() : username;
         String apellido = lastName != null && !lastName.isBlank() ? lastName.trim() : nombre;
@@ -79,10 +96,13 @@ public class KeycloakRegistrationClient {
         nuevoUsuario.put("username", username);
         nuevoUsuario.put("enabled", true);
         if (email != null && !email.isBlank()) nuevoUsuario.put("email", email.trim().toLowerCase());
-        nuevoUsuario.put("emailVerified", !verificacionHabilitada);
+        nuevoUsuario.put("emailVerified", emailVerificado);
         nuevoUsuario.put("firstName", nombre);
         nuevoUsuario.put("lastName", apellido);
-        nuevoUsuario.put("credentials", List.of(Map.of("type", "password", "value", password, "temporary", false)));
+        nuevoUsuario.put("credentials", List.of(Map.of(
+                "type", "password",
+                "value", password,
+                "temporary", passwordTemporal)));
         // Keycloak devuelve el identificador en el header Location al responder 201.
         URI location = restClient.post().uri(adminBaseUri + "/realms/{realm}/users", realm)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)

@@ -2,7 +2,9 @@ package ar.edu.utn.frba.ddsi.front.controllers;
 
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.clients.NotificacionesServicioClient;
 import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
 import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
 import ar.edu.utn.frba.ddsi.front.dto.BienDonacionDTO;
@@ -20,6 +22,7 @@ import ar.edu.utn.frba.ddsi.front.dto.RepresentanteDTO;
 import ar.edu.utn.frba.ddsi.front.dto.ResultadoMatchmakingDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,8 +36,10 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,13 +52,22 @@ public class AdminController {
     private final DonacionesClient donacionesClient;
     private final AdminResumenService adminResumenService;
     private final SeguimientoTokenService seguimientoTokenService;
+    private final KeycloakRegistrationClient keycloakRegistrationClient;
+    private final NotificacionesServicioClient notificacionesServicioClient;
+    private final String frontBaseUrl;
 
     public AdminController(LogisticasClient logisticasClient, DonacionesClient donacionesClient,
-                          AdminResumenService adminResumenService, SeguimientoTokenService seguimientoTokenService) {
+                          AdminResumenService adminResumenService, SeguimientoTokenService seguimientoTokenService,
+                          KeycloakRegistrationClient keycloakRegistrationClient,
+                          NotificacionesServicioClient notificacionesServicioClient,
+                          @Value("${front.base-url:http://localhost:8080}") String frontBaseUrl) {
         this.logisticasClient = logisticasClient;
         this.donacionesClient = donacionesClient;
         this.adminResumenService = adminResumenService;
         this.seguimientoTokenService = seguimientoTokenService;
+        this.keycloakRegistrationClient = keycloakRegistrationClient;
+        this.notificacionesServicioClient = notificacionesServicioClient;
+        this.frontBaseUrl = frontBaseUrl;
     }
 
     @GetMapping("/admin")
@@ -172,15 +186,112 @@ public class AdminController {
     }
 
     @PostMapping("/admin/choferes/nuevo")
-    public String crearChofer(@ModelAttribute ChoferDTO chofer, RedirectAttributes redirect) {
+    public String crearChofer(@ModelAttribute ChoferDTO chofer, Model model, RedirectAttributes redirect) {
+        String email = chofer.getEmail() == null ? "" : chofer.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (email.isBlank()) {
+            return formularioChoferConError(chofer, model,
+                    "El email es obligatorio: se usa para crear la cuenta y enviarle la contraseña temporal.");
+        }
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            return formularioChoferConError(chofer, model, "Ingresá un email válido.");
+        }
+        chofer.setEmail(email);
+
+        if (keycloakRegistrationClient.existeUsuarioConEmail(email)
+                || keycloakRegistrationClient.existeUsuarioConUsername(email)) {
+            return formularioChoferConError(chofer, model,
+                    "Ya existe una cuenta con ese email. Usá otro email o agregá el rol CHOFER a la cuenta existente.");
+        }
+
+        String password = generarPasswordTemporal();
+        String userId = null;
+        ChoferDTO creado = null;
         try {
-            logisticasClient.crearChofer(chofer);
-            redirect.addFlashAttribute("exito", "Chofer registrado correctamente.");
+            String nombre = chofer.getNombre() == null ? "" : chofer.getNombre().trim();
+            String[] partes = nombre.split("\\s+", 2);
+            String firstName = partes.length > 0 && !partes[0].isBlank() ? partes[0] : email;
+            String lastName = partes.length > 1 ? partes[1] : "";
+
+            userId = keycloakRegistrationClient.crearUsuarioTemporal(
+                    email, password, email, "CHOFER", firstName, lastName);
+            creado = logisticasClient.crearChofer(chofer);
+
+            boolean enviado = notificacionesServicioClient.enviarEmail(
+                    email,
+                    "Tu cuenta de chofer en DonaTrack",
+                    cuerpoCredenciales(nombre, email, password));
+            if (!enviado) {
+                throw new IllegalStateException("No se pudo enviar el email con las credenciales.");
+            }
+
+            redirect.addFlashAttribute("exito",
+                    "Chofer registrado. Enviamos las credenciales temporales a " + email + ".");
         } catch (Exception e) {
-            log.error("Falló el alta del chofer: {}", e.getMessage());
-            redirect.addFlashAttribute("error", "No se pudo registrar el chofer: " + e.getMessage());
+            if (creado != null && creado.getIdChofer() != null) {
+                try {
+                    logisticasClient.eliminarChofer(creado.getIdChofer());
+                } catch (Exception rollback) {
+                    log.warn("No se pudo revertir el chofer {}: {}", creado.getIdChofer(), rollback.getMessage());
+                }
+            }
+            if (userId != null) {
+                try {
+                    keycloakRegistrationClient.eliminarUsuario(userId);
+                } catch (Exception rollback) {
+                    log.warn("No se pudo revertir el usuario Keycloak {}: {}", userId, rollback.getMessage());
+                }
+            }
+            log.error("Falló el alta del chofer {}: {}", email, e.getMessage());
+            return formularioChoferConError(chofer, model,
+                    "No se pudo registrar el chofer: " + e.getMessage());
         }
         return "redirect:/admin/choferes";
+    }
+
+    private String formularioChoferConError(ChoferDTO chofer, Model model, String mensaje) {
+        model.addAttribute("error", mensaje);
+        model.addAttribute("chofer", chofer);
+        model.addAttribute("edicion", false);
+        return "admin/chofer-formulario";
+    }
+
+    private static String generarPasswordTemporal() {
+        final String mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        final String minusculas = "abcdefghijkmnopqrstuvwxyz";
+        final String digitos = "23456789";
+        final String simbolos = "!@#$%&*";
+        final String todos = mayusculas + minusculas + digitos + simbolos;
+        SecureRandom random = new SecureRandom();
+        char[] password = new char[12];
+        password[0] = mayusculas.charAt(random.nextInt(mayusculas.length()));
+        password[1] = minusculas.charAt(random.nextInt(minusculas.length()));
+        password[2] = digitos.charAt(random.nextInt(digitos.length()));
+        password[3] = simbolos.charAt(random.nextInt(simbolos.length()));
+        for (int i = 4; i < password.length; i++) {
+            password[i] = todos.charAt(random.nextInt(todos.length()));
+        }
+        for (int i = password.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char aux = password[i];
+            password[i] = password[j];
+            password[j] = aux;
+        }
+        return new String(password);
+    }
+
+    private String cuerpoCredenciales(String nombre, String email, String password) {
+        return """
+                Hola %s,
+
+                Se creó tu cuenta de chofer en DonaTrack.
+
+                Usuario: %s
+                Contraseña temporal: %s
+
+                Al iniciar sesión vas a tener que cambiarla.
+
+                Ingresá en %s
+                """.formatted(nombre, email, password, frontBaseUrl);
     }
 
     @GetMapping("/admin/choferes/{id}/editar")

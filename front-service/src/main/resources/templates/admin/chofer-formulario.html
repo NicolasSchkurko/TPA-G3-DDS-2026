@@ -23,6 +23,7 @@
 <main class="main-admin" id="contenido" tabindex="-1">
     <div class="card border-0 shadow-sm">
         <div class="card-body">
+            <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
             <form th:action="${edicion} ? @{/admin/choferes/{id}/actualizar(id=${idChofer})} : @{/admin/choferes/nuevo}"
                   th:object="${chofer}" method="post" class="row g-3">
                 <div class="col-md-6">
@@ -31,7 +32,8 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input class="form-control" type="email" th:field="*{email}">
+                    <input class="form-control" type="email" th:field="*{email}" required>
+                    <div class="form-text">Obligatorio. Se usa para crear la cuenta y enviarle la contraseña temporal.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Disponibilidad</label>

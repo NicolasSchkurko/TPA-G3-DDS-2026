@@ -58,6 +58,27 @@ public class GlobalViewAdvice {
         return authentication != null ? authentication.getName() : "";
     }
 
+    /**
+     * Destino del logo DonaTrack: la página principal del rol activo, no la landing pública.
+     * Para anónimos sigue siendo la landing.
+     */
+    @ModelAttribute("homeUrl")
+    public String homeUrl(HttpSession session, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "/";
+        }
+        if (rolesDe(authentication).isEmpty()) {
+            return "/cuenta/roles";
+        }
+        return switch (rolActivo(session, authentication)) {
+            case "ADMIN" -> "/admin";
+            case "DONANTE" -> "/donante/mapa";
+            case "CHOFER" -> "/chofer";
+            case "ENTIDAD" -> "/entidad";
+            default -> "/";
+        };
+    }
+
     /** true si la verificación está prendida y la persona logueada todavía no verificó su correo. */
     @ModelAttribute("emailSinVerificar")
     public boolean emailSinVerificar(Authentication authentication, HttpSession session) {

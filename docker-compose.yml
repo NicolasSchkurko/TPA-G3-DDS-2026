@@ -1,137 +1,18 @@
-# Infraestructura y servicios del TPA.
+# Servicios de dominio del TPA.
 #
-# Antes este archivo declaraba los cuatro servicios con `image:` y sin MySQL ni broker:
-# los contenedores no se podían construir desde el repo y no había base de datos ni cola que
-# los sostuviera. Ahora MySQL y RabbitMQ son servicios del compose y cada microservicio se
-# construye desde su módulo con `build:`.
+# La infraestructura NO se levanta en este compose: MySQL, RabbitMQ, Keycloak y n8n
+# corren en la VM de Oracle, y MongoDB en Atlas. Cada servicio toma esas URLs y
+# credenciales de su propio `.env`. Con `docker compose up --build` solo se construyen
+# y levantan los cinco Spring.
 #
 # La cadena de integración que exige el enunciado va por RabbitMQ, no por HTTP entre
-# contenedores: `donaciones-service` publica en `logistica.integracion.hash`, `logisticas-service`
-# publica en `logistica.eventos.exchange`, y los dos servicios de dominio publican en
-# `notificaciones.exchange`. Todos son consumidores de esas colas.
+# contenedores: `donaciones-service` publica en `logistica.integracion.hash`,
+# `logisticas-service` publica en `logistica.eventos.exchange`, y los dos servicios de
+# dominio publican en `notificaciones.exchange`. Todos son consumidores de esas colas.
+#
+# Requiere que exista el `.env` de cada módulo (no se commitea).
 
 services:
-
-  # --- Infraestructura ---
-
-  # Keycloak para desarrollo local. El realm ddsi importa roles y cuentas de prueba
-  # desde docker/keycloak/realm-ddsi.json al crear el volumen por primera vez.
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.8.2
-    command: ["start-dev", "--import-realm"]
-    ports:
-      - "8180:8080"
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-only}
-      # Issuer y URLs del navegador deben usar el host que abre la persona.
-      KC_HOSTNAME: http://localhost:8180
-      KC_HTTP_ENABLED: "true"
-      KC_SPI_THEME_DEFAULT_LOGIN: donatrack
-      KC_SPI_THEME_DEFAULT_ACCOUNT: donatrack
-      KC_SPI_THEME_DEFAULT_EMAIL: donatrack
-      KC_SPI_THEME_DEFAULT_ADMIN: donatrack
-      KC_HEALTH_ENABLED: "true"
-      # Techo de heap y de procesadores para que un login no se lleve puesto el host.
-      JAVA_OPTS_APPEND: "-XX:MaxRAMPercentage=70 -XX:ActiveProcessorCount=2"
-    volumes:
-      - keycloak-data:/opt/keycloak/data
-      - ./docker/keycloak/realm-ddsi.json:/opt/keycloak/data/import/realm-ddsi.json:ro
-      - ./docker/keycloak/themes:/opt/keycloak/themes:ro
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c \"{ printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000\""]
-      interval: 15s
-      timeout: 5s
-      retries: 20
-      start_period: 60s
-    mem_limit: 1g
-    cpus: 2.0
-    restart: unless-stopped
-
-  # Credenciales simples solo para el entorno local de demostración. No reutilizar
-  # estas credenciales ni exponer MySQL fuera de la máquina en un despliegue real.
-  # MySQL no se expone al host: los servicios llegan por la red interna de Docker.
-  mysql:
-    image: mysql:8.0
-    container_name: tpa-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    mem_limit: 768m
-
-  # Broker local. Usa un usuario propio porque RabbitMQ limita `guest` a conexiones locales.
-  rabbitmq:
-    build: ./docker/rabbitmq
-    container_name: tpa-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: tpa
-      RABBITMQ_DEFAULT_PASS: tpa-local
-    volumes:
-      - rabbit-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    mem_limit: 512m
-
-  mongodb:
-    image: mongo:7
-    container_name: tpa-mongodb
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]}).ok }"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    mem_limit: 512m
-
-  # n8n local para los webhooks de incentivos y notificaciones. Arranca sin workflows:
-  # hay que crear y activar los webhooks `incentivos` y `notificaciones` en el editor
-  # (http://localhost:5678). Los workflows y credenciales quedan en el volumen n8n-data.
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: tpa-n8n
-    ports:
-      - "5678:5678"
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5678/
-      WEBHOOK_URL: http://localhost:5678/
-      N8N_SECURE_COOKIE: "false"
-      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
-      TZ: America/Argentina/Buenos_Aires
-    volumes:
-      - n8n-data:/home/node/.n8n
-    restart: unless-stopped
-
-  # --- Servicios de dominio ---
-  # Postman Desktop entra por el gateway de la red bridge; si cambia, definir POSTMAN_HOST_IP.
-  #
-  # Ninguno declara `container_name` a proposito: un nombre fijo impide correr `--scale`, porque
-  # no se pueden crear N contenedores con el mismo nombre. Es la razon por la que el
-  # "docker compose up --scale logisticas-service=2" que decia el comentario de abajo no
-  # funcionaba. Ver el punto 24 del backlog de logisticas-service.
-  #
-  # mysql y rabbitmq si lo tienen: no se escalan y un nombre estable evita depender de la red de
-  # Docker para llegar a ellos.
 
   notificaciones-service:
     build:
@@ -143,27 +24,11 @@ services:
       - "8083:8083"
     environment:
       SERVER_PORT: 8083
-      # Con context-path /api, la ruta real del controller es /api/notificaciones.
-      DB_URL: jdbc:mysql://mysql:3306/notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
-      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
       IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: incentivos-service,front-service,donaciones-service
-      # n8n compartido en la nube. Para usar el n8n local: N8N_NOTIFICACIONES_URL=http://n8n:5678/webhook/notificaciones en el .env de la raíz.
-      N8N_URL: ${N8N_NOTIFICACIONES_URL:-https://n8n.134.65.18.218.nip.io/webhook/notificaciones}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: tpa
-      RABBITMQ_PASSWORD: tpa-local
     # El heap se calcula contra este límite (MaxRAMPercentage=70 en el Dockerfile).
     mem_limit: 512m
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      n8n:
-        condition: service_started
+    restart: unless-stopped
 
   incentivos-service:
     build:
@@ -174,34 +39,17 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: donaciones-service,front-service
       SERVER_PORT: 8082
-      #no lleva context-path: las rutas ya empiezan con /api.
+      # No lleva context-path: las rutas ya empiezan con /api.
       DONACIONES_URL: http://donaciones-service:8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
-      N8N_URL: ${N8N_INCENTIVOS_URL:-https://n8n.134.65.18.218.nip.io/webhook/incentivos}
-      DB_URL: jdbc:mysql://mysql:3306/incentivos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
-      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
-      CLIENTES_HTTP_READ_TIMEOUT_MS: ${CLIENTES_HTTP_READ_TIMEOUT_MS:-180000}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: tpa
-      RABBITMQ_PASSWORD: tpa-local
     mem_limit: 512m
-    depends_on:
-      mysql:
-        condition: service_healthy
-      notificaciones-service:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-      n8n:
-        condition: service_started
+    restart: unless-stopped
 
-  # Es el broker de integración del enunciado: publica las donaciones asignadas para
-  # logística y consume los eventos de trazabilidad para notificar.
+  # Publica las donaciones asignadas para logística y consume los eventos de
+  # trazabilidad para notificar.
   donaciones-service:
     build:
       context: .
@@ -211,57 +59,16 @@ services:
     ports:
       - "8084:8084"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: incentivos-service,front-service
       SERVER_PORT: 8084
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       INCENTIVOS_URL: http://incentivos-service:8082
       LOGISTICAS_URL: http://logisticas-service:8086/api
-      DB_URL: jdbc:mysql://mysql:3306/donaciones_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${DB_USERNAME:-ddsi_app}
-      DB_PASSWORD: ${DB_PASSWORD:-ddsi-app-local-only}
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: tpa
-      RABBITMQ_PASSWORD: tpa-local
     mem_limit: 512m
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    restart: unless-stopped
 
-  # Compite por la cola compartida `logistica.integracion.queue`: para cumplir el
-  # "más de un servicio de logística disponible" del enunciado basta con escalar este servicio.
-  #
-  #   docker compose up --scale logisticas-service=2
-  #
-  # El puerto se publica SIN número de host, o sea efímero, porque un `"8086:8086"` fijo no se
-  # puede reservar dos veces y la segunda instancia fallaría con `port is already allocated`.
-  # Para descubrir el puerto asignado de cada una:
-  #
-  #   docker compose port logisticas-service 8086
-  #
-  # El `SERVER_PORT` de adentro es el mismo para todas: dentro de la red de Docker cada
-  # contenedor tiene su propio espacio de puertos, así que 8086 no se repite. El que se repite
-  # es el del host, y por eso no se publica fijo.
-  #
-  # Si se levanta de a una sola instancia, se puede volver a `"8086:8086"` para tener el puerto
-  # fijo en localhost, que es lo cómodo para desarrollo.
-  #
-  # No hay LOGISTICA_SHARDS_ASIGNADAS: todas las instancias escuchan la misma cola. El
-  # reparto en varias colas por hash existe y esta documentado en
-  # logisticas-service/src/main/resources/application.properties, pero apagado a proposito:
-  # compra orden por donacion a cambio de disponibilidad, y hoy ningun mensaje que llegue a
-  # logistica lleva una transicion de estado, asi que el orden no hace falta.
-  #   Las credenciales de la base viven en `logisticas-service/.env` (un `.env` por modulo, no
-  #   uno general en la raiz). El compose lo carga con `env_file`, asi que no hay que exportar
-  #   nada a mano ni quedan credenciales en claro aca. `application.properties` no tiene default:
-  #   sin ese archivo, el servicio no arranca.
-  #
-  #   Los otros tres modulos tambien cargan su `.env` con `env_file` y sacan de ahi sus
-  #   credenciales. La que estaba commiteada en el historial de git hay que rotarla en MySQL.
+  # Las credenciales de Mongo (Atlas) y Rabbit salen de `logisticas-service/.env`.
   logisticas-service:
     build:
       context: .
@@ -271,28 +78,19 @@ services:
     ports:
       - "8086:8086"
     environment:
-      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1,${POSTMAN_HOST_IP:-172.19.0.1}
+      IPS_INTERNAS: 127.0.0.1,0:0:0:0:0:0:0:1
       SERVICIOS_INTERNOS: front-service
       SERVER_PORT: 8086
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: tpa
-      RABBITMQ_PASSWORD: tpa-local
-      MONGODB_URI: mongodb://mongodb:27017/logistica?replicaSet=rs0
-      MONGODB_DB_NAME: logistica
       LOGISTICA_SEGUIMIENTO_URL: http://localhost:8080/seguimiento/
     mem_limit: 512m
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-
+    restart: unless-stopped
 
   front-service:
     build:
       context: .
       dockerfile: front-service/Dockerfile
+    env_file:
+      - ./front-service/.env
     ports:
       - "8080:8080"
     environment:
@@ -301,37 +99,12 @@ services:
       INCENTIVOS_URL: http://incentivos-service:8082
       NOTIFICACIONES_URL: http://notificaciones-service:8083/api
       LOGISTICAS_URL: http://logisticas-service:8086/api
-      KEYCLOAK_CLIENT_ID: front-service
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_FRONT_CLIENT_SECRET:-front-service-dev-secret}
-      KEYCLOAK_REALM: ddsi
-      KEYCLOAK_ADMIN_BASE_URI: http://keycloak:8080/admin
-      KEYCLOAK_REGISTRATION_CLIENT_ID: front-registration
-      KEYCLOAK_REGISTRATION_CLIENT_SECRET: ${KEYCLOAK_REGISTRATION_CLIENT_SECRET:-front-registration-dev-secret}
-      KEYCLOAK_ACCOUNT_RETURN_URI: http://localhost:8080/donante/mapa
-      # La app usa endpoints internos para backchannel y el issuer público en los tokens.
-      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ddsi
-      KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/auth
-      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/token
-      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/certs
-      KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/ddsi/protocol/openid-connect/userinfo
-      KEYCLOAK_LOGOUT_URI: http://localhost:8180/realms/ddsi/protocol/openid-connect/logout
-      KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:8080/
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-ddsi-internal-token-local-only}
-      SEGUIMIENTO_TOKEN_SECRET: ${SEGUIMIENTO_TOKEN_SECRET:-donatrack-seguimiento-local}
-      KEYCLOAK_VERIFICATION_ENABLED: "true"
       SPRING_THYMELEAF_CACHE: "true"
       APP_UPLOADS_DIR: /app/uploads
     volumes:
       - uploads-data:/app/uploads
     mem_limit: 512m
-    depends_on:
-      keycloak:
-        condition: service_started
+    restart: unless-stopped
 
 volumes:
   uploads-data:
-  keycloak-data:
-  mysql-data:
-  rabbit-data:
-  mongodb-data:
-  n8n-data:

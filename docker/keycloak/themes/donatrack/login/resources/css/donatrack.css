@@ -194,3 +194,94 @@ a,
     font-size: 25px;
   }
 }
+
+/* El login siempre en modo claro, aunque el SO esté en modo oscuro. */
+:root {
+  color-scheme: light;
+  --keycloak-card-top-color: var(--dt-green);
+}
+
+#kc-header-wrapper {
+  color: var(--dt-ink) !important;
+}
+
+/* Alerta informativa (ej. "Authenticate to link your account with Google"). */
+.pf-v5-c-alert,
+.pf-v5-c-alert.pf-m-info {
+  background-color: var(--dt-green-soft) !important;
+  border-color: var(--dt-green) !important;
+  color: var(--dt-ink) !important;
+}
+
+.pf-v5-c-alert .pf-v5-c-alert__title,
+.pf-v5-c-alert .pf-v5-c-alert__description {
+  color: var(--dt-ink) !important;
+}
+
+.pf-v5-c-alert .pf-v5-c-alert__icon {
+  color: var(--dt-green) !important;
+}
+
+/* Botón del ojo del password y botones sociales. */
+.pf-v5-c-button.pf-m-control,
+#kc-social-providers .pf-v5-c-button {
+  background-color: #fff !important;
+  color: var(--dt-ink) !important;
+  border-color: var(--dt-line) !important;
+}
+
+.pf-v5-c-button.pf-m-control:hover,
+#kc-social-providers .pf-v5-c-button:hover {
+  background-color: var(--dt-green-soft) !important;
+}
+
+/* El borde superior de la tarjeta era azul de Keycloak. */
+.pf-v5-c-login__main-header {
+  border-top-color: var(--dt-green);
+}
+
+/* Unificar el fondo de la tarjeta: el footer de PatternFly venía gris claro. */
+.pf-v5-c-login__main-footer {
+  background-color: transparent;
+}
+
+/* Chrome pinta los campos autocompletados de amarillo; mantenerlos blancos. */
+.pf-v5-c-form-control input:-webkit-autofill,
+.pf-v5-c-form-control input:-webkit-autofill:hover,
+.pf-v5-c-form-control input:-webkit-autofill:focus,
+.pf-v5-c-form-control input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: var(--dt-ink) !important;
+  caret-color: var(--dt-ink);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Tarjeta opaca y todas sus secciones con el mismo color: sin transparencias
+   que dejen ver el mapa distinto en cada bloque. */
+.pf-v5-c-login__main,
+.card-pf {
+  background: #fff !important;
+}
+
+#kc-form,
+#kc-info,
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer,
+.pf-v5-c-login__main-footer-band {
+  background: transparent !important;
+}
+
+/* Autofill de Chrome: cubre tanto el input suelto como el envuelto por PatternFly. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.pf-v5-c-form-control:-webkit-autofill,
+.pf-v5-c-form-control:-webkit-autofill:hover,
+.pf-v5-c-form-control:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: var(--dt-ink) !important;
+  caret-color: var(--dt-ink) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

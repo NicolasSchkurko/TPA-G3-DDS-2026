@@ -1,61 +1,12 @@
 /* =========================================================
    DDSI · Landing
-   Demo de mapa de donaciones con Leaflet + datos de ejemplo.
+   Mapa de donaciones destacadas con Leaflet + datos reales del backend.
    Si Leaflet no carga, se dibuja un mapa estático de respaldo.
    ========================================================= */
 (function () {
     "use strict";
 
-    /* ----------------------------- Datos de ejemplo ----------------------------- */
     const MAP_CENTER = [-34.6200, -58.4300]; // Centro geográfico de la red en CABA
-
-    const DONATIONS = [
-        {
-            id: "piletones",
-            title: "Alimentos no perecederos",
-            org: "Comedor Los Piletones",
-            area: "Villa Soldati",
-            status: "delivered",
-            icon: "basket2",
-            coords: [-34.6538, -58.4478]
-        },
-        {
-            id: "abrigo",
-            title: "Ropa de abrigo",
-            org: "Hogar San José",
-            area: "Barracas",
-            status: "transit",
-            icon: "bag-heart",
-            coords: [-34.6345, -58.3798]
-        },
-        {
-            id: "escuela",
-            title: "Útiles escolares",
-            org: "Escuela N.º 12",
-            area: "Balvanera",
-            status: "delivered",
-            icon: "book",
-            coords: [-34.6095, -58.4085]
-        },
-        {
-            id: "medicamentos",
-            title: "Medicamentos e insumos",
-            org: "Centro de Salud N.º 4",
-            area: "Parque Patricios",
-            status: "pending",
-            icon: "capsule",
-            coords: [-34.6397, -58.4026]
-        },
-        {
-            id: "juguetes",
-            title: "Juguetes y libros",
-            org: "Merendero Sonrisas",
-            area: "Lugano",
-            status: "transit",
-            icon: "gift",
-            coords: [-34.6807, -58.4752]
-        }
-    ];
 
     const STATUS = {
         delivered: { label: "Entregada", color: "#1b7838" },
@@ -92,19 +43,21 @@
 
             return [{
                 id: card.dataset.id,
-                title: card.querySelector(".card-title")?.textContent.trim() || "Donación",
-                org: card.querySelector(".card-meta > span")?.textContent.trim() || "Entidad beneficiaria",
+                title: card.dataset.title
+                    || card.querySelector(".card-title")?.textContent.trim() || "Donación",
+                org: card.dataset.organization
+                    || card.querySelector(".card-meta > span")?.textContent.trim() || "Entidad beneficiaria",
                 area: card.dataset.area || "",
                 status: "delivered",
                 icon: "gift",
                 coords: [lat, lng],
-                url: card.getAttribute("href")
+                url: card.getAttribute("href") || card.dataset.url || null
             }];
         });
     }
 
     function mapDonations() {
-        return DONATIONS.concat(mapOnlyAndFeaturedDonations());
+        return mapOnlyAndFeaturedDonations();
     }
 
     const byId = (id) => mapDonations().find((d) => d.id === id);

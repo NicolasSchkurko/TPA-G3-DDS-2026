@@ -69,17 +69,21 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCategoria' + ${stat.index}">Categoría</label>
-                                    <input class="form-control bien-categoria" th:id="'bienCategoria' + ${stat.index}"
-                                           th:field="*{bienes[__${stat.index}__].categoria}" type="text"
-                                           list="catCategorias" placeholder="Elegí o escribí una categoría"
-                                           autocomplete="off" required>
+                                    <select class="form-select bien-categoria" th:id="'bienCategoria' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].categoria}" required>
+                                        <option value="">Elegí una categoría</option>
+                                        <option th:each="categoria : ${catalogo.keySet()}"
+                                                th:value="${categoria}" th:text="${categoria}"></option>
+                                    </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienSubcategoria' + ${stat.index}">Subcategoría</label>
-                                    <input class="form-control bien-subcategoria" th:id="'bienSubcategoria' + ${stat.index}"
-                                           th:field="*{bienes[__${stat.index}__].subcategoria}" type="text"
-                                           list="catSubcategorias" placeholder="Elegí o escribí una subcategoría"
-                                           autocomplete="off" required>
+                                    <select class="form-select bien-subcategoria" th:id="'bienSubcategoria' + ${stat.index}"
+                                            th:field="*{bienes[__${stat.index}__].subcategoria}" required>
+                                        <option value="">Elegí una subcategoría</option>
+                                        <option th:if="${bien.subcategoria != null and !#strings.isEmpty(bien.subcategoria)}"
+                                                th:value="${bien.subcategoria}" th:text="${bien.subcategoria}"></option>
+                                    </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" th:for="'bienCantidad' + ${stat.index}">Cantidad</label>
@@ -116,19 +120,6 @@
                                     <input class="form-control" th:id="'bienFechaVencimiento' + ${stat.index}"
                                            th:field="*{bienes[__${stat.index}__].fechaVencimiento}" type="date">
                                 </div>
-                                <div class="col-12 mb-3 bien-foto">
-                                    <label class="form-label" th:for="'bienFoto' + ${stat.index}">Foto del bien (opcional)</label>
-                                    <input class="form-control bien-foto-input" th:id="'bienFoto' + ${stat.index}"
-                                           type="file" accept="image/jpeg,image/png,image/webp">
-                                    <input type="hidden" class="bien-foto-url"
-                                           th:field="*{bienes[__${stat.index}__].urlFoto}">
-                                    <div class="bien-foto-preview mt-2" hidden>
-                                        <img class="bien-foto-preview-img" alt="Vista previa de la foto del bien">
-                                        <button type="button" class="btn btn-outline-danger btn-sm quitar-foto">Quitar foto</button>
-                                    </div>
-                                    <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB. La foto se guarda con la donación.</div>
-                                    <div class="bien-foto-error text-danger small" hidden></div>
-                                </div>
                             </div>
                             <button class="btn btn-outline-danger btn-sm quitar-bien" type="button" hidden>
                                 Quitar bien
@@ -147,17 +138,6 @@
                     <div id="fotosDonacionError" class="text-danger small mt-2" hidden></div>
                     <div class="form-text">JPG, PNG o WEBP. Máximo 10 MB por imagen.</div>
                 </section>
-
-                <datalist id="catCategorias">
-                    <option th:each="categoria : ${catalogo != null ? catalogo.keySet() : {}}"
-                            th:value="${categoria}"></option>
-                </datalist>
-                <datalist id="catSubcategorias">
-                    <th:block th:each="entrada : ${catalogo != null ? catalogo : {}}">
-                        <option th:each="subcategoria : ${entrada.value}"
-                                th:value="${subcategoria}"></option>
-                    </th:block>
-                </datalist>
 
                 <div id="formUploadError" class="alert alert-danger" role="alert" hidden></div>
 
@@ -219,12 +199,6 @@
         nuevoBien.querySelectorAll("select").forEach((campo) => {
             campo.selectedIndex = 0;
         });
-        const preview = nuevoBien.querySelector(".bien-foto-preview");
-        if (preview) {
-            preview.hidden = true;
-            const img = preview.querySelector("img");
-            if (img) img.removeAttribute("src");
-        }
         listaBienes.appendChild(nuevoBien);
         actualizarBienes();
     });
@@ -237,116 +211,47 @@
         }
     });
 
-    const csrfMeta = document.querySelector('meta[name="_csrf"]');
-    const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
-    let uploadsPendientes = 0;
-
-    function mostrarPreviewFoto(bien, url) {
-        const preview = bien.querySelector(".bien-foto-preview");
-        const img = preview ? preview.querySelector("img") : null;
-        if (!preview || !img) return;
-        if (url) {
-            img.src = url;
-            preview.hidden = false;
-        } else {
-            img.removeAttribute("src");
-            preview.hidden = true;
-        }
-    }
-
-    async function subirFoto(bien, archivo) {
-        const oculto = bien.querySelector(".bien-foto-url");
-        const error = bien.querySelector(".bien-foto-error");
-        const input = bien.querySelector(".bien-foto-input");
-        if (!oculto || !archivo) return;
-        if (error) error.hidden = true;
-        if (!archivo.type || !archivo.type.startsWith("image/")) {
-            if (error) { error.textContent = "Elegí una imagen JPG, PNG o WEBP."; error.hidden = false; }
-            if (input) input.value = "";
-            return;
-        }
-        if (archivo.size > 10 * 1024 * 1024) {
-            if (error) { error.textContent = "La imagen supera el máximo de 10 MB."; error.hidden = false; }
-            if (input) input.value = "";
-            return;
-        }
-        const datos = new FormData();
-        datos.append("file", archivo);
-        uploadsPendientes++;
-        try {
-            const headers = {};
-            if (csrfMeta && csrfHeaderMeta) headers[csrfHeaderMeta.content] = csrfMeta.content;
-            const respuesta = await fetch("/api/uploads/donacion", { method: "POST", headers: headers, body: datos });
-            const cuerpo = await respuesta.json().catch(() => ({}));
-            if (!respuesta.ok) throw new Error(cuerpo.error || "No se pudo subir la foto.");
-            oculto.value = cuerpo.url;
-            mostrarPreviewFoto(bien, cuerpo.url);
-        } catch (e) {
-            oculto.value = "";
-            mostrarPreviewFoto(bien, "");
-            if (input) input.value = "";
-            if (error) { error.textContent = e.message || "No se pudo subir la foto."; error.hidden = false; }
-        } finally {
-            uploadsPendientes--;
-        }
-    }
-
     listaBienes.addEventListener("change", (evento) => {
+        if (evento.target.matches(".bien-categoria")) {
+            const bien = evento.target.closest(".bien-item");
+            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
+        }
         if (evento.target.matches(".bien-tipo")) {
             actualizarTipoBien(evento.target.closest(".bien-item"));
-        }
-        if (evento.target.matches(".bien-foto-input")) {
-            subirFoto(evento.target.closest(".bien-item"), evento.target.files && evento.target.files[0]);
-        }
-    });
-
-    listaBienes.addEventListener("click", (evento) => {
-        if (evento.target.closest(".quitar-foto")) {
-            const bien = evento.target.closest(".bien-item");
-            bien.querySelector(".bien-foto-url").value = "";
-            bien.querySelector(".bien-foto-input").value = "";
-            mostrarPreviewFoto(bien, "");
-        }
-    });
-
-    document.querySelector("form[action*='realizar-donacion']").addEventListener("submit", (evento) => {
-        if (uploadsPendientes > 0) {
-            evento.preventDefault();
-            const error = document.getElementById("formUploadError");
-            if (error) {
-                error.textContent = "Esperá a que terminen de subirse las fotos.";
-                error.hidden = false;
-            }
         }
     });
 
     const CATALOGO = window.CATALOGO_DONACION || {};
 
     function repoblarSubcategorias(bien, valorSeleccionado) {
+        const select = bien.querySelector(".bien-subcategoria");
+        if (!select) return;
         const categoria = (bien.querySelector(".bien-categoria").value || "").trim().toLowerCase();
-        const datalist = document.getElementById("catSubcategorias");
-        if (!datalist) return;
-        datalist.innerHTML = "";
         const clave = Object.keys(CATALOGO).find((c) => c.toLowerCase() === categoria);
-        (clave ? CATALOGO[clave] : []).forEach((subcategoria) => {
+        const opciones = clave
+            ? (CATALOGO[clave] || [])
+            : [...new Set(Object.values(CATALOGO).flat())];
+        const actual = valorSeleccionado || select.value;
+
+        select.replaceChildren();
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Elegí una subcategoría";
+        select.appendChild(placeholder);
+
+        [...new Set(opciones)].sort((a, b) => a.localeCompare(b, "es")).forEach((subcategoria) => {
             const option = document.createElement("option");
             option.value = subcategoria;
-            datalist.appendChild(option);
+            option.textContent = subcategoria;
+            select.appendChild(option);
         });
+
+        if (actual && Array.from(select.options).some((option) => option.value === actual)) {
+            select.value = actual;
+        }
     }
 
-    listaBienes.addEventListener("input", (evento) => {
-        if (evento.target.matches(".bien-categoria")) {
-            const bien = evento.target.closest(".bien-item");
-            repoblarSubcategorias(bien, bien.querySelector(".bien-subcategoria").value);
-        }
-    });
-
     actualizarBienes();
-    listaBienes.querySelectorAll(".bien-item").forEach((bien) => {
-        const oculto = bien.querySelector(".bien-foto-url");
-        if (oculto && oculto.value) mostrarPreviewFoto(bien, oculto.value);
-    });
 </script>
 <script th:src="@{/js/core/donacion-fotos.js}" defer></script>
 <div th:replace="~{fragments/app-shell :: appFooter}"></div>

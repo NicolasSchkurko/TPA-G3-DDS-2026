@@ -1,7 +1,9 @@
 package ar.edu.utn.frba.ddsi.front.controllers;
 
 import ar.edu.utn.frba.ddsi.front.clients.DonacionesClient;
+import ar.edu.utn.frba.ddsi.front.clients.KeycloakRegistrationClient;
 import ar.edu.utn.frba.ddsi.front.clients.LogisticasClient;
+import ar.edu.utn.frba.ddsi.front.clients.NotificacionesServicioClient;
 import ar.edu.utn.frba.ddsi.front.dto.CamionDTO;
 import ar.edu.utn.frba.ddsi.front.services.AdminResumenService;
 import ar.edu.utn.frba.ddsi.front.services.SeguimientoTokenService;
@@ -25,7 +27,9 @@ class CamionFormularioControllerTest {
         LogisticasClient logisticasClient = mock(LogisticasClient.class);
         when(logisticasClient.obtenerChoferes()).thenReturn(List.of());
         AdminController controller = new AdminController(logisticasClient, mock(DonacionesClient.class),
-                mock(AdminResumenService.class), mock(SeguimientoTokenService.class));
+                mock(AdminResumenService.class), mock(SeguimientoTokenService.class),
+                mock(KeycloakRegistrationClient.class), mock(NotificacionesServicioClient.class),
+                "http://localhost:8080");
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller.nuevoCamion(model);
@@ -38,7 +42,9 @@ class CamionFormularioControllerTest {
     void altaPostRedirigeYLLamaCliente() {
         LogisticasClient logisticasClient = mock(LogisticasClient.class);
         AdminController controller = new AdminController(logisticasClient, mock(DonacionesClient.class),
-                mock(AdminResumenService.class), mock(SeguimientoTokenService.class));
+                mock(AdminResumenService.class), mock(SeguimientoTokenService.class),
+                mock(KeycloakRegistrationClient.class), mock(NotificacionesServicioClient.class),
+                "http://localhost:8080");
         CamionDTO camion = new CamionDTO();
         camion.setPatente("ABC123");
 
@@ -56,7 +62,9 @@ class CamionFormularioControllerTest {
         when(logisticasClient.obtenerCamiones()).thenReturn(List.of(camion));
         when(logisticasClient.obtenerChoferes()).thenReturn(List.of());
         AdminController controller = new AdminController(logisticasClient, mock(DonacionesClient.class),
-                mock(AdminResumenService.class), mock(SeguimientoTokenService.class));
+                mock(AdminResumenService.class), mock(SeguimientoTokenService.class),
+                mock(KeycloakRegistrationClient.class), mock(NotificacionesServicioClient.class),
+                "http://localhost:8080");
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller.editarCamion("ABC123", model, new RedirectAttributesModelMap());
@@ -69,7 +77,9 @@ class CamionFormularioControllerTest {
     void edicionPostRedirigeYLLamaCliente() {
         LogisticasClient logisticasClient = mock(LogisticasClient.class);
         AdminController controller = new AdminController(logisticasClient, mock(DonacionesClient.class),
-                mock(AdminResumenService.class), mock(SeguimientoTokenService.class));
+                mock(AdminResumenService.class), mock(SeguimientoTokenService.class),
+                mock(KeycloakRegistrationClient.class), mock(NotificacionesServicioClient.class),
+                "http://localhost:8080");
 
         String view = controller.actualizarCamion("ABC123", new CamionDTO(), new RedirectAttributesModelMap());
 

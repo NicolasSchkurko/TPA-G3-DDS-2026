@@ -129,18 +129,6 @@
                         <p class="panel-noscript">Activá JavaScript para ver el mapa interactivo.</p>
                     </noscript>
                 </div>
-                <div class="map-only-donations" hidden aria-hidden="true">
-                    <span class="map-donation-data" th:each="donacion : ${entregadasMapa}"
-                          th:attr="data-id=${donacion.idDonacion},
-                                   data-latitude=${donacion.latitud},
-                                   data-longitude=${donacion.longitud},
-                                   data-area=${donacion.ubicacion ?: ''},
-                                   data-title=${donacion.subCategoria != null and !#strings.isEmpty(donacion.subCategoria)
-                                       ? donacion.subCategoria
-                                       : (donacion.categoria ?: 'Donación')},
-                                   data-organization=${donacion.entidadBeneficiaria ?: 'Entidad beneficiaria'},
-                                   data-url=@{/donaciones/{id}(id=${donacion.idDonacion})}"></span>
-                </div>
             </section>
 
         </aside>
@@ -155,7 +143,7 @@
                 <span><i class="legend-dot depot" aria-hidden="true"></i> Depósito</span>
             </div>
 
-            <p class="map-caption">Depósito y donaciones de ejemplo · Ubicaciones de entidades beneficiarias</p>
+            <p class="map-caption">Últimas donaciones destacadas · Ubicaciones de entidades beneficiarias</p>
         </section>
     </main>
 

@@ -20,22 +20,25 @@ public class ProfileRedirectHandler implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
+        List<String> roles = roles(authentication);
+
         // Si el usuario intentó donar antes de loguearse, retomamos el flujo de donación.
         SavedRequest savedRequest = requestCache.getRequest(request, response);
-        if (savedRequest != null && esRutaDeDonacionGuardada(savedRequest, request.getContextPath())) {
+        if (savedRequest != null && esRutaDeDonacionGuardada(savedRequest, request.getContextPath())
+                && roles.contains("DONANTE")) {
             requestCache.removeRequest(request, response);
             response.sendRedirect(request.getContextPath() + "/realizar-donacion");
             return;
         }
 
         Object rolActivo = request.getSession().getAttribute("rolActivo");
-        if (rolActivo instanceof String rol && roles(authentication).contains(rol)) {
+        if (rolActivo instanceof String rol && roles.contains(rol)) {
             response.sendRedirect(request.getContextPath() + destino(rol));
             return;
         }
-        String destination = roles(authentication).stream().findFirst()
+        String destination = roles.stream().findFirst()
                 .map(ProfileRedirectHandler::destino)
-                .orElse("/sin-acceso");
+                .orElse("/cuenta/roles");
         response.sendRedirect(request.getContextPath() + destination);
     }
 

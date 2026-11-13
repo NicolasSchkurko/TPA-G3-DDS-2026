@@ -848,17 +848,21 @@
     box-shadow: var(--shadow-sm);
 }
 
-.notif-list { display: flex; flex-direction: column; gap: var(--gap-2); max-width: 860px; }
+.notif-list { display: flex; flex-direction: column; gap: var(--gap-2); max-width: none; width: 100%; }
 
 .notif-item {
     display: grid;
-    grid-template-columns: 12px 1fr auto;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
     gap: var(--gap-3);
-    align-items: center;
+    align-items: start;
     padding: var(--gap-3) var(--gap-4);
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+}
+
+.notif-item > div:not(.notif-actions) {
+    min-width: 0;
 }
 
 .notif-item.is-unread { border-left: 4px solid var(--accent); }
@@ -871,10 +875,22 @@
 
 .notif-item.is-read .notif-dot { background: var(--line-strong); }
 
-.notif-item h3 { margin: 0; font-size: 14px; }
-.notif-item p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
-.notif-item time { font-size: 11px; color: var(--muted-2); }
-.notif-actions { display: flex; gap: var(--gap-2); flex-wrap: wrap; justify-content: flex-end; }
+.notif-item h3 { margin: 0; font-size: 15px; line-height: 1.35; }
+.notif-item p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--muted);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.notif-item time { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--muted-2); }
+.notif-dot { margin-top: 7px; }
+.notif-actions { display: flex; gap: var(--gap-2); flex-wrap: wrap; justify-content: flex-end; align-self: start; }
 
 .notif-sections {
     display: flex;
@@ -942,6 +958,23 @@
 .notification-detail h2 { margin: var(--gap-3) 0; font-size: 21px; }
 .notification-detail-body { margin-top: var(--gap-4); white-space: pre-wrap; line-height: 1.65; }
 .notification-detail time { color: var(--muted); font-size: 13px; }
+
+@media (max-width: 720px) {
+    .notif-item {
+        grid-template-columns: 10px minmax(0, 1fr);
+        gap: var(--gap-2);
+        padding: var(--gap-3);
+    }
+
+    .notif-actions {
+        grid-column: 2;
+        justify-content: flex-start;
+    }
+
+    .notif-item p {
+        -webkit-line-clamp: 2;
+    }
+}
 
 @media (max-width: 600px) {
     .notification-detail-header { flex-direction: column; }
