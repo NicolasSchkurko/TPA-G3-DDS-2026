@@ -81,6 +81,13 @@ public class AdminResumenService {
         r.setDonantes(donacionesClient.obtenerDonantes().size());
 
         List<EntidadBeneficiariaDTO> entidades = donacionesClient.obtenerEntidades();
+        // El listado de entidades no trae las necesidades embebidas: hay que pedirlas aparte
+        // para que el resumen del panel admin cuente las activas reales y no siempre cero.
+        for (EntidadBeneficiariaDTO entidad : entidades) {
+            if (entidad.getNecesidades() == null || entidad.getNecesidades().isEmpty()) {
+                entidad.setNecesidades(donacionesClient.obtenerNecesidadesDeEntidad(entidad.getId()));
+            }
+        }
         r.setEntidades(entidades.size());
         long necesidadesActivas = entidades.stream()
                 .flatMap(e -> e.necesidadesActivas().stream())

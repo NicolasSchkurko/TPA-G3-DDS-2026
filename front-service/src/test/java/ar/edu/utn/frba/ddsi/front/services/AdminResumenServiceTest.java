@@ -86,6 +86,30 @@ class AdminResumenServiceTest {
     }
 
     @Test
+    void cuentaNecesidadesActivasDeEntidadesQueNoLasTraenEmbedidas() {
+        EntidadBeneficiariaDTO ent = new EntidadBeneficiariaDTO();
+        ent.setId(UUID.randomUUID());
+        NecesidadDTO activa = new NecesidadDTO();
+        activa.setActiva(true);
+        NecesidadDTO inactiva = new NecesidadDTO();
+        inactiva.setActiva(false);
+
+        when(donacionesClient.obtenerTodasLasDonaciones()).thenReturn(List.of());
+        when(donacionesClient.obtenerDonantes()).thenReturn(List.of());
+        when(donacionesClient.obtenerEntidades()).thenReturn(List.of(ent));
+        when(donacionesClient.obtenerNecesidadesDeEntidad(ent.getId())).thenReturn(List.of(activa, inactiva));
+        when(donacionesClient.obtenerResultadosMatchmaking()).thenReturn(List.of());
+        when(logisticasClient.obtenerCamiones()).thenReturn(List.of());
+        when(logisticasClient.obtenerEntregasNoRecibidas()).thenReturn(null);
+        when(logisticasClient.obtenerRutasActivas()).thenReturn(List.of());
+
+        AdminResumenService.Resumen r = service.obtenerResumen();
+
+        assertThat(r.getNecesidadesActivas()).isEqualTo(1);
+        verify(donacionesClient).obtenerNecesidadesDeEntidad(ent.getId());
+    }
+
+    @Test
     void fallbackConservaUltimoDatoYMarcaDesactualizado() {
         DonacionDTO d1 = new DonacionDTO();
         d1.setEstado("EN_DEPOSITO");

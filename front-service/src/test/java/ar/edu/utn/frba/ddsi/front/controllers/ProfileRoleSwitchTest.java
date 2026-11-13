@@ -173,7 +173,7 @@ class ProfileRoleSwitchTest {
 
     private static MockHttpSession sessionMulti(String rolActivo) {
         OidcUser user = new OidcUser() {
-            @Override public Map<String, Object> getClaims() { return Map.of("email", "user@ddsi.local"); }
+            @Override public Map<String, Object> getClaims() { return Map.of("email", "user@ddsi.local", "email_verified", true); }
             @Override public OidcUserInfo getUserInfo() { return null; }
             @Override public OidcIdToken getIdToken() { return null; }
             @Override public Map<String, Object> getAttributes() { return getClaims(); }

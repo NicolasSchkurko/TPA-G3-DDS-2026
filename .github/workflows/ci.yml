@@ -25,6 +25,7 @@ jobs:
           - incentivos-service
           - notificaciones-service
           - logisticas-service
+          - front-service
     steps:
       - name: Checkout
         uses: actions/checkout@v4

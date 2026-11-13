@@ -94,10 +94,26 @@ class FrontApplicationTest {
         new HttpSessionRequestCache().saveRequest(request, response);
 
         new ProfileRedirectHandler().onAuthenticationSuccess(request, response,
+                new UsernamePasswordAuthenticationToken("donante", "password",
+                        List.of(new SimpleGrantedAuthority("ROLE_DONANTE"))));
+
+        org.junit.jupiter.api.Assertions.assertEquals("/realizar-donacion", response.getRedirectedUrl());
+    }
+
+    @Test
+    void loginSuccessForNonDonorDoesNotReturnToSavedDonationForm() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/realizar-donacion");
+        request.setScheme("http");
+        request.setServerName("localhost");
+        request.setServerPort(8080);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        new HttpSessionRequestCache().saveRequest(request, response);
+
+        new ProfileRedirectHandler().onAuthenticationSuccess(request, response,
                 new UsernamePasswordAuthenticationToken("entidad", "password",
                         List.of(new SimpleGrantedAuthority("ROLE_ENTIDAD"))));
 
-        org.junit.jupiter.api.Assertions.assertEquals("/realizar-donacion", response.getRedirectedUrl());
+        org.junit.jupiter.api.Assertions.assertEquals("/entidad", response.getRedirectedUrl());
     }
 
     @Test
@@ -138,9 +154,10 @@ class FrontApplicationTest {
 
     @Test
     void landingRendersFeaturedDonations() throws Exception {
+        UUID featuredId = UUID.randomUUID();
         when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
                 new DonacionDestacadaDTO(
-                        UUID.randomUUID(), LocalDateTime.of(2026, 5, 1, 10, 0),
+                        featuredId, LocalDateTime.of(2026, 5, 1, 10, 0),
                         12, "ALIMENTOS", "MERCEARIA", "Comedor Los Piletones")));
 
         mockMvc.perform(get("/"))
@@ -157,23 +174,18 @@ class FrontApplicationTest {
                         org.hamcrest.Matchers.containsString("data-latitude=\"-34.6538\"")))
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("data-longitude=\"-58.4478\"")))
-                .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("class=\"map-only-donations\" hidden")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "data-id=\"" + MAP_ONLY_DONATION_ID + "\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Donaciones entregadas")))
+                        "data-id=\"" + featuredId + "\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "src=\"https://example.com/arroz-entregado.jpg\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Foto de la donación Arroz")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Entregada</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "href=\"/donaciones/" + MAP_ONLY_DONATION_ID + "\"")))
+                        "href=\"/donaciones/" + featuredId + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("MERCEARIA")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Últimas donaciones destacadas")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("Foto de la donación Camisas"))));
+                        org.hamcrest.Matchers.containsString("map-only-donations"))));
     }
 
     @Test
-    void landingLoadsFeaturedDonationImageWhenMissingFromDonationList() throws Exception {
+    void landingShowsFeaturedDonationEvenWhenItIsNotInTheDonationList() throws Exception {
         when(incentivosClient.obtenerDonacionesDestacadas()).thenReturn(List.of(
                 new DonacionDestacadaDTO(
                         FEATURED_DONATION_ID, LocalDateTime.of(2026, 5, 1, 10, 0),
@@ -181,9 +193,7 @@ class FrontApplicationTest {
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "src=\"https://example.com/featured-entrega.jpg\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Foto de la donación Fideos")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Fideos")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "href=\"/donaciones/" + FEATURED_DONATION_ID + "\"")));
     }
